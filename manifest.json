@@ -2,7 +2,7 @@
   "name": "ProjectX - Sistema de Gestión de Proyectos Estudiantiles",
   "short_name": "ProjectX",
   "description": "Plataforma educativa para gestión y evaluación de proyectos estudiantiles",
-  "start_url": "/",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#00bcd4",
@@ -21,9 +21,12 @@
       "purpose": "any maskable"
     }
   ],
-  "categories": ["education", "productivity"],
+  "categories": [
+    "education",
+    "productivity"
+  ],
   "lang": "es-GT",
   "dir": "ltr",
-  "scope": "/",
+  "scope": "./",
   "screenshots": []
 }

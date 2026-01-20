@@ -110,6 +110,11 @@ async function loadStudentProfile() {
       const teacherName = 'Docente';
     }
 
+    // Obtener datos de gamificación
+    const xpData = await calculateStudentXP(student.id);
+    const totalXP = xpData?.totalXP || 0;
+    const currentLevel = xpData?.level || 1;
+
     const totalProjects = projects?.length || 0;
     const totalLikes = projects?.reduce((sum, p) => sum + (p.votes || 0), 0) || 0;
     const avgScore = totalProjects > 0
@@ -119,7 +124,7 @@ async function loadStudentProfile() {
     const displayName = student.full_name || currentUser.email?.split('@')[0] || 'Estudiante';
 
     // CONTINÚA en PARTE 2 con el HTML inline...
-    renderStudentProfileHTMLInline(profileContent, student, displayName, myTeacher, needsToRate, hasRatedThisWeek, lastRatingDate, totalProjects, totalLikes, avgScore, earnedBadgeIds, earnedBadges, projects);
+    renderStudentProfileHTMLInline(profileContent, student, displayName, myTeacher, needsToRate, hasRatedThisWeek, lastRatingDate, totalProjects, totalLikes, avgScore, earnedBadgeIds, earnedBadges, projects, totalXP, currentLevel);
 
   } catch (err) {
     console.error('Error en perfil estudiante:', err);
@@ -131,12 +136,16 @@ async function loadStudentProfile() {
 // FUNCIÓN RENDERIZADA: PERFIL ESTUDIANTE HTML
 // ================================================
 
-function renderStudentProfileHTMLInline(profileContent, student, displayName, myTeacher, needsToRate, hasRatedThisWeek, lastRatingDate, totalProjects, totalLikes, avgScore, earnedBadgeIds, earnedBadges, projects) {
+function renderStudentProfileHTMLInline(profileContent, student, displayName, myTeacher, needsToRate, hasRatedThisWeek, lastRatingDate, totalProjects, totalLikes, avgScore, earnedBadgeIds, earnedBadges, projects, totalXP, currentLevel) {
   const schoolName = student.schools?.name || 'Establecimiento';
   const gradeSection = `${student.grade} - Sección ${student.section}`;
   const birthDate = student.birth_date ? new Date(student.birth_date) : null;
   const isBirthday = checkIfBirthday(birthDate);
   const birthDateFormatted = birthDate ? formatDate(student.birth_date) : 'No especificada';
+
+  if (isBirthday) {
+    setTimeout(startBirthdayConfetti, 1000);
+  }
 
   profileContent.innerHTML = `
     ${isBirthday ? `
@@ -147,43 +156,44 @@ function renderStudentProfileHTMLInline(profileContent, student, displayName, my
     ` : ''}
     
     <div class="profile-header">
-      <div class="profile-avatar">
+      <div class="profile-avatar ${isBirthday ? 'birthday-glow' : ''}">
         ${student.profile_photo_url ? `<img src="${student.profile_photo_url}" alt="${displayName}" style="width: 100%; height: 100%; object-fit: cover;">` : '<span style="font-size: 2.5rem;">👤</span>'}
       </div>
       <div>
         <h2 style="margin: 0 0 6px 0; font-size: 1.4rem; font-weight: 600; color: var(--dark); text-transform: capitalize;">${sanitizeInput(displayName)}</h2>
         <p class="profile-role">👨‍🎓 Estudiante</p>
-        <p style="color: var(--text-light); font-size: 0.9rem; margin-top: 4px;">${currentUser.email}</p>
+        <p style="color: var(--text-light); font-size: 0.9rem; margin-top: 4px;">
+          <i class="far fa-envelope"></i> ${currentUser.email}
+        </p>
+        <div style="font-size: 0.85rem; color: var(--text-light); margin-top: 8px; display: grid; gap: 4px;">
+           <span><i class="fas fa-school" style="width: 20px; text-align: center; color: var(--primary-color);"></i> ${sanitizeInput(schoolName)}</span>
+           <span><i class="fas fa-graduation-cap" style="width: 20px; text-align: center; color: var(--primary-color);"></i> ${student.grade} - Sección "${student.section}"</span>
+        </div>
       </div>
       <button class="btn-secondary" onclick="openUploadPhotoModal()" style="align-self: flex-start; white-space: nowrap;">
         <i class="fas fa-camera"></i> Cambiar Foto
       </button>
     </div>
 
-    <div style="background: white; padding: 16px; border-radius: 10px; box-shadow: var(--shadow); margin-bottom: 20px; border-left: 4px solid var(--primary-color);">
-      <p style="margin: 8px 0; font-size: 0.95rem; color: var(--text-dark);">
-        <strong style="color: var(--dark);">📅 Fecha de Nacimiento:</strong> <span style="color: var(--text-light);">${birthDateFormatted}</span>
+    <div style="background: var(--bg-card); padding: 16px; border-radius: 10px; box-shadow: var(--shadow); margin-bottom: 20px; border-left: 4px solid var(--primary-color);">
+      <p style="margin: 8px 0; font-size: 0.95rem; color: var(--text-color);">
+        <strong style="color: var(--heading-color);">📅 Fecha de Nacimiento:</strong> <span style="color: var(--text-light);">${birthDateFormatted}</span>
       </p>
-      <p style="margin: 8px 0; font-size: 0.95rem; color: var(--text-dark);">
-        <strong style="color: var(--dark);">⚧️ Género:</strong> <span style="color: var(--text-light);">${student.gender ? (student.gender === 'masculino' ? 'Masculino 👨' : 'Femenino 👩') : 'No especificado'}</span>
+      <p style="margin: 8px 0; font-size: 0.95rem; color: var(--text-color);">
+        <strong style="color: var(--heading-color);">⚧️ Género:</strong> <span style="color: var(--text-light);">${student.gender ? (student.gender === 'masculino' ? 'Masculino 👨' : 'Femenino 👩') : 'No especificado'}</span>
       </p>
     </div>
 
     <div class="stats-grid">
-      <div class="stat-card">
-        <i class="fas fa-school"></i>
-        <span style="font-size: 0.75rem; color: var(--text-light);">Establecimiento</span>
-        <strong style="font-size: 0.95rem;">${sanitizeInput(schoolName).substring(0, 15)}</strong>
+      <div class="stat-card" style="background: linear-gradient(135deg, rgba(34, 211, 238, 0.1), transparent);">
+        <i class="fas fa-trophy" style="color: #0891b2;"></i>
+        <strong>${currentLevel}</strong>
+        <span>Nivel</span>
       </div>
-      <div class="stat-card">
-        <i class="fas fa-book"></i>
-        <span style="font-size: 0.75rem; color: var(--text-light);">Grado</span>
-        <strong style="font-size: 1rem;">${student.grade}</strong>
-      </div>
-      <div class="stat-card">
-        <i class="fas fa-layer-group"></i>
-        <span style="font-size: 0.75rem; color: var(--text-light);">Sección</span>
-        <strong style="font-size: 1.2rem;">${student.section}</strong>
+      <div class="stat-card" style="background: linear-gradient(135deg, rgba(129, 140, 248, 0.1), transparent);">
+        <i class="fas fa-bolt" style="color: #4f46e5;"></i>
+        <strong>${totalXP}</strong>
+        <span>XP Total</span>
       </div>
       <div class="stat-card">
         <i class="fas fa-project-diagram"></i>
@@ -209,6 +219,14 @@ function renderStudentProfileHTMLInline(profileContent, student, displayName, my
 
     ${myTeacher ? `
       <h3 style="margin: 24px 0 16px; color: var(--dark); font-size: 1.3rem;">👨‍🏫 Mi Docente Asignado</h3>
+    ` : `
+      <h3 style="margin: 24px 0 16px; color: var(--dark); font-size: 1.3rem;">👨‍🏫 Mi Docente</h3>
+      <div class="info-box" style="background: var(--light-gray); padding: 15px; border-radius: 10px; color: var(--text-light); border: 1px dashed var(--border-color);">
+        <p style="margin: 0;"><i class="fas fa-info-circle"></i> Aún no tienes un docente asignado para ${student.school_code} - ${student.grade} ${student.section}.</p>
+      </div>
+    `}
+
+    ${myTeacher ? `
       ${needsToRate ? `
         <div style="background: linear-gradient(135deg, #fff3cd, #ffe69c); border: 2px solid #ffc107; color: #856404; padding: 16px; border-radius: 10px; margin-bottom: 16px; animation: pulse-warning 2s infinite;">
           <div style="display: flex; align-items: center; gap: 12px;">
@@ -278,34 +296,31 @@ function renderStudentProfileHTMLInline(profileContent, student, displayName, my
       </div>
     `}
 
-    ${earnedBadges && earnedBadges.length > 0 ? `
-      <h3 style="margin: 24px 0 16px; color: var(--dark); font-size: 1.3rem;">🏆 Mis Insignias</h3>
-      <div class="section-card">
-        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 16px; text-align: center;">
-          ${earnedBadges.map(b => `
-            <div style="padding: 16px; background: var(--light-gray); border-radius: 8px;">
-              <div style="font-size: 2.5rem; margin-bottom: 8px;">🏅</div>
-              <small style="color: var(--text-light); display: block; word-break: break-word;">${sanitizeInput(b.badge_id)}</small>
-              <small style="color: var(--text-light); font-size: 0.8rem; display: block; margin-top: 4px;">${formatDate(b.earned_at)}</small>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    ` : ''}
+    <h3 style="margin: 24px 0 16px; color: var(--dark); font-size: 1.3rem;">🏆 Mis Insignias</h3>
+    <div class="section-card">
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 16px; text-align: center;">
+        ${BADGES.map(b => {
+    const isEarned = earnedBadgeIds.includes(b.id);
+    const earnedInfo = earnedBadges?.find(eb => eb.badge_id === b.id);
 
-    <h3 style="margin: 24px 0 16px; color: var(--dark); font-size: 1.3rem;">🎯 Acciones</h3>
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px;">
-      <button class="btn-secondary" onclick="openSuggestionModal()" style="font-size: 0.9rem;">
-        <i class="fas fa-lightbulb"></i> Sugerencia
-      </button>
-      <button class="btn-secondary" onclick="nav('upload')" style="font-size: 0.9rem;">
-        <i class="fas fa-plus"></i> Proyecto
-      </button>
-      <button class="btn-secondary" onclick="nav('ranking')" style="font-size: 0.9rem;">
-        <i class="fas fa-chart-bar"></i> Ranking>
-        <i class="fas fa-chart-bar"></i> Ranking
-      </button>
+    return `
+            <div class="badge-item ${isEarned ? 'unlocked' : 'locked'}" title="${sanitizeInput(b.description)}">
+              <div class="badge-icon">${b.icon}</div>
+              <div class="badge-name">${sanitizeInput(b.name)}</div>
+              ${isEarned && earnedInfo ? `
+                <small style="color: var(--primary-color); font-size: 0.75rem; font-weight: 600;">
+                  ${formatDate(earnedInfo.earned_at)}
+                </small>
+              ` : `
+                <small class="badge-desc">${sanitizeInput(b.description)}</small>
+              `}
+            </div>
+          `;
+  }).join('')}
+      </div>
     </div>
+
+
   `;
 }
 // ================================================
@@ -318,7 +333,7 @@ function openUploadPhotoModal() {
   modal.id = 'upload-photo-modal';
 
   modal.innerHTML = `
-    <div class="modal-content">
+    < div class="modal-content" >
       <div class="modal-header">
         <h2>📷 Cambiar Foto de Perfil</h2>
         <button class="close-modal" onclick="this.closest('.modal').remove()">×</button>
@@ -340,8 +355,8 @@ function openUploadPhotoModal() {
           <i class="fas fa-upload"></i> Subir Foto
         </button>
       </div>
-    </div>
-  `;
+    </div >
+    `;
 
   document.body.appendChild(modal);
 }
@@ -377,7 +392,7 @@ async function uploadProfilePhoto() {
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Subiendo...';
 
   try {
-    const fileName = `${currentUser.id}_${Date.now()}.${file.name.split('.').pop()}`;
+    const fileName = `${currentUser.id}_${Date.now()}.${file.name.split('.').pop()} `;
 
     const { data: uploadData, error: uploadError } = await _supabase.storage
       .from('profile-photos')
@@ -481,8 +496,8 @@ function openSuggestionModal() {
           <i class="fas fa-paper-plane"></i> Enviar
         </button>
       </div>
-    </div>
-  `;
+    </div >
+    `;
 
   document.body.appendChild(modal);
 }
@@ -622,7 +637,7 @@ function openRateTeacherModal(teacherId, teacherName) {
   modal.id = 'rate-teacher-modal';
 
   modal.innerHTML = `
-    <div class="modal-content">
+    < div class="modal-content" >
       <div class="modal-header">
         <h2>⭐ Calificar a ${sanitizeInput(teacherName)}</h2>
         <button class="close-modal" onclick="this.closest('.modal').remove()">×</button>
@@ -664,8 +679,8 @@ function openRateTeacherModal(teacherId, teacherName) {
           <i class="fas fa-star"></i> Enviar Calificación
         </button>
       </div>
-    </div>
-  `;
+    </div >
+    `;
 
   document.body.appendChild(modal);
 }
@@ -760,10 +775,10 @@ async function loadTeacherProfile() {
     const { data: assignments } = await _supabase
       .from('teacher_assignments')
       .select(`
-        school_code,
-        grade,
-        section,
-        schools(name)
+  school_code,
+    grade,
+    section,
+    schools(name)
       `)
       .eq('teacher_id', currentUser.id);
 
@@ -787,7 +802,8 @@ async function loadTeacherProfile() {
           <h3 style="margin: 0; font-size: 1.5rem;">🎉 ¡FELIZ CUMPLEAÑOS! 🎉</h3>
           <p style="margin: 8px 0 0 0; font-size: 1.1rem;">¡Que disfrutes tu día especial!</p>
         </div>
-      ` : ''}
+      ` : ''
+      }
       
       <div class="profile-header">
         <div class="profile-avatar">
@@ -862,7 +878,7 @@ async function loadTeacherProfile() {
           </small>
         </div>
       </div>
-    `;
+  `;
 
   } catch (err) {
     console.error('Error en perfil docente:', err);
@@ -905,7 +921,7 @@ async function loadAdminProfile() {
     const commentsCount = ratings?.filter(r => r.message).length || 0;
 
     profileContent.innerHTML = `
-      <div class="profile-header">
+    < div class="profile-header" >
         <div class="profile-avatar">
           <span style="font-size: 2.5rem;">👑</span>
         </div>
@@ -917,7 +933,7 @@ async function loadAdminProfile() {
         <button class="btn-secondary" onclick="exportAllData()" style="align-self: flex-start; white-space: nowrap;">
           <i class="fas fa-file-export"></i> Exportar Reportes
         </button>
-      </div>
+      </div >
 
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px;">
         <div class="section-card" style="margin-bottom: 0; background: linear-gradient(135deg, var(--primary-color), var(--primary-dark)); color: white;">
@@ -983,7 +999,7 @@ async function loadAdminProfile() {
         </button>
       </div>
       ${renderRecentComments(ratings)}
-    `;
+  `;
 
   } catch (err) {
     console.error('Error en perfil admin:', err);
@@ -1003,7 +1019,7 @@ function renderRecentComments(ratings) {
   }
 
   return `
-    <div style="display: grid; gap: 12px;">
+    < div style = "display: grid; gap: 12px;" >
       ${recentRatings.map(r => `
         <div class="section-card" style="padding: 16px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
@@ -1020,8 +1036,9 @@ function renderRecentComments(ratings) {
           </p>
           <small style="color: var(--text-light);">${formatDate(r.created_at)}</small>
         </div>
-      `).join('')}
-    </div>
+      `).join('')
+    }
+    </div >
     <button class="btn-secondary" onclick="viewAllTeacherComments()" style="margin-top: 16px; width: 100%;">
       <i class="fas fa-eye"></i> Ver Todos los Comentarios
     </button>
@@ -1033,10 +1050,10 @@ async function viewAllTeacherComments() {
     const { data: ratings } = await _supabase
       .from('teacher_ratings')
       .select(`
-        rating,
-        message,
-        created_at,
-        students(full_name, school_code, grade, section)
+  rating,
+    message,
+    created_at,
+    students(full_name, school_code, grade, section)
       `)
       .order('created_at', { ascending: false });
 
@@ -1044,7 +1061,7 @@ async function viewAllTeacherComments() {
     modal.className = 'modal active';
 
     modal.innerHTML = `
-      <div class="modal-content" style="max-width: 900px;">
+    < div class="modal-content" style = "max-width: 900px;" >
         <div class="modal-header">
           <h2>💬 Todas las Calificaciones y Comentarios</h2>
           <button class="close-modal" onclick="this.closest('.modal').remove()">×</button>
@@ -1077,7 +1094,7 @@ async function viewAllTeacherComments() {
             </div>
           `}
         </div>
-      </div>
+      </div >
     `;
 
     document.body.appendChild(modal);
@@ -1108,6 +1125,8 @@ async function exportAllData() {
 // ================================================
 // UTILIDADES PARA PERFIL
 // ================================================
+
+// La función startBirthdayConfetti se movió a main.js para uso global
 
 function checkIfBirthday(birthDate) {
   if (!birthDate) return false;

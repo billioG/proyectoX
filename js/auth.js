@@ -76,17 +76,29 @@ async function handleLogin() {
     let email = username;
 
     if (!username.includes('@')) {
-      const { data: student, error: studentError } = await _supabase
+      // 1. Intentar buscar en estudiantes
+      const { data: student } = await _supabase
         .from('students')
         .select('email')
         .eq('username', username)
-        .single();
+        .maybeSingle();
 
-      if (studentError || !student) {
-        throw new Error('Usuario no encontrado');
+      if (student) {
+        email = student.email;
+      } else {
+        // 2. Intentar buscar en docentes/admins
+        const { data: teacher } = await _supabase
+          .from('teachers')
+          .select('email')
+          .eq('username', username)
+          .maybeSingle();
+
+        if (teacher) {
+          email = teacher.email;
+        } else {
+          throw new Error('Usuario no encontrado');
+        }
       }
-
-      email = student.email;
     }
 
     const { data, error } = await _supabase.auth.signInWithPassword({
@@ -122,7 +134,9 @@ async function handleSuccessfulLogin(user) {
     console.log('👤 Usuario:', user.email);
     console.log('🎭 Rol:', userRole);
 
-    let userData = null;
+    // Añadir clase de rol al body para control de CSS
+    document.body.classList.remove('role-estudiante', 'role-docente', 'role-admin');
+    document.body.classList.add(`role-${userRole}`);
 
     if (userRole === 'estudiante') {
       const { data, error } = await _supabase
@@ -133,14 +147,16 @@ async function handleSuccessfulLogin(user) {
 
       if (error) throw error;
       userData = data;
-    } else if (userRole === 'docente') {
+    } else if (userRole === 'docente' || userRole === 'admin') {
       const { data, error } = await _supabase
         .from('teachers')
         .select('*')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        console.warn('⚠️ No se encontró perfil en tabla teachers:', error);
+      }
       userData = data;
     }
 
@@ -156,12 +172,15 @@ async function handleSuccessfulLogin(user) {
     nav('feed');
 
     // Cargar grupos si es estudiante
-    if (userRole === 'estudiante' && typeof loadGroupsForUpload === 'function') {
-      await loadGroupsForUpload();
+    if (userRole === 'estudiante') {
+      if (typeof loadGroupsForUpload === 'function') await loadGroupsForUpload();
     }
 
-    // Cargar notificaciones si es docente
-    if (userRole === 'docente' && typeof loadTeacherNotifications === 'function') {
+    // Inicializar gamificación (el módulo maneja la lógica por roles)
+    if (typeof initGamification === 'function') initGamification();
+
+    // Cargar notificaciones si es docente o admin
+    if ((userRole === 'docente' || userRole === 'admin') && typeof loadTeacherNotifications === 'function') {
       await loadTeacherNotifications();
     }
 
@@ -184,11 +203,12 @@ function updateUserInterface(userData) {
   if (userData) {
     if (userRole === 'estudiante') {
       displayName = userData.full_name || userData.username || currentUser.email?.split('@')[0];
-    } else if (userRole === 'docente') {
-      displayName = userData.full_name || currentUser.email?.split('@')[0];
-    } else {
-      displayName = currentUser.email?.split('@')[0] || 'Admin';
+    } else if (userRole === 'docente' || userRole === 'admin') {
+      displayName = userData.full_name || currentUser.email?.split('@')[0] || 'Docente';
     }
+  } else {
+    // Fallback si no hay registro en tablas (típico de admins puros)
+    displayName = currentUser?.email?.split('@')[0] || (userRole === 'admin' ? 'Administrador' : 'Usuario');
   }
 
   if (userNameElement) {
@@ -221,20 +241,46 @@ function setupNavigation() {
 }
 
 async function logout() {
-  try {
-    const { error } = await _supabase.auth.signOut();
-    if (error) throw error;
+  const btn = document.querySelector('.btn-logout');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+  }
 
+  try {
+    console.log('🔄 Cerrando sesión...');
+
+    // 1. Cerrar sesión en Supabase
+    await _supabase.auth.signOut();
+
+    // 2. Limpiar estados locales y UI
     currentUser = null;
     userRole = null;
+    userData = null;
 
+    // Limpiar elementos de UI para evitar parpadeos de datos anteriores al re-entrar
+    const userNameElement = document.getElementById('user-name');
+    if (userNameElement) userNameElement.textContent = 'Usuario';
+
+    // Limpiar contenedores principales
+    ['feed-container', 'profile-content', 'ranking-container', 'eval-projects-container', 'groups-container', 'attendance-container'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = '';
+    });
+
+    // 3. Mostrar pantalla de login sin recargar
     showLoginScreen();
-    showToast('👋 Sesión cerrada', 'success');
-    console.log('✅ Sesión cerrada correctamente');
+
+    showToast('👋 Sesión cerrada correctamente', 'success');
 
   } catch (err) {
     console.error('Error cerrando sesión:', err);
-    showToast('❌ Error al cerrar sesión', 'error');
+    showLoginScreen();
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-sign-out-alt"></i> Salir';
+    }
   }
 }
 

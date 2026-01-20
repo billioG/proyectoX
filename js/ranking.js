@@ -13,12 +13,12 @@ async function loadRanking() {
       .from('projects')
       .select(`
         *,
-        students(full_name, school_code, grade, section, schools(name)),
-        groups(name)
+        students(id, full_name, school_code, grade, section, schools(name)),
+        groups(name, group_members(student_id))
       `)
       .not('score', 'is', null)
-      .order('score', { ascending: false })
       .order('votes', { ascending: false })
+      .order('score', { ascending: false })
       .limit(20);
 
     if (error) throw error;
@@ -35,21 +35,21 @@ async function loadRanking() {
       </div>
 
       ${projects.map((p, index) => {
-        let medal = '';
-        let cardClass = '';
-        
-        if (index === 0) {
-          medal = '🥇';
-          cardClass = 'rank-1';
-        } else if (index === 1) {
-          medal = '🥈';
-          cardClass = 'rank-2';
-        } else if (index === 2) {
-          medal = '🥉';
-          cardClass = 'rank-3';
-        }
+      let medal = '';
+      let cardClass = '';
 
-        return `
+      if (index === 0) {
+        medal = '🥇';
+        cardClass = 'rank-1';
+      } else if (index === 1) {
+        medal = '🥈';
+        cardClass = 'rank-2';
+      } else if (index === 2) {
+        medal = '🥉';
+        cardClass = 'rank-3';
+      }
+
+      return `
           <div class="section-card ${cardClass}" style="margin-bottom: 15px; position: relative; ${index < 3 ? 'border-left: 5px solid #ffd700;' : ''}">
             <div style="display: flex; gap: 20px; align-items: center;">
               <div style="font-size: 3rem; min-width: 60px; text-align: center; font-weight: 700; ${index < 3 ? '' : 'color: var(--text-light);'}">
@@ -67,10 +67,28 @@ async function loadRanking() {
               </div>
 
               <div style="text-align: center; min-width: 120px;">
-                <div style="background: var(--primary-color); color: white; padding: 15px; border-radius: 12px; margin-bottom: 10px;">
-                  <div style="font-size: 2rem; font-weight: 700;">${p.score}</div>
-                  <small style="opacity: 0.9;">Puntos</small>
-                </div>
+                ${(() => {
+          const isOwner = p.students?.id === currentUser?.id;
+          const isTeacherOrAdmin = userRole === 'docente' || userRole === 'admin';
+          const isGroupMember = p.groups?.group_members?.some(m => m.student_id === currentUser?.id);
+          const canSeeScore = isOwner || isTeacherOrAdmin || isGroupMember;
+
+          if (canSeeScore) {
+            return `
+                      <div style="background: var(--primary-color); color: white; padding: 15px; border-radius: 12px; margin-bottom: 10px;">
+                        <div style="font-size: 2rem; font-weight: 700;">${p.score}</div>
+                        <small style="opacity: 0.9;">Puntos</small>
+                      </div>
+                    `;
+          } else {
+            return `
+                      <div style="background: var(--light-gray); color: var(--text-light); padding: 15px; border-radius: 12px; margin-bottom: 10px; border: 1px dashed var(--border-color);">
+                        <i class="fas fa-lock" style="font-size: 1.5rem; margin-bottom: 5px; display: block;"></i>
+                        <small>Privado</small>
+                      </div>
+                    `;
+          }
+        })()}
                 <div style="display: flex; align-items: center; justify-content: center; gap: 5px; color: var(--accent-color);">
                   <i class="fas fa-heart"></i>
                   <strong>${p.votes || 0}</strong>
@@ -85,7 +103,7 @@ async function loadRanking() {
             </div>
           </div>
         `;
-      }).join('')}
+    }).join('')}
     `;
 
   } catch (err) {

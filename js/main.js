@@ -278,3 +278,21 @@ function downloadCSV(csvContent, filename) {
 }
 
 console.log('âœ… main.js cargado correctamente');
+
+function startBirthdayConfetti() {
+  const colors = ['#00bcd4', '#ff6b6b', '#ffc107', '#4caf50', '#ffffff'];
+  for (let i = 0; i < 50; i++) {
+    const confetti = document.createElement('div');
+    confetti.className = 'confetti';
+    confetti.style.left = Math.random() * 100 + 'vw';
+    confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+    confetti.style.animationDelay = Math.random() * 2 + 's';
+    confetti.style.width = Math.random() * 8 + 6 + 'px';
+    confetti.style.height = confetti.style.width;
+    document.body.appendChild(confetti);
+    
+    // Eliminar después de la animación
+    setTimeout(() => confetti.remove(), 4000);
+  }
+}
+

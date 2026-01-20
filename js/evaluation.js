@@ -49,12 +49,17 @@ async function loadEvaluationProjects() {
         }));
 
         finalProjects = projects.filter(p => {
-          return filters.some(f =>
-            p.students?.school_code === f.school_code &&
-            p.students?.grade === f.grade &&
-            p.students?.section === f.section
-          );
+          if (!p.students) return false;
+
+          return filters.some(f => {
+            const match = String(p.students.school_code) === String(f.school_code) &&
+              String(p.students.grade) === String(f.grade) &&
+              String(p.students.section) === String(f.section);
+            return match;
+          });
         });
+
+        console.log(`📋 Proyectos filtrados para docente: ${finalProjects.length} de ${projects.length}`);
       } else {
         const { data: projects, error } = await query;
         if (error) throw error;
@@ -194,6 +199,7 @@ async function loadTeacherNotifications() {
       .from('projects')
       .select(`
         id,
+        score,
         students!inner(school_code, grade, section),
         evaluations(id)
       `);
@@ -202,7 +208,7 @@ async function loadTeacherNotifications() {
 
     // Filtrar localmente los que coincidan con las asignaciones y no estén evaluados
     const pendingCount = projects.filter(p => {
-      const hasEvaluation = p.evaluations && p.evaluations.length > 0;
+      const hasEvaluation = (p.evaluations && p.evaluations.length > 0) || (p.score !== null && p.score > 0);
       if (hasEvaluation) return false;
 
       return assignments.some(a =>

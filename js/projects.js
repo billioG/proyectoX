@@ -50,19 +50,69 @@ async function loadFeed() {
       .select(`
         *,
         students(
+          id,
           full_name,
           school_code,
           grade,
           section,
           schools(name)
         ),
-        groups(name)
+        groups(
+          name,
+          group_members(student_id)
+        )
       `);
 
     if (error) throw error;
 
+    // 1. Verificar si el estudiante debe calificar al docente (1 vez por semana)
+    let ratingPromptHTML = '';
+    if (userRole === 'estudiante') {
+      const student = projects.find(p => p.students?.id === currentUser.id)?.students;
+
+      if (student) {
+        const { data: assignment } = await _supabase
+          .from('teacher_assignments')
+          .select('teacher_id')
+          .eq('school_code', student.school_code)
+          .eq('grade', student.grade)
+          .eq('section', student.section)
+          .maybeSingle();
+
+        if (assignment) {
+          const { data: lastRating } = await _supabase
+            .from('teacher_ratings')
+            .select('created_at')
+            .eq('student_id', currentUser.id)
+            .eq('teacher_id', assignment.teacher_id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          const needsToRate = !lastRating || (new Date() - new Date(lastRating.created_at)) / (1000 * 60 * 60 * 24) >= 7;
+
+          if (needsToRate) {
+            ratingPromptHTML = `
+               <div class="section-card" style="grid-column: 1/-1; background: linear-gradient(135deg, var(--primary-color), var(--primary-dark)); color: white; display: flex; justify-content: space-between; align-items: center; padding: 20px; margin-bottom: 25px; border-radius: 12px; box-shadow: var(--shadow-md);">
+                 <div style="display: flex; align-items: center; gap: 20px;">
+                   <div style="font-size: 2.5rem;">👨‍🏫</div>
+                   <div style="flex: 1;">
+                     <h3 style="margin: 0; font-size: 1.2rem;">¡Tu opinión es importante!</h3>
+                     <p style="margin: 5px 0 0; opacity: 0.9; font-size: 0.95rem;">No has calificado a tu docente esta semana. Ayúdanos a mejorar.</p>
+                   </div>
+                 </div>
+                 <button class="btn-secondary" onclick="nav('profile')" style="background: white; color: var(--primary-color); border: none; font-weight: 700; padding: 10px 20px; min-width: 140px; margin-left: 15px;">
+                   Calificar Ahora
+                 </button>
+               </div>
+             `;
+          }
+        }
+      }
+    }
+
     if (!projects || projects.length === 0) {
-      container.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;">📭 No hay proyectos publicados aún</div>';
+      container.innerHTML = ratingPromptHTML + '<div class="empty-state" style="grid-column: 1/-1;">📭 No hay proyectos publicados aún</div>';
       return;
     }
 
@@ -82,13 +132,40 @@ async function loadFeed() {
       return scoreB - scoreA;
     });
 
+    // PANEL DOCENTE: REPORTES
+    let teacherPanelHTML = '';
+    if (userRole === 'docente' || userRole === 'admin') {
+      const today = new Date().getDate();
+      const showReportBtn = today >= 25 && today <= 30;
+
+      teacherPanelHTML = `
+        <div class="section-card" style="grid-column: 1/-1; background: var(--bg-card); display: flex; flex-wrap: wrap; gap: 20px; align-items: center; padding: 25px; margin-bottom: 25px; border-radius: 12px; border-left: 5px solid var(--primary-color); box-shadow: var(--shadow-sm);">
+          <div style="flex: 1;">
+            <h3 style="margin: 0; color: var(--primary-color); font-size: 1.3rem;">📋 Panel del Docente</h3>
+            <p style="margin: 6px 0 0; color: var(--text-light);">Gestiona tus evidencias y reportes del programa.</p>
+          </div>
+          <div style="display: flex; gap: 10px;">
+             <button class="btn-secondary" onclick="openWeeklyEvidenceModal()">
+               <i class="fas fa-camera"></i> Evidencia Semanal
+             </button>
+             ${showReportBtn ? `
+               <button class="btn-primary" onclick="openMonthlyReportModal()">
+                 <i class="fas fa-file-alt"></i> Informe Mensual
+               </button>
+             ` : ''}
+          </div>
+        </div>
+      `;
+    }
+
     // Crear filtros
     const schools = [...new Set(projects.map(p => p.students?.schools?.name).filter(Boolean))].sort();
     const grades = [...new Set(projects.map(p => p.students?.grade).filter(Boolean))].sort();
     const sections = [...new Set(projects.map(p => p.students?.section).filter(Boolean))].sort();
 
     const filterHTML = `
-      <div class="section-card" style="grid-column: 1/-1; margin-bottom: 20px;">
+      ${ratingPromptHTML}
+      <div class="section-card projects-filter-container" style="grid-column: 1/-1; margin-bottom: 20px;">
         <h3 style="margin: 0 0 16px;">🔍 Filtros</h3>
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
           <input 
@@ -123,9 +200,15 @@ async function loadFeed() {
       const groupName = p.groups?.name || null;
       const hasScore = p.score && p.score > 0;
 
+      // Control de visibilidad del punteo
+      const isOwner = p.students?.id === currentUser?.id;
+      const isTeacherOrAdmin = userRole === 'docente' || userRole === 'admin';
+      const isGroupMember = p.groups?.group_members?.some(m => m.student_id === currentUser?.id);
+      const canSeeScore = isOwner || isTeacherOrAdmin || isGroupMember;
+
       return `
         <div class="project-card" data-title="${(p.title || '').toLowerCase()}" data-school="${schoolName}" data-grade="${grade}" data-section="${section}">
-          ${hasScore ? `<div class="score-badge">⭐ ${p.score}/100</div>` : ''}
+          ${hasScore && canSeeScore ? `<div class="score-badge">⭐ ${p.score}/100</div>` : ''}
           ${groupName ? `<div class="team-tag">👥 ${sanitizeInput(groupName)}</div>` : ''}
           
           <h3>${sanitizeInput(p.title)}</h3>
@@ -164,7 +247,7 @@ async function loadFeed() {
       `;
     }).join('');
 
-    container.innerHTML = filterHTML + projectsHTML;
+    container.innerHTML = teacherPanelHTML + filterHTML + projectsHTML;
 
   } catch (err) {
     console.error('Error cargando proyectos:', err);
@@ -293,7 +376,7 @@ async function viewProjectDetails(projectId) {
         *,
         students(id, full_name, school_code, grade, section, schools(name)),
         groups(id, name, group_members(role, student_id, students(full_name))),
-        evaluations(
+        evaluations!project_id(
           creativity_score,
           clarity_score,
           functionality_score,
@@ -301,6 +384,7 @@ async function viewProjectDetails(projectId) {
           social_impact_score,
           total_score,
           comments,
+          feedback,
           created_at,
           teacher_id
         )
@@ -309,6 +393,10 @@ async function viewProjectDetails(projectId) {
       .single();
 
     if (error) throw error;
+
+    // DEBUG: Ver qué datos de evaluación estamos recibiendo
+    console.log('📊 Project evaluations:', project.evaluations);
+    console.log('📊 Project score:', project.score);
 
     // Verificar si el usuario actual es el propietario
     const isOwner = project.students?.id === currentUser.id;
@@ -331,7 +419,10 @@ async function viewProjectDetails(projectId) {
     modal.innerHTML = `
       <div class="modal-content" style="max-width: 800px;">
         <div class="modal-header">
-          <h2>${sanitizeInput(project.title)}</h2>
+          <div style="display: flex; align-items: center; gap: 15px;">
+            <h2>${sanitizeInput(project.title)}</h2>
+            ${project.score && canSeeFullInfo ? `<span class="score-badge" style="position: static; margin: 0;">⭐ ${project.score}/100</span>` : ''}
+          </div>
           <button class="close-modal" onclick="this.closest('.modal').remove()">×</button>
         </div>
         <div class="modal-body">
@@ -381,50 +472,119 @@ async function viewProjectDetails(projectId) {
             </div>
           ` : ''}
 
-          ${canSeeFullInfo && project.evaluations && project.evaluations.length > 0 ? `
+          ${canSeeFullInfo && (project.evaluations?.length > 0 || (project.score !== null && project.score !== undefined)) ? `
             <div style="background: var(--light-gray); padding: 20px; border-radius: 10px; margin-top: 20px;">
-              <h3>📊 Evaluación</h3>
-              ${project.evaluations.map(e => `
-                <div style="margin-top: 15px;">
-                  <p><strong>Evaluado por:</strong> Docente responsable</p>
-                  <p style="font-size: 1.5rem; font-weight: 700; color: var(--primary-color); margin: 10px 0;">
-                    Puntuación Total: ${e.total_score}/100
-                  </p>
-                  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin: 15px 0;">
-                    <div style="text-align: center; padding: 10px; background: var(--bg-card); border-radius: 8px; border: 1px solid var(--border-color);">
-                      <small style="color: var(--text-light);">Creatividad</small><br>
-                      <strong style="font-size: 1.2rem;">${e.creativity_score}/20</strong>
+              <h3 style="margin-bottom: 15px;">📊 Desglose de Calificación</h3>
+              ${project.evaluations?.length > 0 ? project.evaluations.map(e => `
+                <div style="margin-top: 5px;">
+                  <div style="background: var(--bg-card); border-radius: 10px; padding: 20px; border: 1px solid var(--border-color); margin-bottom: 20px;">
+                    <div style="display: grid; gap: 12px; margin-bottom: 15px;">
+                      
+                      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed var(--border-color); padding-bottom: 8px;">
+                        <span style="color: var(--text-color); font-size: 0.95rem;">🎨 Creatividad e Innovación</span>
+                        <span style="font-weight: 700; color: var(--primary-color);">${e.creativity_score || 0}/20</span>
+                      </div>
+
+                      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed var(--border-color); padding-bottom: 8px;">
+                        <span style="color: var(--text-color); font-size: 0.95rem;">🗣️ Claridad de Presentación</span>
+                        <span style="font-weight: 700; color: var(--primary-color);">${e.clarity_score || 0}/20</span>
+                      </div>
+
+                      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed var(--border-color); padding-bottom: 8px;">
+                        <span style="color: var(--text-color); font-size: 0.95rem;">⚙️ Funcionalidad / Solución</span>
+                        <span style="font-weight: 700; color: var(--primary-color);">${e.functionality_score || 0}/20</span>
+                      </div>
+
+                      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed var(--border-color); padding-bottom: 8px;">
+                        <span style="color: var(--text-color); font-size: 0.95rem;">🤝 Trabajo en Equipo</span>
+                        <span style="font-weight: 700; color: var(--primary-color);">${e.teamwork_score || 0}/20</span>
+                      </div>
+
+                      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed var(--border-color); padding-bottom: 8px;">
+                        <span style="color: var(--text-color); font-size: 0.95rem;">🌍 Impacto Social</span>
+                        <span style="font-weight: 700; color: var(--primary-color);">${e.social_impact_score || 0}/20</span>
+                      </div>
+                      
                     </div>
-                    <div style="text-align: center; padding: 10px; background: var(--bg-card); border-radius: 8px; border: 1px solid var(--border-color);">
-                      <small style="color: var(--text-light);">Claridad</small><br>
-                      <strong style="font-size: 1.2rem;">${e.clarity_score}/20</strong>
+
+                    <div style="background: var(--bg-hover); padding: 15px; border-radius: 8px; text-align: right; color: var(--text-color); border: 1px solid var(--border-color);">
+                      <strong style="font-size: 1.1rem; color: var(--text-color);">Puntuación Final:</strong> 
+                      <span style="font-size: 1.8rem; font-weight: 800; color: var(--success-color); margin-left: 10px;">${e.total_score}/100</span>
                     </div>
-                    <div style="text-align: center; padding: 10px; background: var(--bg-card); border-radius: 8px; border: 1px solid var(--border-color);">
-                      <small style="color: var(--text-light);">Función</small><br>
-                      <strong style="font-size: 1.2rem;">${e.functionality_score}/20</strong>
-                    </div>
-                    <div style="text-align: center; padding: 10px; background: var(--bg-card); border-radius: 8px; border: 1px solid var(--border-color);">
-                      <small style="color: var(--text-light);">Equipo</small><br>
-                      <strong style="font-size: 1.2rem;">${e.teamwork_score}/20</strong>
-                    </div>
-                    <div style="text-align: center; padding: 10px; background: var(--bg-card); border-radius: 8px; border: 1px solid var(--border-color);">
-                      <small style="color: var(--text-light);">Impacto</small><br>
-                      <strong style="font-size: 1.2rem;">${e.social_impact_score}/20</strong>
-                    </div>
+
+                    ${e.feedback || e.comments ? `
+                      <div style="margin-top: 15px; background: rgba(59, 130, 246, 0.1); padding: 15px; border-radius: 8px; border-left: 4px solid var(--info-color);">
+                        <strong style="display: block; color: var(--info-color); margin-bottom: 5px; font-size: 0.95rem;">💬 Retroalimentación del Docente:</strong>
+                        <p style="margin: 0; color: var(--text-color); line-height: 1.5; font-size: 0.95rem;">${sanitizeInput(e.feedback || e.comments)}</p>
+                      </div>
+                    ` : ''}
                   </div>
-                  ${e.comments ? `
-                    <div style="background: var(--bg-card); padding: 15px; border-radius: 8px; margin-top: 10px; border-left: 3px solid var(--primary-color);">
-                      <strong>💬 Comentarios del docente:</strong>
-                      <p style="margin-top: 8px; color: var(--text-dark);">${sanitizeInput(e.comments)}</p>
-                    </div>
-                  ` : ''}
-                  <small style="color: var(--text-light); display: block; margin-top: 10px;">
+                  
+                  <small style="color: var(--text-light); display: block; margin-top: 10px; text-align: right;">
                     Evaluado el ${formatDate(e.created_at)}
                   </small>
                 </div>
-              `).join('')}
+              `).join('') : (project.creativity_score || project.clarity_score || project.functionality_score || project.teamwork_score || project.social_impact_score) ? `
+                <div style="margin-top: 5px;">
+                  <div style="background: var(--bg-card); border-radius: 10px; padding: 20px; border: 1px solid var(--border-color); margin-bottom: 20px;">
+                    <div style="display: grid; gap: 12px; margin-bottom: 15px;">
+                      
+                      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed var(--border-color); padding-bottom: 8px;">
+                        <span style="color: var(--text-color); font-size: 0.95rem;">🎨 Creatividad e Innovación</span>
+                        <span style="font-weight: 700; color: var(--primary-color);">${project.creativity_score || 0}/20</span>
+                      </div>
+
+                      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed var(--border-color); padding-bottom: 8px;">
+                        <span style="color: var(--text-color); font-size: 0.95rem;">🗣️ Claridad de Presentación</span>
+                        <span style="font-weight: 700; color: var(--primary-color);">${project.clarity_score || 0}/20</span>
+                      </div>
+
+                      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed var(--border-color); padding-bottom: 8px;">
+                        <span style="color: var(--text-color); font-size: 0.95rem;">⚙️ Funcionalidad / Solución</span>
+                        <span style="font-weight: 700; color: var(--primary-color);">${project.functionality_score || 0}/20</span>
+                      </div>
+
+                      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed var(--border-color); padding-bottom: 8px;">
+                        <span style="color: var(--text-color); font-size: 0.95rem;">🤝 Trabajo en Equipo</span>
+                        <span style="font-weight: 700; color: var(--primary-color);">${project.teamwork_score || 0}/20</span>
+                      </div>
+
+                      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed var(--border-color); padding-bottom: 8px;">
+                        <span style="color: var(--text-color); font-size: 0.95rem;">🌍 Impacto Social</span>
+                        <span style="font-weight: 700; color: var(--primary-color);">${project.social_impact_score || 0}/20</span>
+                      </div>
+                      
+                    </div>
+
+                    <div style="background: var(--bg-hover); padding: 15px; border-radius: 8px; text-align: right; color: var(--text-color); border: 1px solid var(--border-color);">
+                      <strong style="font-size: 1.1rem; color: var(--text-color);">Puntuación Final:</strong> 
+                      <span style="font-size: 1.8rem; font-weight: 800; color: var(--success-color); margin-left: 10px;">${project.score}/100</span>
+                    </div>
+                  </div>
+                </div>
+              ` : `
+                <div style="background: var(--primary-color); color: white; padding: 25px; border-radius: 12px; text-align: center; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+                  <strong style="font-size: 2rem; display: block; margin-bottom: 5px;">${project.score}/100</strong>
+                  <span style="opacity: 0.9; font-size: 1.1rem;">Calificación Total</span>
+                  <p style="margin: 10px 0 0; font-size: 0.9rem; opacity: 0.9;">El docente asignó una nota directa sin desglose detallado.</p>
+                </div>
+              `}
             </div>
-          ` : canSeeFullInfo ? '<p style="color: var(--text-light); margin-top: 20px; text-align: center; padding: 20px; background: var(--light); border-radius: 8px;">Este proyecto aún no ha sido evaluado</p>' : ''}
+          ` : canSeeFullInfo ? `
+            <div style="text-align: center; padding: 30px 20px; background: #fff9db; border: 2px dashed #ffe066; border-radius: 12px; margin-top: 20px;">
+              <div style="font-size: 2.5rem; margin-bottom: 15px;">⏳</div>
+              <h3 style="margin: 0 0 10px; color: #856404;">Proyecto en espera de calificación</h3>
+              <p style="color: #666; margin-bottom: 20px;">Los detalles del punteo aparecerán aquí una vez que el docente califique el proyecto.</p>
+              ${isTeacherOrAdmin ? `
+                <button class="btn-primary" onclick="this.closest('.modal').remove(); nav('evaluation'); setTimeout(() => { 
+                  const btn = document.querySelector('[onclick*=\"openEvaluationModal(${project.id})\"]');
+                  if(btn) btn.click();
+                }, 500)">
+                  <i class="fas fa-edit"></i> Calificar ahora
+                </button>
+              ` : ''}
+            </div>
+          ` : ''}
         </div>
       </div>
     `;
@@ -553,7 +713,14 @@ async function uploadProject() {
 
   try {
     // 1. Subir video
-    const fileName = `${Date.now()}_${videoFile.name.replace(/\s/g, '_')}`;
+    const sanitizeFileName = (name) => {
+      return name
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Quitar acentos
+        .replace(/[^a-zA-Z0-9.-]/g, "_") // Reemplazar caracteres especiales por guiones bajos
+        .replace(/_{2,}/g, "_"); // Evitar guiones bajos dobles
+    };
+
+    const fileName = `${Date.now()}_${sanitizeFileName(videoFile.name)}`;
     const { data: uploadData, error: uploadError } = await _supabase.storage
       .from('project-videos')
       .upload(fileName, videoFile);
@@ -585,6 +752,11 @@ async function uploadProject() {
     // 4. Verificar insignias
     if (typeof checkAndAwardBadges === 'function') {
       await checkAndAwardBadges(newProject.id, 0);
+    }
+
+    // 5. Rotar roles si es de grupo
+    if (groupId) {
+      await rotateGroupRoles(groupId);
     }
 
     showToast('✅ Proyecto publicado correctamente', 'success');
@@ -669,6 +841,40 @@ function setupRealtime() {
       }
     )
     .subscribe();
+}
+
+/**
+ * Rota los roles del grupo en sentido de las manecillas del reloj
+ * Planner -> Maker -> Speaker -> Helper -> Planner
+ */
+async function rotateGroupRoles(groupId) {
+  try {
+    const { data: members, error } = await _supabase
+      .from('group_members')
+      .select('id, role')
+      .eq('group_id', groupId);
+
+    if (error || !members) return;
+
+    const rolesOrder = ['planner', 'maker', 'speaker', 'helper'];
+
+    for (const member of members) {
+      const currentIndex = rolesOrder.indexOf(member.role);
+      if (currentIndex === -1) continue;
+
+      const nextIndex = (currentIndex + 1) % rolesOrder.length;
+      const nextRole = rolesOrder[nextIndex];
+
+      await _supabase
+        .from('group_members')
+        .update({ role: nextRole })
+        .eq('id', member.id);
+    }
+
+    console.log(`🔄 Roles rotados para el grupo ${groupId}`);
+  } catch (err) {
+    console.error('Error rotando roles:', err);
+  }
 }
 
 console.log('✅ projects.js cargado completamente');

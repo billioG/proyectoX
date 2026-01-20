@@ -10,7 +10,12 @@ async function loadAttendance() {
 
   try {
     if (userRole === 'docente' || userRole === 'admin') {
+      container.innerHTML = `
+        <div id="attendance-stats-container"></div>
+        <div id="attendance-main-interface"></div>
+      `;
       await loadAttendanceInterface();
+      await loadAttendanceStats();
     } else {
       container.innerHTML = '<div class="info-box">ℹ️ Esta sección es solo para docentes y administradores</div>';
     }
@@ -21,7 +26,8 @@ async function loadAttendance() {
 }
 
 async function loadAttendanceInterface() {
-  const container = document.getElementById('attendance-container');
+  const container = document.getElementById('attendance-main-interface');
+  if (!container) return;
 
   const { data: assignments } = await _supabase
     .from('teacher_assignments')
@@ -147,26 +153,26 @@ async function loadStudentsForAttendance() {
     });
 
     studentsList.innerHTML = `
-      <h4 style="margin-bottom: 12px;">👥 Estudiantes de ${grade} ${section}</h4>
+      <h4 style="margin-bottom: 12px; color: var(--heading-color);">👥 Estudiantes de ${grade} ${section}</h4>
       <div style="display: grid; gap: 10px;">
         ${students.map(s => {
       const status = attendanceMap[s.id] || 'absent';
       const statusConfig = {
-        'present': { color: '#4caf50', icon: '✓', text: 'Presente' },
-        'absent': { color: '#f44336', icon: '✗', text: 'Ausente' },
-        'late': { color: '#ff9800', icon: '⏰', text: 'Tarde' }
+        'present': { color: 'var(--success-color)', icon: '✓', text: 'Presente' },
+        'absent': { color: 'var(--danger-color)', icon: '✗', text: 'Ausente' },
+        'late': { color: 'var(--warning-color)', icon: '⏰', text: 'Tarde' }
       };
       const config = statusConfig[status];
 
       return `
-            <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: white; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: var(--shadow);">
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--bg-card); border-radius: 8px; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
               <div style="display: flex; align-items: center; gap: 12px;">
                 ${s.profile_photo_url
           ? `<img src="${s.profile_photo_url}" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary-color);">`
-          : '<div style="width: 36px; height: 36px; border-radius: 50%; background: var(--light-gray); display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">👤</div>'
+          : '<div style="width: 36px; height: 36px; border-radius: 50%; background: var(--bg-hover); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: var(--text-light);">👤</div>'
         }
                 <div>
-                  <strong style="display: block; font-size: 0.95rem;">${sanitizeInput(s.full_name)}</strong>
+                  <strong style="display: block; font-size: 0.95rem; color: var(--text-color);">${sanitizeInput(s.full_name)}</strong>
                   <small style="color: var(--text-light);">@${s.username}</small>
                 </div>
               </div>
@@ -174,7 +180,7 @@ async function loadStudentsForAttendance() {
                 <span style="background: ${config.color}; color: white; padding: 6px 12px; border-radius: 6px; font-weight: 600; font-size: 0.85rem;">
                   ${config.icon} ${config.text}
                 </span>
-                <button class="btn-icon" onclick="viewStudentQR('${s.id}', '${sanitizeInput(s.full_name)}', '${s.username}')" title="Ver QR">
+                <button class="btn-icon" onclick="viewStudentQR('${s.id}', '${sanitizeInput(s.full_name)}', '${s.username}')" title="Ver QR" style="background: var(--bg-hover); color: var(--text-color);">
                   <i class="fas fa-qrcode"></i>
                 </button>
               </div>
@@ -183,10 +189,10 @@ async function loadStudentsForAttendance() {
     }).join('')}
       </div>
 
-      <div style="margin-top: 20px; padding: 16px; background: var(--light-gray); border-radius: 8px; text-align: center;">
+      <div style="margin-top: 20px; padding: 16px; background: var(--bg-hover); border-radius: 8px; text-align: center; border: 1px solid var(--border-color); color: var(--text-color);">
         <strong>Total: ${students.length} estudiantes</strong> • 
-        <span style="color: #4caf50;">✓ ${Object.values(attendanceMap).filter(s => s === 'present').length} Presentes</span> • 
-        <span style="color: #f44336;">✗ ${students.length - Object.values(attendanceMap).filter(s => s !== 'absent').length} Ausentes</span>
+        <span style="color: var(--success-color); font-weight: 700;">✓ ${Object.values(attendanceMap).filter(s => s === 'present').length} Presentes</span> • 
+        <span style="color: var(--danger-color); font-weight: 700;">✗ ${students.length - Object.values(attendanceMap).filter(s => s !== 'absent').length} Ausentes</span>
       </div>
     `;
 
@@ -722,6 +728,135 @@ async function exportAttendanceCSV() {
     console.error('Error exportando asistencia:', err);
     showToast('❌ Error al exportar', 'error');
   }
+}
+
+/**
+ * Calcula y muestra estadísticas de asistencia semanal para el docente
+ */
+async function loadAttendanceStats() {
+  const statsContainer = document.getElementById('attendance-stats-container');
+  if (!statsContainer) return;
+
+  statsContainer.innerHTML = '<div class="skeleton skeleton-box" style="height: 100px; margin-bottom: 20px;"></div>';
+
+  try {
+    // 1. Obtener total de alumnos asignados
+    const { data: assignments } = await _supabase
+      .from('teacher_assignments')
+      .select('school_code, grade, section')
+      .eq('teacher_id', currentUser.id);
+
+    let totalAssignedStudents = 0;
+    if (assignments) {
+      for (const ass of assignments) {
+        const { count } = await _supabase
+          .from('students')
+          .select('*', { count: 'exact', head: true })
+          .eq('school_code', ass.school_code)
+          .eq('grade', ass.grade)
+          .eq('section', ass.section);
+        totalAssignedStudents += (count || 0);
+      }
+    }
+
+    // 2. Determinar rango de la semana (Lunes a hoy)
+    const now = new Date();
+    const dayOfWeek = now.getDay(); // 0 (Dom) a 6 (Sab)
+    const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + diffToMonday);
+    monday.setHours(0, 0, 0, 0);
+
+    const { data: weeklyAttendance } = await _supabase
+      .from('attendance')
+      .select('id')
+      .eq('teacher_id', currentUser.id)
+      .gte('date', monday.toISOString().split('T')[0])
+      .lte('date', now.toISOString().split('T')[0]);
+
+    // Calcular días lectivos pasados (máx 5)
+    const schoolDaysPassed = Math.max(1, dayOfWeek === 0 ? 5 : Math.min(dayOfWeek, 5));
+    const expectedRecords = totalAssignedStudents * schoolDaysPassed;
+    const actualRecords = weeklyAttendance?.length || 0;
+    const percentage = expectedRecords > 0 ? ((actualRecords / expectedRecords) * 100).toFixed(1) : 0;
+
+    statsContainer.innerHTML = `
+      <div class="section-card" style="background: linear-gradient(135deg, #11998e, #38ef7d); color: white; margin-bottom: 25px;">
+        <h3 style="margin: 0 0 15px; font-size: 1.2rem;">📊 Resumen de Asistencia Semanal</h3>
+        <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
+          <div style="background: rgba(255,255,255,0.2); padding: 15px; border-radius: 12px; text-align: center;">
+            <div style="font-size: 1.8rem; font-weight: 700;">${totalAssignedStudents}</div>
+            <small style="opacity: 0.9;">Total Alumnos</small>
+          </div>
+          <div style="background: rgba(255,255,255,0.2); padding: 15px; border-radius: 12px; text-align: center;">
+            <div style="font-size: 1.8rem; font-weight: 700;">${percentage}%</div>
+            <small style="opacity: 0.9;">Promedio Semanal</small>
+          </div>
+          <div style="background: rgba(255,255,255,0.2); padding: 15px; border-radius: 12px; text-align: center;">
+            <div style="font-size: 1.8rem; font-weight: 700;">${actualRecords}</div>
+            <small style="opacity: 0.9;">Asistencias Tomadas</small>
+          </div>
+        </div>
+        <p style="margin: 15px 0 0; font-size: 0.85rem; opacity: 0.8;">
+          <i class="fas fa-info-circle"></i> Basado en ${schoolDaysPassed} días lectivos de esta semana.
+        </p>
+      </div>
+    `;
+
+    // 4. Informe Automático al Admin (Si es viernes o fin de semana)
+    if (dayOfWeek >= 5 || dayOfWeek === 0) {
+      await checkAndSendWeeklyReport(totalAssignedStudents, percentage, actualRecords);
+    }
+
+  } catch (err) {
+    console.error('Error stats:', err);
+    statsContainer.innerHTML = '';
+  }
+}
+
+/**
+ * Genera un informe semanal automático para el administrador
+ */
+async function checkAndSendWeeklyReport(totalStudents, percentage, records) {
+  try {
+    const today = new Date();
+    const weekNumber = getWeekNumber(today);
+    const year = today.getFullYear();
+    const reportKey = `report_${currentUser.id}_${year}_${weekNumber}`;
+
+    // Verificar si ya existe este informe
+    const { data: existing } = await _supabase
+      .from('attendance_reports')
+      .select('id')
+      .eq('report_key', reportKey)
+      .maybeSingle();
+
+    if (existing) return;
+
+    // Crear informe
+    await _supabase.from('attendance_reports').insert({
+      report_key: reportKey,
+      teacher_id: currentUser.id,
+      total_students: totalStudents,
+      attendance_percentage: parseFloat(percentage),
+      total_records: records,
+      week_number: weekNumber,
+      year: year
+    });
+
+    console.log('✅ Informe semanal enviado al administrador');
+  } catch (err) {
+    // Es probable que la tabla no exista aún, ignoramos silenciosamente
+    console.warn('⚠️ No se pudo enviar el informe semanal (¿Existe la tabla attendance_reports?)');
+  }
+}
+
+function getWeekNumber(d) {
+  d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+  var yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  var weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+  return weekNo;
 }
 
 console.log('✅ attendance.js cargado completamente');

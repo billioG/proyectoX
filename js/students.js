@@ -127,6 +127,9 @@ async function loadStudents() {
                           </button>
                         </td>
                         <td>
+                          <button class="btn-icon" onclick="openResetPasswordModal('${s.id}', '${sanitizeInput(s.full_name)}')" title="Restablecer Contraseña" style="color: var(--primary-color);">
+                            <i class="fas fa-key"></i>
+                          </button>
                           <button class="btn-icon" onclick="editStudent('${s.id}')" title="Editar">
                             <i class="fas fa-edit"></i>
                           </button>
@@ -173,15 +176,32 @@ function toggleSchoolAccordion(schoolCode) {
 }
 
 function filterStudents() {
-  const searchTerm = document.getElementById('search-students')?.value.toLowerCase() || '';
+  const searchTerm = document.getElementById('search-students')?.value.toLowerCase().trim() || '';
   const rows = document.querySelectorAll('.student-row');
+  const accordions = document.querySelectorAll('.school-accordion');
 
+  // Si no hay búsqueda, mostramos todo y dejamos los acordeones cerrados (o como estén)
+  if (!searchTerm) {
+    rows.forEach(row => row.style.display = '');
+    return;
+  }
+
+  // Realizar la búsqueda
   rows.forEach(row => {
     const name = row.dataset.name || '';
     const username = row.dataset.username || '';
 
     if (name.includes(searchTerm) || username.includes(searchTerm)) {
       row.style.display = '';
+
+      // Expandir el acordeón padre si hay un resultado dentro
+      const body = row.closest('.school-accordion-body');
+      if (body) {
+        body.classList.add('active');
+        const schoolCode = body.id.replace('school-body-', '');
+        const header = document.getElementById(`school-header-${schoolCode}`);
+        if (header) header.classList.add('active');
+      }
     } else {
       row.style.display = 'none';
     }
@@ -701,6 +721,85 @@ async function updateTotalUsersCount() {
     if (countElement) countElement.textContent = count || 0;
   } catch (err) {
     console.error('Error contando usuarios:', err);
+  }
+}
+
+function openResetPasswordModal(studentId, studentName) {
+  const modal = document.createElement('div');
+  modal.className = 'modal active';
+  modal.id = 'reset-password-modal';
+
+  modal.innerHTML = `
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>🔑 Restablecer Contraseña</h2>
+        <button class="close-modal" onclick="this.closest('.modal').remove()">×</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom: 20px;">Estás restableciendo la contraseña para: <br><strong>${studentName}</strong></p>
+        
+        <label>Nueva Contraseña:</label>
+        <input type="text" id="new-student-password" class="input-field" value="1bot.org" style="margin-bottom: 20px;">
+        
+        <p style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 20px;">
+          <i class="fas fa-info-circle"></i> Al cambiar la contraseña aquí, se actualizará el registro visual del estudiante. El sistema intentará sincronizarlo con el inicio de sesión.
+        </p>
+        
+        <div style="display: flex; gap: 10px;">
+          <button class="btn-secondary" style="flex: 1;" onclick="this.closest('.modal').remove()">Cancelar</button>
+          <button class="btn-primary" style="flex: 1;" onclick="resetStudentPassword('${studentId}')">
+            <i class="fas fa-save"></i> Guardar Cambio
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+}
+
+async function resetStudentPassword(studentId) {
+  const newPassword = document.getElementById('new-student-password')?.value.trim();
+
+  if (!newPassword) {
+    return showToast('❌ Ingresa una contraseña válida', 'error');
+  }
+
+  const btn = document.querySelector('#reset-password-modal .btn-primary');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+
+  try {
+    // 1. Actualizar en la tabla de estudiantes (metadatos/visual)
+    const { error: dbError } = await _supabase
+      .from('students')
+      .update({ password_generated: newPassword })
+      .eq('id', studentId);
+
+    if (dbError) throw dbError;
+
+    // 2. Intentar llamar a una función RPC para actualizar auth.users
+    const { error: rpcError } = await _supabase.rpc('admin_reset_user_password', {
+      user_id: studentId,
+      new_password: newPassword
+    });
+
+    if (rpcError) {
+      console.warn('⚠️ No se pudo actualizar auth.users automáticamente:', rpcError);
+      showToast('✅ Contraseña visual actualizada. Asegúrate de tener el RPC de administrador configurado.', 'warning');
+    } else {
+      showToast('✅ Contraseña restablecida correctamente', 'success');
+    }
+
+    document.getElementById('reset-password-modal').remove();
+    loadStudents();
+
+  } catch (err) {
+    console.error('Error restableciendo contraseña:', err);
+    showToast('❌ Error: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-save"></i> Guardar Cambio';
   }
 }
 

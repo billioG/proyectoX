@@ -100,6 +100,55 @@ const BADGES = [
     description: 'Proyecto destacado del mes',
     icon: '💡',
     condition: 'featured'
+  },
+  {
+    id: 9,
+    name: 'Veterano',
+    description: 'Subiste 10 proyectos en el año',
+    icon: '🎖️',
+    condition: '10_projects'
+  },
+  {
+    id: 10,
+    name: 'Imparable',
+    description: 'Subiste proyectos 3 meses seguidos',
+    icon: '🚀',
+    condition: 'streak_3_months'
+  },
+  {
+    id: 11,
+    name: 'Crítico',
+    description: 'Votaste por 20 proyectos',
+    icon: '👀',
+    condition: '20_votes_given'
+  },
+  {
+    id: 12,
+    name: 'Buen Compañero',
+    description: 'Participaste en 3 grupos diferentes',
+    icon: '🤝',
+    condition: '3_groups'
+  },
+  {
+    id: 13,
+    name: 'Mente Maestra',
+    description: 'Fuiste Planner exitoso 3 veces',
+    icon: '🧠',
+    condition: 'role_planner_3'
+  },
+  {
+    id: 14,
+    name: 'La Voz',
+    description: 'Fuiste Speaker destacado 3 veces',
+    icon: '🗣️',
+    condition: 'role_speaker_3'
+  },
+  {
+    id: 15,
+    name: 'Sprint Final',
+    description: 'Subiste proyecto en Noviembre',
+    icon: '🏁',
+    condition: 'november_project'
   }
 ];
 

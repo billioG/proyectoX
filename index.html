@@ -17,9 +17,9 @@
         rel="stylesheet">
 
     <!-- PWA Manifest -->
-    <link rel="manifest" href="/manifest.json">
+    <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#00bcd4">
-    <link rel="apple-touch-icon" href="/icon-192.png">
+    <link rel="apple-touch-icon" href="icon-192.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="ProjectX">
@@ -85,7 +85,7 @@
                     <i class="fas fa-cloud-check" id="sync-icon"></i>
                     <span id="sync-count" style="display: none;">0</span>
                 </div>
-                <div class="user-info">
+                <div class="user-info" onclick="nav('profile')" style="cursor: pointer;">
                     <span class="user-name" id="user-name">Usuario</span>
                     <div class="user-avatar" id="user-avatar">👤</div>
                 </div>
@@ -116,10 +116,11 @@
                         <i class="fas fa-trophy"></i>
                         <span>Ranking</span>
                     </div>
-                    <div class="nav-item" onclick="nav('profile')">
-                        <i class="fas fa-user"></i>
-                        <span>Mi Perfil</span>
+                    <div class="nav-item" onclick="openSuggestionModal()">
+                        <i class="fas fa-lightbulb"></i>
+                        <span>Buzón de Sugerencias</span>
                     </div>
+
                 </div>
 
                 <!-- MENÚ DOCENTE -->
@@ -132,21 +133,17 @@
                         <i class="fas fa-clipboard-check"></i>
                         <span>Evaluar Proyectos</span>
                     </div>
-                    <div class="nav-item" onclick="nav('attendance')">
-                        <i class="fas fa-user-check"></i>
-                        <span>Tomar Asistencia</span>
-                    </div>
                     <div class="nav-item" onclick="nav('groups')">
                         <i class="fas fa-users"></i>
                         <span>Gestionar Grupos</span>
                     </div>
+                    <div class="nav-item" onclick="nav('attendance')">
+                        <i class="fas fa-user-check"></i>
+                        <span>Tomar Asistencia</span>
+                    </div>
                     <div class="nav-item" onclick="nav('ranking')">
                         <i class="fas fa-trophy"></i>
                         <span>Ranking</span>
-                    </div>
-                    <div class="nav-item" onclick="nav('profile')">
-                        <i class="fas fa-user"></i>
-                        <span>Mi Perfil</span>
                     </div>
                 </div>
 
@@ -347,6 +344,8 @@
     <script src="js/profile.js"></script>
     <script src="js/ranking.js"></script>
     <script src="js/badges.js"></script>
+    <script src="js/gamification.js"></script>
+    <script src="js/reports.js"></script>
     <script src="js/csv.js"></script>
     <script src="js/pdf-processor.js"></script>
     <script src="js/attendance.js"></script>
