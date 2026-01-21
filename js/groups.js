@@ -6,10 +6,30 @@ async function loadGroups() {
   const container = document.getElementById('groups-container');
   if (!container) return;
 
-  container.innerHTML = '<div style="text-align:center;"><i class="fas fa-spinner fa-spin"></i> Cargando grupos...</div>';
+  container.innerHTML = '<div style="text-align:center; padding: 40px;"><i class="fas fa-circle-notch fa-spin" style="font-size: 2rem; color: var(--primary-color);"></i><p style="margin-top:10px;">Cargando tus grupos...</p></div>';
 
   try {
-    const { data: groups, error } = await _supabase
+    let assignments = [];
+    if (userRole === 'docente') {
+      const { data } = await _supabase
+        .from('teacher_assignments')
+        .select('school_code, grade, section')
+        .eq('teacher_id', currentUser.id);
+      assignments = data || [];
+
+      if (assignments.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <i class="fas fa-user-shield" style="font-size: 3rem; opacity: 0.2; margin-bottom: 20px; display: block;"></i>
+            <h3>No tienes grupos asignados</h3>
+            <p>Por favor, contacta al administrador para que te asigne establecimientos, grados y secciones.</p>
+          </div>
+        `;
+        return;
+      }
+    }
+
+    let query = _supabase
       .from('groups')
       .select(`
         *,
@@ -19,15 +39,33 @@ async function loadGroups() {
           role,
           students(id, full_name, username)
         )
-      `)
-      .order('school_code, grade, section, name');
+      `);
+
+    if (userRole === 'docente') {
+      const schoolCodes = [...new Set(assignments.map(a => a.school_code))];
+      query = query.in('school_code', schoolCodes);
+    }
+
+    const { data: allGroups, error } = await query.order('school_code, grade, section, name');
 
     if (error) throw error;
 
-    if (!groups || groups.length === 0) {
+    // Filtrado robusto para docentes (coincidencia de tripla: colegio, grado, sección)
+    let groups = allGroups || [];
+    if (userRole === 'docente') {
+      groups = allGroups.filter(g =>
+        assignments.some(a =>
+          String(a.school_code) === String(g.school_code) &&
+          String(a.grade) === String(g.grade) &&
+          String(a.section) === String(g.section)
+        )
+      );
+    }
+
+    if (groups.length === 0) {
       container.innerHTML = `
-        <div class="empty-state">📭 No hay grupos creados</div>
-        ${userRole === 'docente' || userRole === 'admin' ? `
+        <div class="empty-state">📭 No hay grupos creados en tus secciones asignadas</div>
+        ${userRole === 'docente' ? `
           <button class="btn-primary" onclick="openCreateGroupModal()">
             <i class="fas fa-users"></i> Crear Primer Grupo
           </button>
@@ -37,7 +75,7 @@ async function loadGroups() {
     }
 
     container.innerHTML = `
-      ${userRole === 'docente' || userRole === 'admin' ? `
+      ${userRole === 'docente' ? `
         <div style="margin-bottom: 24px; display: flex; gap: 12px; flex-wrap: wrap;">
           <button class="btn-primary" onclick="openCreateGroupModal()">
             <i class="fas fa-users"></i> Crear Nuevo Grupo
@@ -46,7 +84,17 @@ async function loadGroups() {
             <i class="fas fa-download"></i> Exportar Grupos
           </button>
         </div>
-      ` : ''}
+      ` : (userRole === 'admin' ? `
+        <div style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; background: var(--bg-hover); padding: 15px; border-radius: 12px; border: 1px solid var(--border-color);">
+          <div>
+            <h3 style="margin:0; color: var(--primary-color);">📊 Supervisión de Grupos</h3>
+            <p style="margin:0; font-size: 0.9rem; color: var(--text-light);">Vista de solo lectura para administración</p>
+          </div>
+          <button class="btn-secondary" onclick="exportGroupsCSV()">
+            <i class="fas fa-download"></i> Reporte CSV
+          </button>
+        </div>
+      ` : '')}
 
       ${groups.map(g => renderGroupAccordion(g)).join('')}
     `;
@@ -79,7 +127,7 @@ function renderGroupAccordion(g) {
           </div>
         </div>
         <div style="display: flex; gap: 10px; align-items: center;">
-          ${userRole === 'docente' || userRole === 'admin' ? `
+          ${userRole === 'docente' ? `
             <button class="btn-icon" onclick="event.stopPropagation(); openEditGroupModal(${g.id});" title="Editar">
               <i class="fas fa-edit"></i>
             </button>
@@ -253,6 +301,9 @@ async function loadSchoolsForGroup() {
       if (assignments && assignments.length > 0) {
         const schoolCodes = [...new Set(assignments.map(a => a.school_code))];
         query = query.in('code', schoolCodes);
+      } else {
+        select.innerHTML = '<option value="">No tienes establecimientos asignados</option>';
+        return;
       }
     }
 
@@ -286,15 +337,33 @@ async function loadGradesForGroup() {
   }
 
   try {
-    // Obtener grados únicos de los estudiantes de este establecimiento
-    const { data: students } = await _supabase
-      .from('students')
-      .select('grade')
-      .eq('school_code', schoolCode)
-      .neq('grade', null);
+    let uniqueGrades = [];
 
-    if (students && students.length > 0) {
-      const uniqueGrades = [...new Set(students.map(s => s.grade))].sort();
+    if (userRole === 'docente') {
+      // Para docentes, usamos sus asignaciones como filtro
+      const { data: assignments } = await _supabase
+        .from('teacher_assignments')
+        .select('grade')
+        .eq('teacher_id', currentUser.id)
+        .eq('school_code', schoolCode);
+
+      if (assignments) {
+        uniqueGrades = [...new Set(assignments.map(a => a.grade))].sort();
+      }
+    } else {
+      // Para otros (admin), obtenemos grados de los estudiantes
+      const { data: students } = await _supabase
+        .from('students')
+        .select('grade')
+        .eq('school_code', schoolCode)
+        .neq('grade', null);
+
+      if (students) {
+        uniqueGrades = [...new Set(students.map(s => s.grade))].sort();
+      }
+    }
+
+    if (uniqueGrades.length > 0) {
       gradeSelect.innerHTML = '<option value="">Seleccionar grado...</option>' +
         uniqueGrades.map(g => `<option value="${g}">${g}</option>`).join('');
     } else {
@@ -324,16 +393,35 @@ async function loadSectionsForGroup() {
   }
 
   try {
-    // Obtener secciones únicas de los estudiantes de este establecimiento y grado
-    const { data: students } = await _supabase
-      .from('students')
-      .select('section')
-      .eq('school_code', schoolCode)
-      .eq('grade', grade)
-      .neq('section', null);
+    let uniqueSections = [];
 
-    if (students && students.length > 0) {
-      const uniqueSections = [...new Set(students.map(s => s.section))].sort();
+    if (userRole === 'docente') {
+      // Filtrar secciones por asignación
+      const { data: assignments } = await _supabase
+        .from('teacher_assignments')
+        .select('section')
+        .eq('teacher_id', currentUser.id)
+        .eq('school_code', schoolCode)
+        .eq('grade', grade);
+
+      if (assignments) {
+        uniqueSections = [...new Set(assignments.map(a => a.section))].sort();
+      }
+    } else {
+      // Obtener secciones de los estudiantes (admin)
+      const { data: students } = await _supabase
+        .from('students')
+        .select('section')
+        .eq('school_code', schoolCode)
+        .eq('grade', grade)
+        .neq('section', null);
+
+      if (students) {
+        uniqueSections = [...new Set(students.map(s => s.section))].sort();
+      }
+    }
+
+    if (uniqueSections.length > 0) {
       sectionSelect.innerHTML = '<option value="">Seleccionar sección...</option>' +
         uniqueSections.map(s => `<option value="${s}">${s}</option>`).join('');
     } else {

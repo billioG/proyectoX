@@ -40,6 +40,61 @@
 
     <!-- QRCode.js para generar códigos QR -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <style>
+        @media print {
+
+            header,
+            .sidebar,
+            .sidebar-toggle,
+            .btn-theme-toggle,
+            .sync-status,
+            .user-info,
+            .btn-logout,
+            .no-print,
+            nav,
+            .logo,
+            .sidebar-toggle {
+                display: none !important;
+            }
+
+            #app-container,
+            main,
+            .content-area,
+            #view-admin-success,
+            #admin-success-container {
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 100% !important;
+                position: static !important;
+                display: block !important;
+                background: white !important;
+            }
+
+            body {
+                background: white !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+
+            @page {
+                size: portrait;
+                margin: 0.5cm;
+            }
+
+            .section-card {
+                box-shadow: none !important;
+                border: 0.5px solid #eee !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+        }
+    </style>
 </head>
 
 <body>
@@ -149,9 +204,25 @@
 
                 <!-- MENÚ ADMIN -->
                 <div id="nav-admin" style="display: none;">
-                    <div class="nav-item active" onclick="nav('feed')">
+                    <div class="nav-item active" onclick="nav('admin-dashboard')">
                         <i class="fas fa-home"></i>
-                        <span>Inicio</span>
+                        <span>Dashboard</span>
+                    </div>
+                    <div class="nav-item" onclick="nav('feed')">
+                        <i class="fas fa-rocket"></i>
+                        <span>Explorar Proyectos</span>
+                    </div>
+                    <div class="nav-item" onclick="nav('admin-eval-report')">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Reportes Académicos</span>
+                    </div>
+                    <div class="nav-item" onclick="nav('admin-attendance-report')">
+                        <i class="fas fa-calendar-check"></i>
+                        <span>Asistencia Global</span>
+                    </div>
+                    <div class="nav-item" onclick="nav('admin-success')">
+                        <i class="fas fa-handshake"></i>
+                        <span>Fidelización y CS</span>
                     </div>
                     <div class="nav-item" onclick="nav('schools')">
                         <i class="fas fa-school"></i>
@@ -165,25 +236,9 @@
                         <i class="fas fa-chalkboard-teacher"></i>
                         <span>Docentes</span>
                     </div>
-                    <div class="nav-item" onclick="nav('groups')">
-                        <i class="fas fa-users"></i>
-                        <span>Grupos</span>
-                    </div>
-                    <div class="nav-item" onclick="nav('attendance')">
-                        <i class="fas fa-user-check"></i>
-                        <span>Asistencia</span>
-                    </div>
-                    <div class="nav-item" onclick="nav('evaluate')">
-                        <i class="fas fa-clipboard-check"></i>
-                        <span>Evaluaciones</span>
-                    </div>
                     <div class="nav-item" onclick="nav('ranking')">
                         <i class="fas fa-trophy"></i>
-                        <span>Ranking</span>
-                    </div>
-                    <div class="nav-item" onclick="nav('profile')">
-                        <i class="fas fa-chart-pie"></i>
-                        <span>Panel Admin</span>
+                        <span>Ranking Global</span>
                     </div>
                 </div>
             </nav>
@@ -191,8 +246,13 @@
 
         <!-- CONTENIDO PRINCIPAL -->
         <main class="main-content">
-            <!-- FEED / INICIO -->
-            <section id="view-feed" class="view-section">
+            <!-- DASHBOARD ADMIN (INICIO PARA ADMIN) -->
+            <section id="view-admin-dashboard" class="view-section">
+                <div id="admin-dashboard-container"></div>
+            </section>
+
+            <!-- FEED DE PROYECTOS (EXPLORAR) -->
+            <section id="view-feed" class="view-section active">
                 <h2>🏠 Feed de Proyectos</h2>
                 <div id="feed-container"></div>
             </section>
@@ -305,10 +365,27 @@
                 <div id="attendance-container"></div>
             </section>
 
+            <!-- RESUMEN ASISTENCIA ADMIN -->
+            <section id="view-admin-attendance-report" class="view-section">
+                <h2>📊 Analítica de Asistencia Global</h2>
+                <div id="admin-attendance-report-container"></div>
+            </section>
+
             <!-- EVALUACIÓN -->
             <section id="view-evaluate" class="view-section">
                 <h2>📊 Evaluar Proyectos</h2>
                 <div id="eval-projects-container"></div>
+            </section>
+
+            <!-- RESULTADOS ACADÉMICOS ADMIN -->
+            <section id="view-admin-eval-report" class="view-section">
+                <h2>📈 Resumen de Resultados Académicos</h2>
+                <div id="admin-eval-report-container"></div>
+            </section>
+
+            <!-- CUSTOMER SUCCESS & BUSINESS ANALYTICS -->
+            <section id="view-admin-success" class="view-section">
+                <div id="admin-success-container"></div>
             </section>
 
             <!-- RANKING -->
@@ -317,9 +394,14 @@
                 <div id="ranking-container"></div>
             </section>
 
+            <!-- DESEMPEÑO DOCENTE (ADMIN) -->
+            <section id="view-admin-teacher-performance" class="view-section">
+                <div id="admin-teacher-performance-container"></div>
+            </section>
+
             <!-- PERFIL -->
             <section id="view-profile" class="view-section">
-                <h2>👤 Mi Perfil</h2>
+                <h2>👤 Mi Información Personal</h2>
                 <div id="profile-content"></div>
             </section>
         </main>
@@ -333,7 +415,6 @@
 
     <script src="js/config.js"></script>
     <script src="js/sync-manager.js"></script>
-    <script src="js/auth.js"></script>
     <script src="js/main.js"></script>
     <script src="js/students.js"></script>
     <script src="js/teachers.js"></script>
@@ -349,6 +430,13 @@
     <script src="js/csv.js"></script>
     <script src="js/pdf-processor.js"></script>
     <script src="js/attendance.js"></script>
+    <script src="js/admin-dashboard.js"></script>
+    <script src="js/admin-performance.js"></script>
+    <script src="js/admin-attendance.js"></script>
+    <script src="js/admin-evaluations.js"></script>
+    <script src="js/onboarding.js"></script>
+    <script src="js/admin-success.js"></script>
+    <script src="js/auth.js"></script>
     <!-- Service Worker para PWA -->
     <script>
         if ('serviceWorker' in navigator) {

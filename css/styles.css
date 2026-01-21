@@ -2111,3 +2111,244 @@ body.role-estudiante .projects-filter-container {
   color: var(--text-dark);
 }
 
+
+/* ================================================ */
+/* ONBOARDING STYLES */
+/* ================================================ */
+
+.onboarding-modal {
+  z-index: 10000 !important;
+}
+
+.onboarding-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.onboarding-content {
+  background: var(--bg-card);
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  max-width: 700px;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+  animation: slideUp 0.5s ease-out;
+}
+
+.onboarding-skip {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.3s;
+  z-index: 10;
+  backdrop-filter: blur(10px);
+}
+
+.onboarding-skip:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
+}
+
+.onboarding-slide {
+  min-height: 500px;
+  display: flex;
+  flex-direction: column;
+}
+
+.onboarding-slide-header {
+  padding: 60px 40px 40px;
+  text-align: center;
+  position: relative;
+}
+
+.onboarding-icon {
+  font-size: 5rem;
+  animation: bounce 2s infinite;
+  display: inline-block;
+}
+
+.onboarding-slide-body {
+  padding: 30px 40px 40px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.onboarding-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--heading-color);
+  margin: 0 0 16px 0;
+}
+
+.onboarding-description {
+  font-size: 1.1rem;
+  color: var(--text-light);
+  line-height: 1.6;
+  margin: 0 0 30px 0;
+  max-width: 500px;
+}
+
+.onboarding-features {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+  max-width: 450px;
+  margin: 0 auto;
+}
+
+.onboarding-feature {
+  background: var(--light-gray);
+  padding: 16px 20px;
+  border-radius: 12px;
+  text-align: left;
+  font-size: 1rem;
+  color: var(--text-color);
+  border-left: 4px solid var(--primary-color);
+  transition: all 0.3s;
+}
+
+.onboarding-feature:hover {
+  transform: translateX(5px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.onboarding-navigation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 40px 30px;
+  background: var(--light-gray);
+  border-top: 1px solid var(--border-color);
+}
+
+.onboarding-dots {
+  display: flex;
+  gap: 8px;
+}
+
+.onboarding-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--text-light);
+  opacity: 0.3;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.onboarding-dot:hover {
+  opacity: 0.6;
+  transform: scale(1.2);
+}
+
+.onboarding-dot.active {
+  background: var(--primary-color);
+  opacity: 1;
+  width: 30px;
+  border-radius: 5px;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .onboarding-content {
+    max-width: 100%;
+    border-radius: 0;
+  }
+
+  .onboarding-slide-header {
+    padding: 40px 20px 30px;
+  }
+
+  .onboarding-icon {
+    font-size: 3.5rem;
+  }
+
+  .onboarding-slide-body {
+    padding: 20px;
+  }
+
+  .onboarding-title {
+    font-size: 1.5rem;
+  }
+
+  .onboarding-description {
+    font-size: 1rem;
+  }
+
+  .onboarding-navigation {
+    padding: 15px 20px 20px;
+    flex-wrap: wrap;
+    gap: 15px;
+  }
+
+  .onboarding-navigation button {
+    font-size: 0.9rem;
+    padding: 10px 16px;
+  }
+
+  .onboarding-dots {
+    order: -1;
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+.btn-lg {
+  padding: 12px 30px;
+  font-size: 1rem;
+  border-radius: 8px;
+}

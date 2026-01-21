@@ -94,7 +94,7 @@ function openAddTeacherModal() {
   const modal = document.createElement('div');
   modal.className = 'modal active';
   modal.id = 'add-teacher-modal';
-  
+
   modal.innerHTML = `
     <div class="modal-content">
       <div class="modal-header">
@@ -128,7 +128,7 @@ function openAddTeacherModal() {
       </div>
     </div>
   `;
-  
+
   document.body.appendChild(modal);
 }
 
@@ -155,9 +155,9 @@ async function addTeacher() {
       email: email,
       password: password,
       options: {
-        data: { 
-          full_name: name, 
-          role: 'docente' 
+        data: {
+          full_name: name,
+          role: 'docente'
         },
         emailRedirectTo: undefined
       }
@@ -197,7 +197,7 @@ function openAssignTeacherModal(teacherId, teacherName) {
   const modal = document.createElement('div');
   modal.className = 'modal active';
   modal.id = 'assign-teacher-modal';
-  
+
   modal.innerHTML = `
     <div class="modal-content">
       <div class="modal-header">
@@ -216,27 +216,34 @@ function openAssignTeacherModal(teacherId, teacherName) {
           </select>
         </label>
 
-        <label>
-          <strong>Grado:</strong>
-          <select id="assign-grade" class="input-field" onchange="loadSectionsForAssignment()">
-            <option value="">Seleccionar...</option>
-          </select>
+        <label style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; cursor: pointer;">
+          <input type="checkbox" id="assign-all" onchange="toggleBulkAssignment(this.checked)" style="width: 18px; height: 18px;">
+          <strong style="font-size: 0.9rem; color: #1e293b;">Asignar a todos los grados y secciones de este establecimiento</strong>
         </label>
 
-        <label>
-          <strong>Sección:</strong>
-          <select id="assign-section" class="input-field">
-            <option value="">Seleccionar...</option>
-          </select>
-        </label>
+        <div id="individual-assign-fields">
+          <label>
+            <strong>Grado:</strong>
+            <select id="assign-grade" class="input-field" onchange="loadSectionsForAssignment()">
+              <option value="">Seleccionar...</option>
+            </select>
+          </label>
 
-        <button class="btn-primary" onclick="assignTeacher('${teacherId}')" id="btn-assign">
-          <i class="fas fa-check"></i> Asignar
+          <label>
+            <strong>Sección:</strong>
+            <select id="assign-section" class="input-field">
+              <option value="">Seleccionar...</option>
+            </select>
+          </label>
+        </div>
+
+        <button class="btn-primary" onclick="assignTeacher('${teacherId}')" id="btn-assign" style="width: 100%; margin-top: 10px;">
+          <i class="fas fa-check"></i> Finalizar Asignación
         </button>
       </div>
     </div>
   `;
-  
+
   document.body.appendChild(modal);
   loadSchoolsForAssignment();
 }
@@ -264,16 +271,16 @@ function loadGradesForAssignment() {
   const schoolSelect = document.getElementById('assign-school');
   const gradeSelect = document.getElementById('assign-grade');
   const sectionSelect = document.getElementById('assign-section');
-  
+
   if (!schoolSelect || !gradeSelect || !sectionSelect) return;
 
   const selectedOption = schoolSelect.options[schoolSelect.selectedIndex];
   const schoolCode = schoolSelect.value;
   const level = selectedOption?.dataset.level || 'Primaria';
-  
+
   // Limpiar secciones cuando se cambia de establecimiento
   sectionSelect.innerHTML = '<option value="">Seleccionar grado primero...</option>';
-  
+
   // Cargar solo los grados disponibles para este establecimiento
   loadAvailableGrades(schoolCode, level);
 }
@@ -293,7 +300,7 @@ async function loadAvailableGrades(schoolCode, level) {
     if (students && students.length > 0) {
       // Obtener grados únicos
       const uniqueGrades = [...new Set(students.map(s => s.grade))].sort();
-      
+
       gradeSelect.innerHTML = '<option value="">Seleccionar...</option>' +
         uniqueGrades.map(g => `<option value="${g}">${g}</option>`).join('');
     } else {
@@ -309,7 +316,7 @@ async function loadSectionsForAssignment() {
   const schoolSelect = document.getElementById('assign-school');
   const gradeSelect = document.getElementById('assign-grade');
   const sectionSelect = document.getElementById('assign-section');
-  
+
   if (!schoolSelect || !gradeSelect || !sectionSelect) return;
 
   const schoolCode = schoolSelect.value;
@@ -332,7 +339,7 @@ async function loadSectionsForAssignment() {
     if (students && students.length > 0) {
       // Obtener secciones únicas y ordenadas
       const uniqueSections = [...new Set(students.map(s => s.section))].sort();
-      
+
       sectionSelect.innerHTML = '<option value="">Seleccionar...</option>' +
         uniqueSections.map(s => `<option value="${s}">${s}</option>`).join('');
     } else {
@@ -344,48 +351,114 @@ async function loadSectionsForAssignment() {
   }
 }
 
+function toggleBulkAssignment(isBulk) {
+  const individualFields = document.getElementById('individual-assign-fields');
+  if (individualFields) {
+    individualFields.style.opacity = isBulk ? '0.3' : '1';
+    individualFields.style.pointerEvents = isBulk ? 'none' : 'auto';
+  }
+}
+
 async function assignTeacher(teacherId) {
   const schoolCode = document.getElementById('assign-school')?.value;
   const grade = document.getElementById('assign-grade')?.value;
   const section = document.getElementById('assign-section')?.value;
+  const isBulk = document.getElementById('assign-all')?.checked;
   const btn = document.getElementById('btn-assign');
 
-  if (!schoolCode || !grade || !section) {
-    return showToast('❌ Completa todos los campos', 'error');
+  if (!schoolCode) {
+    return showToast('❌ Selecciona un establecimiento', 'error');
+  }
+
+  if (!isBulk && (!grade || !section)) {
+    return showToast('❌ Completa grado y sección o selecciona "Asignar a todos"', 'error');
   }
 
   btn.disabled = true;
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Asignando...';
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
 
   try {
-    const { data: existing } = await _supabase
-      .from('teacher_assignments')
-      .select('id')
-      .eq('teacher_id', teacherId)
-      .eq('school_code', schoolCode)
-      .eq('grade', grade)
-      .eq('section', section)
-      .maybeSingle();
+    if (isBulk) {
+      // ASIGNACIÓN MASIVA
+      // 1. Obtener todos los grados y secciones únicos del colegio
+      const { data: students, error: studentError } = await _supabase
+        .from('students')
+        .select('grade, section')
+        .eq('school_code', schoolCode);
 
-    if (existing) {
-      showToast('⚠️ Esta asignación ya existe', 'warning');
-      btn.disabled = false;
-      btn.innerHTML = '<i class="fas fa-check"></i> Asignar';
-      return;
-    }
+      if (studentError) throw studentError;
 
-    const { error } = await _supabase
-      .from('teacher_assignments')
-      .insert({
-        teacher_id: teacherId,
-        school_code: schoolCode,
-        grade: grade,
-        section: section
+      // Crear combinaciones únicas
+      const combinations = [];
+      const seen = new Set();
+      students.forEach(s => {
+        const key = `${s.grade}-${s.section}`;
+        if (s.grade && s.section && !seen.has(key)) {
+          combinations.push({ grade: s.grade, section: s.section });
+          seen.add(key);
+        }
       });
 
-    if (error) throw error;
+      if (combinations.length === 0) {
+        throw new Error('No se encontraron grados o secciones con alumnos en este colegio.');
+      }
 
-    showToast('✅ Asignación creada correctamente', 'success');
+      // 2. Obtener asignaciones existentes para no duplicar
+      const { data: existing } = await _supabase
+        .from('teacher_assignments')
+        .select('grade, section')
+        .eq('teacher_id', teacherId)
+        .eq('school_code', schoolCode);
+
+      const existingKeys = new Set((existing || []).map(e => `${e.grade}-${e.section}`));
+
+      // 3. Filtrar solo las nuevas
+      const newAssignments = combinations
+        .filter(c => !existingKeys.has(`${c.grade}-${c.section}`))
+        .map(c => ({
+          teacher_id: teacherId,
+          school_code: schoolCode,
+          grade: c.grade,
+          section: c.section
+        }));
+
+      if (newAssignments.length === 0) {
+        showToast('ℹ️ El docente ya está asignado a todos los grados existentes', 'info');
+      } else {
+        const { error: insertError } = await _supabase
+          .from('teacher_assignments')
+          .insert(newAssignments);
+        if (insertError) throw insertError;
+        showToast(`✅ Se crearon ${newAssignments.length} asignaciones correctamente`, 'success');
+      }
+
+    } else {
+      // ASIGNACIÓN INDIVIDUAL
+      const { data: existing } = await _supabase
+        .from('teacher_assignments')
+        .select('id')
+        .eq('teacher_id', teacherId)
+        .eq('school_code', schoolCode)
+        .eq('grade', grade)
+        .eq('section', section)
+        .maybeSingle();
+
+      if (existing) {
+        showToast('⚠️ Esta asignación ya existe', 'warning');
+      } else {
+        const { error } = await _supabase
+          .from('teacher_assignments')
+          .insert({
+            teacher_id: teacherId,
+            school_code: schoolCode,
+            grade: grade,
+            section: section
+          });
+        if (error) throw error;
+        showToast('✅ Asignación creada correctamente', 'success');
+      }
+    }
+
     document.getElementById('assign-teacher-modal').remove();
     await loadTeachers();
 
@@ -394,7 +467,7 @@ async function assignTeacher(teacherId) {
     showToast('❌ Error: ' + err.message, 'error');
   } finally {
     btn.disabled = false;
-    btn.innerHTML = '<i class="fas fa-check"></i> Asignar';
+    btn.innerHTML = '<i class="fas fa-check"></i> Finalizar Asignación';
   }
 }
 
@@ -416,7 +489,7 @@ async function viewTeacherAssignments(teacherId, teacherName) {
     const modal = document.createElement('div');
     modal.className = 'modal active';
     modal.id = 'view-assignments-modal';
-    
+
     modal.innerHTML = `
       <div class="modal-content">
         <div class="modal-header">
@@ -444,7 +517,7 @@ async function viewTeacherAssignments(teacherId, teacherName) {
         </div>
       </div>
     `;
-    
+
     document.body.appendChild(modal);
 
   } catch (err) {
@@ -453,24 +526,91 @@ async function viewTeacherAssignments(teacherId, teacherName) {
   }
 }
 
-async function removeAssignment(assignmentId, teacherId) {
-  if (!confirm('¿Eliminar esta asignación?')) return;
-
+async function editTeacher(teacherId) {
   try {
-    const { error } = await _supabase
-      .from('teacher_assignments')
-      .delete()
-      .eq('id', assignmentId);
+    const { data: teacher, error } = await _supabase
+      .from('teachers')
+      .select('*')
+      .eq('id', teacherId)
+      .single();
 
     if (error) throw error;
 
-    showToast('✅ Asignación eliminada', 'success');
-    document.getElementById('view-assignments-modal').remove();
+    const modal = document.createElement('div');
+    modal.className = 'modal active';
+    modal.id = 'edit-teacher-modal';
+
+    modal.innerHTML = `
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>📝 Editar Docente</h2>
+          <button class="close-modal" onclick="this.closest('.modal').remove()">×</button>
+        </div>
+        <div class="modal-body">
+          <label>
+            <strong>Nombre Completo:</strong>
+            <input type="text" id="edit-teacher-name" class="input-field" value="${sanitizeInput(teacher.full_name)}">
+          </label>
+
+          <label>
+            <strong>Email:</strong>
+            <input type="email" id="edit-teacher-email" class="input-field" value="${teacher.email}" readonly style="background: #f1f5f9; cursor: not-allowed;">
+            <small style="color: var(--text-light);">El email no se puede cambiar por seguridad.</small>
+          </label>
+
+          <label>
+            <strong>Teléfono:</strong>
+            <input type="tel" id="edit-teacher-phone" class="input-field" value="${teacher.phone || ''}" placeholder="1234-5678">
+          </label>
+
+          <button class="btn-primary" onclick="updateTeacher('${teacherId}')" id="btn-update-teacher" style="width: 100%; margin-top: 10px;">
+            <i class="fas fa-save"></i> Guardar Cambios
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+  } catch (err) {
+    console.error('Error cargando docente para editar:', err);
+    showToast('❌ Error al cargar datos del docente', 'error');
+  }
+}
+
+async function updateTeacher(teacherId) {
+  const name = document.getElementById('edit-teacher-name')?.value.trim();
+  const phone = document.getElementById('edit-teacher-phone')?.value.trim();
+  const btn = document.getElementById('btn-update-teacher');
+
+  if (!name) {
+    return showToast('❌ El nombre es obligatorio', 'error');
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+
+  try {
+    const { error } = await _supabase
+      .from('teachers')
+      .update({
+        full_name: name,
+        phone: phone || null
+      })
+      .eq('id', teacherId);
+
+    if (error) throw error;
+
+    showToast('✅ Datos actualizados correctamente', 'success');
+    document.getElementById('edit-teacher-modal').remove();
     await loadTeachers();
 
   } catch (err) {
-    console.error('Error eliminando asignación:', err);
+    console.error('Error actualizando docente:', err);
     showToast('❌ Error: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-save"></i> Guardar Cambios';
   }
 }
 
@@ -521,7 +661,7 @@ async function exportTeachersCSV() {
       const nombre = (t.full_name || '').replace(/,/g, ';');
       const email = t.email || '';
       const telefono = t.phone || '';
-      const asignaciones = t.teacher_assignments?.map(a => 
+      const asignaciones = t.teacher_assignments?.map(a =>
         `${a.schools?.name || ''} ${a.grade} ${a.section}`
       ).join('; ') || 'Sin asignaciones';
 

@@ -320,6 +320,11 @@ function renderStudentProfileHTMLInline(profileContent, student, displayName, my
       </div>
     </div>
 
+    <div style="text-align: center; margin-top: 30px;">
+      <button class="btn-secondary" onclick="resetOnboarding()" style="font-size: 0.95rem;">
+        <i class="fas fa-question-circle"></i> Ver Tutorial de Nuevo
+      </button>
+    </div>
 
   `;
 }
@@ -333,7 +338,7 @@ function openUploadPhotoModal() {
   modal.id = 'upload-photo-modal';
 
   modal.innerHTML = `
-    < div class="modal-content" >
+    <div class="modal-content">
       <div class="modal-header">
         <h2>📷 Cambiar Foto de Perfil</h2>
         <button class="close-modal" onclick="this.closest('.modal').remove()">×</button>
@@ -355,7 +360,7 @@ function openUploadPhotoModal() {
           <i class="fas fa-upload"></i> Subir Foto
         </button>
       </div>
-    </div >
+    </div>
     `;
 
   document.body.appendChild(modal);
@@ -496,7 +501,7 @@ function openSuggestionModal() {
           <i class="fas fa-paper-plane"></i> Enviar
         </button>
       </div>
-    </div >
+    </div>
     `;
 
   document.body.appendChild(modal);
@@ -637,7 +642,7 @@ function openRateTeacherModal(teacherId, teacherName) {
   modal.id = 'rate-teacher-modal';
 
   modal.innerHTML = `
-    < div class="modal-content" >
+    <div class="modal-content">
       <div class="modal-header">
         <h2>⭐ Calificar a ${sanitizeInput(teacherName)}</h2>
         <button class="close-modal" onclick="this.closest('.modal').remove()">×</button>
@@ -679,7 +684,7 @@ function openRateTeacherModal(teacherId, teacherName) {
           <i class="fas fa-star"></i> Enviar Calificación
         </button>
       </div>
-    </div >
+    </div>
     `;
 
   document.body.appendChild(modal);
@@ -878,6 +883,12 @@ async function loadTeacherProfile() {
           </small>
         </div>
       </div>
+
+      <div style="text-align: center; margin-top: 30px;">
+        <button class="btn-secondary" onclick="resetOnboarding()" style="font-size: 0.95rem;">
+          <i class="fas fa-question-circle"></i> Ver Tutorial de Nuevo
+        </button>
+      </div>
   `;
 
   } catch (err) {
@@ -891,120 +902,48 @@ async function loadTeacherProfile() {
 
 async function loadAdminProfile() {
   const profileContent = document.getElementById('profile-content');
+  if (!profileContent) return;
 
-  try {
-    const [projectsRes, studentsRes, teachersRes, schoolsRes, groupsRes] = await Promise.all([
-      _supabase.from('projects').select('*', { count: 'exact', head: true }),
-      _supabase.from('students').select('*', { count: 'exact', head: true }),
-      _supabase.from('teachers').select('*', { count: 'exact', head: true }),
-      _supabase.from('schools').select('*', { count: 'exact', head: true }),
-      _supabase.from('groups').select('*', { count: 'exact', head: true })
-    ]);
+  profileContent.innerHTML = `
+    <div class="profile-header">
+      <div class="profile-avatar">
+        <span style="font-size: 2.5rem;">👑</span>
+      </div>
+      <div>
+        <h2 style="margin: 0 0 6px 0; font-size: 1.6rem;">Perfil de Administrador</h2>
+        <p class="profile-role">👑 Gestión de Nivel Superior</p>
+        <p style="color: var(--text-light); font-size: 0.9rem; margin-top: 4px;">${currentUser.email}</p>
+      </div>
+      <button class="btn-secondary" onclick="exportAllData()">
+        <i class="fas fa-file-export"></i> Backup de Datos
+      </button>
+    </div>
 
-    const totalProjects = projectsRes.count || 0;
-    const totalStudents = studentsRes.count || 0;
-    const totalTeachers = teachersRes.count || 0;
-    const totalSchools = schoolsRes.count || 0;
-    const totalGroups = groupsRes.count || 0;
-
-    const { data: evaluations } = await _supabase.from('evaluations').select('total_score');
-    const { data: ratings } = await _supabase.from('teacher_ratings').select('rating, message, created_at, students(full_name), teachers(full_name)');
-
-    const avgScore = evaluations && evaluations.length > 0
-      ? (evaluations.reduce((sum, e) => sum + (e.total_score || 0), 0) / evaluations.length).toFixed(1)
-      : 0;
-
-    const avgTeacherRating = ratings && ratings.length > 0
-      ? (ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length).toFixed(1)
-      : 0;
-
-    const commentsCount = ratings?.filter(r => r.message).length || 0;
-
-    profileContent.innerHTML = `
-    < div class="profile-header" >
-        <div class="profile-avatar">
-          <span style="font-size: 2.5rem;">👑</span>
+    <div class="section-card" style="margin-top: 30px;">
+      <h3 style="margin-bottom: 20px;"><i class="fas fa-user-shield"></i> Información de Seguridad</h3>
+      <div style="display: grid; gap: 15px;">
+        <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border-color);">
+          <span style="color: var(--text-light);">ID de Usuario:</span>
+          <code style="background: var(--light-gray); padding: 2px 6px; border-radius: 4px;">${currentUser.id}</code>
         </div>
-        <div>
-          <h2 style="margin: 0 0 6px 0; font-size: 1.6rem;">Panel de Administración</h2>
-          <p class="profile-role">👑 Administrador del Sistema</p>
-          <p style="color: var(--text-light); font-size: 0.9rem; margin-top: 4px;">${currentUser.email}</p>
+        <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border-color);">
+          <span style="color: var(--text-light);">Rol Asignado:</span>
+          <span class="status-badge status-active">Administrador</span>
         </div>
-        <button class="btn-secondary" onclick="exportAllData()" style="align-self: flex-start; white-space: nowrap;">
-          <i class="fas fa-file-export"></i> Exportar Reportes
-        </button>
-      </div >
-
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px;">
-        <div class="section-card" style="margin-bottom: 0; background: linear-gradient(135deg, var(--primary-color), var(--primary-dark)); color: white;">
-          <h3 style="color: white; font-size: 1.1rem; opacity: 0.9;">Puntuación Promedio</h3>
-          <div style="font-size: 3rem; font-weight: 700; margin: 10px 0;">${avgScore} <small style="font-size: 1rem; font-weight: 400;">/ 100</small></div>
-          <p style="font-size: 0.85rem; opacity: 0.8;">Calidad general de los proyectos entregados</p>
-        </div>
-        <div class="section-card" style="margin-bottom: 0; border-left: 4px solid var(--accent-color);">
-          <h3 style="font-size: 1.1rem;">Interacción Estudiantil</h3>
-          <div style="font-size: 3rem; font-weight: 700; margin: 10px 0; color: var(--accent-color);">${totalProjects}</div>
-          <p style="font-size: 0.85rem; color: var(--text-light);">Proyectos publicados en total</p>
+        <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border-color);">
+          <span style="color: var(--text-light);">Último Acceso:</span>
+          <span>${new Date().toLocaleString()}</span>
         </div>
       </div>
+    </div>
 
-      <h3 style="margin: 24px 0 16px; color: var(--dark); font-size: 1.3rem;">📊 Estadísticas de Población</h3>
-      <div class="stats-grid">
-        <div class="stat-card">
-          <i class="fas fa-school"></i>
-          <strong>${totalSchools}</strong>
-          <span>Escuelas</span>
-        </div>
-        <div class="stat-card">
-          <i class="fas fa-user-graduate"></i>
-          <strong>${totalStudents}</strong>
-          <span>Alumnos</span>
-        </div>
-        <div class="stat-card">
-          <i class="fas fa-chalkboard-teacher"></i>
-          <strong>${totalTeachers}</strong>
-          <span>Docentes</span>
-        </div>
-        <div class="stat-card">
-          <i class="fas fa-users"></i>
-          <strong>${totalGroups}</strong>
-          <span>Grupos</span>
-        </div>
-      </div>
-
-      <h3 style="margin: 32px 0 16px; color: var(--dark); font-size: 1.3rem;">🚀 Herramientas de Gestión</h3>
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 24px;">
-        <button class="btn-secondary" onclick="nav('schools')" style="text-align: left; padding: 15px;">
-          <i class="fas fa-school" style="margin-bottom: 8px; display: block; font-size: 1.2rem;"></i>
-          <strong>Establecimientos</strong>
-        </button>
-        <button class="btn-secondary" onclick="nav('students')" style="text-align: left; padding: 15px;">
-          <i class="fas fa-user-graduate" style="margin-bottom: 8px; display: block; font-size: 1.2rem;"></i>
-          <strong>Estudiantes</strong>
-        </button>
-        <button class="btn-secondary" onclick="nav('teachers')" style="text-align: left; padding: 15px;">
-          <i class="fas fa-chalkboard-teacher" style="margin-bottom: 8px; display: block; font-size: 1.2rem;"></i>
-          <strong>Docentes</strong>
-        </button>
-        <button class="btn-secondary" onclick="nav('groups')" style="text-align: left; padding: 15px;">
-          <i class="fas fa-users" style="margin-bottom: 8px; display: block; font-size: 1.2rem;"></i>
-          <strong>Grupos</strong>
-        </button>
-      </div>
-
-      <div style="display: flex; justify-content: space-between; align-items: center; margin: 32px 0 16px;">
-        <h3 style="margin: 0; color: var(--dark); font-size: 1.3rem;">💬 Feedback Reciente</h3>
-        <button class="btn-secondary btn-sm" onclick="viewAllTeacherComments()">
-          Ver Todo
-        </button>
-      </div>
-      ${renderRecentComments(ratings)}
+    <div style="text-align: center; margin-top: 40px; padding: 20px; border-top: 1px solid var(--border-color);">
+      <p style="color: var(--text-light); margin-bottom: 15px;">¿Deseas revisar cómo se ve la plataforma para nuevos usuarios?</p>
+      <button class="btn-secondary" onclick="resetOnboarding()" style="font-size: 0.9rem;">
+        <i class="fas fa-question-circle"></i> Iniciar Tutorial de Bienvenida
+      </button>
+    </div>
   `;
-
-  } catch (err) {
-    console.error('Error en perfil admin:', err);
-    profileContent.innerHTML = '<div class="error-state">❌ Error al cargar perfil del administrador</div>';
-  }
 }
 
 function renderRecentComments(ratings) {
@@ -1019,7 +958,7 @@ function renderRecentComments(ratings) {
   }
 
   return `
-    < div style = "display: grid; gap: 12px;" >
+    <div style="display: grid; gap: 12px;">
       ${recentRatings.map(r => `
         <div class="section-card" style="padding: 16px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
@@ -1038,7 +977,7 @@ function renderRecentComments(ratings) {
         </div>
       `).join('')
     }
-    </div >
+    </div>
     <button class="btn-secondary" onclick="viewAllTeacherComments()" style="margin-top: 16px; width: 100%;">
       <i class="fas fa-eye"></i> Ver Todos los Comentarios
     </button>
@@ -1061,7 +1000,7 @@ async function viewAllTeacherComments() {
     modal.className = 'modal active';
 
     modal.innerHTML = `
-    < div class="modal-content" style = "max-width: 900px;" >
+    <div class="modal-content" style="max-width: 900px;">
         <div class="modal-header">
           <h2>💬 Todas las Calificaciones y Comentarios</h2>
           <button class="close-modal" onclick="this.closest('.modal').remove()">×</button>
@@ -1094,7 +1033,7 @@ async function viewAllTeacherComments() {
             </div>
           `}
         </div>
-      </div >
+      </div>
     `;
 
     document.body.appendChild(modal);

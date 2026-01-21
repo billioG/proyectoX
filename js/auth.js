@@ -169,7 +169,11 @@ async function handleSuccessfulLogin(user) {
     await new Promise(resolve => setTimeout(resolve, 100));
 
     // Ahora sí navegar
-    nav('feed');
+    if (userRole === 'admin') {
+      nav('admin-dashboard');
+    } else {
+      nav('feed');
+    }
 
     // Cargar grupos si es estudiante
     if (userRole === 'estudiante') {
@@ -182,6 +186,11 @@ async function handleSuccessfulLogin(user) {
     // Cargar notificaciones si es docente o admin
     if ((userRole === 'docente' || userRole === 'admin') && typeof loadTeacherNotifications === 'function') {
       await loadTeacherNotifications();
+    }
+
+    // Inicializar onboarding para nuevos usuarios
+    if (typeof initOnboarding === 'function') {
+      initOnboarding();
     }
 
     showToast('✅ Bienvenido/a', 'success');

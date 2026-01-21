@@ -12,7 +12,7 @@ async function initGamification() {
       renderGamificationSidebar(xpData.level, xpData.totalXP, xpData.levelProgress, xpData.xpInLevel);
       checkBadgeCelebrations(xpData.earnedBadges);
 
-    } else if (userRole === 'docente' || userRole === 'admin') {
+    } else if (userRole === 'docente') {
       const xpData = await calculateTeacherXP(currentUser.id);
       if (xpData) {
         renderTeacherSidebar(xpData);

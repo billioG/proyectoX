@@ -184,7 +184,7 @@ async function openWeeklyEvidenceModal() {
           </button>
         </div>
       </form>
-    </div >
+    </div>
     `;
   document.body.appendChild(modal);
 
