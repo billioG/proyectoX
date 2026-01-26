@@ -1,325 +1,142 @@
-// ================================================
-// AUTENTICACIÓN Y GESTIÓN DE SESIÓN - CORREGIDO
-// ================================================
+/**
+ * AUTH - Gestión de autenticación y sesión de usuario (Tailwind Edition)
+ */
 
-document.addEventListener('DOMContentLoaded', async function () {
-  console.log('🔄 Inicializando autenticación...');
-
+document.addEventListener('DOMContentLoaded', async () => {
   const { data: { session } } = await _supabase.auth.getSession();
+  if (session) await handleSuccessfulLogin(session.user);
+  else showLoginScreen();
 
-  if (session) {
-    console.log('✅ Sesión activa encontrada');
-    await handleSuccessfulLogin(session.user);
-  } else {
-    console.log('📝 No hay sesión activa, mostrando login');
-    showLoginScreen();
-  }
+  document.getElementById('btn-login')?.addEventListener('click', handleLogin);
+  ['login-username', 'login-password'].forEach(id => {
+    document.getElementById(id)?.addEventListener('keypress', e => { if (e.key === 'Enter') handleLogin(); });
+  });
 
-  const loginBtn = document.getElementById('btn-login');
-  if (loginBtn) {
-    console.log('✅ Botón de login encontrado');
-    loginBtn.addEventListener('click', handleLogin);
-  } else {
-    console.error('❌ Botón btn-login NO encontrado');
-  }
-
-  const usernameInput = document.getElementById('login-username');
-  const passwordInput = document.getElementById('login-password');
-
-  if (usernameInput) {
-    usernameInput.addEventListener('keypress', function (e) {
-      if (e.key === 'Enter') handleLogin();
-    });
-  }
-
-  if (passwordInput) {
-    passwordInput.addEventListener('keypress', function (e) {
-      if (e.key === 'Enter') handleLogin();
-    });
-  }
-
-  _supabase.auth.onAuthStateChange((event, session) => {
-    console.log('🔔 Evento de auth:', event);
-    if (event === 'SIGNED_OUT') {
-      showLoginScreen();
-    }
+  _supabase.auth.onAuthStateChange((event) => {
+    if (event === 'SIGNED_OUT') showLoginScreen();
   });
 });
 
 function showLoginScreen() {
-  document.getElementById('auth-container').style.display = 'flex';
+  const authContainer = document.getElementById('auth-container');
+  authContainer.style.display = 'flex';
+  authContainer.className = "min-h-screen flex flex-col justify-center items-center bg-slate-50 dark:bg-slate-950 px-6 py-12 transition-colors duration-500";
+
   document.getElementById('app-container').style.display = 'none';
+  renderMotivationalQuote();
 }
 
-function showAppScreen() {
-  document.getElementById('auth-container').style.display = 'none';
-  document.getElementById('app-container').style.display = 'block';
+function renderMotivationalQuote() {
+  const container = document.querySelector('.login-help');
+  if (!container || typeof MOTIVATIONAL_QUOTES === 'undefined') return;
+  const quote = MOTIVATIONAL_QUOTES[Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length)];
+  container.innerHTML = `
+    <div class="glass-card p-8 border-l-8 border-primary dark:bg-slate-900/40 mt-12 max-w-lg mx-auto transform hover:-translate-y-1 transition-all duration-300">
+      <p class="text-xl italic font-medium text-slate-700 dark:text-slate-300 mb-4 leading-relaxed tracking-tight">"${quote}"</p>
+      <div class="flex items-center gap-3">
+        <div class="h-1 w-12 bg-primary rounded-full"></div>
+        <div class="text-sm font-black uppercase text-primary tracking-widest">Inspiración Diaria</div>
+      </div>
+    </div>
+  `;
 }
 
 async function handleLogin() {
-  const usernameInput = document.getElementById('login-username');
-  const passwordInput = document.getElementById('login-password');
-  const loginBtn = document.getElementById('btn-login');
+  const userEl = document.getElementById('login-username');
+  const passEl = document.getElementById('login-password');
+  const btn = document.getElementById('btn-login');
 
-  const username = usernameInput?.value.trim();
-  const password = passwordInput?.value.trim();
+  const username = userEl?.value.trim();
+  const password = passEl?.value.trim();
+  if (!username || !password) return showToast('❌ Completa los campos', 'error');
 
-  if (!username || !password) {
-    showToast('❌ Completa todos los campos', 'error');
-    return;
-  }
-
-  loginBtn.disabled = true;
-  loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
+  btn.disabled = true;
+  btn.classList.add('opacity-50', 'cursor-not-allowed');
+  btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Verificando...';
 
   try {
     let email = username;
-
     if (!username.includes('@')) {
-      // 1. Intentar buscar en estudiantes
-      const { data: student } = await _supabase
-        .from('students')
-        .select('email')
-        .eq('username', username)
-        .maybeSingle();
-
-      if (student) {
-        email = student.email;
-      } else {
-        // 2. Intentar buscar en docentes/admins
-        const { data: teacher } = await _supabase
-          .from('teachers')
-          .select('email')
-          .eq('username', username)
-          .maybeSingle();
-
-        if (teacher) {
-          email = teacher.email;
-        } else {
-          throw new Error('Usuario no encontrado');
-        }
+      const { data: st } = await _supabase.from('students').select('email').eq('username', username).maybeSingle();
+      if (st) email = st.email;
+      else {
+        const { data: tc } = await _supabase.from('teachers').select('email').eq('username', username).maybeSingle();
+        if (tc) email = tc.email;
+        else throw new Error('Usuario no encontrado');
       }
     }
 
-    const { data, error } = await _supabase.auth.signInWithPassword({
-      email: email,
-      password: password
-    });
-
+    const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
-
-    if (!data.user) {
-      throw new Error('Error en la autenticación');
-    }
-
-    console.log('✅ Login exitoso');
     await handleSuccessfulLogin(data.user);
-
   } catch (err) {
-    console.error('❌ Error en login:', err);
-    showToast('❌ Usuario o contraseña incorrectos', 'error');
+    showToast('❌ Login fallido: ' + err.message, 'error');
   } finally {
-    loginBtn.disabled = false;
-    loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Entrar';
+    btn.disabled = false;
+    btn.classList.remove('opacity-50', 'cursor-not-allowed');
+    btn.innerHTML = '<i class="fas fa-sign-in-alt mr-2"></i> Entrar';
   }
 }
 
 async function handleSuccessfulLogin(user) {
   currentUser = user;
+  userRole = user.user_metadata?.role || 'estudiante';
+
+  // Sincronizar clases globales
+  document.documentElement.className = localStorage.getItem('theme') === 'dark' ? 'dark' : '';
+  document.body.className = `role-${userRole} bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300`;
 
   try {
-    const role = user.user_metadata?.role || 'estudiante';
-    userRole = role;
+    const table = userRole === 'estudiante' ? 'students' : 'teachers';
+    const { data } = await _supabase.from(table).select('*').eq('id', user.id).maybeSingle();
+    userData = data;
 
-    console.log('👤 Usuario:', user.email);
-    console.log('🎭 Rol:', userRole);
+    document.getElementById('auth-container').style.display = 'none';
+    document.getElementById('app-container').style.display = 'block';
 
-    // Añadir clase de rol al body para control de CSS
-    document.body.classList.remove('role-estudiante', 'role-docente', 'role-admin');
-    document.body.classList.add(`role-${userRole}`);
+    updateHeaderUI();
+    setupNavigationUI();
 
-    if (userRole === 'estudiante') {
-      const { data, error } = await _supabase
-        .from('students')
-        .select('*')
-        .eq('id', user.id)
-        .single();
+    nav(userRole === 'admin' ? 'admin-dashboard' : 'feed');
 
-      if (error) throw error;
-      userData = data;
-    } else if (userRole === 'docente' || userRole === 'admin') {
-      const { data, error } = await _supabase
-        .from('teachers')
-        .select('*')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      if (error) {
-        console.warn('⚠️ No se encontró perfil en tabla teachers:', error);
-      }
-      userData = data;
-    }
-
-    // Mostrar app ANTES de navegar
-    showAppScreen();
-    updateUserInterface(userData);
-    setupNavigation();
-
-    // Esperar a que el DOM esté listo
-    await new Promise(resolve => setTimeout(resolve, 100));
-
-    // Ahora sí navegar
-    if (userRole === 'admin') {
-      nav('admin-dashboard');
-    } else {
-      nav('feed');
-    }
-
-    // Cargar grupos si es estudiante
-    if (userRole === 'estudiante') {
-      if (typeof loadGroupsForUpload === 'function') await loadGroupsForUpload();
-    }
-
-    // Inicializar gamificación (el módulo maneja la lógica por roles)
     if (typeof initGamification === 'function') initGamification();
-
-    // Cargar notificaciones si es docente o admin
-    if ((userRole === 'docente' || userRole === 'admin') && typeof loadTeacherNotifications === 'function') {
-      await loadTeacherNotifications();
+    if (userRole === 'docente' || userRole === 'admin') {
+      if (typeof loadTeacherNotifications === 'function') loadTeacherNotifications();
+      if (typeof loadTeacherSidebarKPIs === 'function') loadTeacherSidebarKPIs();
     }
 
-    // Inicializar onboarding para nuevos usuarios
-    if (typeof initOnboarding === 'function') {
-      initOnboarding();
-    }
-
-    showToast('✅ Bienvenido/a', 'success');
-    console.log('✅ Datos cargados correctamente');
-
-  } catch (err) {
-    console.error('❌ Error cargando datos del usuario:', err);
-    showToast('❌ Error al cargar datos del usuario', 'error');
-    await logout();
-  }
+    showToast('👋 ¡Hola de nuevo!', 'success');
+  } catch (err) { console.error(err); logout(); }
 }
 
-function updateUserInterface(userData) {
-  const userNameElement = document.getElementById('user-name');
-  const userAvatarElement = document.getElementById('user-avatar');
+function updateHeaderUI() {
+  const name = userData?.full_name || currentUser.email.split('@')[0];
+  const avatar = userRole === 'estudiante' ? '🎓' : (userRole === 'docente' ? '👨‍🏫' : '👑');
 
-  let displayName = 'Usuario';
+  const nameEl = document.getElementById('user-name');
+  if (nameEl) nameEl.textContent = name;
 
-  if (userData) {
-    if (userRole === 'estudiante') {
-      displayName = userData.full_name || userData.username || currentUser.email?.split('@')[0];
-    } else if (userRole === 'docente' || userRole === 'admin') {
-      displayName = userData.full_name || currentUser.email?.split('@')[0] || 'Docente';
-    }
-  } else {
-    // Fallback si no hay registro en tablas (típico de admins puros)
-    displayName = currentUser?.email?.split('@')[0] || (userRole === 'admin' ? 'Administrador' : 'Usuario');
-  }
-
-  if (userNameElement) {
-    userNameElement.textContent = displayName;
-  }
-
-  if (userAvatarElement) {
-    if (userRole === 'estudiante') {
-      userAvatarElement.textContent = '🎓';
-    } else if (userRole === 'docente') {
-      userAvatarElement.textContent = '👨‍🏫';
+  const avatarEl = document.getElementById('user-avatar');
+  if (avatarEl) {
+    if (userData?.profile_photo_url) {
+      avatarEl.innerHTML = `<img src="${userData.profile_photo_url}" class="w-full h-full object-cover rounded-xl">`;
+      avatarEl.classList.remove('bg-primary/10', 'text-primary');
     } else {
-      userAvatarElement.textContent = '👑';
+      avatarEl.textContent = avatar;
+      avatarEl.classList.add('bg-primary/10', 'text-primary');
     }
   }
 }
 
-function setupNavigation() {
-  document.getElementById('nav-estudiante').style.display = 'none';
-  document.getElementById('nav-docente').style.display = 'none';
-  document.getElementById('nav-admin').style.display = 'none';
-
-  if (userRole === 'estudiante') {
-    document.getElementById('nav-estudiante').style.display = 'block';
-  } else if (userRole === 'docente') {
-    document.getElementById('nav-docente').style.display = 'block';
-  } else if (userRole === 'admin') {
-    document.getElementById('nav-admin').style.display = 'block';
-  }
+function setupNavigationUI() {
+  ['nav-estudiante', 'nav-docente', 'nav-admin'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = id === `nav-${userRole}` ? 'block' : 'none';
+  });
 }
 
 async function logout() {
-  const btn = document.querySelector('.btn-logout');
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-  }
-
-  try {
-    console.log('🔄 Cerrando sesión...');
-
-    // 1. Cerrar sesión en Supabase
-    await _supabase.auth.signOut();
-
-    // 2. Limpiar estados locales y UI
-    currentUser = null;
-    userRole = null;
-    userData = null;
-
-    // Limpiar elementos de UI para evitar parpadeos de datos anteriores al re-entrar
-    const userNameElement = document.getElementById('user-name');
-    if (userNameElement) userNameElement.textContent = 'Usuario';
-
-    // Limpiar contenedores principales
-    ['feed-container', 'profile-content', 'ranking-container', 'eval-projects-container', 'groups-container', 'attendance-container'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.innerHTML = '';
-    });
-
-    // 3. Mostrar pantalla de login sin recargar
-    showLoginScreen();
-
-    showToast('👋 Sesión cerrada correctamente', 'success');
-
-  } catch (err) {
-    console.error('Error cerrando sesión:', err);
-    showLoginScreen();
-  } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = '<i class="fas fa-sign-out-alt"></i> Salir';
-    }
-  }
+  await _supabase.auth.signOut();
+  currentUser = null; userRole = null; userData = null;
+  location.reload();
 }
-
-function sanitizeInput(str) {
-  if (!str) return '';
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
-
-function formatDate(dateString) {
-  if (!dateString) return 'Sin fecha';
-  const date = new Date(dateString);
-  return date.toLocaleDateString('es-GT', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  });
-}
-
-function formatDateTime(dateString) {
-  if (!dateString) return 'Sin fecha';
-  const date = new Date(dateString);
-  return date.toLocaleDateString('es-GT', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-}
-
-console.log('✅ auth.js cargado correctamente');

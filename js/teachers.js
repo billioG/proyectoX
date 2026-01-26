@@ -4,9 +4,17 @@
 
 async function loadTeachers() {
   const container = document.getElementById('teachers-container');
-  if (!container) return;
+  if (!container) {
+    console.warn('⚠️ Contenedor de docentes no encontrado en el DOM.');
+    return;
+  }
 
-  container.innerHTML = '<div style="text-align:center;"><i class="fas fa-spinner fa-spin"></i> Cargando docentes...</div>';
+  container.innerHTML = `
+    <div class="flex flex-col items-center justify-center p-20 text-slate-400">
+        <i class="fas fa-circle-notch fa-spin text-4xl mb-4 text-primary"></i>
+        <span class="font-bold tracking-widest uppercase text-xs">Cargando equipo docente...</span>
+    </div>
+  `;
 
   try {
     const { data: teachers, error } = await _supabase
@@ -26,60 +34,83 @@ async function loadTeachers() {
     if (error) throw error;
 
     container.innerHTML = `
-      <div style="margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
-        <button class="btn-primary" onclick="openAddTeacherModal()">
-          <i class="fas fa-user-plus"></i> Agregar Docente
-        </button>
-        <button class="btn-secondary" onclick="exportTeachersCSV()">
-          <i class="fas fa-download"></i> Exportar CSV
-        </button>
+      <div class="flex flex-col md:flex-row gap-6 mb-10 items-center animate-slideUp">
+        <div class="relative grow w-full">
+            <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+            <input type="text" id="search-teachers" class="input-field-tw pl-12 h-12 text-sm font-semibold" placeholder="FILTRO: NOMBRE, EMAIL O ASIGNACIÓN..." oninput="filterTeachers()">
+        </div>
+        <div class="flex gap-3 w-full md:w-auto shrink-0">
+            <button class="btn-primary-tw grow h-12 px-6 text-xs uppercase font-bold tracking-widest" onclick="openAddTeacherModal()">
+              <i class="fas fa-user-plus"></i> NUEVO DOCENTE
+            </button>
+            <button class="btn-secondary-tw grow h-12 px-6 text-xs uppercase font-bold tracking-widest" onclick="exportTeachersCSV()">
+              <i class="fas fa-file-csv"></i> EXPORTAR
+            </button>
+        </div>
       </div>
 
-      ${!teachers || teachers.length === 0 ? '<div class="empty-state">📭 No hay docentes registrados</div>' : `
-        <div style="overflow-x: auto;">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Nombre</th>
-                <th>Email</th>
-                <th>Teléfono</th>
-                <th>Asignaciones</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${teachers.map((t, index) => `
-                <tr>
-                  <td style="text-align: center;">${index + 1}</td>
-                  <td>
-                    ${t.profile_photo_url ? `<img src="${t.profile_photo_url}" style="width: 30px; height: 30px; border-radius: 50%; object-fit: cover; margin-right: 8px; vertical-align: middle;">` : ''}
-                    <strong>${sanitizeInput(t.full_name)}</strong>
-                  </td>
-                  <td><code>${sanitizeInput(t.email)}</code></td>
-                  <td>${t.phone || 'N/A'}</td>
-                  <td>
-                    ${t.teacher_assignments?.length > 0 ? `
-                      <button class="btn-secondary btn-sm" onclick="viewTeacherAssignments('${t.id}', '${sanitizeInput(t.full_name)}')">
-                        <i class="fas fa-school"></i> Ver ${t.teacher_assignments.length} asignación(es)
-                      </button>
-                    ` : '<span style="color: var(--text-light);">Sin asignaciones</span>'}
-                  </td>
-                  <td>
-                    <button class="btn-icon" onclick="openAssignTeacherModal('${t.id}', '${sanitizeInput(t.full_name)}')" title="Asignar">
-                      <i class="fas fa-plus-circle"></i>
-                    </button>
-                    <button class="btn-icon" onclick="editTeacher('${t.id}')" title="Editar">
-                      <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn-icon" onclick="deleteTeacher('${t.id}', '${sanitizeInput(t.full_name)}')" title="Eliminar" style="color: var(--danger-color);">
-                      <i class="fas fa-trash"></i>
-                    </button>
-                  </td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
+      ${!teachers || teachers.length === 0 ? `
+        <div class="glass-card p-16 text-center border-2 border-dashed border-slate-100 dark:border-slate-800">
+            <i class="fas fa-chalkboard-teacher text-6xl text-slate-200 dark:text-slate-800 mb-4 mx-auto block"></i>
+            <p class="text-slate-500 font-bold uppercase tracking-widest text-sm mb-6">No hay docentes registrados</p>
+            <button class="btn-primary-tw mx-auto h-11 px-8" onclick="openAddTeacherModal()"><i class="fas fa-plus"></i> AGREGAR EL PRIMERO</button>
+        </div>
+      ` : `
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          ${teachers.map(t => `
+            <div class="teacher-card glass-card p-0 overflow-hidden hover:translate-y-[-4px] transition-all group" data-name="${t.full_name.toLowerCase()}" data-email="${t.email.toLowerCase()}">
+                <div class="p-6 relative">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="w-16 h-16 rounded-2xl bg-slate-50 dark:bg-slate-800 overflow-hidden shadow-sm border border-slate-100 dark:border-slate-700">
+                             ${t.profile_photo_url ? `<img src="${t.profile_photo_url}" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center text-slate-300 text-2xl"><i class="fas fa-user"></i></div>`}
+                        </div>
+                        <div class="flex flex-col items-end gap-1">
+                             <div class="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-900/10 text-emerald-600 dark:text-emerald-400 text-[0.6rem] font-bold uppercase tracking-widest border border-emerald-500/10 flex items-center gap-1">
+                                <i class="fas fa-circle text-[0.4rem]"></i> ACTIVO
+                             </div>
+                             ${t.role === 'admin' ? `<span class="text-[0.55rem] font-bold text-rose-500 uppercase tracking-widest bg-rose-50 px-2 py-0.5 rounded-md">ADMIN</span>` : ''}
+                        </div>
+                    </div>
+                    
+                    <h3 class="text-lg font-bold text-slate-800 dark:text-white leading-tight mb-1">${sanitizeInput(t.full_name)}</h3>
+                    <p class="text-sm text-slate-400 font-medium mb-4 flex items-center gap-2">
+                        <i class="fas fa-envelope text-xs opacity-50"></i> ${sanitizeInput(t.email)}
+                    </p>
+
+                    <div class="flex gap-2 mb-4">
+                         <div class="px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 grow text-center">
+                             <div class="textxs text-slate-400 font-bold uppercase tracking-tighter">Asignaciones</div>
+                             <div class="text-lg font-bold text-slate-700 dark:text-slate-200">${t.teacher_assignments?.length || 0}</div>
+                         </div>
+                         <div class="px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 grow text-center">
+                             <div class="textxs text-slate-400 font-bold uppercase tracking-tighter">Proyectos</div>
+                             <div class="text-lg font-bold text-indigo-500">--</div>
+                         </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="viewTeacherAssignments('${t.id}', '${sanitizeInput(t.full_name)}')" class="py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-900/20 dark:hover:text-indigo-400 text-xs font-bold uppercase tracking-wider transition-all border border-transparent hover:border-indigo-200">
+                            <i class="fas fa-school mr-1"></i> Carga
+                        </button>
+                        <button onclick="openAssignTeacherModal('${t.id}', '${sanitizeInput(t.full_name)}')" class="py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-primary/10 hover:text-primary dark:hover:bg-primary/20 text-xs font-bold uppercase tracking-wider transition-all border border-transparent hover:border-primary/20">
+                            <i class="fas fa-plus mr-1"></i> Asignar
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-slate-50/50 dark:bg-slate-800/30 p-3 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center group-hover:bg-slate-100 dark:group-hover:bg-slate-800 transition-colors">
+                     <span class="text-[0.6rem] font-bold text-slate-400 uppercase tracking-widest pl-2">ID: ...${t.id.substr(-6)}</span>
+                     <div class="flex gap-1">
+                        <button onclick="editTeacher('${t.id}')" class="w-8 h-8 rounded-lg text-slate-400 hover:text-primary hover:bg-white dark:hover:bg-slate-700 transition-all shadow-sm">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button onclick="deleteTeacher('${t.id}', '${sanitizeInput(t.full_name)}')" class="w-8 h-8 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-white dark:hover:bg-slate-700 transition-all shadow-sm">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                     </div>
+                </div>
+            </div>
+          `).join('')}
         </div>
       `}
     `;
@@ -92,38 +123,48 @@ async function loadTeachers() {
 
 function openAddTeacherModal() {
   const modal = document.createElement('div');
-  modal.className = 'modal active';
+  modal.className = 'fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn';
   modal.id = 'add-teacher-modal';
 
   modal.innerHTML = `
-    <div class="modal-content">
-      <div class="modal-header">
-        <h2>➕ Agregar Docente</h2>
-        <button class="close-modal" onclick="this.closest('.modal').remove()">×</button>
+    <div class="glass-card w-full max-w-md p-8 bg-white dark:bg-slate-900 animate-slideUp">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight m-0 flex items-center gap-3">
+            <i class="fas fa-user-plus text-primary"></i> Nuevo Docente
+        </h2>
+        <button class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500 transition-colors flex items-center justify-center font-bold" onclick="this.closest('.fixed').remove()">
+            <i class="fas fa-times"></i>
+        </button>
       </div>
-      <div class="modal-body">
-        <label>
-          <strong>Nombre Completo:</strong>
-          <input type="text" id="teacher-name" class="input-field" placeholder="Nombre del docente">
-        </label>
+      
+      <div class="space-y-4">
+        <div>
+          <label class="text-[0.7rem] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Nombre Completo</label>
+          <input type="text" id="teacher-name" class="input-field-tw" placeholder="Ej: Maria Gonzalez">
+        </div>
 
-        <label>
-          <strong>Email:</strong>
-          <input type="email" id="teacher-email" class="input-field" placeholder="correo@ejemplo.com">
-        </label>
+        <div>
+          <label class="text-[0.7rem] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Correo Electrónico</label>
+          <input type="email" id="teacher-email" class="input-field-tw" placeholder="correo@ejemplo.com">
+        </div>
 
-        <label>
-          <strong>Teléfono (Opcional):</strong>
-          <input type="tel" id="teacher-phone" class="input-field" placeholder="1234-5678">
-        </label>
+        <div>
+          <label class="text-[0.7rem] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Fecha de Nacimiento</label>
+          <input type="date" id="teacher-birth" class="input-field-tw">
+        </div>
 
-        <label>
-          <strong>Contraseña:</strong>
-          <input type="password" id="teacher-password" class="input-field" placeholder="Mínimo 6 caracteres" value="1bot.org">
-        </label>
+        <div>
+          <label class="text-[0.7rem] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Teléfono (Opcional)</label>
+          <input type="tel" id="teacher-phone" class="input-field-tw" placeholder="1234-5678">
+        </div>
 
-        <button class="btn-primary" onclick="addTeacher()" id="btn-add-teacher">
-          <i class="fas fa-user-plus"></i> Crear Docente
+        <div>
+          <label class="text-[0.7rem] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Contraseña Temporal</label>
+          <input type="password" id="teacher-password" class="input-field-tw" placeholder="Mínimo 6 caracteres" value="1bot.org">
+        </div>
+
+        <button class="btn-primary-tw w-full mt-4" onclick="addTeacher()" id="btn-add-teacher">
+          <i class="fas fa-save"></i> Crear Cuenta Docente
         </button>
       </div>
     </div>
@@ -136,6 +177,7 @@ async function addTeacher() {
   const name = document.getElementById('teacher-name')?.value.trim();
   const email = document.getElementById('teacher-email')?.value.trim();
   const phone = document.getElementById('teacher-phone')?.value.trim();
+  const birth = document.getElementById('teacher-birth')?.value;
   const password = document.getElementById('teacher-password')?.value.trim();
   const btn = document.getElementById('btn-add-teacher');
 
@@ -175,6 +217,7 @@ async function addTeacher() {
         full_name: name,
         email: email,
         phone: phone || null,
+        birth_date: birth || null,
         role: 'docente'
       });
 
@@ -195,50 +238,55 @@ async function addTeacher() {
 
 function openAssignTeacherModal(teacherId, teacherName) {
   const modal = document.createElement('div');
-  modal.className = 'modal active';
+  modal.className = 'fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn';
   modal.id = 'assign-teacher-modal';
 
   modal.innerHTML = `
-    <div class="modal-content">
-      <div class="modal-header">
-        <h2>📋 Asignar a ${sanitizeInput(teacherName)}</h2>
-        <button class="close-modal" onclick="this.closest('.modal').remove()">×</button>
+    <div class="glass-card w-full max-w-lg p-8 bg-white dark:bg-slate-900 animate-slideUp">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight m-0 flex items-center gap-3">
+            <i class="fas fa-chalkboard-teacher text-primary"></i> Asignar Carga
+        </h2>
+        <button class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500 transition-colors flex items-center justify-center font-bold" onclick="this.closest('.fixed').remove()">
+            <i class="fas fa-times"></i>
+        </button>
       </div>
-      <div class="modal-body">
-        <p style="color: var(--text-light); margin-bottom: 15px;">
-          Asigna al docente a un establecimiento, grado y sección
-        </p>
-
-        <label>
-          <strong>Establecimiento:</strong>
-          <select id="assign-school" class="input-field" onchange="loadGradesForAssignment()">
-            <option value="">Seleccionar...</option>
-          </select>
-        </label>
-
-        <label style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; cursor: pointer;">
-          <input type="checkbox" id="assign-all" onchange="toggleBulkAssignment(this.checked)" style="width: 18px; height: 18px;">
-          <strong style="font-size: 0.9rem; color: #1e293b;">Asignar a todos los grados y secciones de este establecimiento</strong>
-        </label>
-
-        <div id="individual-assign-fields">
-          <label>
-            <strong>Grado:</strong>
-            <select id="assign-grade" class="input-field" onchange="loadSectionsForAssignment()">
-              <option value="">Seleccionar...</option>
-            </select>
-          </label>
-
-          <label>
-            <strong>Sección:</strong>
-            <select id="assign-section" class="input-field">
-              <option value="">Seleccionar...</option>
-            </select>
-          </label>
+      
+      <div class="space-y-5">
+        <div class="p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 text-sm text-blue-800 dark:text-blue-300 flex gap-3 items-start">
+            <i class="fas fa-info-circle mt-0.5"></i>
+            <p>Estás asignando clases a <strong>${sanitizeInput(teacherName)}</strong>. Esto le permitirá ver alumnos y evaluar proyectos.</p>
         </div>
 
-        <button class="btn-primary" onclick="assignTeacher('${teacherId}')" id="btn-assign" style="width: 100%; margin-top: 10px;">
-          <i class="fas fa-check"></i> Finalizar Asignación
+        <div>
+           <label class="text-[0.7rem] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Establecimiento</label>
+           <select id="assign-school" class="input-field-tw" onchange="loadGradesForAssignment()">
+             <option value="">Seleccionar...</option>
+           </select>
+        </div>
+
+        <label class="flex items-center gap-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors">
+          <input type="checkbox" id="assign-all" onchange="toggleBulkAssignment(this.checked)" class="w-5 h-5 rounded text-primary focus:ring-primary border-slate-300">
+          <span class="text-sm font-bold text-slate-700 dark:text-slate-300">Asignar TODOS los grados y secciones de este colegio</span>
+        </label>
+
+        <div id="individual-assign-fields" class="grid grid-cols-2 gap-4 transition-opacity duration-300">
+          <div>
+             <label class="text-[0.7rem] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Grado</label>
+             <select id="assign-grade" class="input-field-tw" onchange="loadSectionsForAssignment()">
+               <option value="">Seleccionar...</option>
+             </select>
+          </div>
+          <div>
+             <label class="text-[0.7rem] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Sección</label>
+             <select id="assign-section" class="input-field-tw">
+               <option value="">Seleccionar...</option>
+             </select>
+          </div>
+        </div>
+
+        <button class="btn-primary-tw w-full mt-2" onclick="assignTeacher('${teacherId}')" id="btn-assign">
+          <i class="fas fa-check-circle"></i> Confirmar Asignación
         </button>
       </div>
     </div>
@@ -487,33 +535,61 @@ async function viewTeacherAssignments(teacherId, teacherName) {
     if (error) throw error;
 
     const modal = document.createElement('div');
-    modal.className = 'modal active';
+    modal.className = 'fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn';
     modal.id = 'view-assignments-modal';
 
     modal.innerHTML = `
-      <div class="modal-content">
-        <div class="modal-header">
-          <h2>📋 Asignaciones de ${sanitizeInput(teacherName)}</h2>
-          <button class="close-modal" onclick="this.closest('.modal').remove()">×</button>
-        </div>
-        <div class="modal-body">
-          ${!assignments || assignments.length === 0 ? '<p class="empty-state">No tiene asignaciones</p>' : `
+      <div class="glass-card w-full max-w-lg p-0 bg-white dark:bg-slate-900 animate-slideUp overflow-hidden">
+        <div class="p-6 bg-slate-50 dark:bg-slate-800 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
             <div>
+                <h2 class="text-lg font-black text-slate-800 dark:text-white uppercase tracking-tight m-0">
+                    Carga Académica
+                </h2>
+                <p class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1">${sanitizeInput(teacherName)}</p>
+            </div>
+            <button class="w-8 h-8 rounded-lg bg-white dark:bg-slate-700 text-slate-400 hover:text-rose-500 transition-colors flex items-center justify-center font-bold shadow-sm" onclick="this.closest('.fixed').remove()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="p-6 max-h-[60vh] overflow-y-auto custom-scrollbar">
+          ${!assignments || assignments.length === 0 ? `
+            <div class="text-center py-8">
+                <div class="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-300 text-2xl mx-auto mb-4">
+                    <i class="fas fa-folder-open"></i>
+                </div>
+                <p class="text-slate-500 font-bold text-sm">No tiene asignaciones activas</p>
+            </div>
+          ` : `
+            <div class="space-y-3">
               ${assignments.map(a => `
-                <div class="assignment-item">
+                <div class="flex items-center justify-between p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm hover:border-sidebar-active/30 transition-colors group">
                   <div>
-                    <strong>${sanitizeInput(a.schools?.name || 'Establecimiento')}</strong>
-                    <p style="margin: 5px 0 0; color: var(--text-light);">
-                      ${a.grade} - Sección ${a.section}
-                    </p>
+                    <div class="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                        <i class="fas fa-school text-slate-400 text-xs"></i> 
+                        ${sanitizeInput(a.schools?.name || 'Establecimiento')}
+                    </div>
+                    <div class="flex gap-2 mt-2">
+                        <span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-[0.65rem] font-bold uppercase tracking-wide">
+                            ${a.grade}
+                        </span>
+                        <span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-[0.65rem] font-bold uppercase tracking-wide">
+                            Sección ${a.section}
+                        </span>
+                    </div>
                   </div>
-                  <button class="btn-danger btn-sm" onclick="removeAssignment(${a.id}, '${teacherId}')">
-                    <i class="fas fa-trash"></i> Eliminar
+                  <button class="px-3 py-1.5 rounded-lg bg-rose-50 dark:bg-rose-900/20 text-rose-500 text-xs font-bold hover:bg-rose-500 hover:text-white transition-all opacity-0 group-hover:opacity-100 focus:opacity-100" onclick="removeAssignment(${a.id}, '${teacherId}')">
+                    <i class="fas fa-trash-alt"></i>
                   </button>
                 </div>
               `).join('')}
             </div>
           `}
+        </div>
+        <div class="p-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 text-center">
+             <button class="text-xs font-bold text-primary hover:underline uppercase tracking-widest" onclick="this.closest('.fixed').remove(); openAssignTeacherModal('${teacherId}', '${sanitizeInput(teacherName)}')">
+                <i class="fas fa-plus mr-1"></i> Agregar Nueva Asignación
+             </button>
         </div>
       </div>
     `;
@@ -537,33 +613,42 @@ async function editTeacher(teacherId) {
     if (error) throw error;
 
     const modal = document.createElement('div');
-    modal.className = 'modal active';
+    modal.className = 'fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn';
     modal.id = 'edit-teacher-modal';
 
     modal.innerHTML = `
-      <div class="modal-content">
-        <div class="modal-header">
-          <h2>📝 Editar Docente</h2>
-          <button class="close-modal" onclick="this.closest('.modal').remove()">×</button>
+      <div class="glass-card w-full max-w-md p-8 bg-white dark:bg-slate-900 animate-slideUp">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight m-0 flex items-center gap-3">
+              <i class="fas fa-user-edit text-primary"></i> Editar Docente
+          </h2>
+          <button class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500 transition-colors flex items-center justify-center font-bold" onclick="this.closest('.fixed').remove()">
+              <i class="fas fa-times"></i>
+          </button>
         </div>
-        <div class="modal-body">
-          <label>
-            <strong>Nombre Completo:</strong>
-            <input type="text" id="edit-teacher-name" class="input-field" value="${sanitizeInput(teacher.full_name)}">
-          </label>
+        
+        <div class="space-y-4">
+          <div>
+            <label class="text-[0.7rem] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Nombre Completo</label>
+            <input type="text" id="edit-teacher-name" class="input-field-tw" value="${sanitizeInput(teacher.full_name)}">
+          </div>
 
-          <label>
-            <strong>Email:</strong>
-            <input type="email" id="edit-teacher-email" class="input-field" value="${teacher.email}" readonly style="background: #f1f5f9; cursor: not-allowed;">
-            <small style="color: var(--text-light);">El email no se puede cambiar por seguridad.</small>
-          </label>
+          <div>
+            <label class="text-[0.7rem] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Email (No editable)</label>
+            <input type="email" id="edit-teacher-email" class="input-field-tw opacity-50 cursor-not-allowed bg-slate-100 dark:bg-slate-800" value="${teacher.email}" readonly>
+          </div>
 
-          <label>
-            <strong>Teléfono:</strong>
-            <input type="tel" id="edit-teacher-phone" class="input-field" value="${teacher.phone || ''}" placeholder="1234-5678">
-          </label>
+          <div>
+            <label class="text-[0.7rem] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Teléfono</label>
+            <input type="tel" id="edit-teacher-phone" class="input-field-tw" value="${teacher.phone || ''}" placeholder="1234-5678">
+          </div>
 
-          <button class="btn-primary" onclick="updateTeacher('${teacherId}')" id="btn-update-teacher" style="width: 100%; margin-top: 10px;">
+          <div>
+            <label class="text-[0.7rem] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Fecha de Nacimiento</label>
+            <input type="date" id="edit-teacher-birth" class="input-field-tw" value="${teacher.birth_date || ''}">
+          </div>
+
+          <button class="btn-primary-tw w-full mt-4" onclick="updateTeacher('${teacherId}')" id="btn-update-teacher">
             <i class="fas fa-save"></i> Guardar Cambios
           </button>
         </div>
@@ -581,6 +666,7 @@ async function editTeacher(teacherId) {
 async function updateTeacher(teacherId) {
   const name = document.getElementById('edit-teacher-name')?.value.trim();
   const phone = document.getElementById('edit-teacher-phone')?.value.trim();
+  const birth = document.getElementById('edit-teacher-birth')?.value;
   const btn = document.getElementById('btn-update-teacher');
 
   if (!name) {
@@ -595,7 +681,8 @@ async function updateTeacher(teacherId) {
       .from('teachers')
       .update({
         full_name: name,
-        phone: phone || null
+        phone: phone || null,
+        birth_date: birth || null
       })
       .eq('id', teacherId);
 
@@ -677,4 +764,14 @@ async function exportTeachersCSV() {
   }
 }
 
-console.log('✅ teachers.js cargado correctamente');
+
+function filterTeachers() {
+  const term = (document.getElementById('search-teachers')?.value || '').toLowerCase().trim();
+  const cards = document.querySelectorAll('.teacher-card');
+  cards.forEach(card => {
+    const match = card.dataset.name.includes(term) || card.dataset.email.includes(term);
+    card.style.display = match ? 'block' : 'none';
+    if (match) card.classList.add('animate-fadeIn');
+  });
+}
+console.log('✅ teachers.js cargado correctamente (Tailwind Premium)');

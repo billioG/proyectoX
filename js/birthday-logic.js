@@ -1,0 +1,100 @@
+/**
+ * BIRTHDAY LOGIC - Celebraciones y Felicitaciones
+ */
+
+async function checkBirthdayCelebration() {
+    if (!userData || !userData.birth_date) {
+        console.log('🎂 Bday check: No user data or birth date found.');
+        return;
+    }
+
+    const today = new Date();
+    // Obtener mes y día en formato local "MM-DD"
+    const tMonth = String(today.getMonth() + 1).padStart(2, '0');
+    const tDay = String(today.getDate()).padStart(2, '0');
+    const todayStr = `${tMonth}-${tDay}`;
+
+    // Extraer mes y día del string de la DB "YYYY-MM-DD"
+    const bParts = userData.birth_date.split('-');
+    const bdayStr = `${bParts[1]}-${bParts[2]}`;
+
+    console.log(`🎂 Comparando: Hoy (${todayStr}) vs Cumpleaños (${bdayStr})`);
+
+    const isBirthday = (todayStr === bdayStr);
+
+    const storageKey = `bday_seen_${currentUser.id}_${today.getFullYear()}`;
+    const alreadySeen = localStorage.getItem(storageKey);
+
+    if (isBirthday && !alreadySeen) {
+        console.log('🎉 ¡Es tu cumpleaños! Disparando celebración...');
+        showBirthdayModal();
+        localStorage.setItem(storageKey, 'true');
+    } else if (isBirthday) {
+        console.log('🎂 Ya se mostró la felicitación de hoy.');
+    }
+}
+
+function showBirthdayModal() {
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-slate-950/90 backdrop-blur-md animate-fadeIn';
+    modal.id = 'birthday-celebration-modal';
+
+    modal.innerHTML = `
+        <div class="relative w-full max-w-md p-12 text-center overflow-hidden glass-card border-amber-500/30">
+            <!-- Efectos de Fondo -->
+            <div class="absolute -top-24 -left-24 w-48 h-48 bg-primary/20 blur-[80px] rounded-full"></div>
+            <div class="absolute -bottom-24 -right-24 w-48 h-48 bg-amber-500/20 blur-[80px] rounded-full"></div>
+            
+            <div class="relative z-10">
+                <div class="text-8xl mb-8 animate-bounce">🎂</div>
+                <h2 class="text-4xl font-black text-white uppercase tracking-tighter italic mb-4 drop-shadow-lg">
+                    ¡FELIZ CUMPLEAÑOS!
+                </h2>
+                <p class="text-xl font-bold text-amber-400 uppercase tracking-widest mb-2">
+                    ${userData.full_name?.split(' ')[0] || 'Innovador'}
+                </p>
+                <div class="h-1 w-20 bg-primary mx-auto mb-8 rounded-full"></div>
+                
+                <p class="text-slate-300 font-medium text-lg leading-relaxed mb-10">
+                    En <b>1Bot Guatemala</b> celebramos tu vida y tu talento. ¡Que hoy sea un día lleno de innovación y alegría!
+                </p>
+                
+                <button onclick="this.closest('.fixed').remove()" class="btn-primary-tw w-full h-16 text-lg font-black uppercase tracking-[0.2em] shadow-2xl shadow-primary/40 transform hover:scale-105 active:scale-95 transition-all">
+                    ¡GRACIAS EQUIPO! 🚀
+                </button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Disparar confetti si la librería está disponible
+    if (typeof confetti === 'function') {
+        confetti({
+            particleCount: 150,
+            spread: 70,
+            origin: { y: 0.6 },
+            colors: ['#00ADEF', '#F59E0B', '#10B981']
+        });
+    }
+}
+
+// Función global referenciada en otros archivos
+window.startBirthdayConfetti = function () {
+    if (typeof confetti === 'function') {
+        confetti({
+            particleCount: 100,
+            spread: 70,
+            origin: { y: 0.6 }
+        });
+    }
+};
+
+// Auto-inicializar al detectar userData (a través de auth.js)
+const observer = setInterval(() => {
+    // Verificamos si userData existe globalmente
+    if (typeof userData !== 'undefined' && userData !== null) {
+        checkBirthdayCelebration();
+        clearInterval(observer);
+    }
+}, 1000);

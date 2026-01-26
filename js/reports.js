@@ -8,98 +8,110 @@
 
 async function openMonthlyReportModal() {
   const modal = document.createElement('div');
-  modal.className = 'modal active';
+  modal.className = 'fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn';
+  modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+
+  const currentMonth = new Date().toLocaleString('es-GT', { month: 'long' });
+  const currentYear = new Date().getFullYear();
+
   modal.innerHTML = `
-    <div class="modal-content" style="max-width: 800px;">
-      <h2 style="color: var(--primary-color); text-align: center;">📄 Informe Mensual - ATT</h2>
-      <p style="text-align: center; color: var(--text-light); margin-bottom: 20px;">
-        Aulas Técnicas y Tecnológicas - Eje: Juventud / Infancia
-      </p>
-
-      <form id="monthly-report-form" onsubmit="submitMonthlyReport(event)">
-        <!-- INTRODUCCIÓN -->
-        <div class="form-group">
-          <label>1. Introducción</label>
-          <div style="background: var(--light-gray); padding: 15px; border-radius: 8px; font-size: 0.9rem; color: var(--text-dark);">
-            El presente informe contiene un análisis de avance de las metas importantes establecidas 
-            en el mes de <strong>${new Date().toLocaleString('es-GT', { month: 'long' })}</strong> de <strong>${new Date().getFullYear()}</strong>.
-            Este informe tiene como objetivo proporcionar una visión detallada del progreso realizado...
+    <div class="glass-card w-full max-w-2xl p-0 overflow-hidden shadow-2xl animate-slideUp bg-white dark:bg-slate-900 border border-primary/20 flex flex-col max-h-[90vh]">
+      <div class="bg-gradient-to-br from-primary to-indigo-600 p-8 text-center relative overflow-hidden shrink-0">
+          <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+          <div class="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-3xl text-white mx-auto mb-4 shadow-lg">
+              <i class="fas fa-file-alt"></i>
           </div>
-          <input type="hidden" name="month" value="${new Date().getMonth() + 1}">
-          <input type="hidden" name="year" value="${new Date().getFullYear()}">
-        </div>
+          <h2 class="text-2xl font-black text-white uppercase tracking-tight relative z-10">Informe Mensual - ATT</h2>
+          <p class="text-indigo-100 text-[0.65rem] font-bold uppercase tracking-[0.2em] mt-1 relative z-10">Aulas Técnicas y Tecnológicas • Eje: Juventud / Infancia</p>
+      </div>
 
-        <!-- RESULTADOS ALCANZADOS -->
-        <div class="form-group">
-          <label>2. Resultados Alcanzados</label>
-          <textarea class="input-field" name="results_intro" rows="3" placeholder="Escribe una breve introducción..." required></textarea>
-          <div id="results-list" style="margin-top: 10px;">
-            <div class="input-group" style="margin-bottom: 5px;">
-              <span class="input-group-addon">•</span>
-              <input type="text" class="input-field" name="results[]" placeholder="Hito o resultado clave 1" required>
+      <div class="flex-1 overflow-y-auto custom-scrollbar p-8">
+        <form id="monthly-report-form" onsubmit="submitMonthlyReport(event)" class="space-y-6 text-left">
+          <!-- INTRODUCCIÓN -->
+          <div>
+            <label class="text-[0.7rem] font-black uppercase text-slate-400 mb-2 block tracking-widest">1. Introducción</label>
+            <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 text-sm italic font-medium text-slate-600 dark:text-slate-400 leading-relaxed">
+              El presente informe contiene un análisis de avance de las metas importantes establecidas 
+              en el mes de <strong class="text-primary font-black uppercase">${currentMonth}</strong> de <strong class="text-primary font-black uppercase">${currentYear}</strong>.
             </div>
-            <div class="input-group" style="margin-bottom: 5px;">
-              <span class="input-group-addon">•</span>
-              <input type="text" class="input-field" name="results[]" placeholder="Hito o resultado clave 2" required>
+            <input type="hidden" name="month" value="${new Date().getMonth() + 1}">
+            <input type="hidden" name="year" value="${new Date().getFullYear()}">
+          </div>
+
+          <!-- RESULTADOS ALCANZADOS -->
+          <div>
+            <label class="text-[0.7rem] font-black uppercase text-slate-400 mb-2 block tracking-widest">2. Resultados Alcanzados</label>
+            <textarea class="input-field-tw mb-4" name="results_intro" rows="2" placeholder="Escribe una breve introducción..." required></textarea>
+            
+            <div id="results-list" class="space-y-3">
+              <div class="flex gap-2">
+                <input type="text" class="input-field-tw h-11 text-sm" name="results[]" placeholder="Hito o resultado clave 1" required>
+              </div>
+              <div class="flex gap-2">
+                <input type="text" class="input-field-tw h-11 text-sm" name="results[]" placeholder="Hito o resultado clave 2" required>
+              </div>
             </div>
-            <div class="input-group" style="margin-bottom: 5px;">
-              <span class="input-group-addon">•</span>
-              <input type="text" class="input-field" name="results[]" placeholder="Hito o resultado clave 3" required>
+            <button type="button" class="mt-4 text-[0.65rem] font-black uppercase text-primary hover:text-indigo-600 tracking-widest flex items-center gap-2 transition-colors" onclick="addResultField()">
+              <i class="fas fa-plus-circle"></i> Agregar otro punto
+            </button>
+          </div>
+
+          <!-- GRID DOS COLUMNAS PARA SECCIONES CORTAS -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label class="text-[0.7rem] font-black uppercase text-slate-400 mb-2 block tracking-widest">3. Inconvenientes Externos</label>
+              <textarea class="input-field-tw" name="inconveniences" rows="3" placeholder="Describe problemas externos..." required></textarea>
+            </div>
+            <div>
+              <label class="text-[0.7rem] font-black uppercase text-slate-400 mb-2 block tracking-widest">4. Acciones Implementadas</label>
+              <textarea class="input-field-tw" name="actions" rows="3" placeholder="¿Cómo lo resolviste?" required></textarea>
             </div>
           </div>
-          <button type="button" class="btn-secondary" style="margin-top: 5px; font-size: 0.8rem;" onclick="addResultField()">
-            + Agregar otro punto
-          </button>
-        </div>
 
-        <!-- INCONVENIENTES -->
-        <div class="form-group">
-          <label>3. Inconvenientes Externos</label>
-          <textarea class="input-field" name="inconveniences" rows="3" placeholder="Describe cualquier inconveniente externo a 1bot..." required></textarea>
-        </div>
+          <!-- CONCLUSIÓN -->
+          <div>
+            <label class="text-[0.7rem] font-black uppercase text-slate-400 mb-2 block tracking-widest">5. Conclusión</label>
+            <textarea class="input-field-tw" name="conclusion" rows="3" placeholder="Conclusión general del mes..." required></textarea>
+          </div>
 
-        <!-- ACCIONES -->
-        <div class="form-group">
-          <label>4. Acciones Implementadas</label>
-          <textarea class="input-field" name="actions" rows="3" placeholder="¿Qué acciones se tomaron para resolver los inconvenientes?" required></textarea>
-        </div>
+          <!-- FOTOGRAFÍAS -->
+          <div>
+            <label class="text-[0.7rem] font-black uppercase text-slate-400 mb-2 block tracking-widest">6. Evidencia Fotográfica (5 Fotos)</label>
+            <div class="relative group cursor-pointer mb-3">
+                <div class="absolute inset-0 bg-slate-50 dark:bg-slate-800 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl group-hover:border-primary transition-colors flex flex-col items-center justify-center p-6 pointer-events-none">
+                     <i class="fas fa-images text-2xl text-slate-300 dark:text-slate-600 mb-2 group-hover:text-primary transition-colors"></i>
+                     <span class="text-[0.6rem] font-black text-slate-400 group-hover:text-primary uppercase tracking-widest">Seleccionar Imágenes</span>
+                </div>
+                <input type="file" id="report-photos" class="w-full h-24 opacity-0 cursor-pointer" accept="image/*" multiple onchange="previewReportPhotos(this)">
+            </div>
+            <div id="photos-preview" class="flex gap-2 flex-wrap min-h-[60px]"></div>
+            <p class="text-[0.55rem] font-bold text-slate-400 uppercase tracking-widest mt-2 flex items-center gap-1"><i class="fas fa-info-circle text-primary"></i> Se requieren exactamente 5 fotografías para el reporte.</p>
+          </div>
 
-        <!-- CONCLUSIÓN -->
-        <div class="form-group">
-          <label>5. Conclusión</label>
-          <textarea class="input-field" name="conclusion" rows="3" placeholder="Conclusión general del mes..." required></textarea>
-        </div>
-
-        <!-- FOTOGRAFÍAS -->
-        <div class="form-group">
-          <label>6. Evidencia Fotográfica (5 Fotos)</label>
-          <input type="file" id="report-photos" class="input-field" accept="image/*" multiple onchange="previewReportPhotos(this)">
-          <div id="photos-preview" style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;"></div>
-          <small style="color: var(--text-light);">Debes adjuntar exactamente 5 fotografías.</small>
-        </div>
-
-        <div class="modal-buttons">
-          <button type="button" class="btn-secondary" onclick="this.closest('.modal').remove()">Cancelar</button>
-          <button type="submit" class="btn-primary" id="btn-submit-report">
-            <i class="fas fa-paper-plane"></i> Enviar Informe
-          </button>
-        </div>
-      </form>
+          <div class="flex gap-4 pt-4 border-t border-slate-100 dark:border-slate-800 shrink-0">
+            <button type="button" class="flex-1 btn-secondary-tw h-12 uppercase tracking-widest text-xs font-black" onclick="this.closest('.fixed').remove()">Cancelar</button>
+            <button type="submit" class="flex-[2] btn-primary-tw h-12 uppercase tracking-widest text-xs font-black shadow-lg shadow-primary/20" id="btn-submit-report">
+              <i class="fas fa-paper-plane mr-2"></i> Enviar Informe
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   `;
   document.body.appendChild(modal);
 }
 
 function addResultField() {
+  const container = document.getElementById('results-list');
   const div = document.createElement('div');
-  div.className = 'input-group';
-  div.style.marginBottom = '5px';
+  div.className = 'flex gap-2 animate-fadeIn';
   div.innerHTML = `
-    <span class="input-group-addon">•</span>
-    <input type="text" class="input-field" name="results[]" placeholder="Nuevo hito..." required>
-    <button type="button" onclick="this.parentElement.remove()" style="border:none; bg:transparent; cursor:pointer; color:red;">&times;</button>
+    <input type="text" class="input-field-tw h-11 text-sm" name="results[]" placeholder="Nuevo hito..." required>
+    <button type="button" onclick="this.parentElement.remove()" class="w-11 h-11 shrink-0 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all">
+      <i class="fas fa-times"></i>
+    </button>
   `;
-  document.getElementById('results-list').appendChild(div);
+  container.appendChild(div);
 }
 
 function previewReportPhotos(input) {
@@ -107,21 +119,18 @@ function previewReportPhotos(input) {
   container.innerHTML = '';
 
   if (input.files.length > 5) {
-    showToast('⚠️ Máximo 5 fotos', 'warning');
-    input.value = ''; // Reset
+    showToast('⚠️ Máximo 5 fotos permitidas', 'warning');
+    input.value = '';
     return;
   }
 
   Array.from(input.files).forEach(file => {
     const reader = new FileReader();
     reader.onload = (e) => {
-      const img = document.createElement('img');
-      img.src = e.target.result;
-      img.style.width = '80px';
-      img.style.height = '80px';
-      img.style.objectFit = 'cover';
-      img.style.borderRadius = '6px';
-      container.appendChild(img);
+      const imgDiv = document.createElement('div');
+      imgDiv.className = 'w-16 h-16 rounded-xl overflow-hidden border-2 border-white dark:border-slate-800 shadow-sm animate-slideUp ring-1 ring-slate-100 dark:ring-slate-700';
+      imgDiv.innerHTML = `<img src="${e.target.result}" class="w-full h-full object-cover">`;
+      container.appendChild(imgDiv);
     };
     reader.readAsDataURL(file);
   });
@@ -132,62 +141,79 @@ function previewReportPhotos(input) {
 // ------------------------------------------------
 
 async function openWeeklyEvidenceModal() {
-  // Intentar obtener ubicación geográfica
   let locationText = 'Cargando ubicación...';
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
-      (pos) => locationText = `${pos.coords.latitude}, ${pos.coords.longitude}`,
-      (err) => locationText = 'Ubicación no disponible'
+      (pos) => {
+        locationText = `${pos.coords.latitude}, ${pos.coords.longitude}`;
+        const input = document.getElementById('evidence-location');
+        const display = document.getElementById('loc-display');
+        if (input) input.value = locationText;
+        if (display) display.textContent = locationText;
+      },
+      (err) => locationText = 'Ubicación desactivada'
     );
-  } else {
-    locationText = 'Geolocalización no soportada';
   }
 
   const modal = document.createElement('div');
-  modal.className = 'modal active';
+  modal.className = 'fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn';
+  modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+
   modal.innerHTML = `
-    <div class="modal-content" style="padding: 25px; max-width: 500px; background: var(--bg-card); color: var(--text-color);">
-      <h2 style="color: var(--primary-color); margin-top: 0;">📸 Evidencia Semanal</h2>
-      <p style="color: var(--text-light); margin-bottom: 25px; line-height: 1.5;">
-        Sube fotografías de tus actividades de esta semana.
-      </p>
+    <div class="glass-card w-full max-w-sm p-0 overflow-hidden shadow-2xl animate-slideUp bg-white dark:bg-slate-900 border border-primary/20">
+      <div class="bg-gradient-to-br from-indigo-600 to-purple-700 p-8 text-center relative overflow-hidden">
+          <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+          <div class="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-3xl text-white mx-auto mb-4 shadow-lg">
+              <i class="fas fa-camera"></i>
+          </div>
+          <h2 class="text-2xl font-black text-white uppercase tracking-tight relative z-10">Evidencia Semanal</h2>
+          <p class="text-indigo-100 text-[0.65rem] font-bold uppercase tracking-[0.2em] mt-1 relative z-10">Documenta tus actividades</p>
+      </div>
 
-      <form onsubmit="submitWeeklyEvidence(event)">
-        <input type="hidden" name="location" id="evidence-location" value="${locationText}">
+      <div class="p-8">
+        <form onsubmit="submitWeeklyEvidence(event)" class="space-y-5 text-left">
+          <input type="hidden" name="location" id="evidence-location" value="${locationText}">
 
-        <div class="form-group" style="margin-bottom: 20px;">
-          <label style="display: block; margin-bottom: 8px; color: var(--heading-color); font-weight: 600;">Título de la Actividad</label>
-          <input type="text" class="input-field" name="title" required placeholder="Ej: Taller de Robótica Básica" style="background: var(--input-bg); color: var(--text-color); border: 1px solid var(--border-color);">
-        </div>
+          <div>
+            <label class="text-[0.7rem] font-black uppercase text-slate-400 mb-2 block tracking-widest">Actividad</label>
+            <input type="text" class="input-field-tw h-11 text-sm pt-0 pb-0" name="title" required placeholder="Ej: Taller de Robótica">
+          </div>
 
-        <div class="form-group" style="margin-bottom: 20px;">
-          <label style="display: block; margin-bottom: 8px; color: var(--heading-color); font-weight: 600;">Descripción</label>
-          <textarea class="input-field" name="description" rows="3" required placeholder="Describe brevemente lo realizado..." style="background: var(--input-bg); color: var(--text-color); border: 1px solid var(--border-color);"></textarea>
-        </div>
+          <div>
+            <label class="text-[0.7rem] font-black uppercase text-slate-400 mb-2 block tracking-widest">Descripción</label>
+            <textarea class="input-field-tw text-sm" name="description" rows="3" required placeholder="¿Qué se realizó hoy?"></textarea>
+          </div>
 
-        <div class="form-group" style="margin-bottom: 25px;">
-          <label style="display: block; margin-bottom: 8px; color: var(--heading-color); font-weight: 600;">Fotografías (1-5)</label>
-          <input type="file" id="evidence-photos" class="input-field" accept="image/*" multiple required onchange="previewReportPhotos(this)" style="background: var(--input-bg); color: var(--text-color); border: 1px solid var(--border-color); padding: 10px;">
-          <div id="photos-preview" class="preview-container" style="margin-top: 15px; display: flex; gap: 10px; overflow-x: auto;"></div>
-        </div>
+          <div>
+            <label class="text-[0.7rem] font-black uppercase text-slate-400 mb-2 block tracking-widest">Fotos (1-5)</label>
+            <div class="relative group cursor-pointer mb-2">
+                <div class="absolute inset-0 bg-slate-50 dark:bg-slate-800 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl group-hover:border-primary transition-colors flex flex-col items-center justify-center p-4 pointer-events-none">
+                     <i class="fas fa-cloud-upload-alt text-xl text-slate-300 dark:text-slate-600 mb-1 group-hover:text-primary transition-colors"></i>
+                     <span class="text-[0.6rem] font-black text-slate-400 group-hover:text-primary uppercase">Click para subir</span>
+                </div>
+                <input type="file" id="evidence-photos" class="w-full h-20 opacity-0 cursor-pointer" accept="image/*" multiple required onchange="previewReportPhotos(this)">
+            </div>
+            <div id="photos-preview" class="flex gap-2 flex-wrap min-h-[40px]"></div>
+          </div>
 
-        <div style="background: var(--bg-hover); padding: 15px; border-radius: 8px; font-size: 0.85rem; margin-bottom: 25px; border: 1px solid var(--border-color);">
-          <div style="margin-bottom: 5px;"><strong>📅 Fecha:</strong> ${new Date().toLocaleDateString()}</div>
-          <div style="margin-bottom: 5px;"><strong>🕒 Hora:</strong> ${new Date().toLocaleTimeString()}</div>
-          <div><strong>📍 Ubicación:</strong> <span id="loc-display">${locationText}</span></div>
-        </div>
+          <div class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-1">
+            <div class="text-[0.6rem] font-bold text-slate-500 uppercase tracking-widest flex justify-between">
+              <span>📅 ${new Date().toLocaleDateString()}</span>
+              <span>📍 <span id="loc-display">${locationText}</span></span>
+            </div>
+          </div>
 
-        <div class="modal-buttons" style="display: flex; justify-content: flex-end; gap: 12px;">
-          <button type="button" class="btn-secondary" onclick="this.closest('.modal').remove()">Cancelar</button>
-          <button type="submit" class="btn-primary">
-            <i class="fas fa-camera"></i> Subir Evidencia
-          </button>
-        </div>
-      </form>
+          <div class="flex gap-3 pt-2">
+            <button type="button" class="flex-1 btn-secondary-tw h-12 uppercase tracking-widest text-[0.65rem] font-black" onclick="this.closest('.fixed').remove()">Cancelar</button>
+            <button type="submit" class="flex-[2] btn-primary-tw h-12 uppercase tracking-widest text-[0.65rem] font-black shadow-lg shadow-primary/20">
+              <i class="fas fa-cloud-upload-alt mr-2"></i> SUBIR EVIDENCIA
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
     `;
   document.body.appendChild(modal);
-
   // Actualizar ubicación si llega después
   setTimeout(() => {
     if (navigator.geolocation) {
@@ -209,20 +235,93 @@ async function openWeeklyEvidenceModal() {
 async function submitMonthlyReport(e) {
   e.preventDefault();
   const btn = document.getElementById('btn-submit-report');
+  const formData = new FormData(e.target);
+
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
 
-  // Simulamos subida a Supabase
-  setTimeout(() => {
+  try {
+    const results = Array.from(formData.getAll('results[]'));
+    const { error } = await _supabase
+      .from('teacher_monthly_reports')
+      .insert({
+        teacher_id: currentUser.id,
+        month: parseInt(formData.get('month')),
+        year: parseInt(formData.get('year')),
+        results_intro: formData.get('results_intro'),
+        results: results,
+        inconveniences: formData.get('inconveniences'),
+        actions: formData.get('actions'),
+        conclusion: formData.get('conclusion'),
+        created_at: new Date().toISOString()
+      });
+
+    if (error) throw error;
+
     showToast('✅ Informe Mensual enviado correctamente', 'success');
-    btn.closest('.modal').remove();
-    // Aquí irían los inserts a 'teacher_reports' y 'storage'
-  }, 1500);
+    e.target.closest('.modal').remove();
+    initGamification(); // Recargar XP
+  } catch (err) {
+    console.error('Error enviando informe:', err);
+    showToast('❌ Error al enviar informe: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar Informe';
+  }
 }
 
 async function submitWeeklyEvidence(e) {
   e.preventDefault();
-  showToast('✅ Evidencia subida con éxito', 'success');
-  e.target.closest('.modal').remove();
-  // Aquí irían los inserts a 'weekly_evidence' y 'storage'
+  const btn = e.target.querySelector('button[type="submit"]');
+  const formData = new FormData(e.target);
+  const photos = document.getElementById('evidence-photos').files;
+
+  if (photos.length === 0) {
+    return showToast('❌ Adjunta al menos una fotografía', 'error');
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Subiendo...';
+
+  try {
+    // 1. Subir fotos (solo la primera como representativa para simplificar en esta tabla)
+    // Opcionalmente se podrían subir todas y guardar URLs en un array.
+    let photoUrl = '';
+    if (photos.length > 0) {
+      const file = photos[0];
+      const fileName = `evidence/${currentUser.id}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+      const { error: uploadError } = await _supabase.storage.from('project-videos').upload(fileName, file);
+      if (uploadError) throw uploadError;
+      const { data } = _supabase.storage.from('project-videos').getPublicUrl(fileName);
+      photoUrl = data.publicUrl;
+    }
+
+    // 2. Insertar en base de datos
+    const { error } = await _supabase
+      .from('weekly_evidence')
+      .insert({
+        teacher_id: currentUser.id,
+        title: formData.get('title'),
+        description: formData.get('description'),
+        photo_url: photoUrl,
+        location: formData.get('location'),
+        created_at: new Date().toISOString()
+      });
+
+    if (error) throw error;
+
+    showToast('✅ Evidencia subida con éxito y +10 XP sumados.', 'success');
+    e.target.closest('.modal').remove();
+
+    // Recargar XP y Feed para ocultar el botón
+    initGamification();
+    loadFeed();
+
+  } catch (err) {
+    console.error('Error subiendo evidencia:', err);
+    showToast('❌ Error: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-camera"></i> Subir Evidencia';
+  }
 }

@@ -16,7 +16,7 @@ async function loadAdminTeacherPerformance() {
     try {
         const [teachersRes, ratingsRes, evalsRes] = await Promise.all([
             _supabase.from('teachers').select('*'),
-            _supabase.from('teacher_ratings').select('rating, teacher_id, message, created_at, students(full_name)'),
+            _supabase.from('teacher_ratings').select('rating, teacher_id, message, created_at, students:student_id(full_name)'),
             _supabase.from('evaluations').select('id, teacher_id')
         ]);
 
@@ -24,6 +24,7 @@ async function loadAdminTeacherPerformance() {
         const ratings = ratingsRes.data || [];
         const evaluations = evalsRes.data || [];
 
+        // Calculate individual teacher performance
         const performanceData = teachers.map(t => {
             const tr = ratings.filter(r => r.teacher_id === t.id);
             const te = evaluations.filter(e => e.teacher_id === t.id);
@@ -34,11 +35,33 @@ async function loadAdminTeacherPerformance() {
                 avgRating: parseFloat(avg),
                 totalRatings: tr.length,
                 totalEvals: te.length,
-                lastRatings: tr.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 3)
+                lastRatings: tr.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 3),
+                isActive: tr.length > 0 || te.length > 0 // Consider active if has ratings or evaluations
             };
         }).sort((a, b) => b.avgRating - a.avgRating);
 
-        renderTeacherPerformanceHTML(container, performanceData);
+        // Calculate aggregated KPIs from ALL ACTIVE teachers
+        const activeTeachers = performanceData.filter(t => t.isActive);
+        const aggregatedKPIs = {
+            totalActiveTeachers: activeTeachers.length,
+            totalInactiveTeachers: teachers.length - activeTeachers.length,
+            overallAvgRating: activeTeachers.length > 0
+                ? (activeTeachers.reduce((sum, t) => sum + t.avgRating, 0) / activeTeachers.length).toFixed(1)
+                : 0,
+            totalRatings: ratings.length,
+            totalEvaluations: evaluations.length,
+            avgRatingsPerTeacher: activeTeachers.length > 0
+                ? Math.round(ratings.length / activeTeachers.length)
+                : 0,
+            avgEvalsPerTeacher: activeTeachers.length > 0
+                ? Math.round(evaluations.length / activeTeachers.length)
+                : 0,
+            excellentTeachers: activeTeachers.filter(t => t.avgRating >= 4.5).length,
+            competentTeachers: activeTeachers.filter(t => t.avgRating >= 3.5 && t.avgRating < 4.5).length,
+            needsAttention: activeTeachers.filter(t => t.avgRating < 3.5 && t.avgRating > 0).length
+        };
+
+        renderTeacherPerformanceHTML(container, performanceData, aggregatedKPIs);
 
     } catch (err) {
         console.error('Error performance:', err);
@@ -46,12 +69,77 @@ async function loadAdminTeacherPerformance() {
     }
 }
 
-function renderTeacherPerformanceHTML(container, data) {
+function renderTeacherPerformanceHTML(container, data, kpis) {
     container.innerHTML = `
-        <div class="card-header" style="margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center;">
+        <!-- Aggregated KPIs Dashboard -->
+        <div class="card-header" style="margin-bottom: 25px;">
             <div>
                 <h2 style="margin:0;">📊 Desempeño General de Docentes</h2>
-                <p style="color: var(--text-light); margin: 5px 0 0 0;">Análisis basado en evaluaciones de estudiantes y actividad en plataforma</p>
+                <p style="color: var(--text-light); margin: 5px 0 0 0;">Métricas agregadas de todos los docentes activos en la plataforma</p>
+            </div>
+        </div>
+
+        <!-- KPIs Summary Cards -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px;">
+            <div style="background: linear-gradient(135deg, #fef3c7, #fde68a); padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-left: 5px solid #f59e0b;">
+                <div style="display: flex; justify-content: space-between; align-items: start;">
+                    <div>
+                        <div style="font-size: 0.8rem; text-transform: uppercase; color: #92400e; font-weight: 700; margin-bottom: 8px;">Calificación Promedio General</div>
+                        <div style="font-size: 2.5rem; font-weight: 900; color: #78350f; line-height: 1;">${kpis.overallAvgRating}</div>
+                        <div style="margin-top: 8px; color: #92400e; font-size: 0.8rem;">⭐ De ${kpis.totalActiveTeachers} docentes activos</div>
+                    </div>
+                    <i class="fas fa-star" style="font-size: 2.5rem; color: #f59e0b; opacity: 0.3;"></i>
+                </div>
+            </div>
+
+            <div style="background: linear-gradient(135deg, #dbeafe, #bfdbfe); padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-left: 5px solid #3b82f6;">
+                <div style="display: flex; justify-content: space-between; align-items: start;">
+                    <div>
+                        <div style="font-size: 0.8rem; text-transform: uppercase; color: #1e40af; font-weight: 700; margin-bottom: 8px;">Total Evaluaciones</div>
+                        <div style="font-size: 2.5rem; font-weight: 900; color: #1e3a8a; line-height: 1;">${kpis.totalRatings}</div>
+                        <div style="margin-top: 8px; color: #1e40af; font-size: 0.8rem;">📝 ${kpis.avgRatingsPerTeacher} por docente</div>
+                    </div>
+                    <i class="fas fa-clipboard-list" style="font-size: 2.5rem; color: #3b82f6; opacity: 0.3;"></i>
+                </div>
+            </div>
+
+            <div style="background: linear-gradient(135deg, #d1fae5, #a7f3d0); padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-left: 5px solid #10b981;">
+                <div style="display: flex; justify-content: space-between; align-items: start;">
+                    <div>
+                        <div style="font-size: 0.8rem; text-transform: uppercase; color: #065f46; font-weight: 700; margin-bottom: 8px;">Proyectos Calificados</div>
+                        <div style="font-size: 2.5rem; font-weight: 900; color: #064e3b; line-height: 1;">${kpis.totalEvaluations}</div>
+                        <div style="margin-top: 8px; color: #065f46; font-size: 0.8rem;">📚 ${kpis.avgEvalsPerTeacher} por docente</div>
+                    </div>
+                    <i class="fas fa-project-diagram" style="font-size: 2.5rem; color: #10b981; opacity: 0.3;"></i>
+                </div>
+            </div>
+
+            <div style="background: linear-gradient(135deg, #e0e7ff, #c7d2fe); padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-left: 5px solid #8b5cf6;">
+                <div>
+                    <div style="font-size: 0.8rem; text-transform: uppercase; color: #5b21b6; font-weight: 700; margin-bottom: 12px;">Distribución de Desempeño</div>
+                    <div style="display: grid; grid-template-columns: 1fr; gap: 8px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.8rem; color: #5b21b6;">Sobresaliente</span>
+                            <strong style="color: #10b981; font-size: 1.1rem;">${kpis.excellentTeachers}</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.8rem; color: #5b21b6;">Competente</span>
+                            <strong style="color: #3b82f6; font-size: 1.1rem;">${kpis.competentTeachers}</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.8rem; color: #5b21b6;">Necesita Atención</span>
+                            <strong style="color: #ef4444; font-size: 1.1rem;">${kpis.needsAttention}</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Individual Teacher Performance Table -->
+        <div class="card-header" style="margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h3 style="margin:0;">📈 Desglose Individual por Docente</h3>
+                <p style="color: var(--text-light); margin: 5px 0 0 0;">Análisis detallado de cada docente basado en evaluaciones de estudiantes</p>
             </div>
             <button class="btn-primary" onclick="loadAdminTeacherPerformance()">
                 <i class="fas fa-sync-alt"></i> Actualizar
@@ -64,14 +152,14 @@ function renderTeacherPerformanceHTML(container, data) {
                     <tr>
                         <th>Docente</th>
                         <th>Calificación Promedio</th>
-                        <th>Volumen de Calificaciones</th>
+                        <th>Evaluaciones Recibidas</th>
                         <th>Proyectos Evaluados</th>
                         <th>Nivel de Satisfacción</th>
                     </tr>
                 </thead>
                 <tbody>
                     ${data.map(t => `
-                        <tr>
+                        <tr style="${!t.isActive ? 'opacity: 0.5;' : ''}">
                             <td>
                                 <div style="display: flex; align-items: center; gap: 12px;">
                                     <div style="width: 40px; height: 40px; border-radius: 50%; background: var(--light-gray); overflow: hidden; display: flex; align-items: center; justify-content: center;">
@@ -91,11 +179,11 @@ function renderTeacherPerformanceHTML(container, data) {
                                     </div>
                                 </div>
                             </td>
-                            <td>${t.totalRatings} recibidas</td>
-                            <td>${t.totalEvals} proyectos</td>
+                            <td style="text-align: center;">${t.totalRatings}</td>
+                            <td style="text-align: center;">${t.totalEvals}</td>
                             <td>
                                 <span class="status-badge ${t.avgRating >= 4 ? 'status-active' : (t.avgRating >= 3 ? 'status-pending' : 'status-inactive')}">
-                                    ${t.avgRating >= 4.5 ? 'Sobresaliente' : (t.avgRating >= 3.5 ? 'Competente' : 'Bajo Desempeño')}
+                                    ${t.avgRating >= 4.5 ? '🌟 Sobresaliente' : (t.avgRating >= 3.5 ? '✅ Competente' : (t.avgRating > 0 ? '⚠️ Bajo Desempeño' : '❌ Sin Datos'))}
                                 </span>
                             </td>
                         </tr>

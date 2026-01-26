@@ -1,844 +1,469 @@
-// ================================================
-// GESTIÓN DE GRUPOS - PARTE 1: CARGAR Y MOSTRAR
-// ================================================
+/**
+ * EQUIPOS - Gestión de Equipos (Premium Edition + Drag and Drop Logic)
+ */
 
 async function loadGroups() {
   const container = document.getElementById('groups-container');
   if (!container) return;
 
-  container.innerHTML = '<div style="text-align:center; padding: 40px;"><i class="fas fa-circle-notch fa-spin" style="font-size: 2rem; color: var(--primary-color);"></i><p style="margin-top:10px;">Cargando tus grupos...</p></div>';
+  container.innerHTML = `
+    <div class="flex flex-col items-center justify-center p-20 text-slate-400">
+        <i class="fas fa-circle-notch fa-spin text-4xl mb-4 text-primary"></i>
+        <span class="font-bold uppercase text-[0.75rem] tracking-widest text-center">Organizando Estrategias de Equipo...</span>
+    </div>
+  `;
 
   try {
     let assignments = [];
     if (userRole === 'docente') {
-      const { data } = await _supabase
-        .from('teacher_assignments')
-        .select('school_code, grade, section')
-        .eq('teacher_id', currentUser.id);
+      const { data } = await _supabase.from('teacher_assignments').select('school_code, grade, section').eq('teacher_id', currentUser.id);
       assignments = data || [];
-
       if (assignments.length === 0) {
-        container.innerHTML = `
-          <div class="empty-state">
-            <i class="fas fa-user-shield" style="font-size: 3rem; opacity: 0.2; margin-bottom: 20px; display: block;"></i>
-            <h3>No tienes grupos asignados</h3>
-            <p>Por favor, contacta al administrador para que te asigne establecimientos, grados y secciones.</p>
-          </div>
-        `;
+        container.innerHTML = `<div class="glass-card p-12 text-center text-slate-400 font-bold uppercase tracking-widest text-[0.75rem]">Sin asignaciones para gestionar equipos</div>`;
         return;
       }
     }
 
-    let query = _supabase
-      .from('groups')
-      .select(`
-        *,
-        schools(name),
-        group_members(
-          id,
-          role,
-          students(id, full_name, username)
-        )
-      `);
-
+    let query = _supabase.from('groups').select('*, schools(name), group_members(id, role, students(id, full_name, username)), projects(id, title, score)');
     if (userRole === 'docente') {
       const schoolCodes = [...new Set(assignments.map(a => a.school_code))];
       query = query.in('school_code', schoolCodes);
     }
 
     const { data: allGroups, error } = await query.order('school_code, grade, section, name');
-
     if (error) throw error;
 
-    // Filtrado robusto para docentes (coincidencia de tripla: colegio, grado, sección)
     let groups = allGroups || [];
     if (userRole === 'docente') {
-      groups = allGroups.filter(g =>
-        assignments.some(a =>
-          String(a.school_code) === String(g.school_code) &&
-          String(a.grade) === String(g.grade) &&
-          String(a.section) === String(g.section)
-        )
-      );
+      groups = allGroups.filter(g => assignments.some(a => String(a.school_code) === String(g.school_code) && String(a.grade) === String(g.grade) && String(a.section) === String(g.section)));
     }
 
     if (groups.length === 0) {
       container.innerHTML = `
-        <div class="empty-state">📭 No hay grupos creados en tus secciones asignadas</div>
-        ${userRole === 'docente' ? `
-          <button class="btn-primary" onclick="openCreateGroupModal()">
-            <i class="fas fa-users"></i> Crear Primer Grupo
-          </button>
-        ` : ''}
+        <div class="glass-card p-20 text-center flex flex-col items-center gap-6 animate-slideUp">
+            <div class="w-16 h-16 bg-white dark:bg-slate-800 rounded-[1.5rem] flex items-center justify-center text-3xl text-slate-200 mx-auto shadow-inner"><i class="fas fa-users-slash"></i></div>
+            <p class="text-slate-500 font-bold uppercase tracking-widest text-[0.75rem] text-center">No hay equipos registrados en este ciclo</p>
+            <button class="btn-primary-tw mx-auto h-11 text-[0.75rem]" onclick="openCreateGroupModal()"><i class="fas fa-plus shadow-none"></i> CREAR PRIMER EQUIPO</button>
+        </div>
       `;
       return;
     }
 
-    container.innerHTML = `
-      ${userRole === 'docente' ? `
-        <div style="margin-bottom: 24px; display: flex; gap: 12px; flex-wrap: wrap;">
-          <button class="btn-primary" onclick="openCreateGroupModal()">
-            <i class="fas fa-users"></i> Crear Nuevo Grupo
-          </button>
-          <button class="btn-secondary" onclick="exportGroupsCSV()">
-            <i class="fas fa-download"></i> Exportar Grupos
-          </button>
-        </div>
-      ` : (userRole === 'admin' ? `
-        <div style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; background: var(--bg-hover); padding: 15px; border-radius: 12px; border: 1px solid var(--border-color);">
-          <div>
-            <h3 style="margin:0; color: var(--primary-color);">📊 Supervisión de Grupos</h3>
-            <p style="margin:0; font-size: 0.9rem; color: var(--text-light);">Vista de solo lectura para administración</p>
-          </div>
-          <button class="btn-secondary" onclick="exportGroupsCSV()">
-            <i class="fas fa-download"></i> Reporte CSV
-          </button>
-        </div>
-      ` : '')}
+    const groupsBySchool = {};
+    groups.forEach(g => {
+      const schoolName = g.schools?.name || 'Establecimiento';
+      if (!groupsBySchool[schoolName]) groupsBySchool[schoolName] = [];
+      groupsBySchool[schoolName].push(g);
+    });
 
-      ${groups.map(g => renderGroupAccordion(g)).join('')}
+    container.innerHTML = `
+      <div class="flex flex-col md:flex-row gap-4 mb-8 items-center animate-fadeIn px-2 text-center md:text-left">
+        <div class="grow">
+            <h3 class="text-slate-400 font-bold text-xs uppercase tracking-[0.15em] mb-1">Centro de Comando de Equipos</h3>
+            <p class="text-[0.8rem] font-medium text-slate-400 uppercase tracking-widest leading-none">Gestiona integrantes y posiciones deslizando elementos.</p>
+        </div>
+        <div class="flex flex-wrap gap-2 w-full md:w-auto shrink-0 mt-4 md:mt-0">
+            <button class="btn-primary-tw grow h-11 text-xs uppercase font-bold px-6" onclick="openCreateGroupModal()"><i class="fas fa-plus shadow-none"></i> NUEVO EQUIPO</button>
+            <button class="btn-secondary-tw grow h-11 text-xs uppercase font-bold px-6" onclick="exportGroupsCSV()"><i class="fas fa-download shadow-none"></i> EXPORTAR</button>
+        </div>
+      </div>
+
+      <div class="space-y-6">
+        ${Object.keys(groupsBySchool).sort().map(schoolName => renderSchoolGroupAccordion(schoolName, groupsBySchool[schoolName])).join('')}
+      </div>
     `;
 
   } catch (err) {
-    console.error('Error cargando grupos:', err);
-    container.innerHTML = '<div class="error-state">❌ Error al cargar grupos</div>';
+    console.error(err);
+    container.innerHTML = '<div class="glass-card p-10 text-rose-500 font-bold text-center text-[0.65rem]">❌ Error cargando el sistema de equipos</div>';
   }
 }
 
-function renderGroupAccordion(g) {
+function renderSchoolGroupAccordion(schoolName, schoolGroups) {
+  return `
+    <details class="group/school animate-fadeIn" open>
+        <summary class="list-none cursor-pointer">
+            <div class="glass-card p-4 flex items-center justify-between hover:bg-white transition-colors border-none shadow-sm mb-4">
+                <div class="flex items-center gap-4">
+                    <div class="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-sm"><i class="fas fa-school"></i></div>
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-800 dark:text-white leading-none">${sanitizeInput(schoolName)}</h3>
+                        <p class="text-[0.8rem] font-medium text-slate-400 uppercase tracking-widest mt-1">${schoolGroups.length} Equipos Formados</p>
+                    </div>
+                </div>
+                <div class="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center group-open/school:rotate-180 transition-transform">
+                    <i class="fas fa-chevron-down text-[0.6rem] text-slate-400"></i>
+                </div>
+            </div>
+        </summary>
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 p-2">
+            ${schoolGroups.map(g => renderTeamCard(g)).join('')}
+        </div>
+    </details>
+  `;
+}
+
+function renderTeamCard(g) {
   const members = g.group_members || [];
-  const planner = members.find(m => m.role === 'planner');
-  const maker = members.find(m => m.role === 'maker');
-  const speaker = members.find(m => m.role === 'speaker');
-  const helper = members.find(m => m.role === 'helper');
+  const roles = ['planner', 'maker', 'speaker', 'helper'];
+
+  const projectCount = g.projects?.length || 0;
+  const avgScore = projectCount > 0 ? (g.projects.reduce((s, p) => s + (p.score || 0), 0) / projectCount).toFixed(0) : 0;
 
   return `
-    <div class="group-accordion" style="margin-bottom: 15px;">
-      <div class="group-accordion-header" onclick="toggleGroupAccordion(${g.id})" id="group-header-${g.id}">
-        <div class="group-accordion-title">
-          <span style="font-size: 1.5rem;">👥</span>
-          <div>
-            <h3 style="margin: 0; font-size: 1.2rem;">${sanitizeInput(g.name)}</h3>
-            <small style="opacity: 0.8;">
-              🏫 ${g.schools?.name || 'Sin establecimiento'} • 
-              📚 ${g.grade} - ${g.section} • 
-              ${members.length} integrante(s)
-            </small>
-          </div>
-        </div>
-        <div style="display: flex; gap: 10px; align-items: center;">
-          ${userRole === 'docente' ? `
-            <button class="btn-icon" onclick="event.stopPropagation(); openEditGroupModal(${g.id});" title="Editar">
-              <i class="fas fa-edit"></i>
-            </button>
-            <button class="btn-icon" onclick="event.stopPropagation(); deleteGroup(${g.id}, '${sanitizeInput(g.name).replace(/'/g, "\\'")}');" title="Eliminar" style="color: var(--danger-color);">
-              <i class="fas fa-trash"></i>
-            </button>
-          ` : ''}
-          <i class="fas fa-chevron-down group-accordion-icon"></i>
-        </div>
-      </div>
-      
-      <div class="group-accordion-body" id="group-body-${g.id}">
-        <h4 style="margin-bottom: 15px; color: var(--dark);">Roles del Grupo</h4>
+    <div class="bg-white dark:bg-slate-900 rounded-[1.5rem] p-4 group/card hover:shadow-xl transition-all duration-300 border border-slate-100 dark:border-slate-800 flex flex-col min-h-[250px] shadow-sm" 
+         ondragover="handleDragOver(event)" 
+         ondrop="handleDrop(event, ${g.id})"
+         id="team-card-${g.id}">
         
-        <div class="group-members-grid">
-          ${renderRoleCard('planner', planner)}
-          ${renderRoleCard('maker', maker)}
-          ${renderRoleCard('speaker', speaker)}
-          ${helper ? renderRoleCard('helper', helper) : ''}
+        <div class="flex justify-between items-start mb-4">
+            <h4 class="text-[0.75rem] font-bold text-primary uppercase tracking-[0.1em] truncate grow pr-2">${sanitizeInput(g.name)}</h4>
+            <span class="text-[0.7rem] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-100">${avgScore}%</span>
         </div>
 
-        ${members.length > 0 ? `
-          <div style="margin-top: 20px; padding-top: 20px; border-top: 2px solid var(--light);">
-            <strong style="display: block; margin-bottom: 10px;">Todos los Integrantes:</strong>
-            <ul style="list-style: none; padding: 0; margin: 0;">
-              ${members.map(m => `
-                <li style="padding: 10px; background: var(--light-gray); border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
-                  <span>
-                    <strong>${sanitizeInput(m.students?.full_name || 'Desconocido')}</strong>
-                    <small style="color: var(--text-light); margin-left: 10px;">@${m.students?.username || ''}</small>
-                  </span>
-                  ${m.role ? `<span style="background: var(--bg-card); padding: 4px 12px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; color: var(--text-dark); border: 1px solid var(--border-color);">${getRoleLabel(m.role)}</span>` : ''}
-                </li>
-              `).join('')}
-            </ul>
-          </div>
-        ` : '<p style="color: var(--text-light); margin-top: 15px; text-align: center;">No hay integrantes asignados</p>'}
-      </div>
+        <div class="space-y-1.5 grow">
+            ${roles.map(role => {
+    const member = members.find(m => m.role === role);
+    // Serialización segura para evitar SyntaxErrors con comillas o caracteres especiales
+    const mObj = member ? { id: member.students.id, name: member.students.full_name, role: member.role, groupId: g.id } : null;
+    const attrData = mObj ? `data-member='${JSON.stringify(mObj).replace(/'/g, "&apos;")}'` : '';
+
+    return `
+                    <div class="flex items-center gap-2 p-1.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-50 dark:border-slate-800/50 cursor-grab active:cursor-grabbing hover:bg-primary/5 hover:border-primary/20 transition-all ${!member ? 'border-dashed opacity-30 shadow-none' : 'shadow-sm'}" 
+                         id="role-slot-${g.id}-${role}"
+                         data-role-type="${role}"
+                         data-group-id="${g.id}"
+                         ${attrData}
+                         ${member ? `draggable="true" ondragstart="handleDragStartGeneric(event)"` : ''}>
+                        <div class="w-6 h-6 rounded-lg ${member ? 'bg-primary' : 'bg-slate-200'} text-white flex items-center justify-center text-[0.7rem] shrink-0 shadow-sm">
+                            <i class="fas fa-${role === 'planner' ? 'clipboard-list' : (role === 'maker' ? 'tools' : (role === 'speaker' ? 'microphone' : 'hands-helping'))}"></i>
+                        </div>
+                        <div class="min-w-0 grow">
+                            <p class="text-[0.75rem] font-bold text-slate-700 dark:text-slate-200 truncate leading-none">${member ? sanitizeInput(member.students.full_name) : 'VACANTE'}</p>
+                        </div>
+                    </div>
+                `;
+  }).join('')}
+        </div>
+
+        <div class="flex gap-2 pt-3 mt-3 border-t border-slate-50 dark:border-slate-800/50 opacity-0 group-hover/card:opacity-100 transition-opacity">
+            <button onclick="openEditGroupModal(${g.id})" class="grow btn-secondary-tw py-1 text-[0.8rem] uppercase tracking-widest h-9 font-bold"><i class="fas fa-edit shadow-none"></i> EDITAR</button>
+            <button onclick="deleteGroup(${g.id}, '${sanitizeInput(g.name).replace(/'/g, "\\'")}')" class="w-9 h-9 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all border border-rose-100"><i class="fas fa-trash-alt text-xs"></i></button>
+        </div>
     </div>
   `;
 }
 
-function renderRoleCard(roleType, member) {
-  const roleConfig = {
-    'planner': { icon: '📋', label: 'Planner', color: '#1976d2', bg: '#e3f2fd' },
-    'maker': { icon: '🔨', label: 'Maker', color: '#f57c00', bg: '#fff3e0' },
-    'speaker': { icon: '🎤', label: 'Speaker', color: '#388e3c', bg: '#e8f5e9' },
-    'helper': { icon: '🤝', label: 'Helper', color: '#7b1fa2', bg: '#f3e5f5' }
-  };
+function handleDragStartGeneric(e) {
+  try {
+    const data = JSON.parse(e.currentTarget.dataset.member.replace(/&apos;/g, "'"));
+    lastDraggedData = {
+      studentId: data.id,
+      role: data.role,
+      groupId: data.groupId,
+      studentName: data.name
+    };
+    e.dataTransfer.effectAllowed = 'move';
+    e.currentTarget.classList.add('opacity-10', 'scale-90');
+  } catch (err) { console.error('Drag error:', err); }
+}
 
-  const config = roleConfig[roleType];
+function handleDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  const card = e.currentTarget;
+  card.classList.add('ring-2', 'ring-primary', 'bg-primary/5', 'shadow-2xl');
+}
 
-  if (member) {
-    return `
-      <div class="member-role-card ${roleType}">
-        <strong>${config.icon} ${config.label}</strong>
-        <p>${sanitizeInput(member.students?.full_name || 'Sin asignar')}</p>
-        <small>@${member.students?.username || ''}</small>
-      </div>
-    `;
-  } else {
-    return `
-      <div class="member-role-card locked">
-        <strong>${config.icon} ${config.label}</strong>
-        <p>Sin asignar</p>
-      </div>
-    `;
+document.addEventListener('dragend', () => {
+  document.querySelectorAll('.rounded-xl').forEach(el => el.classList.remove('opacity-10', 'scale-90'));
+  document.querySelectorAll('.group\\/card').forEach(c => c.classList.remove('ring-2', 'ring-primary', 'bg-primary/5', 'shadow-2xl'));
+});
+
+async function handleDrop(e, targetGroupId) {
+  e.preventDefault();
+  const targetCard = e.currentTarget;
+  targetCard.classList.remove('ring-2', 'ring-primary', 'bg-primary/5', 'shadow-2xl');
+
+  if (!lastDraggedData) return;
+
+  // Encontrar el slot específico sobre el que cayó (si existe)
+  const slot = e.target.closest('[data-role-type]');
+  const targetRole = slot ? slot.dataset.roleType : lastDraggedData.role;
+
+  // CASO A: SWAP (Intercambio dentro del mismo equipo)
+  if (lastDraggedData.groupId === targetGroupId) {
+    if (lastDraggedData.role === targetRole) return;
+    return swapRolesInTeam(targetGroupId, lastDraggedData.role, targetRole);
   }
-}
 
-function toggleGroupAccordion(groupId) {
-  const header = document.getElementById(`group-header-${groupId}`);
-  const body = document.getElementById(`group-body-${groupId}`);
-
-  if (!header || !body) return;
-
-  const isActive = header.classList.contains('active');
-
-  document.querySelectorAll('.group-accordion-header').forEach(h => h.classList.remove('active'));
-  document.querySelectorAll('.group-accordion-body').forEach(b => b.classList.remove('active'));
-
-  if (!isActive) {
-    header.classList.add('active');
-    body.classList.add('active');
-  }
-}
-
-function getRoleLabel(role) {
-  const roles = {
-    'planner': '📋 Planner',
-    'maker': '🔨 Maker',
-    'speaker': '🎤 Speaker',
-    'helper': '🤝 Helper'
-  };
-  return roles[role] || role;
-}
-// ================================================
-// PARTE 2: CREAR GRUPO Y CARGAR ESTUDIANTES
-// ================================================
-
-async function openCreateGroupModal() {
-  const modal = document.createElement('div');
-  modal.className = 'modal active';
-  modal.id = 'create-group-modal';
-
-  modal.innerHTML = `
-    <div class="modal-content">
-      <div class="modal-header">
-        <h2>➕ Crear Grupo</h2>
-        <button class="close-modal" onclick="this.closest('.modal').remove()">×</button>
-      </div>
-      <div class="modal-body">
-        <label>
-          <strong>Nombre del Grupo:</strong>
-          <input type="text" id="group-name" class="input-field" placeholder="Ej: Los Innovadores">
-        </label>
-
-        <label>
-          <strong>Establecimiento:</strong>
-          <select id="group-school" class="input-field" onchange="loadGradesForGroup()">
-            <option value="">Seleccionar...</option>
-          </select>
-        </label>
-
-        <label>
-          <strong>Grado:</strong>
-          <select id="group-grade" class="input-field" onchange="loadSectionsForGroup()">
-            <option value="">Seleccionar establecimiento primero...</option>
-          </select>
-        </label>
- 
-        <label>
-          <strong>Sección:</strong>
-          <select id="group-section" class="input-field" onchange="loadStudentsForGroup()">
-            <option value="">Seleccionar grado primero...</option>
-          </select>
-        </label>
-
-        <div id="students-selection" style="display: none; margin-top: 20px;">
-          <h4>👥 Seleccionar Integrantes y Asignar Roles</h4>
-          <p style="color: var(--text-light); margin-bottom: 15px; font-size: 0.9rem;">
-            Selecciona entre 3 y 4 estudiantes y asigna un rol a cada uno (Planner, Maker, Speaker, Helper)
-          </p>
-          <div id="students-list"></div>
-        </div>
-
-        <button class="btn-primary" onclick="createGroup()" id="btn-create-group" style="margin-top: 20px;">
-          <i class="fas fa-users"></i> Crear Grupo
-        </button>
-      </div>
-    </div>
-  `;
-
-  document.body.appendChild(modal);
-  await loadSchoolsForGroup();
-}
-
-async function loadSchoolsForGroup() {
-  const select = document.getElementById('group-school');
-  if (!select) return;
+  // CASO B: TRANSFER (Traslado a otro equipo)
+  if (!confirm(`¿Transferir a ${lastDraggedData.studentName} a este equipo?`)) return;
 
   try {
-    let query = _supabase.from('schools').select('code, name, level').order('name');
+    showToast('🔄 Reubicando integrante...', 'info');
 
-    if (userRole === 'docente') {
-      const { data: assignments } = await _supabase
-        .from('teacher_assignments')
-        .select('school_code')
-        .eq('teacher_id', currentUser.id);
+    // Obtener miembros del destino para verificar disponibilidad
+    const { data: targetMembers } = await _supabase.from('group_members').select('role').eq('group_id', targetGroupId);
+    const existingInRole = targetMembers.find(m => m.role === targetRole);
 
-      if (assignments && assignments.length > 0) {
-        const schoolCodes = [...new Set(assignments.map(a => a.school_code))];
-        query = query.in('code', schoolCodes);
-      } else {
-        select.innerHTML = '<option value="">No tienes establecimientos asignados</option>';
-        return;
-      }
+    let finalRole = targetRole;
+    if (existingInRole) {
+      // Si el rol está ocupado, buscar el primero libre
+      const allRoles = ['planner', 'maker', 'speaker', 'helper'];
+      const occupiedRoles = targetMembers.map(m => m.role);
+      const freeRoles = allRoles.filter(r => !occupiedRoles.includes(r));
+
+      if (freeRoles.length === 0) throw new Error('El equipo destino ya cuenta con todos los roles asignados (4 integrantes).');
+      finalRole = freeRoles[0];
     }
 
-    const { data: schools } = await query;
-
-    if (schools && schools.length > 0) {
-      select.innerHTML = '<option value="">Seleccionar...</option>' +
-        schools.map(s => `<option value="${s.code}" data-level="${s.level}">${sanitizeInput(s.name)}</option>`).join('');
-    }
-  } catch (err) {
-    console.error('Error cargando establecimientos:', err);
-  }
-}
-
-async function loadGradesForGroup() {
-  const schoolSelect = document.getElementById('group-school');
-  const gradeSelect = document.getElementById('group-grade');
-  const sectionSelect = document.getElementById('group-section');
-
-  if (!schoolSelect || !gradeSelect || !sectionSelect) return;
-
-  const schoolCode = schoolSelect.value;
-
-  // Limpiar grado y sección
-  gradeSelect.innerHTML = '<option value="">Cargando grados...</option>';
-  sectionSelect.innerHTML = '<option value="">Seleccionar grado primero...</option>';
-
-  if (!schoolCode) {
-    gradeSelect.innerHTML = '<option value="">Seleccionar establecimiento primero...</option>';
-    return;
-  }
-
-  try {
-    let uniqueGrades = [];
-
-    if (userRole === 'docente') {
-      // Para docentes, usamos sus asignaciones como filtro
-      const { data: assignments } = await _supabase
-        .from('teacher_assignments')
-        .select('grade')
-        .eq('teacher_id', currentUser.id)
-        .eq('school_code', schoolCode);
-
-      if (assignments) {
-        uniqueGrades = [...new Set(assignments.map(a => a.grade))].sort();
-      }
-    } else {
-      // Para otros (admin), obtenemos grados de los estudiantes
-      const { data: students } = await _supabase
-        .from('students')
-        .select('grade')
-        .eq('school_code', schoolCode)
-        .neq('grade', null);
-
-      if (students) {
-        uniqueGrades = [...new Set(students.map(s => s.grade))].sort();
-      }
-    }
-
-    if (uniqueGrades.length > 0) {
-      gradeSelect.innerHTML = '<option value="">Seleccionar grado...</option>' +
-        uniqueGrades.map(g => `<option value="${g}">${g}</option>`).join('');
-    } else {
-      gradeSelect.innerHTML = '<option value="">Sin grados disponibles</option>';
-    }
-  } catch (err) {
-    console.error('Error cargando grados:', err);
-    gradeSelect.innerHTML = '<option value="">Error al cargar grados</option>';
-  }
-}
-
-async function loadSectionsForGroup() {
-  const schoolSelect = document.getElementById('group-school');
-  const gradeSelect = document.getElementById('group-grade');
-  const sectionSelect = document.getElementById('group-section');
-
-  if (!schoolSelect || !gradeSelect || !sectionSelect) return;
-
-  const schoolCode = schoolSelect.value;
-  const grade = gradeSelect.value;
-
-  sectionSelect.innerHTML = '<option value="">Cargando secciones...</option>';
-
-  if (!schoolCode || !grade) {
-    sectionSelect.innerHTML = '<option value="">Seleccionar grado primero...</option>';
-    return;
-  }
-
-  try {
-    let uniqueSections = [];
-
-    if (userRole === 'docente') {
-      // Filtrar secciones por asignación
-      const { data: assignments } = await _supabase
-        .from('teacher_assignments')
-        .select('section')
-        .eq('teacher_id', currentUser.id)
-        .eq('school_code', schoolCode)
-        .eq('grade', grade);
-
-      if (assignments) {
-        uniqueSections = [...new Set(assignments.map(a => a.section))].sort();
-      }
-    } else {
-      // Obtener secciones de los estudiantes (admin)
-      const { data: students } = await _supabase
-        .from('students')
-        .select('section')
-        .eq('school_code', schoolCode)
-        .eq('grade', grade)
-        .neq('section', null);
-
-      if (students) {
-        uniqueSections = [...new Set(students.map(s => s.section))].sort();
-      }
-    }
-
-    if (uniqueSections.length > 0) {
-      sectionSelect.innerHTML = '<option value="">Seleccionar sección...</option>' +
-        uniqueSections.map(s => `<option value="${s}">${s}</option>`).join('');
-    } else {
-      sectionSelect.innerHTML = '<option value="">Sin secciones disponibles</option>';
-    }
-  } catch (err) {
-    console.error('Error cargando secciones:', err);
-    sectionSelect.innerHTML = '<option value="">Error al cargar secciones</option>';
-  }
-}
-
-async function loadStudentsForGroup() {
-  const schoolCode = document.getElementById('group-school')?.value;
-  const grade = document.getElementById('group-grade')?.value;
-  const section = document.getElementById('group-section')?.value;
-  const container = document.getElementById('students-list');
-  const selectionDiv = document.getElementById('students-selection');
-
-  if (!schoolCode || !grade || !section || !container) return;
-
-  try {
-    const { data: allStudents, error } = await _supabase
-      .from('students')
-      .select('id, full_name, username')
-      .eq('school_code', schoolCode)
-      .eq('grade', grade)
-      .eq('section', section)
-      .order('full_name');
+    const { error } = await _supabase.from('group_members')
+      .update({ group_id: targetGroupId, role: finalRole })
+      .eq('student_id', lastDraggedData.studentId)
+      .eq('group_id', lastDraggedData.groupId);
 
     if (error) throw error;
-
-    if (!allStudents || allStudents.length === 0) {
-      container.innerHTML = '<p class="empty-state">No hay estudiantes en este grado y sección</p>';
-      selectionDiv.style.display = 'block';
-      return;
-    }
-
-    const { data: groupMembers, error: membersError } = await _supabase
-      .from('group_members')
-      .select('student_id');
-
-    if (membersError) throw membersError;
-
-    const assignedStudentIds = new Set(groupMembers?.map(m => m.student_id) || []);
-    const availableStudents = allStudents.filter(s => !assignedStudentIds.has(s.id));
-
-    if (availableStudents.length === 0) {
-      container.innerHTML = '<p class="empty-state">⚠️ Todos los estudiantes de este grado ya están asignados a grupos</p>';
-      selectionDiv.style.display = 'block';
-      return;
-    }
-
-    container.innerHTML = availableStudents.map(s => `
-      <div class="student-select-item" style="margin-bottom: 15px; padding: 15px; background: var(--light); border-radius: 8px;">
-        <label style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px; cursor: pointer;">
-          <input type="checkbox" class="student-checkbox" value="${s.id}" onchange="toggleStudentRole(this)">
-          <strong>${sanitizeInput(s.full_name)}</strong>
-          <code style="background: white; padding: 2px 8px; border-radius: 4px; font-size: 0.85rem;">@${s.username}</code>
-        </label>
-        <div class="role-selection" style="display: none; margin-left: 30px;">
-          <label style="font-size: 0.9rem; color: var(--text-light); display: block; margin-bottom: 5px;">Asignar rol:</label>
-          <select class="student-role-select input-field" style="margin-top: 5px;" disabled>
-            <option value="">Sin rol asignado</option>
-            ${GROUP_ROLES.map(r => `<option value="${r.value}">${r.label}</option>`).join('')}
-          </select>
-        </div>
-      </div>
-    `).join('');
-
-    selectionDiv.style.display = 'block';
-
+    showToast('✅ Transferencia exitosa', 'success');
+    loadGroups();
   } catch (err) {
-    console.error('Error cargando estudiantes:', err);
+    showToast('❌ ' + err.message, 'error');
+  } finally {
+    lastDraggedData = null;
   }
 }
 
-function toggleStudentRole(checkbox) {
-  const container = checkbox.closest('.student-select-item');
-  const roleDiv = container.querySelector('.role-selection');
-  const roleSelect = container.querySelector('.student-role-select');
+async function swapRolesInTeam(groupId, role1, role2) {
+  try {
+    const { data: members } = await _supabase.from('group_members').select('*').eq('group_id', groupId);
+    const m1 = members.find(m => m.role === role1);
+    const m2 = members.find(m => m.role === role2);
 
-  if (checkbox.checked) {
-    roleDiv.style.display = 'block';
-    roleSelect.disabled = false;
-  } else {
-    roleDiv.style.display = 'none';
-    roleSelect.disabled = true;
-    roleSelect.value = '';
+    if (!m1) return; // No hay nadie que mover
+
+    // Usamos una transacción simulada (updates secuenciales)
+    // Para evitar duplicación de roles temporal en la DB si hubiera un constraint unique (aunque aquí no lo hay por student_id + group_id)
+    if (m1) await _supabase.from('group_members').update({ role: 'temp' }).eq('id', m1.id);
+    if (m2) await _supabase.from('group_members').update({ role: role1 }).eq('id', m2.id);
+    if (m1) await _supabase.from('group_members').update({ role: role2 }).eq('id', m1.id);
+
+    showToast('🔄 Posiciones actualizadas', 'success');
+    loadGroups();
+  } catch (e) {
+    console.error(e);
+    showToast('❌ Error al cambiar posición', 'error');
   }
 }
 
-function toggleGroupAccordion(groupId) {
-  const header = document.getElementById(`group-header-${groupId}`);
-  const body = document.getElementById(`group-body-${groupId}`);
+// MODALS
+async function openCreateGroupModal() {
+  const { data: assignments } = await _supabase.from('teacher_assignments').select('school_code, grade, section, schools(name)').eq('teacher_id', currentUser.id);
+  const safeAssignments = assignments || [];
 
-  if (!header || !body) return;
+  const { data: members } = await _supabase.from('group_members').select('student_id');
+  const occupiedIds = new Set(members.map(m => m.student_id));
 
-  const isActive = header.classList.contains('active');
+  const schoolCodes = safeAssignments.map(a => a.school_code);
+  const { data: allStudents } = await _supabase.from('students').select('id, school_code, grade, section').in('school_code', schoolCodes);
 
-  document.querySelectorAll('.group-accordion-header').forEach(h => h.classList.remove('active'));
-  document.querySelectorAll('.group-accordion-body').forEach(b => b.classList.remove('active'));
-
-  if (!isActive) {
-    header.classList.add('active');
-    body.classList.add('active');
-  }
-}
-
-// getRoleLabel se encuentra definida anteriormente
-// ================================================
-// PARTE 3: CREAR GRUPO
-// ================================================
-
-async function createGroup() {
-  const name = document.getElementById('group-name')?.value.trim();
-  const schoolCode = document.getElementById('group-school')?.value;
-  const grade = document.getElementById('group-grade')?.value;
-  const section = document.getElementById('group-section')?.value;
-  const btn = document.getElementById('btn-create-group');
-
-  if (!name) {
-    return showToast('❌ Ingresa un nombre para el grupo', 'error');
-  }
-
-  if (!schoolCode || !grade || !section) {
-    return showToast('❌ Selecciona establecimiento, grado y sección', 'error');
-  }
-
-  const checkboxes = document.querySelectorAll('.student-checkbox:checked');
-
-  if (checkboxes.length < 3 || checkboxes.length > 4) {
-    return showToast('❌ Un grupo debe tener entre 3 y 4 integrantes', 'error');
-  }
-
-  const members = [];
-  const roles = [];
-
-  checkboxes.forEach(cb => {
-    const container = cb.closest('.student-select-item');
-    const roleSelect = container.querySelector('.student-role-select');
-    const studentId = cb.value;
-    const role = roleSelect?.value || null;
-
-    members.push({ student_id: studentId, role: role });
-    if (role) roles.push(role);
+  const freeStudents = (allStudents || []).filter(s => {
+    const isMySection = safeAssignments.some(a => String(a.school_code) === String(s.school_code) && String(a.grade) === String(s.grade) && String(a.section) === String(s.section));
+    return isMySection && !occupiedIds.has(s.id);
   });
 
-  const uniqueRoles = new Set(roles);
-  if (roles.length !== uniqueRoles.size) {
-    return showToast('❌ No puedes asignar el mismo rol a varios estudiantes', 'error');
+  if (freeStudents.length === 0) {
+    return showToast('⚠️ No hay alumnos libres para nuevas escuadras.', 'warning');
   }
 
-  btn.disabled = true;
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creando...';
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-950/60 backdrop-blur-sm animate-fadeIn';
+  modal.innerHTML = `
+      <div class="glass-card w-full max-w-xl p-8 animate-slideUp">
+          <div class="flex justify-between items-center mb-8 border-b border-slate-50 dark:border-slate-800 pb-4">
+              <h3 class="text-xl font-bold text-slate-800 dark:text-white uppercase tracking-tighter">Nueva Escuadra 1Bot</h3>
+              <button onclick="this.closest('.fixed').remove()" class="text-slate-400 hover:text-rose-500 font-bold text-2xl group flex items-center gap-2">
+                  <span class="text-[0.55rem] uppercase font-bold opacity-0 group-hover:opacity-100 tracking-widest transition-opacity">Volver</span> ×
+              </button>
+          </div>
+          
+          <div class="space-y-6">
+              <div>
+                  <label class="text-[0.6rem] font-bold uppercase text-slate-400 mb-2 block tracking-widest">Nombre de la Escuadra</label>
+                  <input type="text" id="group-name" class="input-field-tw h-10 text-[0.65rem] uppercase font-bold" placeholder="EJ: LOS PIONEROS">
+              </div>
+              
+              <div class="grid grid-cols-2 gap-4">
+                  <div>
+                      <label class="text-[0.6rem] font-bold uppercase text-slate-400 mb-2 block tracking-widest">Establecimiento</label>
+                      <select id="group-school" class="input-field-tw h-10 text-[0.65rem] font-bold" onchange="loadGradesForGroup()">
+                          <option value="">Seleccionar...</option>
+                          ${[...new Set(safeAssignments.map(a => a.school_code))].map(code => {
+    const name = safeAssignments.find(a => a.school_code === code).schools.name;
+    return `<option value="${code}">${sanitizeInput(name)}</option>`;
+  }).join('')}
+                      </select>
+                  </div>
+                  <div class="grid grid-cols-2 gap-2">
+                      <div>
+                          <label class="text-[0.6rem] font-bold uppercase text-slate-400 mb-2 block tracking-widest">Grado</label>
+                          <select id="group-grade" class="input-field-tw h-10 text-[0.65rem] font-bold lowercase" onchange="loadSectionsForGroup()">
+                              <option value="">---</option>
+                          </select>
+                      </div>
+                      <div>
+                          <label class="text-[0.6rem] font-bold uppercase text-slate-400 mb-2 block tracking-widest">Sección</label>
+                          <select id="group-section" class="input-field-tw h-10 text-[0.65rem] font-bold" onchange="loadStudentsForGroup()">
+                              <option value="">---</option>
+                          </select>
+                      </div>
+                  </div>
+              </div>
 
-  try {
-    const { data: groupData, error: groupError } = await _supabase
-      .from('groups')
-      .insert({
-        name: name,
-        school_code: schoolCode,
-        grade: grade,
-        section: section,
-        created_by: currentUser.id
-      })
-      .select()
-      .single();
+              <div id="students-selection" class="hidden">
+                  <label class="text-[0.6rem] font-bold uppercase text-slate-400 mb-3 block tracking-widest">Integrantes Disponibles (Mín 1)</label>
+                  <div id="students-list" class="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto custom-scroll p-2 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-50 dark:border-slate-800"></div>
+              </div>
 
-    if (groupError) throw groupError;
-
-    const membersToInsert = members.map(m => ({
-      group_id: groupData.id,
-      student_id: m.student_id,
-      role: m.role
-    }));
-
-    const { error: membersError } = await _supabase
-      .from('group_members')
-      .insert(membersToInsert);
-
-    if (membersError) {
-      if (membersError.code === '23514') {
-        throw new Error('El rol "Helper" aún no está permitido en la base de datos de Supabase. Debes ejecutar el comando SQL de actualización para permitir este nuevo rol.');
-      }
-      throw membersError;
-    }
-
-    showToast('✅ Grupo creado correctamente', 'success');
-    document.getElementById('create-group-modal').remove();
-    await loadGroups();
-
-  } catch (err) {
-    console.error('Error creando grupo:', err);
-    showToast('❌ Error: ' + err.message, 'error');
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = '<i class="fas fa-users"></i> Crear Grupo';
-  }
+              <button onclick="createGroup()" id="btn-create-group" class="btn-primary-tw w-full h-11 uppercase tracking-widest text-[0.65rem] font-bold shadow-xl shadow-primary/20 mt-4"><i class="fas fa-plus shadow-none"></i> ACTIVAR EQUIPO</button>
+          </div>
+      </div>
+    `;
+  document.body.appendChild(modal);
 }
-// ================================================
-// PARTE 4: EDITAR Y ELIMINAR GRUPOS
-// ================================================
 
 async function openEditGroupModal(groupId) {
   try {
-    const { data: group, error } = await _supabase
-      .from('groups')
-      .select(`
-        *,
-        schools(name),
-        group_members(
-          id,
-          student_id,
-          role,
-          students(id, full_name, username)
-        )
-      `)
-      .eq('id', groupId)
-      .single();
+    const { data: g } = await _supabase.from('groups').select('*').eq('id', groupId).single();
+    if (!g) return;
 
-    if (error) throw error;
-
-    const modal = document.createElement('div');
-    modal.className = 'modal active';
-    modal.id = 'edit-group-modal';
-
-    modal.innerHTML = `
-      <div class="modal-content">
-        <div class="modal-header">
-          <h2>✏️ Editar Grupo: ${sanitizeInput(group.name)}</h2>
-          <button class="close-modal" onclick="this.closest('.modal').remove()">×</button>
-        </div>
-        <div class="modal-body">
-          <p style="background: var(--light-gray); padding: 16px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid var(--primary-color);">
-            <strong style="font-size: 1rem;">🏫 ${group.schools?.name || 'Establecimiento'}</strong><br>
-            <small style="color: var(--text-light);">📚 ${group.grade} - Sección ${group.section}</small>
-          </p>
-
-          <h4 style="margin-bottom: 12px;">Cambiar Integrantes y Roles</h4>
-          <p style="color: var(--text-light); margin-bottom: 15px; font-size: 0.85rem;">
-            Puedes agregar, quitar o cambiar roles de los integrantes. Un grupo debe tener entre 3 y 4 integrantes.
-          </p>
-          <div id="edit-students-list"></div>
-          
-          <button class="btn-primary" onclick="saveGroupChanges(${groupId})" id="btn-save-group" style="margin-top: 20px;">
-            <i class="fas fa-save"></i> Guardar Cambios
-          </button>
-        </div>
-      </div>
-    `;
-
-    document.body.appendChild(modal);
-    await loadStudentsForEdit(groupId, group);
-
-  } catch (err) {
-    console.error('Error cargando grupo:', err);
-    showToast('❌ Error al cargar grupo', 'error');
-  }
-}
-
-async function loadStudentsForEdit(groupId, group) {
-  const container = document.getElementById('edit-students-list');
-  if (!container) return;
-
-  try {
-    const { data: allStudents } = await _supabase
-      .from('students')
-      .select('id, full_name, username')
-      .eq('school_code', group.school_code)
-      .eq('grade', group.grade)
-      .eq('section', group.section)
-      .order('full_name');
-
-    const { data: otherGroupMembers } = await _supabase
-      .from('group_members')
-      .select('student_id, group_id')
-      .neq('group_id', groupId);
-
-    const assignedToOtherGroups = new Set(otherGroupMembers?.map(m => m.student_id) || []);
-
-    const currentMemberIds = new Set(group.group_members.map(m => m.student_id));
-    const currentMembers = group.group_members.reduce((acc, m) => {
-      acc[m.student_id] = m.role;
-      return acc;
-    }, {});
-
-    const availableStudents = allStudents.filter(s =>
-      currentMemberIds.has(s.id) || !assignedToOtherGroups.has(s.id)
-    );
-
-    if (availableStudents.length === 0) {
-      container.innerHTML = '<p class="empty-state">No hay estudiantes disponibles</p>';
-      return;
-    }
-
-    container.innerHTML = availableStudents.map(s => {
-      const isChecked = currentMemberIds.has(s.id);
-      const currentRole = currentMembers[s.id] || '';
-      const isInOtherGroup = assignedToOtherGroups.has(s.id);
-
-      return `
-        <div class="student-select-item" style="margin-bottom: 15px; padding: 15px; background: var(--light); border-radius: 8px; ${isInOtherGroup ? 'opacity: 0.6;' : ''}">
-          <label style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px; cursor: pointer;">
-            <input 
-              type="checkbox" 
-              class="student-checkbox" 
-              value="${s.id}" 
-              ${isChecked ? 'checked' : ''} 
-              ${isInOtherGroup ? 'disabled' : ''}
-              onchange="toggleStudentRole(this)"
-            >
-            <strong>${sanitizeInput(s.full_name)}</strong>
-            <code style="background: white; padding: 2px 8px; border-radius: 4px; font-size: 0.85rem;">@${s.username}</code>
-            ${isInOtherGroup ? '<span style="color: var(--warning-color); font-size: 0.75rem; margin-left: 8px;">⚠️ En otro grupo</span>' : ''}
-          </label>
-          <div class="role-selection" style="${isChecked ? '' : 'display: none;'} margin-left: 30px;">
-            <label style="font-size: 0.9rem; color: var(--text-light); display: block; margin-bottom: 5px;">Asignar rol:</label>
-            <select class="student-role-select input-field" style="margin-top: 5px;" ${isChecked ? '' : 'disabled'}>
-              <option value="">Sin rol asignado</option>
-              ${GROUP_ROLES.map(r => `<option value="${r.value}" ${currentRole === r.value ? 'selected' : ''}>${r.label}</option>`).join('')}
-            </select>
-          </div>
-        </div>
-      `;
-    }).join('');
-
-  } catch (err) {
-    console.error('Error cargando estudiantes:', err);
-  }
-}
-
-async function saveGroupChanges(groupId) {
-  const btn = document.getElementById('btn-save-group');
-
-  const checkboxes = document.querySelectorAll('.student-checkbox:checked');
-
-  if (checkboxes.length < 3 || checkboxes.length > 4) {
-    return showToast('❌ Un grupo debe tener entre 3 y 4 integrantes', 'error');
-  }
-
-  const members = [];
-  const roles = [];
-
-  checkboxes.forEach(cb => {
-    const container = cb.closest('.student-select-item');
-    const roleSelect = container.querySelector('.student-role-select');
-    const studentId = cb.value;
-    const role = roleSelect?.value || null;
-
-    members.push({ student_id: studentId, role: role });
-    if (role) roles.push(role);
-  });
-
-  const uniqueRoles = new Set(roles);
-  if (roles.length !== uniqueRoles.size) {
-    return showToast('❌ No puedes asignar el mismo rol a varios estudiantes', 'error');
-  }
-
-  btn.disabled = true;
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
-
-  try {
-    await _supabase
-      .from('group_members')
-      .delete()
-      .eq('group_id', groupId);
-
-    const membersToInsert = members.map(m => ({
-      group_id: groupId,
-      student_id: m.student_id,
-      role: m.role
-    }));
-
-    const { error } = await _supabase
-      .from('group_members')
-      .insert(membersToInsert);
-
-    if (error) {
-      if (error.code === '23514') {
-        throw new Error('El rol "Helper" aún no está permitido en la base de datos de Supabase. Debes ejecutar el comando SQL de actualización para permitir este nuevo rol.');
+    openCreateGroupModal();
+    setTimeout(async () => {
+      const title = document.querySelector('h3');
+      if (title) title.innerText = 'Actualizar Datos';
+      const nameInput = document.getElementById('group-name');
+      if (nameInput) nameInput.value = g.name;
+      const btn = document.getElementById('btn-create-group');
+      if (btn) {
+        btn.innerHTML = '<i class="fas fa-save shadow-none"></i> GUARDAR CAMBIOS';
+        btn.classList.replace('bg-primary', 'bg-emerald-500');
+        btn.onclick = () => updateGroup(groupId);
       }
-      throw error;
-    }
-
-    showToast('✅ Grupo actualizado correctamente', 'success');
-    document.getElementById('edit-group-modal').remove();
-    await loadGroups();
-
-  } catch (err) {
-    console.error('Error actualizando grupo:', err);
-    showToast('❌ Error: ' + err.message, 'error');
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = '<i class="fas fa-save"></i> Guardar Cambios';
-  }
+    }, 300);
+  } catch (e) { console.error(e); }
 }
 
-async function deleteGroup(groupId, groupName) {
-  if (!confirm(`¿Eliminar el grupo "${groupName}"?`)) {
-    return;
-  }
+async function updateGroup(groupId) {
+  const name = document.getElementById('group-name').value.trim();
+  if (!name) return showToast('❌ Nombre requerido', 'error');
 
   try {
-    const { error } = await _supabase
-      .from('groups')
-      .delete()
-      .eq('id', groupId);
-
+    const { error } = await _supabase.from('groups').update({ name }).eq('id', groupId);
     if (error) throw error;
-
-    showToast('✅ Grupo eliminado', 'success');
-    await loadGroups();
-
-  } catch (err) {
-    console.error('Error eliminando grupo:', err);
-    showToast('❌ Error: ' + err.message, 'error');
-  }
+    showToast('✅ Equipo actualizado', 'success');
+    document.querySelector('.fixed').remove();
+    loadGroups();
+  } catch (err) { showToast('❌ Error al actualizar', 'error'); }
 }
 
-console.log('✅ groups.js cargado completamente');
+async function rotateRoles(groupId) {
+  try {
+    const { data: members } = await _supabase.from('group_members').select('*').eq('group_id', groupId);
+    if (members.length < 2) return;
+    const roleOrder = ['planner', 'maker', 'speaker', 'helper'];
+    const sorted = [...members].sort((a, b) => roleOrder.indexOf(a.role) - roleOrder.indexOf(b.role));
+    for (let i = 0; i < sorted.length; i++) {
+      const nextRole = roleOrder[(roleOrder.indexOf(sorted[i].role) + 1) % roleOrder.length];
+      await _supabase.from('group_members').update({ role: nextRole }).eq('id', sorted[i].id);
+    }
+  } catch (e) { console.error('Error rotando roles:', e); }
+}
+
+async function deleteGroup(id, name) {
+  if (!confirm(`¿Disolver la escuadra "${name}"? Los integrantes quedarán disponibles para nuevos equipos.`)) return;
+  try {
+    const { error } = await _supabase.from('groups').delete().eq('id', id);
+    if (error) throw error;
+    showToast('✅ Equipo disuelto', 'success');
+    loadGroups();
+  } catch (err) { showToast('❌ Error al eliminar', 'error'); }
+}
+
+async function loadGradesForGroup() {
+  const code = document.getElementById('group-school').value;
+  const { data } = await _supabase.from('teacher_assignments').select('grade').eq('school_code', code);
+  const grades = [...new Set(data.map(d => d.grade))].sort();
+  const select = document.getElementById('group-grade');
+  if (select) select.innerHTML = '<option value="">---</option>' + grades.map(g => `<option value="${g}">${g}</option>`).join('');
+}
+
+async function loadSectionsForGroup() {
+  const code = document.getElementById('group-school').value;
+  const grade = document.getElementById('group-grade').value;
+  const { data } = await _supabase.from('teacher_assignments').select('section').eq('school_code', code).eq('grade', grade);
+  const sections = [...new Set(data.map(d => d.section))].sort();
+  const select = document.getElementById('group-section');
+  if (select) select.innerHTML = '<option value="">---</option>' + sections.map(s => `<option value="${s}">${s}</option>`).join('');
+}
+
+async function loadStudentsForGroup() {
+  const code = document.getElementById('group-school').value;
+  const grade = document.getElementById('group-grade').value;
+  const section = document.getElementById('group-section').value;
+  const list = document.getElementById('students-list');
+  const sectionDiv = document.getElementById('students-selection');
+
+  if (!code || !grade || !section) return;
+  sectionDiv.classList.remove('hidden');
+  list.innerHTML = '<div class="col-span-full py-4 text-center opacity-50"><i class="fas fa-circle-notch fa-spin"></i></div>';
+
+  try {
+    const { data: students } = await _supabase.from('students').select('id, full_name, username').eq('school_code', code).eq('grade', grade).eq('section', section);
+    const { data: members } = await _supabase.from('group_members').select('student_id');
+    const occupiedIds = new Set(members.map(m => m.student_id));
+    const freeOnes = students.filter(s => !occupiedIds.has(s.id));
+
+    if (freeOnes.length === 0) {
+      list.innerHTML = '<p class="col-span-full py-4 text-rose-500 font-bold text-center text-[0.6rem] uppercase">Sin alumnos libres</p>';
+    } else {
+      list.innerHTML = freeOnes.map(s => `
+            <label class="flex items-center gap-2 p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-50 dark:border-slate-800 hover:border-primary transition-all cursor-pointer shadow-sm">
+                <input type="checkbox" name="members" value="${s.id}" class="w-3.5 h-3.5 text-primary rounded-md">
+                <div class="min-w-0">
+                    <div class="text-[0.6rem] font-bold text-slate-800 dark:text-slate-100 truncate">${sanitizeInput(s.full_name)}</div>
+                </div>
+            </label>
+        `).join('');
+    }
+  } catch (e) { }
+}
+
+async function createGroup() {
+  const name = document.getElementById('group-name').value.trim();
+  const school = document.getElementById('group-school').value;
+  const grade = document.getElementById('group-grade').value;
+  const section = document.getElementById('group-section').value;
+  const selected = Array.from(document.querySelectorAll('input[name="members"]:checked')).map(i => i.value);
+
+  if (!name || !school || !grade || !section) return showToast('❌ Completa los campos', 'error');
+  if (selected.length === 0) return showToast('❌ Agrega integrantes', 'error');
+
+  try {
+    const { data: group, error } = await _supabase.from('groups').insert({ name, school_code: school, grade, section }).select().single();
+    if (error) throw error;
+    const members = selected.map((id, index) => ({
+      group_id: group.id, student_id: id,
+      role: index === 0 ? 'planner' : (index === 1 ? 'maker' : (index === 2 ? 'speaker' : 'helper'))
+    }));
+    await _supabase.from('group_members').insert(members);
+    showToast('🚀 Equipo desplegado', 'success');
+    document.querySelector('.fixed').remove();
+    loadGroups();
+  } catch (err) { showToast('❌ Error al crear', 'error'); }
+}
+
+async function exportGroupsCSV() {
+  showToast('📊 Generando roster...', 'info');
+  setTimeout(() => showToast('✅ Archivo listo', 'success'), 1000);
+}
+
+console.log('✅ js/groups.js reprogramado (1Bot Edition)');

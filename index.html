@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ProjectX - Sistema de Gestión de Proyectos</title>
+    <meta name="description"
+        content="ProjectX es una plataforma integral para la gestión, evaluación y seguimiento de proyectos educativos con gamificación integrada.">
 
     <!-- Estilos -->
     <link rel="stylesheet" href="css/styles.css">
@@ -13,7 +15,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
         rel="stylesheet">
 
     <!-- PWA Manifest -->
@@ -26,6 +28,329 @@
 
     <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- Tailwind CSS 3.4 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            DEFAULT: '#00ADEF', // New 1Bot Cyan
+                            dark: '#008DC2',
+                        },
+                        cream: '#F8F5F0', // New Background
+                        secondary: '#64748B',
+                        accent: '#F59E0B',
+                        dark: {
+                            bg: '#0F172A',
+                            card: '#1E293B',
+                            border: '#334155',
+                            text: '#F1F5F9'
+                        }
+                    },
+                    boxShadow: {
+                        'glass': '0 4px 30px rgba(0, 0, 0, 0.05)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        :root {
+            --primary: #00ADEF;
+            --primary-dark: #008DC2;
+            --cream: #F8F5F0;
+            --slate-50: #f8fafc;
+            --slate-100: #f1f5f9;
+            --slate-200: #e2e8f0;
+            --slate-300: #cbd5e1;
+            --slate-400: #94a3b8;
+            --slate-500: #64748b;
+            --slate-600: #475569;
+            --slate-700: #334155;
+            --slate-800: #1e293b;
+            --slate-900: #0f172a;
+            --slate-950: #020617;
+        }
+
+        body {
+            background-color: var(--cream);
+            color: var(--slate-700);
+            transition: background-color 0.3s, color 0.3s;
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            font-size: 1rem;
+        }
+
+        .dark body {
+            background-color: var(--slate-950);
+            color: var(--slate-100);
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--slate-800);
+            margin-bottom: 1.25rem;
+            letter-spacing: -0.025em;
+        }
+
+        .dark h2 {
+            color: white;
+        }
+
+        h3 {
+            font-weight: 700;
+            font-size: 1.125rem;
+        }
+
+        .glass-card {
+            background-color: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
+            border-radius: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .dark .glass-card {
+            background-color: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(30, 41, 59, 0.5);
+        }
+
+        .btn-primary-tw {
+            background-color: var(--primary);
+            color: white;
+            font-weight: 700;
+            padding: 0.625rem 1.5rem;
+            border-radius: 0.75rem;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 10px 15px -3px rgba(0, 173, 239, 0.2);
+        }
+
+        .btn-primary-tw:hover {
+            background-color: var(--primary-dark);
+        }
+
+        .btn-primary-tw:active {
+            transform: scale(0.95);
+        }
+
+        .btn-secondary-tw {
+            background-color: var(--slate-100);
+            color: var(--slate-600);
+            font-weight: 600;
+            padding: 0.625rem 1.5rem;
+            border-radius: 0.75rem;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            border: 1px solid var(--slate-200);
+            cursor: pointer;
+        }
+
+        .dark .btn-secondary-tw {
+            background-color: rgba(30, 41, 59, 0.5);
+            color: var(--slate-300);
+            border: 1px solid rgba(51, 65, 85, 0.5);
+        }
+
+        .btn-secondary-tw:hover {
+            background-color: var(--slate-200);
+        }
+
+        .dark .btn-secondary-tw:hover {
+            background-color: var(--slate-700);
+        }
+
+        .input-field-tw {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background-color: var(--slate-100);
+            border: 1px solid var(--slate-200);
+            border-radius: 0.75rem;
+            color: var(--slate-900);
+            transition: all 0.2s;
+            font-weight: 500;
+            outline: none;
+        }
+
+        .dark .input-field-tw {
+            background-color: rgba(30, 41, 59, 0.5);
+            border: 1px solid var(--slate-700);
+            color: white;
+        }
+
+        .input-field-tw:focus {
+            box-shadow: 0 0 0 2px rgba(0, 173, 239, 0.5);
+            border-color: var(--primary);
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.875rem 1.5rem;
+            margin: 0.25rem 1rem;
+            border-radius: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: var(--slate-500);
+            font-weight: 600;
+        }
+
+        .dark .nav-item {
+            color: var(--slate-400);
+        }
+
+        .nav-item:hover {
+            background-color: rgba(0, 173, 239, 0.05);
+            color: var(--primary);
+        }
+
+        .nav-item.active {
+            background-color: var(--primary);
+            color: white;
+            box-shadow: 0 20px 25px -5px rgba(0, 173, 239, 0.3);
+        }
+
+        .nav-item.active i,
+        .nav-item.active span {
+            color: white;
+        }
+
+        .nav-item i {
+            font-size: 1.125rem;
+            width: 1.5rem;
+            display: flex;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .main-content {
+            padding: 1.5rem;
+            transition: all 0.3s;
+            min-height: calc(100vh - 5rem);
+        }
+
+        @media (min-width: 768px) {
+            .main-content {
+                margin-left: 18rem;
+                padding: 2rem 3rem;
+            }
+        }
+
+        .badge-tw {
+            padding: 0.25rem 0.75rem;
+            border-radius: 0.5rem;
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+        }
+
+        .badge-primary {
+            background-color: rgba(0, 173, 239, 0.1);
+            color: var(--primary);
+        }
+
+        .badge-success {
+            background-color: rgba(16, 185, 129, 0.1);
+            color: #059669;
+        }
+
+        .badge-danger {
+            background-color: rgba(244, 63, 94, 0.1);
+            color: #e11d48;
+        }
+
+        .badge-warning {
+            background-color: rgba(245, 158, 11, 0.1);
+            color: #d97706;
+        }
+
+        .table-tw {
+            width: 100%;
+            border-spacing: 0 0.5rem;
+            border-collapse: separate;
+        }
+
+        .table-tw th {
+            padding: 1rem 1.5rem;
+            text-align: left;
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: var(--slate-400);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .table-tw td {
+            padding: 1rem 1.5rem;
+            background-color: rgba(255, 255, 255, 0.5);
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .dark .table-tw td {
+            background-color: rgba(15, 23, 42, 0.4);
+            border-color: rgba(30, 41, 59, 0.5);
+        }
+
+        .table-tw td:first-child {
+            border-left: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 1rem 0 0 1rem;
+        }
+
+        .table-tw td:last-child {
+            border-right: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 0 1rem 1rem 0;
+        }
+
+        .dark .table-tw td:first-child {
+            border-left-color: rgba(30, 41, 59, 0.5);
+        }
+
+        .dark .table-tw td:last-child {
+            border-right-color: rgba(30, 41, 59, 0.5);
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: var(--slate-200);
+            border-radius: 9999px;
+        }
+
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: var(--slate-800);
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: var(--primary);
+        }
+    </style>
 
     <!-- PDF.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -101,61 +426,102 @@
     <!-- ============================================ -->
     <!-- PANTALLA DE LOGIN -->
     <!-- ============================================ -->
-    <div id="auth-container">
-        <div class="auth-card">
-            <div class="logo">Project<span>X</span></div>
-            <h3 style="text-align: center; margin-bottom: 20px; color: var(--text-dark);">
-                Iniciar Sesión
-            </h3>
-
-            <input type="text" id="login-username" class="input-field" placeholder="Usuario o Email"
-                autocomplete="username">
-
-            <input type="password" id="login-password" class="input-field" placeholder="Contraseña"
-                autocomplete="current-password">
-
-            <button class="btn-primary" id="btn-login">
-                <i class="fas fa-sign-in-alt"></i> Entrar
-            </button>
-
-            <div class="login-help">
-                <p><strong>👤 Estudiantes:</strong> Usuario: de>tu_usuario</code> / Contraseña: de>1bot.org</code></p>
-                <p><strong>👨‍🏫 Docentes:</strong> Email registrado</p>
-                <p><strong>👑 Admin:</strong> Email de administrador</p>
+    <div id="auth-container"
+        class="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-6 sm:p-12 transition-colors duration-500">
+        <div class="glass-card w-full max-w-md p-10 transform scale-100 dark:bg-slate-900/40">
+            <div class="flex flex-col items-center mb-10">
+                <div class="text-4xl font-bold tracking-tighter text-slate-800 dark:text-white flex items-center gap-2">
+                    <div
+                        class="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center text-white shadow-lg shadow-primary/30">
+                        P</div>
+                    Project<span class="text-primary">X</span>
+                </div>
             </div>
+
+            <div id="login-error"
+                class="hidden mb-6 p-4 rounded-xl bg-rose-500/10 border-l-4 border-rose-500 text-rose-600 dark:text-rose-400 text-sm font-bold flex items-center gap-3 animate-bounce">
+                <i class="fas fa-exclamation-circle text-lg"></i>
+                <span id="login-error-text">Credenciales incorrectas</span>
+            </div>
+
+            <div class="space-y-4">
+                <div class="relative group">
+                    <i
+                        class="fas fa-user absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors"></i>
+                    <input type="text" id="login-username" placeholder="Usuario o Email"
+                        class="w-full pl-12 pr-4 py-3.5 bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all">
+                </div>
+                <div class="relative group">
+                    <i
+                        class="fas fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors"></i>
+                    <input type="password" id="login-password" placeholder="Contraseña"
+                        class="w-full pl-12 pr-4 py-3.5 bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all">
+                </div>
+                <button id="btn-login"
+                    class="w-full bg-primary hover:bg-primary-dark text-white font-bold py-4 rounded-xl shadow-xl shadow-primary/20 transition-all active:scale-[0.98] flex items-center justify-center gap-3 mt-4">
+                    <i class="fas fa-sign-in-alt"></i> ACCEDER AL PORTAL
+                </button>
+            </div>
+
+            <div class="login-help mt-10"></div>
         </div>
     </div>
-    <!-- ============================================ -->
+
     <!-- APLICACIÓN PRINCIPAL -->
-    <!-- ============================================ -->
-    <div id="app-container" style="display: none;">
+    <div id="app-container" class="hidden min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-500">
         <!-- HEADER -->
-        <header>
-            <div class="logo">Project<span>X</span></div>
-            <div class="header-right">
-                <button class="btn-theme-toggle" id="theme-toggle" title="Cambiar tema">
-                    <i class="fas fa-moon"></i>
+        <header
+            class="h-20 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-6 sticky top-0 z-[60] shadow-sm">
+            <div class="text-2xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent transform hover:scale-105 transition-transform cursor-pointer"
+                onclick="nav('feed')">
+                ProjectX
+            </div>
+
+            <div class="flex items-center gap-4 sm:gap-6">
+                <button id="theme-toggle"
+                    class="w-10 h-10 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    title="Alternar Modo Oscuro">
+                    <i class="fas fa-moon text-lg"></i>
                 </button>
-                <div class="sync-status" id="sync-indicator" title="Estado de sincronización">
-                    <i class="fas fa-cloud-check" id="sync-icon"></i>
-                    <span id="sync-count" style="display: none;">0</span>
+
+                <div id="sync-indicator"
+                    class="flex items-center gap-2 text-emerald-500 font-bold text-xs bg-emerald-500/10 px-3 py-1.5 rounded-full dark:bg-emerald-500/5">
+                    <i class="fas fa-check-circle"></i>
+                    <span class="hidden sm:inline font-black tracking-tighter">CONECTADO</span>
                 </div>
-                <div class="user-info" onclick="nav('profile')" style="cursor: pointer;">
-                    <span class="user-name" id="user-name">Usuario</span>
-                    <div class="user-avatar" id="user-avatar">👤</div>
+
+                <div class="h-8 w-[1px] bg-slate-200 dark:bg-slate-800 mx-2"></div>
+
+                <div class="flex items-center gap-3 cursor-pointer group" onclick="nav('profile')">
+                    <div class="hidden sm:block text-right">
+                        <div id="user-name" class="text-sm font-bold text-slate-800 dark:text-white leading-none mb-1">
+                            Usuario</div>
+                        <div
+                            class="text-[0.65rem] font-bold text-slate-400 dark:text-slate-500 tracking-tighter uppercase">
+                            Ver Perfil <i class="fas fa-chevron-right ml-0.5"></i></div>
+                    </div>
+                    <div id="user-avatar"
+                        class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center text-xl shadow-inner border border-primary/20 group-hover:scale-110 transition-transform">
+                        👤</div>
                 </div>
-                <button class="btn-logout" onclick="logout()">
-                    <i class="fas fa-sign-out-alt"></i> Salir
+
+                <button onclick="logout()"
+                    class="ml-2 w-10 h-10 flex items-center justify-center text-rose-500 hover:bg-rose-500/10 rounded-xl transition-colors"
+                    title="Cerrar Sesión">
+                    <i class="fas fa-power-off"></i>
                 </button>
             </div>
         </header>
 
-        <button class="sidebar-toggle" onclick="toggleSidebar()">
+        <button
+            class="sidebar-toggle fixed bottom-6 right-6 w-14 h-14 bg-primary text-white rounded-2xl shadow-2xl flex md:hidden items-center justify-center text-2xl z-[70] active:scale-95 transition-transform"
+            onclick="toggleSidebar()">
             <i class="fas fa-bars"></i>
         </button>
 
         <!-- SIDEBAR -->
-        <aside class="sidebar" id="sidebar">
+        <aside id="sidebar"
+            class="fixed left-0 top-20 h-[calc(100vh-5rem)] w-72 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transform -translate-x-full md:translate-x-0 transition-transform duration-300 z-50 overflow-y-auto shadow-xl md:shadow-none pt-4">
             <nav class="nav-menu">
                 <!-- MENÚ ESTUDIANTE -->
                 <div id="nav-estudiante" style="display: none;">
@@ -190,15 +556,23 @@
                     </div>
                     <div class="nav-item" onclick="nav('groups')">
                         <i class="fas fa-users"></i>
-                        <span>Gestionar Grupos</span>
+                        <span>Gestionar Equipos</span>
                     </div>
                     <div class="nav-item" onclick="nav('attendance')">
                         <i class="fas fa-user-check"></i>
                         <span>Tomar Asistencia</span>
                     </div>
+                    <div class="nav-item" onclick="nav('students')">
+                        <i class="fas fa-user-graduate"></i>
+                        <span>Gestionar Estudiantes</span>
+                    </div>
                     <div class="nav-item" onclick="nav('ranking')">
                         <i class="fas fa-trophy"></i>
                         <span>Ranking</span>
+                    </div>
+                    <div class="nav-item" onclick="nav('bonus-system')">
+                        <i class="fas fa-bullseye"></i>
+                        <span>Bonos y Desempeño</span>
                     </div>
                 </div>
 
@@ -240,8 +614,14 @@
                         <i class="fas fa-trophy"></i>
                         <span>Ranking Global</span>
                     </div>
+                    <div class="nav-item" onclick="nav('bonus-system')">
+                        <i class="fas fa-medal"></i>
+                        <span>Incentivos y Pagos</span>
+                    </div>
                 </div>
             </nav>
+            <!-- Widget de Desempeño Docente (Dinámico) -->
+            <div id="teacher-sidebar-widget"></div>
         </aside>
 
         <!-- CONTENIDO PRINCIPAL -->
@@ -251,45 +631,103 @@
                 <div id="admin-dashboard-container"></div>
             </section>
 
+            <!-- SISTEMA DE BONOS (NUEVO) -->
+            <section id="view-bonus-system" class="view-section">
+                <div id="main-content-area-bonus"></div>
+            </section>
+
             <!-- FEED DE PROYECTOS (EXPLORAR) -->
             <section id="view-feed" class="view-section active">
-                <h2>🏠 Feed de Proyectos</h2>
+                <h2>Proyectos 🚀</h2>
                 <div id="feed-container"></div>
             </section>
 
             <!-- SUBIR PROYECTO -->
             <section id="view-upload" class="view-section">
-                <h2>📤 Subir Proyecto</h2>
-                <div class="section-card">
-                    <label>
-                        <strong>Título del Proyecto:</strong>
-                        <input type="text" id="project-title" class="input-field" placeholder="Título descriptivo">
-                    </label>
+                <div class="glass-card p-8 max-w-4xl mx-auto animate-slideUp">
+                    <div class="flex items-center gap-4 mb-8">
+                        <div
+                            class="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center text-2xl shadow-inner border border-primary/20">
+                            <i class="fas fa-rocket"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-2xl font-black text-slate-800 dark:text-white leading-none mb-1">Lanzar
+                                Nuevo Proyecto</h2>
+                            <p class="text-[0.85rem] font-bold text-slate-400 uppercase tracking-widest">Comparte tus
+                                avances tecnológicos con la comunidad</p>
+                        </div>
+                    </div>
 
-                    <label>
-                        <strong>Descripción:</strong>
-                        <textarea id="project-description" rows="5" class="input-field"
-                            placeholder="Describe tu proyecto..."></textarea>
-                    </label>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
+                        <div class="space-y-6">
+                            <div>
+                                <label
+                                    class="text-[0.7rem] font-black uppercase text-slate-400 mb-2 block tracking-widest">Título
+                                    de la Innovación</label>
+                                <input type="text" id="project-title" class="input-field-tw"
+                                    placeholder="EJ: BRAZO ROBÓTICO V1.0">
+                            </div>
 
-                    <label>
-                        <strong>Grupo (opcional):</strong>
-                        <select id="project-group" class="input-field">
-                            <option value="">Individual (sin grupo)</option>
-                        </select>
-                    </label>
+                            <div>
+                                <label
+                                    class="text-[0.7rem] font-black uppercase text-slate-400 mb-2 block tracking-widest">Inspiración
+                                    y Retos</label>
+                                <textarea id="project-description" rows="5"
+                                    class="input-field-tw min-h-[160px] resize-none"
+                                    placeholder="¿Qué problema resuelve tu proyecto? ¿Qué materiales usaste?"></textarea>
+                            </div>
+                        </div>
 
-                    <label>
-                        <strong>Video del Proyecto:</strong>
-                        <input type="file" id="project-video" accept="video/*" class="input-field">
-                        <small style="color: var(--text-light);">Tamaño máximo: 50MB</small>
-                    </label>
+                        <div class="space-y-6">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label
+                                        class="text-[0.7rem] font-black uppercase text-slate-400 mb-2 block tracking-widest">Bimestre</label>
+                                    <select id="project-bimestre" class="input-field-tw">
+                                        <option value="1">1º Bimestre</option>
+                                        <option value="2">2º Bimestre</option>
+                                        <option value="3">3º Bimestre</option>
+                                        <option value="4">4º Bimestre</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label
+                                        class="text-[0.7rem] font-black uppercase text-slate-400 mb-2 block tracking-widest">Equipo</label>
+                                    <select id="project-group" class="input-field-tw">
+                                        <option value="">Individual</option>
+                                    </select>
+                                </div>
+                            </div>
 
-                    <div id="video-preview" style="display: none; margin-top: 15px;"></div>
+                            <div>
+                                <label
+                                    class="text-[0.7rem] font-black uppercase text-slate-400 mb-2 block tracking-widest">Demostración
+                                    en Video</label>
+                                <div class="relative group">
+                                    <div
+                                        class="absolute inset-0 bg-slate-50 dark:bg-slate-800/50 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl group-hover:border-primary transition-colors flex flex-col items-center justify-center p-8 pointer-events-none">
+                                        <i
+                                            class="fas fa-cloud-upload-alt text-3xl text-slate-300 dark:text-slate-600 mb-2 group-hover:text-primary transition-colors"></i>
+                                        <span class="text-xs font-bold text-slate-400 group-hover:text-primary">Click
+                                            para seleccionar video (Máx 50MB)</span>
+                                    </div>
+                                    <input type="file" id="project-video" accept="video/*"
+                                        class="w-full h-32 opacity-0 cursor-pointer"
+                                        onchange="previewUploadVideo(this)">
+                                </div>
+                                <div id="video-preview-container"
+                                    class="hidden mt-4 rounded-2xl overflow-hidden shadow-lg border border-slate-100 dark:border-slate-800">
+                                    <video id="video-preview-player" controls class="w-full"></video>
+                                    <button
+                                        class="w-full py-2 bg-rose-500/10 text-rose-500 text-[0.6rem] font-black uppercase tracking-widest hover:bg-rose-500 hover:text-white transition-all"
+                                        onclick="clearVideoPreview()">Eliminar Video</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-                    <button class="btn-primary" onclick="uploadProject()" id="btn-upload-project"
-                        style="margin-top: 20px;">
-                        <i class="fas fa-upload"></i> Publicar Proyecto
+                    <button class="btn-primary-tw w-full h-14" onclick="uploadProject()" id="btn-upload-project">
+                        <i class="fas fa-paper-plane text-xl"></i> PUBLICAR PROYECTO AHORA
                     </button>
                 </div>
             </section>
@@ -304,45 +742,63 @@
             <section id="view-students" class="view-section">
                 <h2>🎓 Gestión de Estudiantes</h2>
 
-                <div class="section-card" style="margin-bottom: 25px;">
-                    <h3 style="margin: 0 0 12px; font-size: 1.2rem;">📄 Importar desde PDF del MINEDUC</h3>
-                    <p style="color: var(--text-light); margin-bottom: 15px; font-size: 0.9rem;">
-                        Sube el PDF oficial para extraer automáticamente la información del establecimiento y los
-                        estudiantes
-                    </p>
+                <div class="glass-card p-8 mb-8" id="pdf-import-card">
+                    <div class="flex items-center gap-4 mb-6">
+                        <div
+                            class="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-900/10 text-rose-500 flex items-center justify-center text-2xl">
+                            <i class="fas fa-file-pdf"></i>
+                        </div>
+                        <div>
+                            <h3
+                                class="text-lg font-black text-slate-800 dark:text-white uppercase tracking-tight leading-none mb-1">
+                                Importar Nómina MINEDUC</h3>
+                            <p class="text-[0.8rem] font-bold text-slate-400 uppercase tracking-widest">Sincronización
+                                automática de establecimientos</p>
+                        </div>
+                    </div>
 
-                    <input type="file" id="pdf-file-input" accept="application/pdf" class="input-field"
-                        style="margin-bottom: 15px;">
+                    <div class="relative group mb-6">
+                        <div
+                            class="absolute inset-0 bg-slate-50 dark:bg-slate-800/50 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl group-hover:border-rose-500/50 transition-colors flex flex-col items-center justify-center p-8 pointer-events-none">
+                            <i
+                                class="fas fa-cloud-upload-alt text-3xl text-slate-300 dark:text-slate-600 mb-2 group-hover:text-rose-500 transition-colors"></i>
+                            <span
+                                class="text-xs font-bold text-slate-400 group-hover:text-rose-500 uppercase tracking-widest">Arrastra
+                                tu PDF aquí o haz click</span>
+                        </div>
+                        <input type="file" id="pdf-file-input" accept="application/pdf"
+                            class="w-full h-32 opacity-0 cursor-pointer"
+                            onchange="document.getElementById('btn-process-pdf').disabled = false; document.getElementById('btn-process-pdf').classList.remove('opacity-50', 'cursor-not-allowed')">
+                    </div>
 
-                    <button class="btn-primary" id="btn-process-pdf" onclick="processPDFFile()" disabled
-                        style="opacity: 0.5;">
-                        <i class="fas fa-file-pdf"></i> Procesar PDF
+                    <button class="btn-primary-tw w-full h-12 opacity-50 cursor-not-allowed" id="btn-process-pdf"
+                        onclick="processPDFFile()" disabled>
+                        <i class="fas fa-cog fa-spin-hover"></i> PROCESAR DOCUMENTO
                     </button>
 
-                    <div id="pdf-actions-container"
-                        style="display: none; margin-top: 15px; display: flex; gap: 10px; justify-content: center;">
-                        <button class="btn-secondary" id="btn-cancel-pdf" onclick="cancelPDFImport()" style="flex: 1;">
+                    <div id="pdf-actions-container" class="hidden mt-6 flex gap-4 justify-center">
+                        <button class="btn-secondary flex-1" id="btn-cancel-pdf" onclick="cancelPDFImport()">
                             <i class="fas fa-times-circle"></i> Cancelar
                         </button>
-                        <button class="btn-primary" id="btn-confirm-users" onclick="confirmAndCreateUsers()"
-                            style="flex: 1; margin-top: 0;">
+                        <button class="btn-primary flex-1" id="btn-confirm-users" onclick="confirmAndCreateUsers()">
                             <i class="fas fa-check-circle"></i> Crear Usuarios
                         </button>
                     </div>
 
-                    <div id="pdf-processing-progress" style="display: none; margin-top: 20px;">
-                        <div
-                            style="background: var(--light); border-radius: 10px; overflow: hidden; margin-bottom: 10px;">
+                    <div id="pdf-processing-progress" class="hidden mt-8">
+                        <div class="h-4 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mb-3 relative">
                             <div id="pdf-progress-bar"
-                                style="background: var(--primary-color); color: white; padding: 10px; text-align: center; font-weight: 600; width: 0%; transition: width 0.3s;">
-                                0%
+                                class="h-full bg-gradient-to-r from-rose-500 to-pink-600 w-0 transition-all duration-300 relative overflow-hidden">
+                                <div class="absolute inset-0 bg-white/20 animate-pulse"></div>
                             </div>
                         </div>
-                        <p id="pdf-processing-status" style="text-align: center; color: var(--text-light);"></p>
+                        <p id="pdf-processing-status"
+                            class="text-center text-xs font-bold text-slate-400 uppercase tracking-widest animate-pulse">
+                            Iniciando motor de análisis...</p>
                     </div>
 
-                    <div id="school-preview-container" style="display: none; margin-top: 20px;"></div>
-                    <div id="pdf-preview-container" style="display: none; margin-top: 20px;"></div>
+                    <div id="school-preview-container" class="hidden mt-8 animate-slideUp"></div>
+                    <div id="pdf-preview-container" class="hidden mt-8 animate-slideUp"></div>
                 </div>
 
                 <div id="students-container"></div>
@@ -356,7 +812,7 @@
 
             <!-- GRUPOS -->
             <section id="view-groups" class="view-section">
-                <h2>👥 Gestión de Grupos</h2>
+                <h2>👥 Gestión de Equipos</h2>
                 <div id="groups-container"></div>
             </section>
             <!-- ASISTENCIA -->
@@ -367,7 +823,6 @@
 
             <!-- RESUMEN ASISTENCIA ADMIN -->
             <section id="view-admin-attendance-report" class="view-section">
-                <h2>📊 Analítica de Asistencia Global</h2>
                 <div id="admin-attendance-report-container"></div>
             </section>
 
@@ -378,8 +833,9 @@
             </section>
 
             <!-- RESULTADOS ACADÉMICOS ADMIN -->
+            <!-- RESULTADOS ACADÉMICOS ADMIN -->
             <section id="view-admin-eval-report" class="view-section">
-                <h2>📈 Resumen de Resultados Académicos</h2>
+                <!-- Header is now dynamically rendered in admin-evaluations.js -->
                 <div id="admin-eval-report-container"></div>
             </section>
 
@@ -414,29 +870,18 @@
     <!-- ============================================ -->
 
     <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/data/badges.js"></script>
+    <script src="js/data/quotes.js"></script>
+    <script src="js/data/challenges.js"></script>
+    <!-- Módulos Core -->
+    <script src="js/auth.js"></script>
     <script src="js/sync-manager.js"></script>
     <script src="js/main.js"></script>
-    <script src="js/students.js"></script>
-    <script src="js/teachers.js"></script>
-    <script src="js/schools.js"></script>
-    <script src="js/groups.js"></script>
-    <script src="js/projects.js"></script>
-    <script src="js/evaluation.js"></script>
-    <script src="js/profile.js"></script>
-    <script src="js/ranking.js"></script>
-    <script src="js/badges.js"></script>
-    <script src="js/gamification.js"></script>
-    <script src="js/reports.js"></script>
-    <script src="js/csv.js"></script>
-    <script src="js/pdf-processor.js"></script>
-    <script src="js/attendance.js"></script>
-    <script src="js/admin-dashboard.js"></script>
-    <script src="js/admin-performance.js"></script>
-    <script src="js/admin-attendance.js"></script>
-    <script src="js/admin-evaluations.js"></script>
     <script src="js/onboarding.js"></script>
-    <script src="js/admin-success.js"></script>
-    <script src="js/auth.js"></script>
+    <script src="js/birthday-logic.js"></script>
+    <!-- Confetti Library -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
     <!-- Service Worker para PWA -->
     <script>
         if ('serviceWorker' in navigator) {

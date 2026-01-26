@@ -96,7 +96,8 @@ async function exportGroupsCSV() {
         group_members(
           role,
           students(full_name)
-        )
+        ),
+        projects(title, score)
       `)
       .order('school_code, grade, section, name');
 
@@ -104,26 +105,34 @@ async function exportGroupsCSV() {
       return showToast('❌ No hay grupos para exportar', 'error');
     }
 
-    let csvContent = 'Nombre_Grupo,Codigo_Establecimiento,Grado,Seccion,Integrantes,Planner,Maker,Speaker\n';
+    let csvContent = 'Nombre_Grupo,Codigo_Establecimiento,Grado,Seccion,Integrantes,Planner,Maker,Speaker,Proyecto,Nota\n';
 
     groups.forEach(g => {
-      const name = (g.name || '').replace(/,/g, ';');
+      const gName = (g.name || '').replace(/,/g, ';').replace(/"/g, '""');
       const schoolCode = g.school_code || '';
       const grade = g.grade || '';
       const section = g.section || '';
       const members = g.group_members || [];
-      
-      const planner = members.find(m => m.role === 'planner')?.students?.full_name || '';
-      const maker = members.find(m => m.role === 'maker')?.students?.full_name || '';
-      const speaker = members.find(m => m.role === 'speaker')?.students?.full_name || '';
-      
-      const allMembers = members.map(m => m.students?.full_name || '').join('; ');
+      const planner = (members.find(m => m.role === 'planner')?.students?.full_name || '').replace(/,/g, ';');
+      const maker = (members.find(m => m.role === 'maker')?.students?.full_name || '').replace(/,/g, ';');
+      const speaker = (members.find(m => m.role === 'speaker')?.students?.full_name || '').replace(/,/g, ';');
+      const allMembers = members.map(m => (m.students?.full_name || '').replace(/,/g, ';')).join('; ');
 
-      csvContent += `${name},${schoolCode},${grade},${section},"${allMembers}",${planner},${maker},${speaker}\n`;
+      const projects = g.projects || [];
+
+      if (projects.length === 0) {
+        csvContent += `"${gName}",${schoolCode},${grade},${section},"${allMembers}","${planner}","${maker}","${speaker}","Sin proyecto",0\n`;
+      } else {
+        projects.forEach(p => {
+          const pTitle = (p.title || '').replace(/,/g, ';').replace(/"/g, '""');
+          const pScore = p.score || 0;
+          csvContent += `"${gName}",${schoolCode},${grade},${section},"${allMembers}","${planner}","${maker}","${speaker}","${pTitle}",${pScore}\n`;
+        });
+      }
     });
 
-    downloadCSV(csvContent, 'grupos_export.csv');
-    showToast('✅ Grupos exportados a CSV', 'success');
+    downloadCSV(csvContent, 'proyectos_por_grupo_export.csv');
+    showToast('✅ Reporte detallado exportado', 'success');
 
   } catch (err) {
     console.error('Error exportando grupos:', err);

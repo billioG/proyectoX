@@ -1,8 +1,60 @@
-// ================================================
-// NAVEGACIÓN Y UTILIDADES - REPARADO
-// ================================================
-
+// Variables de UI
 let sidebarActive = false;
+
+// Módulo Loader para Lazy Loading
+const LOADED_MODULES = new Set();
+const MODULE_MAP = {
+    'admin-dashboard': ['js/admin-dashboard.js', 'js/admin-waivers.js', 'js/admin-reports.js', 'js/team-performance-widget.js'],
+    'admin-teacher-performance': ['js/admin-performance.js'],
+    'admin-success': ['js/admin-success.js', 'js/team-performance-widget.js', 'js/kpi-engine.js'],
+    'schools': ['js/schools.js'],
+    'students': ['js/students.js', 'js/pdf-processor.js'],
+    'teachers': ['js/teachers.js'],
+    'groups': ['js/groups.js'],
+    'attendance': ['js/attendance.js', 'js/data/challenges.js'],
+    'admin-attendance-report': ['js/admin-attendance.js', 'js/attendance-summary-view.js'],
+    'admin-eval-report': ['js/admin-evaluations.js'],
+    'evaluate': ['js/evaluation.js', 'js/evaluation-modals.js', 'js/evaluation-notifications.js'],
+    'ranking': ['js/ranking.js'],
+    'profile': ['js/profile.js', 'js/badges.js', 'js/kpi-engine.js', 'js/gamification.js', 'js/profile-modals.js', 'js/feed-ui.js', 'js/project-modals.js', 'js/reports.js', 'js/certificates.js'],
+    'feed': ['js/projects.js', 'js/gamification.js', 'js/kpi-engine.js', 'js/feed-ui.js', 'js/project-modals.js', 'js/profile-modals.js', 'js/reports.js', 'js/certificates.js'],
+    'upload': ['js/project-modals.js', 'js/groups.js'],
+    'bonus-system': ['js/bonus-system.js', 'js/certificates.js']
+};
+
+async function loadModule(name) {
+    if (!MODULE_MAP[name]) return;
+
+    const scripts = MODULE_MAP[name];
+    const loaders = scripts.map(src => {
+        if (LOADED_MODULES.has(src)) return Promise.resolve();
+
+        // Verificar si ya está en el DOM por el index.html original (mientras migramos)
+        const existing = document.querySelector(`script[src="${src}"]`);
+        if (existing) {
+            LOADED_MODULES.add(src);
+            return Promise.resolve();
+        }
+
+        return new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = src;
+            script.onload = () => {
+                LOADED_MODULES.add(src);
+                resolve();
+            };
+            script.onerror = () => reject(new Error(`Error al cargar el módulo: ${src}`));
+            document.body.appendChild(script);
+        });
+    });
+
+    try {
+        await Promise.all(loaders);
+    } catch (err) {
+        console.error(err);
+        showToast('❌ Error al cargar componentes necesarios', 'error');
+    }
+}
 
 window.addEventListener('load', () => {
     initTheme();
@@ -15,16 +67,13 @@ window.addEventListener('load', () => {
 
 function initTheme() {
     const savedTheme = localStorage.getItem('theme') || 'light';
-    if (savedTheme === 'dark') {
-        document.body.classList.add('dark-mode');
-        updateThemeIcon(true);
-    } else {
-        updateThemeIcon(false);
-    }
+    const isDark = savedTheme === 'dark';
+    document.documentElement.classList.toggle('dark', isDark);
+    updateThemeIcon(isDark);
 }
 
 function toggleTheme() {
-    const isDark = document.body.classList.toggle('dark-mode');
+    const isDark = document.documentElement.classList.toggle('dark');
     localStorage.setItem('theme', isDark ? 'dark' : 'light');
     updateThemeIcon(isDark);
 }
@@ -86,8 +135,13 @@ function nav(view) {
         sidebarActive = false;
     }
 
-    // Cargar contenido según la vista
-    loadViewContent(view);
+    // Limpiar modales abiertos al navegar (pero NO remover el sidebar o el header)
+    document.querySelectorAll('.fixed:not(#sidebar):not(#header), .modal').forEach(m => m.remove());
+
+    // Cargar módulos necesarios antes de ejecutar contenido
+    loadModule(view).then(() => {
+        loadViewContent(view);
+    });
 
     console.log(`✅ Navegación completada: ${view}`);
 }
@@ -110,7 +164,7 @@ function loadViewContent(view) {
             if (userRole === 'admin' && typeof loadSchools === 'function') loadSchools();
             break;
         case 'students':
-            if (userRole === 'admin' && typeof loadStudents === 'function') loadStudents();
+            if ((userRole === 'admin' || userRole === 'docente') && typeof loadStudents === 'function') loadStudents();
             break;
         case 'teachers':
             if (userRole === 'admin' && typeof loadTeachers === 'function') loadTeachers();
@@ -133,9 +187,21 @@ function loadViewContent(view) {
         case 'ranking':
             if (typeof loadRanking === 'function') loadRanking();
             break;
+        case 'upload':
+            if (typeof initUploadView === 'function') initUploadView();
+            break;
+        case 'bonus-system':
+            if (typeof loadBonusSystem === 'function') loadBonusSystem();
+            break;
         case 'profile':
             if (typeof loadProfile === 'function') loadProfile();
+            if (typeof initGamification === 'function') initGamification();
             break;
+    }
+
+    // Gamification check on feed too
+    if (view === 'feed' && typeof initGamification === 'function') {
+        initGamification();
     }
 }
 

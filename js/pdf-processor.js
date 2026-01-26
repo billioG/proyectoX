@@ -181,40 +181,36 @@ function displaySchoolPreview(school) {
     if (!container || !school) return;
 
     container.innerHTML = `
-        <h3 style="margin: 20px 0;">🏫 Establecimiento Detectado</h3>
-        <div class="section-card">
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+        <h3 class="text-xl font-black text-slate-800 dark:text-white mb-6 pl-2 border-l-4 border-primary">🏫 Establecimiento Detectado</h3>
+        <div class="glass-card p-6 bg-slate-50 dark:bg-slate-900/50">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div>
-                    <strong>Código:</strong>
-                    <p>${sanitizeInput(school.code)}</p>
+                    <span class="text-[0.6rem] font-black uppercase text-slate-400 tracking-widest block mb-1">Código</span>
+                    <p class="text-sm font-bold text-slate-800 dark:text-white font-mono bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded inline-block">${sanitizeInput(school.code)}</p>
+                </div>
+                <div class="sm:col-span-2">
+                    <span class="text-[0.6rem] font-black uppercase text-slate-400 tracking-widest block mb-1">Nombre Oficial</span>
+                    <p class="text-sm font-bold text-slate-800 dark:text-white truncate" title="${sanitizeInput(school.name)}">${sanitizeInput(school.name)}</p>
                 </div>
                 <div>
-                    <strong>Nombre:</strong>
-                    <p>${sanitizeInput(school.name)}</p>
+                    <span class="text-[0.6rem] font-black uppercase text-slate-400 tracking-widest block mb-1">Departamento</span>
+                    <p class="text-sm font-bold text-slate-600 dark:text-slate-300">${sanitizeInput(school.department)}</p>
                 </div>
                 <div>
-                    <strong>Departamento:</strong>
-                    <p>${sanitizeInput(school.department)}</p>
+                    <span class="text-[0.6rem] font-black uppercase text-slate-400 tracking-widest block mb-1">Municipio</span>
+                    <p class="text-sm font-bold text-slate-600 dark:text-slate-300">${sanitizeInput(school.municipality)}</p>
                 </div>
                 <div>
-                    <strong>Municipio:</strong>
-                    <p>${sanitizeInput(school.municipality)}</p>
+                    <span class="text-[0.6rem] font-black uppercase text-slate-400 tracking-widest block mb-1">Sector</span>
+                    <span class="px-2 py-0.5 rounded text-[0.65rem] font-black uppercase tracking-wider bg-indigo-50 text-indigo-600 border border-indigo-100">${sanitizeInput(school.sector)}</span>
                 </div>
                 <div>
-                    <strong>Sector:</strong>
-                    <p>${sanitizeInput(school.sector)}</p>
+                    <span class="text-[0.6rem] font-black uppercase text-slate-400 tracking-widest block mb-1">Nivel</span>
+                    <span class="px-2 py-0.5 rounded text-[0.65rem] font-black uppercase tracking-wider bg-emerald-50 text-emerald-600 border border-emerald-100">${sanitizeInput(school.level)}</span>
                 </div>
                 <div>
-                    <strong>Nivel:</strong>
-                    <p>${sanitizeInput(school.level)}</p>
-                </div>
-                <div>
-                    <strong>Jornada:</strong>
-                    <p>${sanitizeInput(school.schedule)}</p>
-                </div>
-                <div>
-                    <strong>Área:</strong>
-                    <p>${sanitizeInput(school.area)}</p>
+                    <span class="text-[0.6rem] font-black uppercase text-slate-400 tracking-widest block mb-1">Jornada</span>
+                    <p class="text-sm font-bold text-slate-600 dark:text-slate-300">${sanitizeInput(school.schedule)}</p>
                 </div>
             </div>
         </div>
@@ -379,23 +375,26 @@ function displayStudentsPreview(students) {
 
     if (!document.getElementById('pdf-preview-table')) {
         previewContainer.innerHTML = `
-            <h3 style="margin: 20px 0;">📋 Vista Previa de Estudiantes</h3>
-            <div style="overflow-x: auto;">
-                <table id="pdf-preview-table" class="data-table">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Username</th>
-                            <th>Nombre</th>
-                            <th>CUI</th>
-                            <th>Fecha Nacimiento</th>
-                            <th>Género</th>
-                            <th>Grado</th>
-                            <th>Sección</th>
-                        </tr>
-                    </thead>
-                    <tbody id="pdf-preview-tbody"></tbody>
-                </table>
+            <div class="flex justify-between items-end mb-6">
+                <h3 class="text-xl font-black text-slate-800 dark:text-white pl-2 border-l-4 border-indigo-500">📋 Vista Previa de Estudiantes</h3>
+                <span class="bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full text-xs font-bold ring-1 ring-indigo-500/20">${students.length} Registros Encontrados</span>
+            </div>
+            
+            <div class="glass-card p-0 overflow-hidden shadow-xl">
+                <div class="overflow-x-auto">
+                    <table id="pdf-preview-table" class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 dark:bg-slate-800 text-[0.6rem] font-black uppercase text-slate-400 tracking-widest border-b border-slate-200 dark:border-slate-700">
+                                <th class="px-6 py-4 text-center w-12">#</th>
+                                <th class="px-6 py-4">Estudiante</th>
+                                <th class="px-6 py-4">Credenciales</th>
+                                <th class="px-6 py-4 text-center">Info Personal</th>
+                                <th class="px-6 py-4 text-center">Académico</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pdf-preview-tbody" class="divide-y divide-slate-100 dark:divide-slate-800"></tbody>
+                    </table>
+                </div>
             </div>
         `;
     }
@@ -411,26 +410,45 @@ function displayStudentsPreview(students) {
         const pageStudents = students.slice(start, end);
 
         tbody.innerHTML = pageStudents.map((s, index) => `
-            <tr>
-                <td style="text-align: center;">${start + index + 1}</td>
-                <td><code>${s.username}</code></td>
-                <td>${sanitizeInput(s.fullName)}</td>
-                <td><code>${s.cui}</code></td>
-                <td style="text-align: center;">${s.birth_date || '-'}</td>
-                <td style="text-align: center;">${s.gender ? (s.gender === 'masculino' ? '👨' : '👩') : '-'}</td>
-                <td style="text-align: center;">${s.grade}</td>
-                <td style="text-align: center;">${s.section}</td>
+            <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                <td class="px-6 py-4 text-center text-xs font-bold text-slate-400">${start + index + 1}</td>
+                <td class="px-6 py-4">
+                    <div class="text-sm font-bold text-slate-800 dark:text-white">${sanitizeInput(s.fullName)}</div>
+                    <div class="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider mt-0.5">CUI: ${s.cui}</div>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="flex items-center gap-2 mb-1">
+                        <i class="fas fa-user text-xs text-slate-300"></i>
+                        <span class="text-xs font-mono font-bold text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded">${s.username}</span>
+                    </div>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="flex flex-col gap-1 items-center">
+                         <span class="text-xs font-medium text-slate-600">${s.birth_date || '-'}</span>
+                         <span class="px-2 py-0.5 rounded text-[0.55rem] font-black uppercase tracking-wider ${s.gender === 'masculino' ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-rose-50 text-rose-600 border border-rose-100'}">
+                            ${s.gender ? (s.gender === 'masculino' ? 'MASCULINO' : 'FEMENINO') : '-'}
+                         </span>
+                    </div>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="flex flex-col gap-1 items-center">
+                        <span class="text-xs font-bold text-slate-700 dark:text-slate-300">${s.grade}</span>
+                        <span class="w-6 h-6 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs font-black text-slate-500 border border-slate-200 dark:border-slate-700">${s.section}</span>
+                    </div>
+                </td>
             </tr>
         `).join('') + `
             <tr>
-                <td colspan="8" style="text-align: center; padding: 20px;">
-                    <button onclick="changePage(${page - 1})" ${page === 1 ? 'disabled' : ''} class="btn-secondary">
-                        <i class="fas fa-chevron-left"></i> Anterior
-                    </button>
-                    <span style="margin: 0 15px;">Página ${page} de ${totalPages} (${students.length} estudiantes)</span>
-                    <button onclick="changePage(${page + 1})" ${page === totalPages ? 'disabled' : ''} class="btn-secondary">
-                        Siguiente <i class="fas fa-chevron-right"></i>
-                    </button>
+                <td colspan="5" class="px-6 py-4">
+                    <div class="flex justify-between items-center bg-slate-50 dark:bg-slate-800/50 rounded-xl p-2">
+                        <button onclick="changePage(${page - 1})" ${page === 1 ? 'disabled' : ''} class="w-8 h-8 flex items-center justify-center rounded-lg bg-white dark:bg-slate-800 text-slate-500 hover:text-primary disabled:opacity-30 transition-all shadow-sm">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <span class="text-xs font-black text-slate-400 uppercase tracking-widest">Página ${page} de ${totalPages}</span>
+                        <button onclick="changePage(${page + 1})" ${page === totalPages ? 'disabled' : ''} class="w-8 h-8 flex items-center justify-center rounded-lg bg-white dark:bg-slate-800 text-slate-500 hover:text-primary disabled:opacity-30 transition-all shadow-sm">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
                 </td>
             </tr>
         `;
@@ -640,25 +658,29 @@ async function createUsersFromExtractedData(students) {
         }
     }
 
-    progressBar.style.background = successCount > 0 ? 'var(--success-color)' : 'var(--warning-color)';
+    progressBar.style.background = successCount > 0 ? '#10b981' : '#f59e0b';
     progressBar.style.width = '100%';
     progressBar.textContent = '100%';
     statusText.innerHTML = `
-        <div style="margin-bottom: 15px;">
-            <strong style="font-size: 1.1rem;">✅ Proceso Completado</strong>
+        <div class="text-center mb-6">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-100 text-emerald-500 mb-4 animate-bounce">
+                <i class="fas fa-check text-3xl"></i>
+            </div>
+            <h3 class="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Proceso Completado</h3>
         </div>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
-            <div style="background: rgba(76, 175, 80, 0.1); padding: 12px; border-radius: 6px; border-left: 4px solid var(--success-color);">
-                <div style="font-size: 1.3rem; font-weight: bold; color: var(--success-color);">${successCount}</div>
-                <div style="font-size: 0.85rem; color: var(--text-light);">Creados</div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-xl border border-emerald-100 dark:border-emerald-900/30 text-center">
+                <div class="text-3xl font-black text-emerald-500 mb-1">${successCount}</div>
+                <div class="text-[0.65rem] font-bold text-emerald-600/70 uppercase tracking-widest">Creados Exitosamente</div>
             </div>
-            <div style="background: rgba(255, 193, 7, 0.1); padding: 12px; border-radius: 6px; border-left: 4px solid var(--warning-color);">
-                <div style="font-size: 1.3rem; font-weight: bold; color: var(--warning-color);">${skippedCount}</div>
-                <div style="font-size: 0.85rem; color: var(--text-light);">Ya existían</div>
+            <div class="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl border border-amber-100 dark:border-amber-900/30 text-center">
+                <div class="text-3xl font-black text-amber-500 mb-1">${skippedCount}</div>
+                <div class="text-[0.65rem] font-bold text-amber-600/70 uppercase tracking-widest">Ya Existentes (Omitidos)</div>
             </div>
-            <div style="background: rgba(244, 67, 54, 0.1); padding: 12px; border-radius: 6px; border-left: 4px solid var(--danger-color);">
-                <div style="font-size: 1.3rem; font-weight: bold; color: var(--danger-color);">${errorCount}</div>
-                <div style="font-size: 0.85rem; color: var(--text-light);">Errores</div>
+            <div class="bg-rose-50 dark:bg-rose-900/20 p-4 rounded-xl border border-rose-100 dark:border-rose-900/30 text-center">
+                <div class="text-3xl font-black text-rose-500 mb-1">${errorCount}</div>
+                <div class="text-[0.65rem] font-bold text-rose-600/70 uppercase tracking-widest">Errores de Registro</div>
             </div>
         </div>
     `;

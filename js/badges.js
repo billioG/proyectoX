@@ -68,9 +68,14 @@ async function checkAndAwardBadges(projectId, score) {
       if (highScores >= 3) badgesToAward.push(7);
 
       // Otorgar insignias
-      for (const badgeId of badgesToAward) {
-        await awardBadge(studentId, badgeId);
+      for (const bId of badgesToAward) {
+        await awardBadge(studentId, bId);
       }
+    }
+
+    // Si quien evalúa es docente, verificar sus insignias también
+    if (userRole === 'docente' || userRole === 'admin') {
+      await checkTeacherBadges(currentUser.id);
     }
 
     console.log(`✅ Insignias verificadas para ${studentsToReward.length} estudiantes`);
@@ -80,42 +85,50 @@ async function checkAndAwardBadges(projectId, score) {
   }
 }
 
-async function awardBadge(studentId, badgeId) {
+async function awardBadge(userId, badgeId) {
   try {
+    const isTeacherBadge = badgeId >= 100;
+    const table = isTeacherBadge ? 'teacher_badges' : 'student_badges';
+    const idColumn = isTeacherBadge ? 'teacher_id' : 'student_id';
+
     // Verificar si ya tiene la insignia
     const { data: existing } = await _supabase
-      .from('student_badges')
+      .from(table)
       .select('id')
-      .eq('student_id', studentId)
+      .eq(idColumn, userId)
       .eq('badge_id', badgeId)
       .maybeSingle();
 
-    if (existing) {
-      console.log(`⊘ Insignia ${badgeId} ya otorgada`);
-      return;
-    }
+    if (existing) return;
 
     // Otorgar insignia
     const { error } = await _supabase
-      .from('student_badges')
+      .from(table)
       .insert({
-        student_id: studentId,
+        [idColumn]: userId,
         badge_id: badgeId
       });
 
-    if (error) throw error;
+    if (error) {
+      if (error.message && error.message.includes("Could not find the table")) {
+        console.warn(`⚠️ La tabla ${table} no existe en Supabase. Ignorando insignia.`);
+        return;
+      }
+      throw error;
+    }
 
-    console.log(`✅ Insignia ${badgeId} otorgada`);
-
-    // Notificar al estudiante si es el usuario actual
-    if (currentUser && studentId === currentUser.id) {
-      const badge = BADGES.find(b => b.id === badgeId);
+    // Notificar al usuario actual
+    if (currentUser && userId === currentUser.id) {
+      const badgeList = isTeacherBadge ? TEACHER_BADGES : BADGES;
+      const badge = badgeList.find(b => b.id === badgeId);
       if (badge) {
         showToast(`🎉 ¡Nueva insignia desbloqueada: ${badge.icon} ${badge.name}!`, 'success');
       }
     }
 
   } catch (err) {
+    // No loguear errores de tabla inexistente como errores graves
+    if (err.message && err.message.includes("Could not find the table")) return;
     console.error('Error otorgando insignia:', err);
   }
 }
@@ -152,12 +165,81 @@ async function checkAllBadges(studentId) {
   }
 }
 
-// Verificar insignias al cargar perfil de estudiante
+/**
+ * Verifica insignias específicas para docentes
+ */
+async function checkTeacherBadges(teacherId) {
+  try {
+    const { data: evaluations } = await _supabase
+      .from('evaluations')
+      .select('id, feedback')
+      .eq('teacher_id', teacherId);
+
+    const { data: groups } = await _supabase
+      .from('groups')
+      .select('id')
+      .eq('created_by', teacherId);
+
+    const totalEvals = evaluations?.length || 0;
+    const totalGroups = groups?.length || 0;
+    const feedbackCount = evaluations?.filter(e => e.feedback && e.feedback.length > 30).length || 0;
+
+    const teacherBadgesToAward = [];
+
+    // Badge 101: Evaluador Veloz (10+)
+    if (totalEvals >= 10) teacherBadgesToAward.push(101);
+
+    // Badge 103: Guía Maestro (5 grupos)
+    if (totalGroups >= 5) teacherBadgesToAward.push(103);
+
+    // Badge 104: Feedback de Calidad (20+)
+    if (feedbackCount >= 20) teacherBadgesToAward.push(104);
+
+    for (const badgeId of teacherBadgesToAward) {
+      await awardBadge(teacherId, badgeId);
+    }
+
+    // Huevo de Pascua: Verificar si es Diciembre y tiene todos los retos
+    const now = new Date();
+    if (now.getMonth() === 11) { // 11 = Diciembre
+      await checkFullYearChallenge(teacherId);
+    }
+
+  } catch (err) {
+    console.error('Error verificando insignias de docente:', err);
+  }
+}
+
+/**
+ * Huevo de Pascua: Premio por completar todo el año
+ */
+async function checkFullYearChallenge(teacherId) {
+  try {
+    // En una implementación real, esto consultaría una tabla de 'retos_completados'
+    // Por ahora, simulamos la verificación para habilitar el premio en Diciembre.
+    const { data: badges } = await _supabase
+      .from('teacher_badges')
+      .select('badge_id')
+      .eq('teacher_id', teacherId);
+
+    const badgeIds = badges?.map(b => b.badge_id) || [];
+
+    // Si logramos implementar un sistema de marcado de retos, aquí se validaría.
+    // Por ahora dejamos la estructura lista.
+    console.log('🔍 Verificando constancia anual para premio especial...');
+  } catch (e) { }
+}
+
+// Verificar insignias al cargar perfil
 if (typeof window !== 'undefined') {
   window.addEventListener('load', () => {
     setTimeout(() => {
-      if (currentUser && userRole === 'estudiante') {
-        checkAllBadges(currentUser.id);
+      if (currentUser) {
+        if (userRole === 'estudiante') {
+          checkAllBadges(currentUser.id);
+        } else if (userRole === 'docente') {
+          checkTeacherBadges(currentUser.id);
+        }
       }
     }, 2000);
   });

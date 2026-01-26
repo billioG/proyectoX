@@ -2,66 +2,100 @@
 // SISTEMA DE ONBOARDING - ProjectX
 // ================================================
 
-const ONBOARDING_SLIDES = [
+// Slides para Estudiantes
+const STUDENT_ONBOARDING_SLIDES = [
   {
     icon: '🚀',
-    title: '¡Bienvenido a ProjectX!',
-    description: 'La plataforma educativa que revoluciona la forma en que estudiantes y docentes colaboran en proyectos.',
-    image: 'welcome',
-    color: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+    title: '¡Bienvenido Estudiante!',
+    description: 'ProjectX es tu espacio para mostrar tus talentos, aprender haciendo y competir sanamente.',
+    color: 'linear-gradient(135deg, #00bcd4 0%, #00acc1 100%)'
   },
   {
-    icon: '📚',
-    title: '¿Qué es ProjectX?',
-    description: 'ProjectX es un sistema integral de gestión de proyectos educativos que permite a los estudiantes subir sus trabajos, recibir evaluaciones detalladas y competir en rankings.',
+    icon: '📤',
+    title: 'Sube tus Proyectos',
+    description: 'Comparte videos de tus creaciones. ¡Cada proyecto te ayuda a mejorar!',
     features: [
-      '📤 Sube tus proyectos con videos',
-      '⭐ Recibe evaluaciones de tus docentes',
-      '🏆 Compite en rankings con tus compañeros',
-      '🎮 Gana insignias y sube de nivel'
+      '✅ Graba y sube tus videos',
+      '✅ Describe tu trabajo',
+      '✅ Gana puntos de experiencia (XP)',
+      '✅ Desbloquea insignias'
     ],
     color: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'
   },
   {
-    icon: '🎯',
-    title: '¿Para qué sirve?',
-    description: 'ProjectX facilita el aprendizaje basado en proyectos y la gamificación educativa.',
+    icon: '🏆',
+    title: 'Ranking y Metas',
+    description: 'Mira cómo vas en comparación con otros y alcanza el primer lugar.',
     features: [
-      '👨‍🎓 Estudiantes: Publica proyectos y recibe feedback',
-      '👨‍🏫 Docentes: Evalúa y gestiona a tus estudiantes',
-      '👑 Administradores: Supervisa todo el sistema',
-      '📊 Todos: Visualiza progreso y estadísticas'
+      '📊 Ranking por grado y sección',
+      '🏅 Comparativa global',
+      '✨ Niveles de usuario',
+      '🎁 Recompensas digitales'
     ],
     color: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)'
   },
   {
-    icon: '🎮',
-    title: '¿Cómo funciona?',
-    description: 'El sistema de gamificación te motiva a mejorar constantemente.',
-    features: [
-      '🔥 Gana XP por cada proyecto publicado',
-      '⭐ Obtén mejores calificaciones para subir de nivel',
-      '🏅 Desbloquea insignias por logros especiales',
-      '🏆 Compite en el ranking con otros estudiantes'
-    ],
-    color: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)'
-  },
-  {
     icon: '✨',
-    title: '¡Comencemos!',
-    description: 'Estás listo para comenzar tu viaje en ProjectX. ¡Explora todas las funcionalidades y alcanza tus metas!',
+    title: '¡A Innovar!',
+    description: 'Estás listo para comenzar tu viaje en ProjectX. ¡El cielo es el límite!',
     cta: true,
     color: 'linear-gradient(135deg, #30cfd0 0%, #330867 100%)'
   }
 ];
+
+// Slides para Docentes y Admins
+const TEACHER_ONBOARDING_SLIDES = [
+  {
+    icon: '👨‍🏫',
+    title: '¡Bienvenido, Docente!',
+    description: 'ProjectX es tu herramienta aliada para la gestión académica y el seguimiento de proyectos.',
+    color: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+  },
+  {
+    icon: '📋',
+    title: 'Gestión y Evaluación',
+    description: 'Administra tus grupos y evalúa el desempeño de tus estudiantes de forma sencilla.',
+    features: [
+      '✅ Crea y edita grupos de trabajo',
+      '✅ Evalúa proyectos con rúbricas',
+      '✅ Toma asistencia digital',
+      '✅ Gestiona datos de alumnos'
+    ],
+    color: 'linear-gradient(135deg, #48c6ef 0%, #6f86d6 100%)'
+  },
+  {
+    icon: '📈',
+    title: 'Analítica en Tiempo Real',
+    description: 'Visualiza reportes de asistencia y rendimiento académico de manera instantánea.',
+    features: [
+      '📊 Reportes de participación',
+      '📉 Alertas de bajo rendimiento',
+      '📅 Historial de asistencia',
+      '🎓 Dashboard administrativo'
+    ],
+    color: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'
+  },
+  {
+    icon: '✨',
+    title: '¡Transformemos la Educación!',
+    description: 'Ya puedes empezar a gestionar tus secciones y motivar a tus estudiantes.',
+    cta: true,
+    color: 'linear-gradient(135deg, #0ba360 0%, #3cba92 100%)'
+  }
+];
+
+let ACTIVE_SLIDES = [];
 
 function shouldShowOnboarding() {
   if (!currentUser) {
     console.warn('⚠️ No hay usuario actual para verificar onboarding');
     return false;
   }
+
+  // La combinación de id de usuario y localStorage garantiza que se muestre en cada dispositivo nuevo
   const key = `onboarding_seen_${currentUser.id}`;
   const hasSeenOnboarding = localStorage.getItem(key);
+
   console.log(`🧐 Verificando onboarding para ${currentUser.id}: ${hasSeenOnboarding ? 'VISTO' : 'PENDIENTE'}`);
   return !hasSeenOnboarding;
 }
@@ -69,6 +103,13 @@ function shouldShowOnboarding() {
 function showOnboarding() {
   if (!shouldShowOnboarding()) {
     return;
+  }
+
+  // Establecer slides según el rol
+  if (userRole === 'estudiante') {
+    ACTIVE_SLIDES = STUDENT_ONBOARDING_SLIDES;
+  } else {
+    ACTIVE_SLIDES = TEACHER_ONBOARDING_SLIDES;
   }
 
   console.log('🚀 Mostrando onboarding...');
@@ -121,7 +162,9 @@ function generateSlides() {
   const slidesContainer = document.getElementById('onboarding-slides');
   const dotsContainer = document.getElementById('onboarding-dots');
 
-  slidesContainer.innerHTML = ONBOARDING_SLIDES.map((slide, index) => `
+  if (!slidesContainer || !dotsContainer) return;
+
+  slidesContainer.innerHTML = ACTIVE_SLIDES.map((slide, index) => `
     <div class="onboarding-slide" data-index="${index}" style="display: none;">
       <div class="onboarding-slide-header" style="background: ${slide.color};">
         <div class="onboarding-icon">${slide.icon}</div>
@@ -152,7 +195,7 @@ function generateSlides() {
     </div>
   `).join('');
 
-  dotsContainer.innerHTML = ONBOARDING_SLIDES.map((_, index) => `
+  dotsContainer.innerHTML = ACTIVE_SLIDES.map((_, index) => `
     <span class="onboarding-dot" data-index="${index}" onclick="goToSlide(${index})"></span>
   `).join('');
 }
@@ -188,7 +231,7 @@ function showSlide(index) {
     prevBtn.style.visibility = 'visible';
   }
 
-  if (index === ONBOARDING_SLIDES.length - 1) {
+  if (index === ACTIVE_SLIDES.length - 1) {
     nextBtn.style.display = 'none';
   } else {
     nextBtn.style.display = 'block';
@@ -199,7 +242,7 @@ function showSlide(index) {
 }
 
 function nextSlide() {
-  if (currentSlideIndex < ONBOARDING_SLIDES.length - 1) {
+  if (currentSlideIndex < ACTIVE_SLIDES.length - 1) {
     showSlide(currentSlideIndex + 1);
   }
 }

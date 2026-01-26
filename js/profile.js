@@ -1,1077 +1,316 @@
-// ================================================
-// GESTIÓN DE PERFILES - PARTE 1 CORREGIDA
-// ================================================
+/**
+ * PROFILE - Gestión de perfiles (Tailwind Edition)
+ */
 
 async function loadProfile() {
-  const profileContent = document.getElementById('profile-content');
-  if (!profileContent) return;
+    const profileContent = document.getElementById('profile-content');
+    if (!profileContent) return;
 
-  profileContent.innerHTML = '<div style="text-align:center; padding: 40px;"><i class="fas fa-spinner fa-spin" style="font-size: 2rem;"></i></div>';
+    profileContent.innerHTML = `
+    <div class="flex flex-col items-center justify-center p-20 text-slate-400">
+        <i class="fas fa-circle-notch fa-spin text-4xl mb-4 text-primary"></i>
+        <span class="font-black uppercase text-xs tracking-widest">Sincronizando Perfil...</span>
+    </div>
+  `;
 
-  try {
-    if (userRole === 'estudiante') {
-      await loadStudentProfile();
-    } else if (userRole === 'docente') {
-      await loadTeacherProfile();
-    } else if (userRole === 'admin') {
-      await loadAdminProfile();
+    try {
+        if (userRole === 'estudiante') await loadStudentProfile();
+        else if (userRole === 'docente') await loadTeacherProfile();
+        else if (userRole === 'admin') await loadAdminProfile();
+    } catch (err) {
+        console.error(err);
+        profileContent.innerHTML = '<div class="glass-card p-10 text-rose-500 font-bold">❌ Error al cargar perfil</div>';
     }
-  } catch (err) {
-    console.error('Error cargando perfil:', err);
-    profileContent.innerHTML = '<div class="error-state">❌ Error al cargar perfil</div>';
-  }
 }
 
 async function loadStudentProfile() {
-  const profileContent = document.getElementById('profile-content');
+    const container = document.getElementById('profile-content');
+    const { data: student } = await _supabase.from('students').select('*, schools(*)').eq('id', currentUser.id).single();
 
-  try {
-    const { data: student, error } = await _supabase
-      .from('students')
-      .select(`
-        *,
-        schools(name, code)
-      `)
-      .eq('id', currentUser.id)
-      .single();
+    const [projectsRes, badgesRes, assignmentRes, xpData] = await Promise.all([
+        _supabase.from('projects').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }),
+        _supabase.from('student_badges').select('badge_id, earned_at').eq('student_id', currentUser.id),
+        _supabase.from('teacher_assignments').select('*, teachers(*)').eq('school_code', student.school_code).eq('grade', student.grade).eq('section', student.section).maybeSingle(),
+        calculateStudentXP(student.id)
+    ]);
 
-    if (error) throw error;
-    if (!student) {
-      profileContent.innerHTML = '<div class="error-state">❌ No se encontró información del estudiante</div>';
-      return;
-    }
+    const projects = projectsRes.data || [];
+    const earnedBadgeIds = (badgesRes.data || []).map(b => b.badge_id);
+    const myTeacher = assignmentRes.data?.teachers || null;
 
-    const { data: projects } = await _supabase
-      .from('projects')
-      .select('id, title, score, votes, created_at')
-      .eq('user_id', currentUser.id)
-      .order('created_at', { ascending: false });
-
-    const { data: earnedBadges } = await _supabase
-      .from('student_badges')
-      .select('badge_id, earned_at')
-      .eq('student_id', currentUser.id);
-
-    const earnedBadgeIds = earnedBadges?.map(b => b.badge_id) || [];
-
-    const { data: assignment } = await _supabase
-      .from('teacher_assignments')
-      .select(`
-        teacher_id,
-        teachers(id, full_name, email)
-      `)
-      .eq('school_code', student.school_code)
-      .eq('grade', student.grade)
-      .eq('section', student.section)
-      .maybeSingle();
-
-    const myTeacher = assignment?.teachers || null;
-
-    let hasRatedThisWeek = false;
-    let lastRatingDate = null;
-    let needsToRate = false;
-
-    if (myTeacher) {
-      const oneWeekAgo = new Date();
-      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-
-      const { data: recentRating } = await _supabase
-        .from('teacher_ratings')
-        .select('created_at')
-        .eq('student_id', currentUser.id)
-        .eq('teacher_id', myTeacher.id)
-        .gte('created_at', oneWeekAgo.toISOString())
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      hasRatedThisWeek = !!recentRating;
-
-      if (recentRating) {
-        lastRatingDate = new Date(recentRating.created_at);
-      }
-
-      const { data: lastRating } = await _supabase
-        .from('teacher_ratings')
-        .select('created_at')
-        .eq('student_id', currentUser.id)
-        .eq('teacher_id', myTeacher.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (!lastRating) {
-        needsToRate = true;
-      } else {
-        const lastDate = new Date(lastRating.created_at);
-        const daysSinceLastRating = (new Date() - lastDate) / (1000 * 60 * 60 * 24);
-        needsToRate = daysSinceLastRating >= 7;
-      }
-      const teacherName = 'Docente';
-    }
-
-    // Obtener datos de gamificación
-    const xpData = await calculateStudentXP(student.id);
-    const totalXP = xpData?.totalXP || 0;
-    const currentLevel = xpData?.level || 1;
-
-    const totalProjects = projects?.length || 0;
-    const totalLikes = projects?.reduce((sum, p) => sum + (p.votes || 0), 0) || 0;
-    const avgScore = totalProjects > 0
-      ? (projects.reduce((sum, p) => sum + (p.score || 0), 0) / totalProjects).toFixed(1)
-      : 0;
-
-    const displayName = student.full_name || currentUser.email?.split('@')[0] || 'Estudiante';
-
-    // CONTINÚA en PARTE 2 con el HTML inline...
-    renderStudentProfileHTMLInline(profileContent, student, displayName, myTeacher, needsToRate, hasRatedThisWeek, lastRatingDate, totalProjects, totalLikes, avgScore, earnedBadgeIds, earnedBadges, projects, totalXP, currentLevel);
-
-  } catch (err) {
-    console.error('Error en perfil estudiante:', err);
-    profileContent.innerHTML = '<div class="error-state">❌ Error al cargar perfil del estudiante</div>';
-  }
+    renderStudentProfileUI(container, student, projects, earnedBadgeIds, myTeacher, xpData);
 }
 
-// ================================================
-// FUNCIÓN RENDERIZADA: PERFIL ESTUDIANTE HTML
-// ================================================
+function renderStudentProfileUI(container, student, projects, earnedBadgeIds, myTeacher, xpData) {
+    const avgScore = projects.length > 0 ? (projects.reduce((s, p) => s + (p.score || 0), 0) / projects.length).toFixed(1) : 0;
 
-function renderStudentProfileHTMLInline(profileContent, student, displayName, myTeacher, needsToRate, hasRatedThisWeek, lastRatingDate, totalProjects, totalLikes, avgScore, earnedBadgeIds, earnedBadges, projects, totalXP, currentLevel) {
-  const schoolName = student.schools?.name || 'Establecimiento';
-  const gradeSection = `${student.grade} - Sección ${student.section}`;
-  const birthDate = student.birth_date ? new Date(student.birth_date) : null;
-  const isBirthday = checkIfBirthday(birthDate);
-  const birthDateFormatted = birthDate ? formatDate(student.birth_date) : 'No especificada';
-
-  if (isBirthday) {
-    setTimeout(startBirthdayConfetti, 1000);
-  }
-
-  profileContent.innerHTML = `
-    ${isBirthday ? `
-      <div style="background: linear-gradient(135deg, #ff6b6b, #ff8787); color: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; text-align: center; animation: pulse 1s infinite;">
-        <h3 style="margin: 0; font-size: 1.5rem;">🎉 ¡FELIZ CUMPLEAÑOS! 🎉</h3>
-        <p style="margin: 8px 0 0 0; font-size: 1.1rem;">¡Que disfrutes tu día especial!</p>
-      </div>
-    ` : ''}
-    
-    <div class="profile-header">
-      <div class="profile-avatar ${isBirthday ? 'birthday-glow' : ''}">
-        ${student.profile_photo_url ? `<img src="${student.profile_photo_url}" alt="${displayName}" style="width: 100%; height: 100%; object-fit: cover;">` : '<span style="font-size: 2.5rem;">👤</span>'}
-      </div>
-      <div>
-        <h2 style="margin: 0 0 6px 0; font-size: 1.4rem; font-weight: 600; color: var(--dark); text-transform: capitalize;">${sanitizeInput(displayName)}</h2>
-        <p class="profile-role">👨‍🎓 Estudiante</p>
-        <p style="color: var(--text-light); font-size: 0.9rem; margin-top: 4px;">
-          <i class="far fa-envelope"></i> ${currentUser.email}
-        </p>
-        <div style="font-size: 0.85rem; color: var(--text-light); margin-top: 8px; display: grid; gap: 4px;">
-           <span><i class="fas fa-school" style="width: 20px; text-align: center; color: var(--primary-color);"></i> ${sanitizeInput(schoolName)}</span>
-           <span><i class="fas fa-graduation-cap" style="width: 20px; text-align: center; color: var(--primary-color);"></i> ${student.grade} - Sección "${student.section}"</span>
+    container.innerHTML = `
+    <div class="flex flex-col md:flex-row gap-8 mb-12 items-center text-center md:text-left animate-slideUp">
+        <div class="relative group">
+            <div class="w-32 h-32 rounded-[2rem] bg-indigo-50 dark:bg-slate-800 flex items-center justify-center text-5xl shadow-xl border-4 border-white dark:border-slate-900 group-hover:rotate-3 transition-transform duration-500 overflow-hidden ring-1 ring-slate-100 dark:ring-slate-800">
+                ${student.profile_photo_url ? `<img src="${student.profile_photo_url}" class="w-full h-full object-cover">` : '🎓'}
+            </div>
+            <button onclick="openUploadPhotoModal()" class="absolute -bottom-2 -right-2 w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center shadow-lg transform hover:scale-110 transition-all border-2 border-white dark:border-slate-900">
+                <i class="fas fa-camera text-sm"></i>
+            </button>
         </div>
-      </div>
-      <button class="btn-secondary" onclick="openUploadPhotoModal()" style="align-self: flex-start; white-space: nowrap;">
-        <i class="fas fa-camera"></i> Cambiar Foto
-      </button>
+        <div class="grow">
+            <div class="flex flex-wrap justify-center md:justify-start gap-2 mb-3">
+                <span class="px-3 py-1 bg-primary/10 text-primary font-bold rounded-lg text-[0.65rem] uppercase tracking-[0.2em] shadow-sm">${sanitizeInput(student.schools?.name || 'Academia 1Bot')}</span>
+                <span class="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 font-semibold rounded-lg text-[0.65rem] uppercase tracking-widest leading-none flex items-center">${sanitizeInput(student.grade || 'Grado')} ${sanitizeInput(student.section || 'Sección')}</span>
+            </div>
+            <h2 class="text-4xl font-bold text-slate-800 dark:text-white tracking-tight leading-none mb-2">${sanitizeInput(student.full_name || 'Nombre Estudiante')}</h2>
+            <div class="flex items-center justify-center md:justify-start gap-2 text-xs font-semibold text-slate-400 uppercase tracking-widest">
+                <i class="fas fa-id-card text-primary text-sm opacity-50"></i>
+                <span class="opacity-80">ID: ${student.username || 'N/A'}</span>
+            </div>
+        </div>
+        <div class="flex gap-2">
+            <button onclick="window.print()" class="btn-secondary-tw h-11 px-5 text-[0.8rem] uppercase font-bold tracking-widest hidden">
+                <i class="fas fa-print opacity-50"></i> PDF
+            </button>
+        </div>
     </div>
 
-    <div style="background: var(--bg-card); padding: 16px; border-radius: 10px; box-shadow: var(--shadow); margin-bottom: 20px; border-left: 4px solid var(--primary-color);">
-      <p style="margin: 8px 0; font-size: 0.95rem; color: var(--text-color);">
-        <strong style="color: var(--heading-color);">📅 Fecha de Nacimiento:</strong> <span style="color: var(--text-light);">${birthDateFormatted}</span>
-      </p>
-      <p style="margin: 8px 0; font-size: 0.95rem; color: var(--text-color);">
-        <strong style="color: var(--heading-color);">⚧️ Género:</strong> <span style="color: var(--text-light);">${student.gender ? (student.gender === 'masculino' ? 'Masculino 👨' : 'Femenino 👩') : 'No especificado'}</span>
-      </p>
-    </div>
-
-    <div class="stats-grid">
-      <div class="stat-card" style="background: linear-gradient(135deg, rgba(34, 211, 238, 0.1), transparent);">
-        <i class="fas fa-trophy" style="color: #0891b2;"></i>
-        <strong>${currentLevel}</strong>
-        <span>Nivel</span>
-      </div>
-      <div class="stat-card" style="background: linear-gradient(135deg, rgba(129, 140, 248, 0.1), transparent);">
-        <i class="fas fa-bolt" style="color: #4f46e5;"></i>
-        <strong>${totalXP}</strong>
-        <span>XP Total</span>
-      </div>
-      <div class="stat-card">
-        <i class="fas fa-project-diagram"></i>
-        <strong>${totalProjects}</strong>
-        <span>Proyectos</span>
-      </div>
-      <div class="stat-card">
-        <i class="fas fa-thumbs-up"></i>
-        <strong>${totalLikes}</strong>
-        <span>Votos</span>
-      </div>
-      <div class="stat-card">
-        <i class="fas fa-star"></i>
-        <strong>${avgScore}</strong>
-        <span>Promedio</span>
-      </div>
-      <div class="stat-card">
-        <i class="fas fa-award"></i>
-        <strong>${earnedBadges?.length || 0}</strong>
-        <span>Insignias</span>
-      </div>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
+        <div class="glass-card p-6 border-b-4 border-indigo-500 hover:translate-y-[-4px] transition-transform">
+            <div class="text-[0.7rem] font-semibold text-slate-400 uppercase tracking-widest mb-1">Nivel Actual</div>
+            <div class="text-4xl font-bold text-slate-800 dark:text-white flex items-baseline gap-1">${xpData?.level || 1} <span class="text-xs text-indigo-500 opacity-60">RANK</span></div>
+        </div>
+        <div class="glass-card p-6 border-b-4 border-primary hover:translate-y-[-4px] transition-transform">
+            <div class="text-[0.7rem] font-semibold text-slate-400 uppercase tracking-widest mb-1">Experiencia</div>
+            <div class="text-4xl font-bold text-slate-800 dark:text-white flex items-baseline gap-1">${xpData?.totalXP || 0} <span class="text-xs text-primary opacity-60">XP</span></div>
+        </div>
+        <div class="glass-card p-6 border-b-4 border-rose-500 hover:translate-y-[-4px] transition-transform">
+            <div class="text-[0.7rem] font-semibold text-slate-400 uppercase tracking-widest mb-1">Inspiraciones</div>
+            <div class="text-4xl font-bold text-slate-800 dark:text-white flex items-baseline gap-1">${projects.length} <span class="text-xs text-rose-500 opacity-60">PROY</span></div>
+        </div>
+        <div class="glass-card p-6 border-b-4 border-emerald-500 hover:translate-y-[-4px] transition-transform">
+            <div class="text-[0.7rem] font-semibold text-slate-400 uppercase tracking-widest mb-1">Reputación</div>
+            <div class="text-4xl font-bold text-slate-800 dark:text-white flex items-baseline gap-1">${avgScore} <span class="text-xs text-emerald-500 opacity-60">AVG</span></div>
+        </div>
     </div>
 
     ${myTeacher ? `
-      <h3 style="margin: 24px 0 16px; color: var(--dark); font-size: 1.3rem;">👨‍🏫 Mi Docente Asignado</h3>
-    ` : `
-      <h3 style="margin: 24px 0 16px; color: var(--dark); font-size: 1.3rem;">👨‍🏫 Mi Docente</h3>
-      <div class="info-box" style="background: var(--light-gray); padding: 15px; border-radius: 10px; color: var(--text-light); border: 1px dashed var(--border-color);">
-        <p style="margin: 0;"><i class="fas fa-info-circle"></i> Aún no tienes un docente asignado para ${student.school_code} - ${student.grade} ${student.section}.</p>
-      </div>
-    `}
-
-    ${myTeacher ? `
-      ${needsToRate ? `
-        <div style="background: linear-gradient(135deg, #fff3cd, #ffe69c); border: 2px solid #ffc107; color: #856404; padding: 16px; border-radius: 10px; margin-bottom: 16px; animation: pulse-warning 2s infinite;">
-          <div style="display: flex; align-items: center; gap: 12px;">
-            <i class="fas fa-exclamation-circle" style="font-size: 1.5rem;"></i>
-            <div>
-              <strong style="display: block; font-size: 1rem;">⚠️ Evaluación Pendiente</strong>
-              <p style="margin: 4px 0 0 0; font-size: 0.9rem;">Debes evaluar a tu docente al menos una vez por semana</p>
+        <div class="glass-card p-8 bg-gradient-to-br from-primary/5 to-transparent border border-primary/10 flex flex-col md:flex-row justify-between items-center gap-6 mb-12 relative overflow-hidden">
+            <div class="absolute -right-12 -bottom-12 opacity-5 pointer-events-none">
+                <i class="fas fa-chalkboard-teacher text-[12rem]"></i>
             </div>
-          </div>
+            <div class="relative z-10 text-center md:text-left">
+                <h3 class="text-xl font-bold text-slate-800 dark:text-white mb-2 flex items-center justify-center md:justify-start gap-3">
+                    <span class="w-8 h-8 rounded-lg bg-primary text-white flex items-center justify-center text-sm shadow-lg shadow-primary/30">
+                        <i class="fas fa-user-tie"></i>
+                    </span>
+                    Mi Mentor: ${sanitizeInput(myTeacher.full_name)}
+                </h3>
+                <p class="text-[0.9rem] font-medium text-slate-500 dark:text-slate-400">¿Tienes alguna duda o sugerencia sobre los retos de esta semana?</p>
+            </div>
+            <button onclick="openSuggestionModal()" class="btn-primary-tw h-12 px-8 uppercase tracking-[0.2em] relative z-10 text-[0.8rem] whitespace-nowrap">
+                <i class="fas fa-paper-plane mr-2 shadow-none"></i> Enviar Feedback
+            </button>
         </div>
-      ` : ''}
-      <div class="section-card" style="background: linear-gradient(135deg, var(--light-gray), white); padding: 20px; border-left: 4px solid var(--primary-color);">
-        <div style="display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: start;">
-          <div>
-            <strong style="display: block; margin-bottom: 10px; font-size: 1.1rem; color: var(--dark);">${sanitizeInput(myTeacher.full_name)}</strong>
-            <p style="margin: 6px 0; color: var(--text-light); font-size: 0.9rem;">
-              <i class="fas fa-envelope" style="margin-right: 8px; color: var(--primary-color);"></i> ${myTeacher.email}
-            </p>
-            <p style="margin: 6px 0; color: var(--text-light); font-size: 0.9rem;">
-              <i class="fas fa-book" style="margin-right: 8px; color: var(--primary-color);"></i> Docente de ${gradeSection}
-            </p>
-          </div>
-          <div style="text-align: right; min-width: 160px;">
-            ${needsToRate ? `
-              <button class="btn-primary" onclick="openSuggestionModal()" style="margin-bottom: 8px; width: 100%; white-space: nowrap; font-size: 0.9rem;">
-                <i class="fas fa-star"></i> Evaluar
-              </button>
-            ` : `
-              <div style="background: var(--primary-color); color: white; padding: 8px 12px; border-radius: 6px; font-size: 0.85rem; text-align: center; margin-bottom: 8px;">
-                <i class="fas fa-check-circle"></i> Evaluado
-              </div>
-            `}
-            ${hasRatedThisWeek && lastRatingDate ? `
-              <small style="color: var(--text-light); display: block; font-size: 0.75rem; line-height: 1.3;">
-                Última: ${formatDate(lastRatingDate.toISOString())}
-              </small>
-            ` : ''}
-          </div>
-        </div>
-      </div>
     ` : ''}
 
-    <h3 style="margin: 24px 0 16px; color: var(--dark); font-size: 1.3rem;">📚 Mis Proyectos</h3>
-    ${!projects || projects.length === 0 ? `
-      <div class="empty-state" style="text-align: center; padding: 40px 20px;">
-        <p style="font-size: 1.2rem; margin-bottom: 10px;">📭 Sin proyectos aún</p>
-        <p style="color: var(--text-light);">Crea tu primer proyecto para comenzar</p>
-      </div>
-    ` : `
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px;">
-        ${projects.map(p => `
-          <div class="section-card" style="cursor: pointer; transition: all 0.3s; display: flex; flex-direction: column;" onclick="nav('projects', '${p.id}')">
-            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px; gap: 8px;">
-              <h4 style="margin: 0; color: var(--dark); flex: 1; font-size: 1rem;">${sanitizeInput(p.title)}</h4>
-              <span style="background: var(--primary-color); color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; white-space: nowrap; flex-shrink: 0;">
-                ⭐ ${p.score || 0}
-              </span>
-            </div>
-            <div style="display: flex; gap: 14px; color: var(--text-light); font-size: 0.85rem; margin-top: auto; flex-wrap: wrap;">
-              <span style="display: flex; align-items: center; gap: 4px;"><i class="fas fa-thumbs-up" style="font-size: 0.9rem;"></i> ${p.votes || 0}</span>
-              <span style="display: flex; align-items: center; gap: 4px;"><i class="fas fa-calendar" style="font-size: 0.9rem;"></i> ${formatDate(p.created_at)}</span>
-            </div>
-              <span style="display: flex; align-items: center; gap: 4px;"><i class="fas fa-calendar" style="font-size: 0.9rem;"></i> ${formatDate(p.created_at)}</span>
-            </div>
-          </div>
-        `).join('')}
-      </div>
-    `}
-
-    <h3 style="margin: 24px 0 16px; color: var(--dark); font-size: 1.3rem;">🏆 Mis Insignias</h3>
-    <div class="section-card">
-      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 16px; text-align: center;">
-        ${BADGES.map(b => {
-    const isEarned = earnedBadgeIds.includes(b.id);
-    const earnedInfo = earnedBadges?.find(eb => eb.badge_id === b.id);
-
-    return `
-            <div class="badge-item ${isEarned ? 'unlocked' : 'locked'}" title="${sanitizeInput(b.description)}">
-              <div class="badge-icon">${b.icon}</div>
-              <div class="badge-name">${sanitizeInput(b.name)}</div>
-              ${isEarned && earnedInfo ? `
-                <small style="color: var(--primary-color); font-size: 0.75rem; font-weight: 600;">
-                  ${formatDate(earnedInfo.earned_at)}
-                </small>
-              ` : `
-                <small class="badge-desc">${sanitizeInput(b.description)}</small>
-              `}
-            </div>
-          `;
-  }).join('')}
-      </div>
-    </div>
-
-    <div style="text-align: center; margin-top: 30px;">
-      <button class="btn-secondary" onclick="resetOnboarding()" style="font-size: 0.95rem;">
-        <i class="fas fa-question-circle"></i> Ver Tutorial de Nuevo
-      </button>
-    </div>
-
-  `;
-}
-// ================================================
-// PARTE 2: MODALES DE FOTO Y SUGERENCIAS
-// ================================================
-
-function openUploadPhotoModal() {
-  const modal = document.createElement('div');
-  modal.className = 'modal active';
-  modal.id = 'upload-photo-modal';
-
-  modal.innerHTML = `
-    <div class="modal-content">
-      <div class="modal-header">
-        <h2>📷 Cambiar Foto de Perfil</h2>
-        <button class="close-modal" onclick="this.closest('.modal').remove()">×</button>
-      </div>
-      <div class="modal-body">
-        <input 
-          type="file" 
-          id="photo-input" 
-          accept="image/*" 
-          class="input-field"
-          onchange="previewPhoto(this)"
-        >
-        
-        <div id="photo-preview" style="text-align: center; margin: 20px 0; display: none;">
-          <img id="preview-image" style="max-width: 100%; max-height: 300px; border-radius: 10px; box-shadow: var(--shadow);">
+    <div class="mb-12">
+        <div class="flex items-center justify-between mb-8">
+            <h3 class="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-3">
+                <i class="fas fa-medal text-amber-500 text-2xl"></i> Vitrina de Logros
+            </h3>
+            <span class="text-[0.7rem] font-semibold text-slate-400 uppercase tracking-widest">${earnedBadgeIds.length} / ${BADGES.length} Desbloqueados</span>
         </div>
-        
-        <button class="btn-primary" onclick="uploadProfilePhoto()" id="btn-upload-photo">
-          <i class="fas fa-upload"></i> Subir Foto
-        </button>
-      </div>
-    </div>
-    `;
-
-  document.body.appendChild(modal);
-}
-
-function previewPhoto(input) {
-  const preview = document.getElementById('photo-preview');
-  const image = document.getElementById('preview-image');
-
-  if (input.files && input.files[0]) {
-    const reader = new FileReader();
-    reader.onload = function (e) {
-      image.src = e.target.result;
-      preview.style.display = 'block';
-    };
-    reader.readAsDataURL(input.files[0]);
-  }
-}
-
-async function uploadProfilePhoto() {
-  const fileInput = document.getElementById('photo-input');
-  const file = fileInput?.files[0];
-  const btn = document.getElementById('btn-upload-photo');
-
-  if (!file) {
-    return showToast('❌ Selecciona una foto', 'error');
-  }
-
-  if (file.size > 5 * 1024 * 1024) {
-    return showToast('❌ La foto no debe superar 5MB', 'error');
-  }
-
-  btn.disabled = true;
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Subiendo...';
-
-  try {
-    const fileName = `${currentUser.id}_${Date.now()}.${file.name.split('.').pop()} `;
-
-    const { data: uploadData, error: uploadError } = await _supabase.storage
-      .from('profile-photos')
-      .upload(fileName, file, {
-        cacheControl: '3600',
-        upsert: true
-      });
-
-    if (uploadError) throw uploadError;
-
-    const { data: urlData } = _supabase.storage
-      .from('profile-photos')
-      .getPublicUrl(fileName);
-
-    let updateError = null;
-
-    if (userRole === 'estudiante') {
-      const { error } = await _supabase
-        .from('students')
-        .update({ profile_photo_url: urlData.publicUrl })
-        .eq('id', currentUser.id);
-      updateError = error;
-    } else if (userRole === 'docente') {
-      const { error } = await _supabase
-        .from('teachers')
-        .update({ profile_photo_url: urlData.publicUrl })
-        .eq('id', currentUser.id);
-      updateError = error;
-    } else if (userRole === 'admin') {
-      const { error } = await _supabase
-        .from('admins')
-        .update({ profile_photo_url: urlData.publicUrl })
-        .eq('id', currentUser.id);
-      updateError = error;
-    }
-
-    if (updateError) throw updateError;
-
-    showToast('✅ Foto de perfil actualizada', 'success');
-    document.getElementById('upload-photo-modal').remove();
-    await loadProfile();
-
-  } catch (err) {
-    console.error('Error subiendo foto:', err);
-    showToast('❌ Error: ' + err.message, 'error');
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = '<i class="fas fa-upload"></i> Subir Foto';
-  }
-}
-
-function openSuggestionModal() {
-  const modal = document.createElement('div');
-  modal.className = 'modal active';
-  modal.id = 'suggestion-modal';
-
-  modal.innerHTML = `
-    <div class="modal-content">
-      <div class="modal-header">
-        <h2>💡 Buzón de Sugerencias</h2>
-        <button class="close-modal" onclick="this.closest('.modal').remove()">×</button>
-      </div>
-      <div class="modal-body">
-        <label>
-          <strong>Tipo de mensaje:</strong>
-          <select id="suggestion-type" class="input-field" onchange="toggleRatingSection()">
-            <option value="suggestion">💬 Sugerencia General</option>
-            <option value="rating">⭐ Evaluar a mi Docente</option>
-          </select>
-        </label>
-
-        <div id="rating-section" style="display: none; margin: 20px 0;">
-          <label><strong>Calificación:</strong></label>
-          <div style="text-align: center; margin: 16px 0;">
-            <div id="suggestion-rating-stars" style="font-size: 2.5rem; cursor: pointer;">
-              ${[1, 2, 3, 4, 5].map(i => `
-                <span 
-                  class="suggestion-rating-star" 
-                  data-value="${i}" 
-                  onclick="selectSuggestionRating(${i})"
-                  style="opacity: 0.3; transition: all 0.2s; margin: 0 4px; display: inline-block;"
-                >⭐</span>
-              `).join('')}
-            </div>
-            <p id="suggestion-rating-text" style="margin-top: 10px; font-weight: 600; color: var(--dark); min-height: 24px;"></p>
-          </div>
+        <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4">
+            ${BADGES.map(b => {
+        const isEarned = earnedBadgeIds.includes(b.id);
+        return `
+                <div class="glass-card p-4 text-center group relative ${isEarned ? 'border-primary/20 bg-primary/5' : 'grayscale opacity-30 hover:opacity-50'} transition-all cursor-help" 
+                     onclick="showBadgeDetailsModal(${JSON.stringify(b).replace(/"/g, '&quot;')}, ${isEarned})">
+                    <div class="text-3xl mb-2 transform group-hover:scale-125 group-hover:rotate-12 transition-transform duration-500">${b.icon}</div>
+                    <div class="text-[0.55rem] font-bold uppercase text-slate-600 dark:text-slate-300 tracking-tighter leading-tight">${b.name}</div>
+                    ${isEarned ? `<div class="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 text-white rounded-full flex items-center justify-center text-[0.5rem] shadow-lg"><i class="fas fa-check"></i></div>` : ''}
+                </div>
+              `;
+    }).join('')}
         </div>
-
-        <label>
-          <strong>Mensaje:</strong>
-          <textarea 
-            id="suggestion-message" 
-            rows="5" 
-            placeholder="Escribe tu sugerencia o comentario sobre tu docente..."
-            class="input-field"
-            style="resize: vertical; margin-top: 8px;"
-          ></textarea>
-        </label>
-
-        <button class="btn-primary" onclick="submitSuggestion()" id="btn-submit-suggestion" style="margin-top: 16px;">
-          <i class="fas fa-paper-plane"></i> Enviar
-        </button>
-      </div>
-    </div>
-    `;
-
-  document.body.appendChild(modal);
-}
-
-let suggestionRatingValue = 0;
-
-function toggleRatingSection() {
-  const type = document.getElementById('suggestion-type')?.value;
-  const ratingSection = document.getElementById('rating-section');
-
-  if (type === 'rating') {
-    ratingSection.style.display = 'block';
-  } else {
-    ratingSection.style.display = 'none';
-    suggestionRatingValue = 0;
-    document.querySelectorAll('.suggestion-rating-star').forEach(star => {
-      star.style.opacity = '0.3';
-      star.style.transform = 'scale(1)';
-    });
-    const ratingText = document.getElementById('suggestion-rating-text');
-    if (ratingText) ratingText.textContent = '';
-  }
-}
-
-function selectSuggestionRating(rating) {
-  suggestionRatingValue = rating;
-
-  document.querySelectorAll('.suggestion-rating-star').forEach((star, index) => {
-    star.style.opacity = index < rating ? '1' : '0.3';
-    star.style.transform = index < rating ? 'scale(1.15)' : 'scale(1)';
-  });
-
-  const ratingTexts = {
-    1: '😞 Muy insatisfecho',
-    2: '😕 Insatisfecho',
-    3: '😐 Regular',
-    4: '😊 Satisfecho',
-    5: '🤩 Muy satisfecho'
-  };
-
-  const ratingText = document.getElementById('suggestion-rating-text');
-  if (ratingText) {
-    ratingText.textContent = ratingTexts[rating] || '';
-  }
-}
-// ================================================
-// PARTE 3: ENVIAR SUGERENCIA Y CALIFICAR DOCENTE
-// ================================================
-
-async function submitSuggestion() {
-  const type = document.getElementById('suggestion-type')?.value;
-  const message = document.getElementById('suggestion-message')?.value.trim();
-  const btn = document.getElementById('btn-submit-suggestion');
-
-  if (!message) {
-    return showToast('❌ Escribe un mensaje', 'error');
-  }
-
-  if (type === 'rating' && suggestionRatingValue === 0) {
-    return showToast('❌ Selecciona una calificación', 'error');
-  }
-
-  btn.disabled = true;
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
-
-  try {
-    const { data: student } = await _supabase
-      .from('students')
-      .select('school_code, grade, section')
-      .eq('id', currentUser.id)
-      .single();
-
-    if (!student) {
-      throw new Error('No se encontró información del estudiante');
-    }
-
-    const { data: assignment } = await _supabase
-      .from('teacher_assignments')
-      .select('teacher_id')
-      .eq('school_code', student.school_code)
-      .eq('grade', student.grade)
-      .eq('section', student.section)
-      .maybeSingle();
-
-    if (type === 'rating' && assignment) {
-      const { error: ratingError } = await _supabase
-        .from('teacher_ratings')
-        .insert({
-          student_id: currentUser.id,
-          teacher_id: assignment.teacher_id,
-          rating: suggestionRatingValue,
-          message: message
-        });
-
-      if (ratingError) {
-        if (ratingError.message.includes('duplicate') || ratingError.code === '23505') {
-          showToast('⚠️ Ya calificaste a tu docente esta semana', 'warning');
-          btn.disabled = false;
-          btn.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar';
-          return;
-        }
-        throw ratingError;
-      }
-
-      showToast('✅ Calificación enviada al docente', 'success');
-    } else {
-      const { error } = await _supabase
-        .from('student_suggestions')
-        .insert({
-          student_id: currentUser.id,
-          type: 'suggestion',
-          message: message,
-          rating: null
-        });
-
-      if (error) throw error;
-
-      showToast('✅ Sugerencia enviada correctamente', 'success');
-    }
-
-    document.getElementById('suggestion-modal').remove();
-    suggestionRatingValue = 0;
-    await loadProfile();
-
-  } catch (err) {
-    console.error('Error enviando sugerencia:', err);
-    showToast('❌ Error: ' + err.message, 'error');
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar';
-  }
-}
-
-function openRateTeacherModal(teacherId, teacherName) {
-  const modal = document.createElement('div');
-  modal.className = 'modal active';
-  modal.id = 'rate-teacher-modal';
-
-  modal.innerHTML = `
-    <div class="modal-content">
-      <div class="modal-header">
-        <h2>⭐ Calificar a ${sanitizeInput(teacherName)}</h2>
-        <button class="close-modal" onclick="this.closest('.modal').remove()">×</button>
-      </div>
-      <div class="modal-body">
-        <p style="text-align: center; margin-bottom: 24px; color: var(--text-light); font-size: 0.95rem;">
-          Califica el desempeño de tu docente del 1 al 5 estrellas
-        </p>
-        
-        <div style="text-align: center; margin: 30px 0;">
-          <div id="rating-stars" style="font-size: 3rem; cursor: pointer;">
-            ${[1, 2, 3, 4, 5].map(i => `
-              <span 
-                class="rating-star" 
-                data-value="${i}" 
-                onclick="selectTeacherRating(${i})"
-                style="opacity: 0.3; transition: all 0.2s; margin: 0 6px; display: inline-block;"
-              >⭐</span>
-            `).join('')}
-          </div>
-          <p id="rating-text" style="margin-top: 16px; font-weight: 600; color: var(--dark); font-size: 1.1rem; min-height: 28px;"></p>
-        </div>
-
-        <label>
-          <strong>Mensaje (opcional):</strong>
-          <textarea 
-            id="teacher-rating-message" 
-            rows="4" 
-            placeholder="Escribe un comentario sobre tu docente..."
-            class="input-field"
-            style="resize: vertical; margin-top: 8px;"
-          ></textarea>
-        </label>
-        <small style="color: var(--text-light); display: block; margin-top: 8px; font-size: 0.85rem;">
-          ℹ️ Tu mensaje solo será visible para el administrador. El docente solo verá tu calificación promedio.
-        </small>
-
-        <button class="btn-primary" onclick="submitTeacherRating('${teacherId}')" id="btn-rate-teacher" style="margin-top: 16px;">
-          <i class="fas fa-star"></i> Enviar Calificación
-        </button>
-      </div>
-    </div>
-    `;
-
-  document.body.appendChild(modal);
-}
-
-let selectedTeacherRating = 0;
-
-function selectTeacherRating(rating) {
-  selectedTeacherRating = rating;
-
-  document.querySelectorAll('.rating-star').forEach((star, index) => {
-    star.style.opacity = index < rating ? '1' : '0.3';
-    star.style.transform = index < rating ? 'scale(1.15)' : 'scale(1)';
-  });
-
-  const ratingTexts = {
-    1: '😞 Muy insatisfecho',
-    2: '😕 Insatisfecho',
-    3: '😐 Regular',
-    4: '😊 Satisfecho',
-    5: '🤩 Muy satisfecho'
-  };
-
-  const ratingText = document.getElementById('rating-text');
-  if (ratingText) {
-    ratingText.textContent = ratingTexts[rating] || '';
-  }
-}
-
-async function submitTeacherRating(teacherId) {
-  if (selectedTeacherRating === 0) {
-    return showToast('❌ Selecciona una calificación', 'error');
-  }
-
-  const message = document.getElementById('teacher-rating-message')?.value.trim();
-  const btn = document.getElementById('btn-rate-teacher');
-
-  btn.disabled = true;
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
-
-  try {
-    const { error } = await _supabase
-      .from('teacher_ratings')
-      .insert({
-        student_id: currentUser.id,
-        teacher_id: teacherId,
-        rating: selectedTeacherRating,
-        message: message || null
-      });
-
-    if (error) {
-      if (error.message.includes('duplicate') || error.code === '23505') {
-        showToast('⚠️ Ya calificaste a este docente esta semana', 'warning');
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-star"></i> Enviar Calificación';
-        return;
-      }
-      throw error;
-    }
-
-    showToast('✅ Calificación enviada correctamente', 'success');
-    document.getElementById('rate-teacher-modal').remove();
-    selectedTeacherRating = 0;
-    await loadProfile();
-
-  } catch (err) {
-    console.error('Error enviando calificación:', err);
-    showToast('❌ Error: ' + err.message, 'error');
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = '<i class="fas fa-star"></i> Enviar Calificación';
-  }
-}
-// ================================================
-// PARTE 4A: PERFIL DOCENTE
-// ================================================
-
-async function loadTeacherProfile() {
-  const profileContent = document.getElementById('profile-content');
-
-  try {
-    const { data: teacher } = await _supabase
-      .from('teachers')
-      .select('*')
-      .eq('id', currentUser.id)
-      .maybeSingle();
-
-    const displayName = teacher?.full_name || currentUser?.email?.split('@')[0] || 'Docente';
-    const birthDate = teacher?.birth_date ? new Date(teacher.birth_date) : null;
-    const isBirthday = checkIfBirthday(birthDate);
-    const birthDateFormatted = birthDate ? formatDate(teacher.birth_date) : 'No especificada';
-
-    const { data: assignments } = await _supabase
-      .from('teacher_assignments')
-      .select(`
-  school_code,
-    grade,
-    section,
-    schools(name)
-      `)
-      .eq('teacher_id', currentUser.id);
-
-    const { data: ratings } = await _supabase
-      .from('teacher_ratings')
-      .select('rating')
-      .eq('teacher_id', currentUser.id);
-
-    const { data: evaluations } = await _supabase
-      .from('evaluations')
-      .select('id')
-      .eq('teacher_id', currentUser.id);
-
-    const avgRating = ratings && ratings.length > 0
-      ? (ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length).toFixed(1)
-      : 0;
-
-    profileContent.innerHTML = `
-      ${isBirthday ? `
-        <div style="background: linear-gradient(135deg, #ff6b6b, #ff8787); color: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; text-align: center; animation: pulse 1s infinite;">
-          <h3 style="margin: 0; font-size: 1.5rem;">🎉 ¡FELIZ CUMPLEAÑOS! 🎉</h3>
-          <p style="margin: 8px 0 0 0; font-size: 1.1rem;">¡Que disfrutes tu día especial!</p>
-        </div>
-      ` : ''
-      }
-      
-      <div class="profile-header">
-        <div class="profile-avatar">
-          ${teacher.profile_photo_url ? `<img src="${teacher.profile_photo_url}" alt="${displayName}" style="width: 100%; height: 100%; object-fit: cover;">` : '<span style="font-size: 2.5rem;">👨‍🏫</span>'}
-        </div>
-        <div>
-          <h2 style="margin: 0 0 6px 0; font-size: 1.6rem;">${sanitizeInput(displayName)}</h2>
-          <p class="profile-role">👨‍🏫 Docente</p>
-          <p style="color: var(--text-light); font-size: 0.9rem; margin-top: 4px;">${currentUser.email}</p>
-        </div>
-        <button class="btn-secondary" onclick="openUploadPhotoModal()" style="align-self: flex-start; white-space: nowrap;">
-          <i class="fas fa-camera"></i> Cambiar Foto
-        </button>
-      </div>
-
-      <div style="background: white; padding: 16px; border-radius: 10px; box-shadow: var(--shadow); margin-bottom: 20px; border-left: 4px solid var(--primary-color);">
-        <p style="margin: 8px 0; font-size: 0.95rem; color: var(--text-dark);">
-          <strong style="color: var(--dark);">📅 Fecha de Nacimiento:</strong> <span style="color: var(--text-light);">${birthDateFormatted}</span>
-        </p>
-      </div>
-
-      <div class="stats-grid">
-        <div class="stat-card">
-          <i class="fas fa-school"></i>
-          <strong>${assignments?.length || 0}</strong>
-          <span>Asignaciones</span>
-        </div>
-        <div class="stat-card">
-          <i class="fas fa-clipboard-check"></i>
-          <strong>${evaluations?.length || 0}</strong>
-          <span>Evaluaciones</span>
-        </div>
-        <div class="stat-card">
-          <i class="fas fa-star"></i>
-          <strong>${avgRating}</strong>
-          <span>Calificación Promedio</span>
-        </div>
-        <div class="stat-card">
-          <i class="fas fa-users"></i>
-          <strong>${ratings?.length || 0}</strong>
-          <span>Calificaciones</span>
-        </div>
-      </div>
-
-      <h3 style="margin: 24px 0 16px; color: var(--dark); font-size: 1.3rem;">🏫 Mis Asignaciones</h3>
-      ${!assignments || assignments.length === 0 ? '<div class="empty-state">No tienes asignaciones</div>' : `
-        <div class="section-card">
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px;">
-            ${assignments.map(a => `
-              <div style="padding: 16px; background: var(--light-gray); border-radius: 8px; border-left: 4px solid var(--primary-color);">
-                <strong style="display: block; margin-bottom: 6px; color: var(--dark); font-size: 0.95rem;">${sanitizeInput(a.schools?.name || 'Establecimiento')}</strong>
-                <p style="margin: 0; color: var(--text-light); font-size: 0.85rem;">
-                  📚 ${a.grade} - Sección ${a.section}
-                </p>
-              </div>
-            `).join('')}
-          </div>
-        </div>
-      `}
-
-      <h3 style="margin: 24px 0 16px; color: var(--dark); font-size: 1.3rem;">⭐ Tu Calificación Promedio</h3>
-      <div class="section-card" style="text-align: center;">
-        <div style="padding: 32px; background: linear-gradient(135deg, var(--primary-color), var(--primary-dark)); color: white; border-radius: 12px;">
-          <span style="font-size: 1.2rem; opacity: 0.9; display: block; margin-bottom: 12px;">Calificación de Estudiantes</span>
-          <span style="font-size: 3.5rem; font-weight: 700; display: block;">${avgRating}</span>
-          <span style="font-size: 1.5rem; opacity: 0.9;">/5.0</span>
-          <div style="margin-top: 16px; font-size: 2rem;">
-            ${'⭐'.repeat(Math.round(parseFloat(avgRating)))}${'☆'.repeat(5 - Math.round(parseFloat(avgRating)))}
-          </div>
-          <small style="opacity: 0.9; font-size: 0.9rem; display: block; margin-top: 12px;">
-            Basado en ${ratings?.length || 0} calificación(es)
-          </small>
-        </div>
-      </div>
-
-      <div style="text-align: center; margin-top: 30px;">
-        <button class="btn-secondary" onclick="resetOnboarding()" style="font-size: 0.95rem;">
-          <i class="fas fa-question-circle"></i> Ver Tutorial de Nuevo
-        </button>
-      </div>
-  `;
-
-  } catch (err) {
-    console.error('Error en perfil docente:', err);
-    profileContent.innerHTML = '<div class="error-state">❌ Error al cargar perfil del docente</div>';
-  }
-}
-// ================================================
-// PARTE 4B: PERFIL ADMIN Y FUNCIONES (FINAL)
-// ================================================
-
-async function loadAdminProfile() {
-  const profileContent = document.getElementById('profile-content');
-  if (!profileContent) return;
-
-  profileContent.innerHTML = `
-    <div class="profile-header">
-      <div class="profile-avatar">
-        <span style="font-size: 2.5rem;">👑</span>
-      </div>
-      <div>
-        <h2 style="margin: 0 0 6px 0; font-size: 1.6rem;">Perfil de Administrador</h2>
-        <p class="profile-role">👑 Gestión de Nivel Superior</p>
-        <p style="color: var(--text-light); font-size: 0.9rem; margin-top: 4px;">${currentUser.email}</p>
-      </div>
-      <button class="btn-secondary" onclick="exportAllData()">
-        <i class="fas fa-file-export"></i> Backup de Datos
-      </button>
-    </div>
-
-    <div class="section-card" style="margin-top: 30px;">
-      <h3 style="margin-bottom: 20px;"><i class="fas fa-user-shield"></i> Información de Seguridad</h3>
-      <div style="display: grid; gap: 15px;">
-        <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border-color);">
-          <span style="color: var(--text-light);">ID de Usuario:</span>
-          <code style="background: var(--light-gray); padding: 2px 6px; border-radius: 4px;">${currentUser.id}</code>
-        </div>
-        <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border-color);">
-          <span style="color: var(--text-light);">Rol Asignado:</span>
-          <span class="status-badge status-active">Administrador</span>
-        </div>
-        <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border-color);">
-          <span style="color: var(--text-light);">Último Acceso:</span>
-          <span>${new Date().toLocaleString()}</span>
-        </div>
-      </div>
-    </div>
-
-    <div style="text-align: center; margin-top: 40px; padding: 20px; border-top: 1px solid var(--border-color);">
-      <p style="color: var(--text-light); margin-bottom: 15px;">¿Deseas revisar cómo se ve la plataforma para nuevos usuarios?</p>
-      <button class="btn-secondary" onclick="resetOnboarding()" style="font-size: 0.9rem;">
-        <i class="fas fa-question-circle"></i> Iniciar Tutorial de Bienvenida
-      </button>
     </div>
   `;
 }
 
-function renderRecentComments(ratings) {
-  if (!ratings || ratings.length === 0) {
-    return '<div class="empty-state">No hay comentarios disponibles</div>';
-  }
-
-  const recentRatings = ratings.filter(r => r.message).slice(0, 5);
-
-  if (recentRatings.length === 0) {
-    return '<div class="empty-state">No hay comentarios con mensaje</div>';
-  }
-
-  return `
-    <div style="display: grid; gap: 12px;">
-      ${recentRatings.map(r => `
-        <div class="section-card" style="padding: 16px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-            <div>
-              <strong style="font-size: 0.95rem;">${sanitizeInput(r.students?.full_name || 'Estudiante')}</strong>
-              <small style="display: block; color: var(--text-light); margin-top: 2px;">
-                → ${sanitizeInput(r.teachers?.full_name || 'Docente')}
-              </small>
-            </div>
-            <span style="font-size: 1.1rem;">${'⭐'.repeat(r.rating)}</span>
-          </div>
-          <p style="font-size: 0.85rem; color: var(--text-dark); background: var(--light-gray); padding: 10px; border-radius: 6px; margin: 8px 0;">
-            ${sanitizeInput(r.message)}
-          </p>
-          <small style="color: var(--text-light);">${formatDate(r.created_at)}</small>
-        </div>
-      `).join('')
-    }
-    </div>
-    <button class="btn-secondary" onclick="viewAllTeacherComments()" style="margin-top: 16px; width: 100%;">
-      <i class="fas fa-eye"></i> Ver Todos los Comentarios
-    </button>
-  `;
-}
-
-async function viewAllTeacherComments() {
-  try {
-    const { data: ratings } = await _supabase
-      .from('teacher_ratings')
-      .select(`
-  rating,
-    message,
-    created_at,
-    students(full_name, school_code, grade, section)
-      `)
-      .order('created_at', { ascending: false });
-
+function showBadgeDetailsModal(badge, isEarned) {
     const modal = document.createElement('div');
-    modal.className = 'modal active';
+    modal.className = 'fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-300';
+    modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
 
     modal.innerHTML = `
-    <div class="modal-content" style="max-width: 900px;">
-        <div class="modal-header">
-          <h2>💬 Todas las Calificaciones y Comentarios</h2>
-          <button class="close-modal" onclick="this.closest('.modal').remove()">×</button>
+    <div class="glass-card w-full max-w-sm p-0 overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 dark:bg-slate-900 border border-primary/20">
+      <div class="bg-gradient-to-br ${isEarned ? 'from-primary/20 to-indigo-500/20' : 'from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900'} p-8 text-center relative overflow-hidden">
+        <div class="absolute inset-0 opacity-10 pointer-events-none">
+           <i class="fas fa-certificate text-[12rem] absolute -bottom-10 -right-10"></i>
         </div>
-        <div class="modal-body">
-          ${!ratings || ratings.length === 0 ? '<p class="empty-state">No hay calificaciones aún</p>' : `
-            <div style="max-height: 70vh; overflow-y: auto;">
-              ${ratings.map(r => `
-                <div class="section-card" style="margin-bottom: 16px;">
-                  <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px; flex-wrap: wrap; gap: 12px;">
-                    <div>
-                      <strong style="font-size: 1rem; color: var(--dark);">${sanitizeInput(r.students?.full_name || 'Estudiante')}</strong>
-                      <p style="font-size: 0.85rem; color: var(--text-light); margin: 4px 0;">
-                        Evaluó a: <strong>Docente responsable</strong>
-                      </p>
-                    </div>
-                    <span style="font-size: 1.3rem;">
-                      ${'⭐'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}
-                    </span>
-                  </div>
-                  ${r.message ? `
-                    <div style="background: var(--light-gray); padding: 14px; border-radius: 8px; border-left: 3px solid var(--primary-color);">
-                      <strong style="display: block; margin-bottom: 8px; font-size: 0.9rem;">💬 Comentario:</strong>
-                      <p style="margin: 0; color: var(--text-dark); line-height: 1.6; font-size: 0.9rem;">${sanitizeInput(r.message)}</p>
-                    </div>
-                  ` : '<p style="color: var(--text-light); font-style: italic; font-size: 0.85rem;">Sin comentario escrito</p>'}
-                  <small style="color: var(--text-light); display: block; margin-top: 10px;">${formatDate(r.created_at)}</small>
-                </div>
-              `).join('')}
-            </div>
-          `}
-        </div>
+        <div class="text-7xl mb-4 relative z-10 animate-bounce">${badge.icon}</div>
+        <h2 class="text-2xl font-bold text-slate-800 dark:text-white uppercase tracking-tight relative z-10">${badge.name}</h2>
+        ${isEarned ? `
+          <div class="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500 text-white text-[0.6rem] font-bold uppercase tracking-widest rounded-full mt-2 relative z-10 shadow-lg shadow-emerald-500/20">
+            <i class="fas fa-check-circle"></i>¡Logro Desbloqueado!
+          </div>
+        ` : `
+          <div class="inline-flex items-center gap-2 px-3 py-1 bg-slate-500/20 text-slate-500 dark:text-slate-400 text-[0.6rem] font-bold uppercase tracking-widest rounded-full mt-2 relative z-10">
+            <i class="fas fa-lock"></i> Bloqueado
+          </div>
+        `}
       </div>
-    `;
+      
+      <div class="p-8">
+        <div class="mb-6">
+          <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest block mb-1">Descripción</label>
+          <p class="text-slate-600 dark:text-slate-300 font-medium text-sm leading-relaxed">${badge.description}</p>
+        </div>
+        
+        <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
+          <div class="flex items-center gap-3 mb-2">
+            <div class="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-xs shadow-inner"><i class="fas fa-question-circle"></i></div>
+            <span class="text-[0.7rem] font-bold uppercase text-slate-700 dark:text-slate-200 tracking-widest">¿Cómo se gana?</span>
+          </div>
+          <p class="text-[0.8rem] text-slate-500 dark:text-slate-400 font-medium leading-tight">
+            ${getBadgeAwardLogic(badge.id)}
+          </p>
+        </div>
 
+        <button onclick="this.closest('.fixed').remove()" class="btn-primary-tw w-full h-12 mt-8 text-[0.8rem] uppercase tracking-widest">
+          ¡ENTENDIDO!
+        </button>
+      </div>
+    </div>
+  `;
     document.body.appendChild(modal);
-
-  } catch (err) {
-    console.error('Error cargando comentarios:', err);
-    showToast('❌ Error al cargar comentarios', 'error');
-  }
 }
 
-async function exportAllData() {
-  showToast('📦 Generando exportación completa...', 'default');
-
-  try {
-    if (typeof exportStudentsCSV === 'function') await exportStudentsCSV();
-    await new Promise(r => setTimeout(r, 500));
-    if (typeof exportGroupsCSV === 'function') await exportGroupsCSV();
-    await new Promise(r => setTimeout(r, 500));
-    if (typeof exportProjectsCSV === 'function') await exportProjectsCSV();
-
-    showToast('✅ Exportación completa finalizada', 'success');
-  } catch (err) {
-    console.error('Error en exportación:', err);
-    showToast('❌ Error en exportación', 'error');
-  }
+function getBadgeAwardLogic(badgeId) {
+    const logic = {
+        1: "Sube tu primer proyecto individual o grupal al portal.",
+        2: "Recibe al menos 10 'Me Gusta' de la comunidad en tus proyectos.",
+        3: "Logra una calificación perfecta de 90 puntos o más en cualquier proyecto.",
+        5: "Mantén tu constancia subiendo un total de 5 o más proyectos aprobados.",
+        6: "Conviértete en un líder de la comunidad alcanzando 50+ 'Me Gusta' totales.",
+        7: "Demuestra maestría logrando 3 o más proyectos con nota superior a 85.",
+        8: "Tu proyecto debe ser seleccionado como el más innovador del bimestre por los jueces.",
+        9: "Completa el ciclo escolar anual con un mínimo de 10 proyectos publicados.",
+        10: "Publica al menos un proyecto cada mes durante 3 meses seguidos.",
+        11: "Participa activamente apoyando a tus compañeros: vota por 20 proyectos ajenos.",
+        12: "Demuestra ser un gran colaborador trabajando en 3 grupos diferentes este año.",
+        13: "Desempéñate como 'Planner' en tu equipo y obtén 3 éxitos rotundos.",
+        14: "Destaquémonos como buen 'Speaker' presentando tus proyectos con éxito 3 veces.",
+        15: "¡No te rindas al final! Sube al menos un proyecto durante el mes de Noviembre."
+    };
+    return logic[badgeId] || "Criterio de evaluación académica establecido por 1Bot.";
 }
 
-// ================================================
-// UTILIDADES PARA PERFIL
-// ================================================
+async function loadTeacherProfile() {
+    const container = document.getElementById('profile-content');
+    const { data: teacher } = await _supabase.from('teachers').select('*').eq('id', currentUser.id).single();
 
-// La función startBirthdayConfetti se movió a main.js para uso global
+    const [assignRes, ratingRes] = await Promise.all([
+        _supabase.from('teacher_assignments').select('*, schools(name)').eq('teacher_id', currentUser.id),
+        _supabase.from('teacher_ratings').select('rating').eq('teacher_id', currentUser.id)
+    ]);
 
-function checkIfBirthday(birthDate) {
-  if (!birthDate) return false;
-  const today = new Date();
-  return birthDate.getMonth() === today.getMonth() && birthDate.getDate() === today.getDate();
+    const assignments = assignRes.data || [];
+    const kpis = await calculateMonthlyKPIs(currentUser.id, assignments);
+    const avgRating = ratingRes.data?.length > 0 ? (ratingRes.data.reduce((s, r) => s + r.rating, 0) / ratingRes.data.length).toFixed(1) : 0;
+
+    renderTeacherProfileUI(container, teacher, assignments, kpis, avgRating, ratingRes.data?.length || 0);
 }
 
-console.log('✅ profile.js cargado completamente');
+function renderTeacherProfileUI(container, teacher, assignments, kpis, avgRating, totalRatings) {
+    container.innerHTML = `
+    <div class="flex flex-col md:flex-row gap-8 mb-10 items-center text-center md:text-left">
+        <div class="w-32 h-32 rounded-3xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center text-5xl shadow-inner border border-indigo-500/20 shrink-0 overflow-hidden">
+            ${teacher.profile_photo_url ? `<img src="${teacher.profile_photo_url}" class="w-full h-full object-cover">` : '👨‍🏫'}
+        </div>
+        <div class="grow">
+            <h2 class="text-4xl font-bold text-slate-800 dark:text-white tracking-tight">${teacher.full_name}</h2>
+            <p class="text-lg font-semibold text-indigo-500 mb-2">Docente Autorizado 1Bot</p>
+            <div class="flex justify-center md:justify-start gap-4 text-xs font-semibold text-slate-400 uppercase tracking-widest">
+                <span>${assignments.length} Centros Educativos</span>
+                <span>•</span>
+                <span>${teacher.username}</span>
+            </div>
+        </div>
+        <div class="flex gap-3">
+            <button onclick="openUploadPhotoModal()" class="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:text-primary transition-colors"><i class="fas fa-camera text-xl"></i></button>
+            <button onclick="window.print()" class="btn-primary-tw flex items-center gap-2">
+                <i class="fas fa-print"></i> EXPORTAR FICHA
+            </button>
+        </div>
+    </div>
 
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+        <div class="glass-card p-8 overflow-hidden relative group">
+            <i class="fas fa-star absolute -right-6 -bottom-6 text-8xl text-slate-50 dark:text-slate-800 transition-transform group-hover:scale-110"></i>
+            <div class="relative z-10">
+                <div class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-2">Rating Estudiantes</div>
+                <div class="text-4xl font-bold text-slate-800 dark:text-white flex items-baseline gap-2">${avgRating} <span class="text-amber-500 text-xl">★</span></div>
+                <div class="text-xs font-semibold text-slate-500 mt-4">${totalRatings} evaluaciones recibidas</div>
+            </div>
+        </div>
+        <div class="glass-card p-8 border-l-8 border-emerald-500">
+            <div class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-2">XP Acumulada Mes</div>
+            <div class="text-4xl font-bold text-emerald-600 dark:text-emerald-400">${kpis.totalXP}</div>
+            <div class="text-xs font-semibold text-slate-500 mt-4">Meta mensual: 500 XP</div>
+        </div>
+        <div class="glass-card p-8">
+            <div class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-2">Estado del Perfil</div>
+            <div class="text-xl font-bold text-slate-800 dark:text-white uppercase tracking-tighter">Verificado</div>
+            <div class="flex gap-1 mt-4 text-emerald-500 text-[0.6rem]">
+                ${'<i class="fas fa-shield-alt"></i>'.repeat(3)}
+            </div>
+        </div>
+    </div>
+
+    <div class="glass-card p-8">
+        <h3 class="text-xl font-bold text-slate-800 dark:text-white mb-6 flex items-center gap-3">
+            <i class="fas fa-tasks text-primary"></i> Objetivos del Periodo
+        </h3>
+        <div class="grid sm:grid-cols-2 gap-8">
+            <div>
+                <div class="flex justify-between text-xs font-bold uppercase text-slate-400 mb-2">
+                    <span>Asistencia</span>
+                    <span>${kpis.attCount} / ${kpis.attMeta}</span>
+                </div>
+                <div class="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                    <div class="h-full bg-primary" style="width: ${Math.min(100, (kpis.attCount / kpis.attMeta) * 100)}%"></div>
+                </div>
+            </div>
+            <div>
+                <div class="flex justify-between text-xs font-black uppercase text-slate-400 mb-2">
+                    <span>Evaluaciones Realizadas</span>
+                    <span>${kpis.evalCount} / ${kpis.evalMeta}</span>
+                </div>
+                <div class="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                    <div class="h-full bg-indigo-500" style="width: ${Math.min(100, (kpis.evalCount / kpis.evalMeta) * 100)}%"></div>
+                </div>
+            </div>
+        </div>
+        <button onclick="viewAllTeacherComments()" class="w-full mt-10 py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold rounded-2xl transition-all uppercase tracking-widest text-xs">
+            VER FEEDBACK DETALLADO DE ESTUDIANTES
+        </button>
+    </div>
+  `;
+}
+
+async function loadAdminProfile() {
+    const container = document.getElementById('profile-content');
+    container.innerHTML = `
+    <div class="glass-card p-12 text-center">
+        <div class="w-24 h-24 bg-primary/10 text-primary rounded-full flex items-center justify-center text-4xl mx-auto mb-6">
+            <i class="fas fa-user-shield"></i>
+        </div>
+        <h2 class="text-3xl font-bold text-slate-800 dark:text-white mb-2">Panel Ejecutivo</h2>
+        <p class="text-slate-500 dark:text-slate-400 mb-10 max-w-sm mx-auto">Tienes acceso total a la configuración del sistema y reportes de exportación masiva.</p>
+        <button onclick="exportStudentsCSV()" class="btn-primary-tw w-full sm:w-auto">
+            <i class="fas fa-file-csv mr-2"></i> EXPORTAR LISTADO GLOBAL DE ALUMNOS
+        </button>
+    </div>
+  `;
+}
+
+console.log('✅ profile.js optimizado (Tailwind Edition)');

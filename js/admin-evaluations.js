@@ -8,9 +8,9 @@ async function loadAdminEvalReport() {
     if (!container) return;
 
     container.innerHTML = `
-        <div style="text-align:center; padding: 40px;">
-            <i class="fas fa-circle-notch fa-spin" style="font-size: 2rem; color: var(--primary-color);"></i>
-            <p style="margin-top: 10px; color: var(--text-light);">Analizando evaluaciones y proyectos...</p>
+        <div class="flex flex-col items-center justify-center p-20 text-slate-400">
+            <i class="fas fa-circle-notch fa-spin text-4xl mb-4 text-primary"></i>
+            <span class="font-bold tracking-widest uppercase text-xs">Analizando métricas académicas...</span>
         </div>
     `;
 
@@ -42,10 +42,10 @@ async function loadAdminEvalReport() {
     } catch (err) {
         console.error('Error cargando reporte académico:', err);
         container.innerHTML = `
-            <div class="error-state">
-                <i class="fas fa-exclamation-triangle"></i>
-                <h3>Error al cargar el reporte</h3>
-                <p>${err.message}</p>
+            <div class="glass-card p-10 text-rose-500 font-bold text-center border-l-4 border-rose-500 bg-rose-50/50 dark:bg-rose-900/10">
+                <i class="fas fa-exclamation-triangle text-3xl mb-3"></i>
+                <h3 class="text-lg font-bold uppercase tracking-tight">Error de Sincronización</h3>
+                <p class="text-sm opacity-80">${err.message}</p>
             </div>
         `;
     }
@@ -98,85 +98,108 @@ function calculateEvalStats(projects, schools) {
 
 function renderEvalDashboard(container, stats) {
     container.innerHTML = `
-        <div class="stats-grid" style="margin-bottom: 30px;">
-            <div class="stat-card">
-                <div class="stat-icon" style="background: rgba(99, 102, 241, 0.1); color: #6366f1;">
-                    <i class="fas fa-star"></i>
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10 animate-slideUp">
+             <div>
+                <h1 class="text-3xl font-black text-slate-800 dark:text-white tracking-tight leading-none mb-2">📈 Resultados Académicos</h1>
+                <p class="text-slate-500 dark:text-slate-400 font-medium">Análisis de calidad de proyectos y rendimiento por establecimiento.</p>
+             </div>
+             <button class="btn-secondary-tw px-5 h-10 text-xs uppercase font-bold tracking-widest" onclick="loadAdminEvalReport()">
+                <i class="fas fa-sync-alt animate-spin-slow"></i> ACTUALIZAR
+             </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-10">
+            <div class="glass-card p-6 bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-indigo-500/20 group hover:-translate-y-1 transition-transform">
+                <div class="flex justify-between items-start mb-4">
+                     <span class="text-[0.65rem] font-bold uppercase tracking-widest opacity-80">Promedio General</span>
+                     <i class="fas fa-star text-2xl opacity-40 group-hover:scale-110 transition-transform"></i>
                 </div>
-                <div class="stat-info">
-                    <h3>${stats.averageScore}</h3>
-                    <p>Promedio General</p>
+                <div class="text-4xl font-black mb-1">${stats.averageScore}</div>
+                <div class="h-1.5 w-full bg-black/20 rounded-full mt-2 overflow-hidden">
+                    <div class="h-full bg-white/90" style="width: ${stats.averageScore}%"></div>
                 </div>
             </div>
             
-            <div class="stat-card">
-                <div class="stat-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
-                    <i class="fas fa-check-double"></i>
+            <div class="glass-card p-6 border-l-4 border-emerald-500 group hover:-translate-y-1 transition-transform">
+                <div class="flex justify-between items-start mb-4">
+                     <span class="text-[0.65rem] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">Calificados</span>
+                     <div class="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-500 flex items-center justify-center text-lg group-hover:bg-emerald-500 group-hover:text-white transition-colors">
+                        <i class="fas fa-check-double"></i>
+                     </div>
                 </div>
-                <div class="stat-info">
-                    <h3>${stats.evaluatedProjects}</h3>
-                    <p>Proyectos Calificados</p>
-                </div>
+                <div class="text-3xl font-black text-slate-800 dark:text-white mb-1">${stats.evaluatedProjects}</div>
+                <p class="text-[0.6rem] font-bold text-slate-400 uppercase tracking-wide">Proyectos Completados</p>
             </div>
 
-            <div class="stat-card">
-                <div class="stat-icon" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b;">
-                    <i class="fas fa-hourglass-half"></i>
+            <div class="glass-card p-6 border-l-4 border-amber-500 group hover:-translate-y-1 transition-transform">
+                <div class="flex justify-between items-start mb-4">
+                     <span class="text-[0.65rem] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400">Pendientes</span>
+                     <div class="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-amber-500 flex items-center justify-center text-lg group-hover:bg-amber-500 group-hover:text-white transition-colors">
+                        <i class="fas fa-hourglass-half"></i>
+                     </div>
                 </div>
-                <div class="stat-info">
-                    <h3>${stats.pendingProjects}</h3>
-                    <p>Pendientes</p>
-                </div>
+                <div class="text-3xl font-black text-slate-800 dark:text-white mb-1">${stats.pendingProjects}</div>
+                <p class="text-[0.6rem] font-bold text-slate-400 uppercase tracking-wide">Requieren Evaluación</p>
             </div>
 
-            <div class="stat-card">
-                <div class="stat-icon" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
-                    <i class="fas fa-project-diagram"></i>
+            <div class="glass-card p-6 border-l-4 border-blue-500 group hover:-translate-y-1 transition-transform">
+                <div class="flex justify-between items-start mb-4">
+                     <span class="text-[0.65rem] font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400">Total Proyectos</span>
+                     <div class="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-500 flex items-center justify-center text-lg group-hover:bg-blue-500 group-hover:text-white transition-colors">
+                        <i class="fas fa-project-diagram"></i>
+                     </div>
                 </div>
-                <div class="stat-info">
-                    <h3>${stats.totalProjects}</h3>
-                    <p>Total Proyectos</p>
-                </div>
+                <div class="text-3xl font-black text-slate-800 dark:text-white mb-1">${stats.totalProjects}</div>
+                <p class="text-[0.6rem] font-bold text-slate-400 uppercase tracking-wide">Universo Total</p>
             </div>
         </div>
 
-        <div class="section-card">
-            <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                <h3 style="margin:0;">📅 Rendimiento por Establecimiento</h3>
-                <button class="btn-secondary btn-sm" onclick="loadAdminEvalReport()">
-                    <i class="fas fa-sync-alt"></i> Actualizar
-                </button>
+        <div class="glass-card p-0 overflow-hidden shadow-xl">
+            <div class="p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                <h3 class="text-lg font-bold text-slate-800 dark:text-white uppercase tracking-tight flex items-center gap-2">
+                    <i class="fas fa-school text-slate-400"></i> Rendimiento por Establecimiento
+                </h3>
             </div>
 
-            <div class="table-container">
-                <table class="data-table">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
                     <thead>
-                        <tr>
-                            <th>Establecimiento</th>
-                            <th>Proyectos</th>
-                            <th>Progreso</th>
-                            <th>Promedio</th>
-                            <th>Nivel</th>
+                        <tr class="text-[0.65rem] font-bold uppercase text-slate-400 tracking-widest bg-slate-50 dark:bg-slate-800 border-b border-slate-100 dark:border-slate-800">
+                            <th class="px-6 py-4">Establecimiento</th>
+                            <th class="px-6 py-4 text-center">Entrega</th>
+                            <th class="px-6 py-4 w-1/3">Progreso Evaluación</th>
+                            <th class="px-6 py-4 text-right">Promedio</th>
+                            <th class="px-6 py-4 text-center">Nivel</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
                         ${stats.schoolStats.map(school => {
         const progress = school.total > 0 ? Math.round((school.evaluated / school.total) * 100) : 0;
         return `
-                                <tr>
-                                    <td><strong>${school.name}</strong></td>
-                                    <td>${school.total}</td>
-                                    <td>
-                                        <div style="display:flex; align-items:center; gap:10px;">
-                                            <div style="flex:1; height:6px; background:#eee; border-radius:3px; min-width:60px;">
-                                                <div style="width:${progress}%; height:100%; background:var(--primary-color); border-radius:3px;"></div>
+                                <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                                    <td class="px-6 py-4">
+                                        <div class="text-sm font-bold text-slate-800 dark:text-white">${school.name}</div>
+                                    </td>
+                                    <td class="px-6 py-4 text-center">
+                                       <div class="flex flex-col items-center justify-center">
+                                            <span class="text-lg font-black text-slate-700 dark:text-white leading-none">${school.total}</span>
+                                            <span class="text-[0.6rem] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Proy.</span>
+                                       </div>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <div class="flex items-center gap-3">
+                                            <div class="grow h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                                <div class="h-full bg-primary rounded-full transition-all duration-1000" style="width:${progress}%"></div>
                                             </div>
-                                            <small>${progress}%</small>
+                                            <span class="text-xs font-bold text-primary">${progress}%</span>
                                         </div>
                                     </td>
-                                    <td><strong style="color: ${getScoreColor(school.average)}">${school.average}</strong></td>
-                                    <td>
-                                        <span class="status-badge ${getScoreStatus(school.average)}">
+                                    <td class="px-6 py-4 text-right">
+                                        <span class="text-lg font-black" style="color: ${getScoreColor(school.average)}">${school.average}</span>
+                                    </td>
+                                    <td class="px-6 py-4 text-center">
+                                        <span class="px-2 py-1 rounded-md text-[0.6rem] font-bold uppercase tracking-wider border" 
+                                            style="background: ${getScoreColor(school.average)}15; color: ${getScoreColor(school.average)}; border-color: ${getScoreColor(school.average)}30;">
                                             ${getScoreLabel(school.average)}
                                         </span>
                                     </td>
