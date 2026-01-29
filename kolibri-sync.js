@@ -192,14 +192,76 @@ const KolibriSync = {
 
     async handleScannedData(data) {
         try {
+            // Sonido de éxito (beep corto)
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            oscillator.type = 'sine';
+            oscillator.frequency.value = 800; // Hz
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            oscillator.start();
+            gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.1);
+            setTimeout(() => { oscillator.stop(); audioCtx.close(); }, 150);
+
+            // Feedback visual en el marco (Flash Verde)
+            const scannerFrame = document.querySelector('#scanner-container > div.absolute');
+            if (scannerFrame) {
+                scannerFrame.classList.remove('border-black/50');
+                scannerFrame.classList.add('border-emerald-500/80');
+                setTimeout(() => {
+                    scannerFrame.classList.remove('border-emerald-500/80');
+                    scannerFrame.classList.add('border-black/50');
+                }, 300);
+            }
+
+            // SOPORTE PARA QR FRAGMENTADOS (CHUNKED)
+            // Formato esperado: "CHUNK|ID_UNICO|INDICE|TOTAL|DATA_PARCIAL"
+            if (data.startsWith('CHUNK|')) {
+                const parts = data.split('|');
+                const transferId = parts[1];
+                const index = parseInt(parts[2]);
+                const total = parseInt(parts[3]);
+                const chunkData = parts.slice(4).join('|');
+
+                if (!this.qrChunks) this.qrChunks = {};
+                if (!this.qrChunks[transferId]) this.qrChunks[transferId] = new Array(total).fill(null);
+
+                // Si ya tenemos este chunk, ignorar
+                if (this.qrChunks[transferId][index]) return;
+
+                this.qrChunks[transferId][index] = chunkData;
+                window.showToast(`📡 Recibido fragmento ${index + 1} de ${total}`, 'info');
+
+                // Verificar si está completo
+                if (this.qrChunks[transferId].every(c => c !== null)) {
+                    const fullString = this.qrChunks[transferId].join('');
+                    delete this.qrChunks[transferId]; // Limpiar memoria
+                    this.stopScanner(); // Detener al completar
+                    this.processFullPayload(JSON.parse(fullString));
+                }
+                return; // Continuar escaneando otros chunks
+            }
+
+            // Dato normal (Simple)
             const payload = JSON.parse(data);
+            this.stopScanner();
+            this.processFullPayload(payload);
+        } catch (err) {
+            window.showToast('❌ Código no válido o incompleto', 'error');
+        }
+    },
+
+    async processFullPayload(payload) {
+        try {
             const success = await window._syncManager.importData(payload);
             if (success) {
                 if (typeof confetti === 'function') confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
                 this.updatePendingCount();
             }
-        } catch (err) {
-            window.showToast('❌ Código no válido', 'error');
+        } catch (e) {
+            console.error(e);
+            window.showToast('❌ Error procesando datos', 'error');
         }
     },
 
