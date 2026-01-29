@@ -22,12 +22,15 @@
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#00bcd4">
     <link rel="apple-touch-icon" href="icon-192.png">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="ProjectX">
 
+
     <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+
 
     <!-- Tailwind CSS 3.4 -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -370,22 +373,25 @@
         @media print {
 
             header,
-            .sidebar,
+            aside,
+            #sidebar,
+            #mobile-menu-btn,
             .sidebar-toggle,
-            .btn-theme-toggle,
-            .sync-status,
+            #theme-toggle,
+            #sync-indicator,
             .user-info,
-            .btn-logout,
+            [onclick^="logout"],
             .no-print,
             nav,
-            .logo,
-            .sidebar-toggle {
+            .nav-menu,
+            .logo {
                 display: none !important;
             }
 
             #app-container,
             main,
-            .content-area,
+            .main-content,
+            .view-section.active,
             #view-admin-success,
             #admin-success-container {
                 margin: 0 !important;
@@ -394,24 +400,31 @@
                 position: static !important;
                 display: block !important;
                 background: white !important;
+                min-height: auto !important;
             }
 
             body {
                 background: white !important;
                 margin: 0 !important;
                 padding: 0 !important;
+                color: black !important;
+            }
+
+            .view-section:not(.active) {
+                display: none !important;
             }
 
             @page {
                 size: portrait;
-                margin: 0.5cm;
+                margin: 1cm;
             }
 
+            .glass-card,
             .section-card {
                 box-shadow: none !important;
-                border: 0.5px solid #eee !important;
-                margin: 0 !important;
-                padding: 0 !important;
+                border: 1px solid #eee !important;
+                margin-bottom: 1rem !important;
+                break-inside: avoid;
             }
 
             * {
@@ -419,7 +432,39 @@
                 print-color-adjust: exact !important;
             }
         }
+
+        /* FIX AGRESIVO PARA MENÚ MÓVIL */
+        #mobile-menu-btn {
+            display: none !important;
+        }
+
+        @media (max-width: 768px) {
+            #mobile-menu-btn {
+                display: flex !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                z-index: 2147483647 !important;
+                bottom: 24px !important;
+                right: 24px !important;
+                position: fixed !important;
+                width: 60px !important;
+                height: 60px !important;
+                background-color: #00ADEF !important;
+                color: white !important;
+                border-radius: 50% !important;
+                border: none !important;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+                align-items: center !important;
+                justify-content: center !important;
+                font-size: 24px !important;
+                cursor: pointer !important;
+            }
+        }
     </style>
+
+    <!-- QR Code Libraries (Offline Support) -->
+    <script src="js/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 </head>
 
 <body>
@@ -484,10 +529,13 @@
                     <i class="fas fa-moon text-lg"></i>
                 </button>
 
-                <div id="sync-indicator"
-                    class="flex items-center gap-2 text-emerald-500 font-bold text-xs bg-emerald-500/10 px-3 py-1.5 rounded-full dark:bg-emerald-500/5">
-                    <i class="fas fa-check-circle"></i>
-                    <span class="hidden sm:inline font-black tracking-tighter">CONECTADO</span>
+                <div id="sync-indicator" onclick="KolibriSync.openSyncCenter()"
+                    class="flex items-center gap-2 text-emerald-500 font-bold text-xs bg-emerald-500/10 px-3 py-1.5 rounded-full dark:bg-emerald-500/5 cursor-pointer hover:bg-emerald-500/20 transition-all">
+                    <i id="sync-icon" class="fas fa-check-circle"></i>
+                    <span id="sync-status-text"
+                        class="hidden sm:inline font-black tracking-tighter uppercase text-[0.6rem]">Conectado</span>
+                    <span id="sync-count"
+                        class="hidden w-5 h-5 bg-primary text-white text-[0.5rem] flex items-center justify-center rounded-full animate-pulse">0</span>
                 </div>
 
                 <div class="h-8 w-[1px] bg-slate-200 dark:bg-slate-800 mx-2"></div>
@@ -513,9 +561,10 @@
             </div>
         </header>
 
-        <button
-            class="sidebar-toggle fixed bottom-6 right-6 w-14 h-14 bg-primary text-white rounded-2xl shadow-2xl flex md:hidden items-center justify-center text-2xl z-[70] active:scale-95 transition-transform"
-            onclick="toggleSidebar()">
+
+
+        <!-- BOTÓN MENÚ MÓVIL (FINAL) -->
+        <button id="mobile-menu-btn" onclick="toggleSidebar()">
             <i class="fas fa-bars"></i>
         </button>
 
@@ -629,6 +678,11 @@
             <!-- DASHBOARD ADMIN (INICIO PARA ADMIN) -->
             <section id="view-admin-dashboard" class="view-section">
                 <div id="admin-dashboard-container"></div>
+            </section>
+
+            <!-- GESTIÓN DE ROCAS MENSUALES (ADMIN) -->
+            <section id="view-admin-rocks" class="view-section" style="display: none;">
+                <div id="admin-rocks-container"></div>
             </section>
 
             <!-- SISTEMA DE BONOS (NUEVO) -->
@@ -864,46 +918,95 @@
     </div>
 
     <!-- Toast Container -->
-    <div id="toast-container"></div>
+    <!-- Toast Container (Always on top) -->
+    <div id="toast-container"
+        style="position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 2147483647 !important; pointer-events: none; display: flex; flex-direction: column; gap: 10px; align-items: center; width: auto; max-width: 90vw;">
+    </div>
+
+    <!-- CONTROLES DESARROLLADOR (KOLIBRI) -->
+    <!-- CONTROLES DESARROLLADOR (KOLIBRI) -->
+    <div id="dev-tools" style="display: none;">
+        <!-- Indicador pulsante para encontrar los botones fácilmente -->
+        <div
+            style="position: fixed; bottom: 210px; right: 24px; z-index: 99999; width: 8px; height: 8px; background: #ef4444; border-radius: 50%; animation: pulse 2s infinite;">
+        </div>
+
+        <!-- Botones de desarrollo (Movidos arriba para no tapar menú móvil) -->
+        <button onclick="_syncManager.toggleDevMode()"
+            style="position: fixed !important; bottom: 160px !important; right: 24px !important; z-index: 99999 !important; width: 48px !important; height: 48px !important; background: #1e293b !important; color: white !important; border: 2px solid #475569 !important; border-radius: 16px !important; box-shadow: 0 10px 25px rgba(0,0,0,0.3) !important; cursor: pointer !important; display: flex !important; align-items: center !important; justify-content: center !important; transition: all 0.2s !important; opacity: 0.4 !important;"
+            onmouseover="this.style.opacity='1'; this.style.transform='scale(1.1)'"
+            onmouseout="this.style.opacity='0.4'; this.style.transform='scale(1)'" title="🛠️ Toggle Dev Mode">
+            <i class="fas fa-tools" style="font-size: 18px;"></i>
+        </button>
+
+        <button onclick="_syncManager.toggleSimulatedOffline()"
+            style="position: fixed !important; bottom: 100px !important; right: 24px !important; z-index: 99999 !important; width: 48px !important; height: 48px !important; background: #dc2626 !important; color: white !important; border: 2px solid #ef4444 !important; border-radius: 16px !important; box-shadow: 0 10px 25px rgba(220,38,38,0.4) !important; cursor: pointer !important; display: flex !important; align-items: center !important; justify-content: center !important; transition: all 0.2s !important; opacity: 0.4 !important;"
+            onmouseover="this.style.opacity='1'; this.style.transform='scale(1.1)'"
+            onmouseout="this.style.opacity='0.4'; this.style.transform='scale(1)'" title="🔌 Simular Offline">
+            <i class="fas fa-plug" style="font-size: 18px;"></i>
+        </button>
+    </div>
+
+    <style>
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 0.3;
+                transform: scale(1.5);
+            }
+        }
+    </style>
+
+    <script>
+        // Mostrar herramientas dev si está activado
+        window.addEventListener('DOMContentLoaded', () => {
+            if (localStorage.getItem('PX_DEV_MODE') === 'true') {
+                const devTools = document.getElementById('dev-tools');
+                if (devTools) devTools.style.display = 'block';
+            }
+        });
+
+        // Atajo: Shift + D para activar modo dev
+        window.addEventListener('keydown', (e) => {
+            if (e.shiftKey && e.key === 'D') {
+                // Toggle dev mode
+                const isDevMode = localStorage.getItem('PX_DEV_MODE') === 'true';
+                localStorage.setItem('PX_DEV_MODE', !isDevMode);
+
+                const devTools = document.getElementById('dev-tools');
+                if (devTools) {
+                    if (!isDevMode) {
+                        devTools.style.display = 'block';
+                        showToast('🛠️ Modo Desarrollador Activado', 'success');
+                    } else {
+                        devTools.style.display = 'none';
+                        showToast('🛠️ Modo Desarrollador Desactivado', 'default');
+                    }
+                }
+            }
+        });
+    </script>
     <!-- ============================================ -->
     <!-- SCRIPTS -->
     <!-- ============================================ -->
 
-    <script src="js/config.js"></script>
-    <script src="js/utils.js"></script>
-    <script src="js/data/badges.js"></script>
-    <script src="js/data/quotes.js"></script>
-    <script src="js/data/challenges.js"></script>
-    <!-- Módulos Core -->
-    <script src="js/auth.js"></script>
-    <script src="js/sync-manager.js"></script>
-    <script src="js/main.js"></script>
-    <script src="js/onboarding.js"></script>
-    <script src="js/birthday-logic.js"></script>
-    <!-- Confetti Library -->
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
-    <!-- Service Worker para PWA -->
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/service-worker.js')
-                    .then(registration => {
-                        console.log('✅ Service Worker registrado:', registration.scope);
-                    })
-                    .catch(err => {
-                        console.error('❌ Error registrando Service Worker:', err);
-                    });
-            });
-        }
+    <!-- ============================================ -->
+    <!-- SCRIPTS (Controlados por ES Modules) -->
+    <!-- ============================================ -->
 
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.addEventListener('controllerchange', () => {
-                if (confirm('🔄 Nueva versión disponible. ¿Recargar ahora?')) {
-                    window.location.reload();
-                }
-            });
-        }
-    </script>
+    <!-- Librerías Externas (Globales) -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+
+    <!-- Punto de Entrada del Sistema -->
+    <script type="module" src="js/app.js"></script>
+
+    <meta name="mobile-web-app-capable" content="yes">
 </body>
 
 </html>

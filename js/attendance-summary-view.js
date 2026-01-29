@@ -6,45 +6,57 @@ let globalAttendanceData = [];
 let schoolsMap = {}; // Maps school_code to school_name
 let currentFilterDate = new Date(); // To track selected month
 
-async function showAttendanceSummaryView() {
+window.showAttendanceSummaryView = async function showAttendanceSummaryView() {
     const container = document.getElementById('admin-attendance-report-container');
     if (!container) return;
 
-    container.innerHTML = `
-        <div class="flex flex-col items-center justify-center p-20 text-slate-400">
-            <i class="fas fa-circle-notch fa-spin text-4xl mb-4 text-primary"></i>
-            <span class="font-bold tracking-widest uppercase text-xs">Analizando Datos de Asistencia...</span>
-        </div>
-    `;
+    if (!container.innerHTML || container.innerHTML.includes('fa-circle-notch')) {
+        container.innerHTML = `
+            <div class="flex flex-col items-center justify-center p-20 text-slate-400">
+                <i class="fas fa-circle-notch fa-spin text-4xl mb-4 text-primary"></i>
+                <span class="font-bold tracking-widest uppercase text-xs">Analizando Datos de Asistencia...</span>
+            </div>
+        `;
+    }
 
     try {
-        // 1. Cargar registros de asistencia y datos de escuelas en paralelo
-        const [attendanceResult, schoolsResult] = await Promise.all([
-            _supabase
-                .from('attendance')
-                .select(`
-                    *,
-                    students!fk_attendance_student(full_name, school_code),
-                    teachers!fk_attendance_teacher(full_name)
-                `)
-                .order('date', { ascending: false }),
-            _supabase
-                .from('schools')
-                .select('code, name')
-        ]);
+        const _supabase = window._supabase;
+        const fetchWithCache = window.fetchWithCache;
 
-        if (attendanceResult.error) throw attendanceResult.error;
-        if (schoolsResult.error) throw schoolsResult.error;
+        await fetchWithCache('admin_global_attendance', async () => {
+            // 1. Cargar registros de asistencia y datos de escuelas en paralelo
+            const [attendanceResult, schoolsResult] = await Promise.all([
+                _supabase
+                    .from('attendance')
+                    .select(`
+                        *,
+                        students!fk_attendance_student(full_name, school_code),
+                        teachers!fk_attendance_teacher(full_name)
+                    `)
+                    .order('date', { ascending: false }),
+                _supabase
+                    .from('schools')
+                    .select('code, name')
+            ]);
 
-        globalAttendanceData = attendanceResult.data || [];
+            if (attendanceResult.error) throw attendanceResult.error;
+            if (schoolsResult.error) throw schoolsResult.error;
 
-        // Crear mapa de códigos a nombres de escuela
-        schoolsMap = (schoolsResult.data || []).reduce((acc, school) => {
-            acc[school.code.toLowerCase()] = school.name;
-            return acc;
-        }, {});
+            return {
+                attendance: attendanceResult.data || [],
+                schools: schoolsResult.data || []
+            };
+        }, (snapshot) => {
+            globalAttendanceData = snapshot.attendance;
 
-        renderAnalyticsView(container);
+            // Crear mapa de códigos a nombres de escuela
+            schoolsMap = (snapshot.schools || []).reduce((acc, school) => {
+                acc[school.code.toLowerCase()] = school.name;
+                return acc;
+            }, {});
+
+            window.renderAnalyticsView(container);
+        });
 
     } catch (err) {
         console.error('Error loading attendance analytics:', err);
@@ -52,7 +64,7 @@ async function showAttendanceSummaryView() {
     }
 }
 
-function renderAnalyticsView(container) {
+window.renderAnalyticsView = function renderAnalyticsView(container) {
     // Filtrar datos por mes seleccionado
     const selectedYear = currentFilterDate.getFullYear();
     const selectedMonth = currentFilterDate.getMonth();
@@ -103,14 +115,14 @@ function renderAnalyticsView(container) {
             </div>
             
             <div class="flex items-center gap-4 bg-white dark:bg-slate-900 p-1.5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
-                <button onclick="changeFilterMonth(-1)" class="w-10 h-10 flex items-center justify-center text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+                <button onclick="window.changeFilterMonth(-1)" class="w-10 h-10 flex items-center justify-center text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
                     <i class="fas fa-chevron-left"></i>
                 </button>
                 <div class="text-center w-40">
                      <div class="text-[0.65rem] font-bold uppercase text-slate-400 tracking-wider leading-none mb-0.5">Viendo</div>
                      <div class="text-sm font-black text-slate-800 dark:text-white leading-none">${monthNames[selectedMonth]} ${selectedYear}</div>
                 </div>
-                <button onclick="changeFilterMonth(1)" class="w-10 h-10 flex items-center justify-center text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+                <button onclick="window.changeFilterMonth(1)" class="w-10 h-10 flex items-center justify-center text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
                     <i class="fas fa-chevron-right"></i>
                 </button>
             </div>
@@ -138,7 +150,7 @@ function renderAnalyticsView(container) {
             html += `
                 <div class="glass-card hover:border-slate-300 dark:hover:border-slate-700 transition-all cursor-pointer overflow-hidden group-item" id="${uniqueId}">
                     <!-- Cabecera Clickable -->
-                    <div class="p-6 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4" onclick="toggleGroupDetails('${uniqueId}')">
+                    <div class="p-6 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4" onclick="window.toggleGroupDetails('${uniqueId}')">
                         <div class="flex flex-col gap-1 grow">
                             <div class="flex items-center gap-3">
                                 <span class="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-slate-800 text-indigo-500 flex items-center justify-center text-lg shrink-0">
@@ -174,7 +186,7 @@ function renderAnalyticsView(container) {
 
                             <!-- Actions -->
                             <div class="flex items-center gap-2" onclick="event.stopPropagation()">
-                                 <button onclick="exportGroupReport('${group.schoolName}', '${group.teacherName}')" class="h-10 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white transition-all font-bold text-xs uppercase tracking-wide flex items-center gap-2">
+                                 <button onclick="window.exportGroupReport('${group.schoolName}', '${group.teacherName}')" class="h-10 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white transition-all font-bold text-xs uppercase tracking-wide flex items-center gap-2">
                                     <i class="fas fa-download"></i> Reporte
                                  </button>
                                  <div class="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 group-hover:bg-slate-100 dark:group-hover:bg-slate-800 transition-colors pointer-events-none">
@@ -226,7 +238,7 @@ function renderAnalyticsView(container) {
 window.changeFilterMonth = function (delta) {
     currentFilterDate.setMonth(currentFilterDate.getMonth() + delta);
     const container = document.getElementById('admin-attendance-report-container');
-    if (container) renderAnalyticsView(container);
+    if (container) window.renderAnalyticsView(container);
 }
 
 // Función global para manejar el acordeón

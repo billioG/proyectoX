@@ -2,26 +2,30 @@
  * SISTEMA DE GAMIFICACIÓN Y KPIs (XP, NIVELES, INDICADORES)
  */
 
-async function initGamification() {
+window.initGamification = async function initGamification() {
+  const userRole = window.userRole;
+  const currentUser = window.currentUser;
+  const fetchWithCache = window.fetchWithCache;
+  const _supabase = window._supabase;
+
   try {
     if (userRole === 'estudiante') {
-      await updateLoginStreak();
-      const xpData = await calculateStudentXP(currentUser.id);
-      if (!xpData) return;
-
-      renderGamificationSidebar(xpData.level, xpData.totalXP, xpData.levelProgress, xpData.xpInLevel);
-      checkBadgeCelebrations(xpData.earnedBadges);
-      checkDailyChest();
+      const cacheKey = `student_xp_snapshot_${currentUser.id}`;
+      await fetchWithCache(cacheKey, async () => {
+        if (typeof window.updateLoginStreak === 'function') await window.updateLoginStreak();
+        return await window.calculateStudentXP(currentUser.id);
+      }, (xpData) => {
+        if (!xpData) return;
+        if (typeof window.renderGamificationSidebar === 'function') window.renderGamificationSidebar(xpData.level, xpData.totalXP, xpData.levelProgress, xpData.xpInLevel);
+        if (typeof window.checkBadgeCelebrations === 'function') window.checkBadgeCelebrations(xpData.earnedBadges);
+        if (typeof window.checkDailyChest === 'function') window.checkDailyChest();
+      });
 
     } else if (userRole === 'docente') {
-      const { data: assignments } = await _supabase
-        .from('teacher_assignments')
-        .select('id')
-        .eq('teacher_id', currentUser.id);
-
-      const xpData = await calculateMonthlyKPIs(currentUser.id, assignments || []);
-      if (xpData) {
-        renderTeacherSidebar(xpData);
+      const cacheKey = `teacher_kpi_snapshot_${currentUser.id}`;
+      await fetchWithCache(cacheKey, async () => {
+        const { data: assignments } = await _supabase.from('teacher_assignments').select('*').eq('teacher_id', currentUser.id);
+        const xpData = typeof window.calculateMonthlyKPIs === 'function' ? await window.calculateMonthlyKPIs(currentUser.id, assignments || []) : { totalXP: 0 };
 
         // Reto Maestro Legendario (12 retos)
         const { count: totalChallenges } = await _supabase
@@ -29,17 +33,35 @@ async function initGamification() {
           .select('*', { count: 'exact', head: true })
           .eq('teacher_id', currentUser.id);
 
-        if (totalChallenges >= 12) {
-          checkBadgeCelebrations([{ badge_id: 200 }]);
+        return { xpData, totalChallenges };
+      }, (snapshot) => {
+        if (snapshot.xpData) {
+          if (typeof window.renderTeacherSidebar === 'function') window.renderTeacherSidebar(snapshot.xpData);
+          if (snapshot.totalChallenges >= 12) {
+            if (typeof window.checkBadgeCelebrations === 'function') window.checkBadgeCelebrations([{ badge_id: 200 }]);
+          }
         }
-      }
+      });
     }
   } catch (err) {
     console.error('Error en gamificación:', err);
   }
 }
 
-async function calculateTeacherKPIs(teacherId) {
+// Actualización automática tras sincronización exitosa
+window.addEventListener('sync-finished', async (e) => {
+  const userRole = window.userRole;
+  const currentUser = window.currentUser;
+  if (e.detail && e.detail.processed > 0) {
+    console.log('🔄 Sincronización exitosa, refrescando insignias y nivel...');
+    if (userRole === 'estudiante' && typeof window.checkAllBadges === 'function') {
+      await window.checkAllBadges(currentUser.id);
+    }
+    window.initGamification();
+  }
+});
+
+window.calculateTeacherKPIs = async function calculateTeacherKPIs(teacherId) {
   try {
     // 1. Calcular Asistencia Global (Placeholder)
     const attendance = 85;
@@ -61,7 +83,9 @@ async function calculateTeacherKPIs(teacherId) {
   }
 }
 
-async function calculateStudentXP(studentId) {
+window.calculateStudentXP = async function calculateStudentXP(studentId) {
+  const _supabase = window._supabase;
+  const userData = window.userData;
   try {
     const { data: myGroups } = await _supabase
       .from('group_members')
@@ -98,14 +122,14 @@ async function calculateStudentXP(studentId) {
   }
 }
 
-function renderGamificationSidebar(level, totalXP, progress, xpInLevel) {
+window.renderGamificationSidebar = function renderGamificationSidebar(level, totalXP, progress, xpInLevel) {
   const sidebar = document.getElementById('sidebar');
   if (!sidebar) return;
 
   const existing = document.getElementById('gamification-sidebar');
   if (existing) existing.remove();
 
-  const streak = userData?.streak || 0;
+  const streak = window.userData?.streak || 0;
 
   const container = document.createElement('div');
   container.id = 'gamification-sidebar';
@@ -147,13 +171,13 @@ function renderGamificationSidebar(level, totalXP, progress, xpInLevel) {
             <div class="w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center text-[0.6rem] shadow-sm"><i class="fas fa-star"></i></div>
             <span class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest">${totalXP} XP ToTal</span>
         </div>
-        <button onclick="showXPInfoModal()" class="text-slate-300 hover:text-primary transition-colors">
+        <button onclick="window.showXPInfoModal && window.showXPInfoModal()" class="text-slate-300 hover:text-primary transition-colors">
             <i class="fas fa-info-circle text-sm"></i>
         </button>
       </div>
 
       <!-- GAME CENTER BUTTON (NEW) -->
-      <button onclick="openGamificationHub()" class="w-full py-3 mt-4 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-black uppercase tracking-widest shadow-lg shadow-indigo-500/25 hover:scale-[1.02] active:scale-95 transition-all text-[0.65rem] flex items-center justify-center gap-2 relative z-10">
+      <button onclick="window.openGamificationHub && window.openGamificationHub()" class="w-full py-3 mt-4 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-black uppercase tracking-widest shadow-lg shadow-indigo-500/25 hover:scale-[1.02] active:scale-95 transition-all text-[0.65rem] flex items-center justify-center gap-2 relative z-10">
         <i class="fas fa-gamepad animate-bounce"></i> Abrir Centro de Juego
       </button>
     </div>
@@ -162,7 +186,7 @@ function renderGamificationSidebar(level, totalXP, progress, xpInLevel) {
   sidebar.appendChild(container);
 }
 
-function renderTeacherSidebar(stats) {
+window.renderTeacherSidebar = function renderTeacherSidebar(stats) {
   const { totalXP, attCount, attMeta, evalCount, evalMeta, evidCount, evidMeta, repCount, repMeta, challengeXP } = stats;
   const sidebar = document.getElementById('sidebar');
   if (!sidebar) return;
@@ -223,12 +247,16 @@ function renderTeacherSidebar(stats) {
 // NUEVO SISTEMA DE GAMIFICACIÓN EVOLUCIONADA (1BOT ROYALE)
 // ==========================================
 
-let activeHappyHour = false;
-let doubleXPMultiplier = 1;
+window.activeHappyHour = false;
+window.doubleXPMultiplier = 1;
 
-// NOTE: original initGamification logic is handled above, but we will ensure duplication is removed by replacing this chunk.
+window.updateLoginStreak = async function updateLoginStreak() {
+  const userData = window.userData;
+  const userRole = window.userRole;
+  const currentUser = window.currentUser;
+  const _supabase = window._supabase;
+  const showToast = window.showToast;
 
-async function updateLoginStreak() {
   if (!userData) return;
   const table = userRole === 'estudiante' ? 'students' : 'teachers';
   const today = new Date().toISOString().split('T')[0];
@@ -246,16 +274,16 @@ async function updateLoginStreak() {
 
   if (lastLogin === yesterdayStr) {
     newStreak = currentStreak + 1;
-    showToast(`🔥 ¡Racha de ${newStreak} días! Sigue así.`, 'info');
+    if (typeof showToast === 'function') showToast(`🔥 ¡Racha de ${newStreak} días! Sigue así.`, 'info');
   } else if (lastLogin) {
     // Check for streak freeze
     if (userData.streak_freeze) {
       newStreak = currentStreak;
       freezeUsed = true;
-      showToast('🧊 ¡Tu Racha fue salvada por un Hielo!', 'info');
+      if (typeof showToast === 'function') showToast('🧊 ¡Tu Racha fue salvada por un Hielo!', 'info');
     } else {
       newStreak = 1;
-      showToast('😢 Racha perdida. ¡Empieza de nuevo!', 'warning');
+      if (typeof showToast === 'function') showToast('😢 Racha perdida. ¡Empieza de nuevo!', 'warning');
     }
   }
 
@@ -273,17 +301,20 @@ async function updateLoginStreak() {
 // ==========================================
 // 2. DAILY CHESTS (COFRES)
 // ==========================================
-function checkDailyChest() {
+window.checkDailyChest = function checkDailyChest() {
+  const userData = window.userData;
   if (!userData) return;
   const today = new Date().toISOString().split('T')[0];
   const lastChest = userData.daily_chest_last_claimed;
 
   if (lastChest !== today) {
-    setTimeout(() => showDailyChestModal(), 2000);
+    setTimeout(() => {
+      if (typeof window.showDailyChestModal === 'function') window.showDailyChestModal();
+    }, 2000);
   }
 }
 
-function showDailyChestModal() {
+window.showDailyChestModal = function showDailyChestModal() {
   const modal = document.createElement('div');
   modal.className = 'fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md animate-fadeIn';
   modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
@@ -291,7 +322,7 @@ function showDailyChestModal() {
   modal.innerHTML = `
         <div class="flex flex-col items-center animate-bounce-in">
             <h2 class="text-3xl font-black text-white uppercase tracking-widest mb-8 drop-shadow-[0_4px_0_rgba(0,0,0,0.5)]">¡Cofre Diario!</h2>
-            <div class="relative group cursor-pointer transition-transform hover:scale-110 duration-300" onclick="openChest(this)">
+            <div class="relative group cursor-pointer transition-transform hover:scale-110 duration-300" onclick="window.openChest(this)">
                 <div class="absolute inset-0 bg-yellow-400 opacity-20 blur-3xl rounded-full animate-pulse"></div>
                 <i class="fas fa-treasure-chest text-[12rem] text-amber-400 drop-shadow-2xl filter brightness-110"></i>
                 <div class="text-white text-center font-bold mt-4 animate-bounce">¡TOCA PARA ABRIR!</div>
@@ -301,7 +332,13 @@ function showDailyChestModal() {
   document.body.appendChild(modal);
 }
 
-window.openChest = async function (el) {
+window.openChest = async function openChest(el) {
+  const userData = window.userData;
+  const userRole = window.userRole;
+  const currentUser = window.currentUser;
+  const _supabase = window._supabase;
+  const showToast = window.showToast;
+
   const today = new Date().toISOString().split('T')[0];
   const table = userRole === 'estudiante' ? 'students' : 'teachers';
 
@@ -324,7 +361,7 @@ window.openChest = async function (el) {
   }).eq('id', currentUser.id);
 
   if (error) {
-    showToast('❌ Error al reclamar cofre', 'error');
+    if (typeof showToast === 'function') showToast('❌ Error al reclamar cofre', 'error');
     return;
   }
 
@@ -332,7 +369,7 @@ window.openChest = async function (el) {
   userData.xp = newXP;
   userData.gems = newGems;
 
-  initGamification(); // Refresh sidebar UI
+  if (typeof window.initGamification === 'function') window.initGamification(); // Refresh sidebar UI
 
   // Simulate opening animation
   el.innerHTML = `
@@ -346,43 +383,61 @@ window.openChest = async function (el) {
     `;
   el.onclick = null;
 
-  showToast(`🎁 Ganaste ${reward.xp} XP y ${reward.gems} Gemas`, 'success');
+  if (typeof showToast === 'function') showToast(`🎁 Ganaste ${reward.xp} XP y ${reward.gems} Gemas`, 'success');
 }
 
 // ==========================================
 // 3. HAPPY HOUR & UI
 // ==========================================
-function checkHappyHour() {
+window.checkHappyHour = function checkHappyHour() {
   const hour = new Date().getHours();
   // Example: Happy hour between 18:00 and 20:00
   if (hour >= 18 && hour < 20) {
-    activeHappyHour = true;
-    doubleXPMultiplier = 2;
+    window.activeHappyHour = true;
+    window.doubleXPMultiplier = 2;
   }
 }
 
-function renderGamificationHubBtn() {
+window.renderGamificationHubBtn = function renderGamificationHubBtn() {
   const container = document.getElementById('gamification-sidebar');
   if (!container) return;
 
   const btn = document.createElement('button');
   btn.className = 'w-full py-3 mt-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-black uppercase tracking-widest shadow-lg shadow-indigo-500/25 hover:scale-[1.02] active:scale-95 transition-all text-xs flex items-center justify-center gap-2';
   btn.innerHTML = '<i class="fas fa-gamepad"></i> Abrir Centro de Juego';
-  btn.onclick = openGamificationHub;
+  btn.onclick = () => { if (typeof window.openGamificationHub === 'function') window.openGamificationHub(); };
 
   container.appendChild(btn);
 }
 
-window.openGamificationHub = async function () {
-  const modal = document.createElement('div');
-  modal.className = 'fixed inset-0 z-[150] bg-slate-900 flex flex-col animate-fadeIn overflow-hidden';
+window.openGamificationHub = async function openGamificationHub() {
+  const _supabase = window._supabase;
+  const fetchWithCache = window.fetchWithCache;
 
-  // Fetch real ranking
-  const { data: topStudents } = await _supabase
-    .from('students')
-    .select('full_name, xp, profile_photo_url')
-    .order('xp', { ascending: false })
-    .limit(10);
+  const modal = document.createElement('div');
+  modal.id = 'gamification-hub-modal';
+  modal.className = 'fixed inset-0 z-[150] bg-slate-900 flex flex-col animate-fadeIn overflow-hidden';
+  document.body.appendChild(modal);
+
+  try {
+    await fetchWithCache('student_ranking_top', async () => {
+      return await _supabase
+        .from('students')
+        .select('full_name, xp, profile_photo_url')
+        .order('xp', { ascending: false })
+        .limit(10);
+    }, (topStudents) => {
+      if (typeof window.renderGamificationHubContent === 'function') window.renderGamificationHubContent(modal, topStudents);
+    });
+  } catch (err) {
+    console.error(err);
+    if (typeof window.renderGamificationHubContent === 'function') window.renderGamificationHubContent(modal, []);
+  }
+}
+
+window.renderGamificationHubContent = function renderGamificationHubContent(modal, topStudents) {
+  const activeHappyHour = window.activeHappyHour;
+  const userData = window.userData;
 
   modal.innerHTML = `
         <!-- Navbar -->
@@ -408,10 +463,10 @@ window.openGamificationHub = async function () {
                 <section>
                     <h3 class="text-2xl font-black text-white italic uppercase mb-6 flex items-center gap-3"><i class="fas fa-store text-indigo-500"></i> Tienda de Mascotas</h3>
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        ${renderShopItem('Búho Cibernético', 'Tu compañero de código', 500, '🦉', 'bg-indigo-500')}
-                        ${renderShopItem('Racha Congelada', 'Protege tu racha 1 día', 300, '🧊', 'bg-cyan-500', userData?.streak_freeze)}
-                        ${renderShopItem('Marco Dorado', 'Brilla en el ranking', 1000, '🖼️', 'bg-amber-500')}
-                        ${renderShopItem('Desafío 1v1', 'Reta a un amigo', 100, '⚔️', 'bg-rose-500')}
+                        ${window.renderShopItem('Búho Cibernético', 'Tu compañero de código', 500, '🦉', 'bg-indigo-500')}
+                        ${window.renderShopItem('Racha Congelada', 'Protege tu racha 1 día', 300, '🧊', 'bg-cyan-500', userData?.streak_freeze)}
+                        ${window.renderShopItem('Marco Dorado', 'Brilla en el ranking', 1000, '🖼️', 'bg-amber-500')}
+                        ${window.renderShopItem('Desafío 1v1', 'Reta a un amigo', 100, '⚔️', 'bg-rose-500')}
                     </div>
                 </section>
 
@@ -454,7 +509,7 @@ window.openGamificationHub = async function () {
                  <!-- DUELOS (Prototipo) -->
                 <section>
                      <h3 class="text-2xl font-black text-white italic uppercase mb-6 flex items-center gap-3"><i class="fas fa-swords text-rose-500"></i> Desafíos de Código</h3>
-                     <div class="glass-card p-12 text-center border-dashed border-2 border-white/10 bg-transparent hover:border-white/20 transition-all cursor-pointer group" onclick="showToast('⚔️ ¡Próximamente! Estamos preparando las arenas de combate.', 'info')">
+                     <div class="glass-card p-12 text-center border-dashed border-2 border-white/10 bg-transparent hover:border-white/20 transition-all cursor-pointer group" onclick="window.showToast && window.showToast('⚔️ ¡Próximamente! Estamos preparando las arenas de combate.', 'info')">
                         <div class="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
                             <i class="fas fa-plus text-2xl text-white/20 group-hover:text-white/50 transition-colors"></i>
                         </div>
@@ -465,12 +520,11 @@ window.openGamificationHub = async function () {
             </div>
         </div>
     `;
-  document.body.appendChild(modal);
 }
 
-function renderShopItem(name, desc, price, icon, colorClass, owned = false) {
+window.renderShopItem = function renderShopItem(name, desc, price, icon, colorClass, owned = false) {
   return `
-        <div class="glass-card bg-slate-800 border-slate-700 p-4 relative group overflow-hidden cursor-pointer hover:-translate-y-1 transition-transform" onclick="buyShopItem('${name}', ${price})">
+        <div class="glass-card bg-slate-800 border-slate-700 p-4 relative group overflow-hidden cursor-pointer hover:-translate-y-1 transition-transform" onclick="window.buyShopItem('${name}', ${price})">
             <div class="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
             ${owned ? '<div class="absolute top-2 right-2 px-2 py-0.5 bg-emerald-500 text-[0.5rem] font-black uppercase rounded text-white z-10">Activo</div>' : ''}
             <div class="w-12 h-12 rounded-xl ${colorClass} text-white flex items-center justify-center text-2xl shadow-lg mb-3">
@@ -485,14 +539,24 @@ function renderShopItem(name, desc, price, icon, colorClass, owned = false) {
     `;
 }
 
-window.buyShopItem = async function (name, price) {
+window.buyShopItem = async function buyShopItem(name, price) {
+  const userData = window.userData;
+  const userRole = window.userRole;
+  const currentUser = window.currentUser;
+  const _supabase = window._supabase;
+  const showToast = window.showToast;
+
   if ((userData.gems || 0) < price) {
-    return showToast('💎 No tienes suficientes gemas', 'error');
+    if (typeof showToast === 'function') showToast('💎 No tienes suficientes gemas', 'error');
+    return;
   }
 
   // Logic for specific items
   if (name === 'Racha Congelada') {
-    if (userData.streak_freeze) return showToast('🧊 Ya tienes un hielo activo', 'info');
+    if (userData.streak_freeze) {
+      if (typeof showToast === 'function') showToast('🧊 Ya tienes un hielo activo', 'info');
+      return;
+    }
 
     const table = userRole === 'estudiante' ? 'students' : 'teachers';
     const { error } = await _supabase.from(table).update({
@@ -503,18 +567,21 @@ window.buyShopItem = async function (name, price) {
     if (!error) {
       userData.gems -= price;
       userData.streak_freeze = true;
-      showToast('🧊 ¡Hielo de Racha activado!', 'success');
+      if (typeof showToast === 'function') showToast('🧊 ¡Hielo de Racha activado!', 'success');
       // Refresh hub and sidebar
-      openGamificationHub();
-      initGamification();
+      if (typeof window.openGamificationHub === 'function') window.openGamificationHub();
+      if (typeof window.initGamification === 'function') window.initGamification();
     }
   } else {
-    showToast('🚀 ¡Próximamente más artículos en la tienda!', 'info');
+    if (typeof showToast === 'function') showToast('🚀 ¡Próximamente más artículos en la tienda!', 'info');
   }
 }
 
+window.checkBadgeCelebrations = function checkBadgeCelebrations(earnedBadges) {
+  const currentUser = window.currentUser;
+  const BADGES = window.BADGES || [];
+  const TEACHER_BADGES = window.TEACHER_BADGES || [];
 
-function checkBadgeCelebrations(earnedBadges) {
   if (!earnedBadges || earnedBadges.length === 0) return;
 
   const seenKey = `seen_badges_${currentUser.id}`;
@@ -527,19 +594,22 @@ function checkBadgeCelebrations(earnedBadges) {
     const badgeInfo = [...BADGES, ...TEACHER_BADGES].find(b => b.id === badgeId);
 
     if (badgeInfo) {
-      setTimeout(() => showBadgeCelebrationModal(badgeInfo), 1500);
+      setTimeout(() => {
+        if (typeof window.showBadgeCelebrationModal === 'function') window.showBadgeCelebrationModal(badgeInfo);
+      }, 1500);
     }
     const updatedSeen = [...seenBadges, ...newBadges.map(b => b.badge_id)];
     localStorage.setItem(seenKey, JSON.stringify(updatedSeen));
   }
 }
 
-function showBadgeCelebrationModal(badge) {
+window.showBadgeCelebrationModal = function showBadgeCelebrationModal(badge) {
+  const startBirthdayConfetti = window.startBirthdayConfetti;
   const modal = document.createElement('div');
   modal.className = 'fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md animate-fadeIn';
 
   modal.innerHTML = `
-    <div class="relative w-full max-w-sm p-8 text-center">
+    <div class="relative w-full max-sm p-8 text-center">
         <!-- Confetti effect container would go here -->
         
         <div class="mb-6 relative">
@@ -567,7 +637,7 @@ function showBadgeCelebrationModal(badge) {
                 <span class="text-xs font-bold text-white uppercase tracking-widest">Puntos de Experiencia</span>
             </div>
             
-            <button class="w-full py-4 bg-primary hover:bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-[0.2em] shadow-xl shadow-primary/30 transition-all hover:scale-105 active:scale-95" onclick="this.closest('.fixed').remove(); startBirthdayConfetti();">
+            <button class="w-full py-4 bg-primary hover:bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-[0.2em] shadow-xl shadow-primary/30 transition-all hover:scale-105 active:scale-95" onclick="this.closest('.fixed').remove(); if (typeof window.startBirthdayConfetti === 'function') window.startBirthdayConfetti();">
                 ¡Genial! 🚀
             </button>
         </div>

@@ -2,7 +2,7 @@
  * MOTIVATIONAL QUOTES - Data para la pantalla de login
  */
 
-const MOTIVATIONAL_QUOTES = [
+export const MOTIVATIONAL_QUOTES = [
     "La educación es el arma más poderosa para cambiar el mundo. (N. Mandela)",
     "Enseñar es aprender dos veces. (Joseph Joubert)",
     "Un profesor afecta la eternidad; solo él puede decir dónde para su influencia. (Henry Adams)",
@@ -14,3 +14,4 @@ const MOTIVATIONAL_QUOTES = [
     "El maestro es aquel que hace que dos pensamientos crezcan donde antes solo crecía uno.",
     "La docencia es la única profesión que crea a todas las demás."
 ];
+window.MOTIVATIONAL_QUOTES = MOTIVATIONAL_QUOTES;

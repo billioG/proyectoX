@@ -2,46 +2,67 @@
  * PROFILE - Gestión de perfiles (Tailwind Edition)
  */
 
-async function loadProfile() {
+window.loadProfile = async function loadProfile() {
     const profileContent = document.getElementById('profile-content');
     if (!profileContent) return;
 
-    profileContent.innerHTML = `
-    <div class="flex flex-col items-center justify-center p-20 text-slate-400">
-        <i class="fas fa-circle-notch fa-spin text-4xl mb-4 text-primary"></i>
-        <span class="font-black uppercase text-xs tracking-widest">Sincronizando Perfil...</span>
-    </div>
-  `;
+    const userRole = window.userRole;
+
+    // Loader inicial solo si no hay contenido previo
+    if (!profileContent.innerHTML || profileContent.innerHTML.includes('fa-circle-notch')) {
+        profileContent.innerHTML = `
+            <div class="flex flex-col items-center justify-center p-20 text-slate-400">
+                <i class="fas fa-circle-notch fa-spin text-4xl mb-4 text-primary"></i>
+                <span class="font-black uppercase text-xs tracking-widest">Sincronizando Perfil...</span>
+            </div>
+        `;
+    }
 
     try {
-        if (userRole === 'estudiante') await loadStudentProfile();
-        else if (userRole === 'docente') await loadTeacherProfile();
-        else if (userRole === 'admin') await loadAdminProfile();
+        if (userRole === 'estudiante') await window.loadStudentProfile();
+        else if (userRole === 'docente') await window.loadTeacherProfile();
+        else if (userRole === 'admin') await window.loadAdminProfile();
     } catch (err) {
         console.error(err);
-        profileContent.innerHTML = '<div class="glass-card p-10 text-rose-500 font-bold">❌ Error al cargar perfil</div>';
+        profileContent.innerHTML = '<div class="glass-card p-10 text-rose-500 font-bold text-center">❌ Error al cargar perfil</div>';
     }
 }
 
-async function loadStudentProfile() {
+window.loadStudentProfile = async function loadStudentProfile() {
     const container = document.getElementById('profile-content');
-    const { data: student } = await _supabase.from('students').select('*, schools(*)').eq('id', currentUser.id).single();
+    const _supabase = window._supabase;
+    const currentUser = window.currentUser;
+    const fetchWithCache = window.fetchWithCache;
 
-    const [projectsRes, badgesRes, assignmentRes, xpData] = await Promise.all([
-        _supabase.from('projects').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }),
-        _supabase.from('student_badges').select('badge_id, earned_at').eq('student_id', currentUser.id),
-        _supabase.from('teacher_assignments').select('*, teachers(*)').eq('school_code', student.school_code).eq('grade', student.grade).eq('section', student.section).maybeSingle(),
-        calculateStudentXP(student.id)
-    ]);
+    const cacheKey = `student_profile_${currentUser.id}`;
 
-    const projects = projectsRes.data || [];
-    const earnedBadgeIds = (badgesRes.data || []).map(b => b.badge_id);
-    const myTeacher = assignmentRes.data?.teachers || null;
+    await fetchWithCache(cacheKey, async () => {
+        const { data: student } = await _supabase.from('students').select('*, schools(*)').eq('id', currentUser.id).single();
+        if (!student) return null;
 
-    renderStudentProfileUI(container, student, projects, earnedBadgeIds, myTeacher, xpData);
+        const [projectsRes, badgesRes, assignmentRes, xpData] = await Promise.all([
+            _supabase.from('projects').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }),
+            _supabase.from('student_badges').select('badge_id, earned_at').eq('student_id', currentUser.id),
+            _supabase.from('teacher_assignments').select('*, teachers(*)').eq('school_code', student.school_code).eq('grade', student.grade).eq('section', student.section).maybeSingle(),
+            typeof window.calculateStudentXP === 'function' ? window.calculateStudentXP(student.id) : Promise.resolve({ level: 1, totalXP: 0 })
+        ]);
+
+        return {
+            student,
+            projects: projectsRes.data || [],
+            earnedBadgeIds: (badgesRes.data || []).map(b => b.badge_id),
+            myTeacher: assignmentRes.data?.teachers || null,
+            xpData
+        };
+    }, (data) => {
+        if (data) {
+            window.renderStudentProfileUI(container, data.student, data.projects, data.earnedBadgeIds, data.myTeacher, data.xpData);
+        }
+    });
 }
 
-function renderStudentProfileUI(container, student, projects, earnedBadgeIds, myTeacher, xpData) {
+window.renderStudentProfileUI = function renderStudentProfileUI(container, student, projects, earnedBadgeIds, myTeacher, xpData) {
+    const sanitizeInput = window.sanitizeInput;
     const avgScore = projects.length > 0 ? (projects.reduce((s, p) => s + (p.score || 0), 0) / projects.length).toFixed(1) : 0;
 
     container.innerHTML = `
@@ -50,7 +71,7 @@ function renderStudentProfileUI(container, student, projects, earnedBadgeIds, my
             <div class="w-32 h-32 rounded-[2rem] bg-indigo-50 dark:bg-slate-800 flex items-center justify-center text-5xl shadow-xl border-4 border-white dark:border-slate-900 group-hover:rotate-3 transition-transform duration-500 overflow-hidden ring-1 ring-slate-100 dark:ring-slate-800">
                 ${student.profile_photo_url ? `<img src="${student.profile_photo_url}" class="w-full h-full object-cover">` : '🎓'}
             </div>
-            <button onclick="openUploadPhotoModal()" class="absolute -bottom-2 -right-2 w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center shadow-lg transform hover:scale-110 transition-all border-2 border-white dark:border-slate-900">
+            <button onclick="window.openUploadPhotoModal()" class="absolute -bottom-2 -right-2 w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center shadow-lg transform hover:scale-110 transition-all border-2 border-white dark:border-slate-900">
                 <i class="fas fa-camera text-sm"></i>
             </button>
         </div>
@@ -135,7 +156,7 @@ function renderStudentProfileUI(container, student, projects, earnedBadgeIds, my
   `;
 }
 
-function showBadgeDetailsModal(badge, isEarned) {
+window.showBadgeDetailsModal = function showBadgeDetailsModal(badge, isEarned) {
     const modal = document.createElement('div');
     modal.className = 'fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-300';
     modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
@@ -171,7 +192,7 @@ function showBadgeDetailsModal(badge, isEarned) {
             <span class="text-[0.7rem] font-bold uppercase text-slate-700 dark:text-slate-200 tracking-widest">¿Cómo se gana?</span>
           </div>
           <p class="text-[0.8rem] text-slate-500 dark:text-slate-400 font-medium leading-tight">
-            ${getBadgeAwardLogic(badge.id)}
+            ${window.getBadgeAwardLogic(badge.id)}
           </p>
         </div>
 
@@ -184,7 +205,7 @@ function showBadgeDetailsModal(badge, isEarned) {
     document.body.appendChild(modal);
 }
 
-function getBadgeAwardLogic(badgeId) {
+window.getBadgeAwardLogic = function getBadgeAwardLogic(badgeId) {
     const logic = {
         1: "Sube tu primer proyecto individual o grupal al portal.",
         2: "Recibe al menos 10 'Me Gusta' de la comunidad en tus proyectos.",
@@ -204,23 +225,40 @@ function getBadgeAwardLogic(badgeId) {
     return logic[badgeId] || "Criterio de evaluación académica establecido por 1Bot.";
 }
 
-async function loadTeacherProfile() {
+window.loadTeacherProfile = async function loadTeacherProfile() {
     const container = document.getElementById('profile-content');
-    const { data: teacher } = await _supabase.from('teachers').select('*').eq('id', currentUser.id).single();
+    const _supabase = window._supabase;
+    const currentUser = window.currentUser;
+    const fetchWithCache = window.fetchWithCache;
 
-    const [assignRes, ratingRes] = await Promise.all([
-        _supabase.from('teacher_assignments').select('*, schools(name)').eq('teacher_id', currentUser.id),
-        _supabase.from('teacher_ratings').select('rating').eq('teacher_id', currentUser.id)
-    ]);
+    const cacheKey = `teacher_profile_${currentUser.id}`;
 
-    const assignments = assignRes.data || [];
-    const kpis = await calculateMonthlyKPIs(currentUser.id, assignments);
-    const avgRating = ratingRes.data?.length > 0 ? (ratingRes.data.reduce((s, r) => s + r.rating, 0) / ratingRes.data.length).toFixed(1) : 0;
+    await fetchWithCache(cacheKey, async () => {
+        const { data: teacher } = await _supabase.from('teachers').select('*').eq('id', currentUser.id).single();
+        if (!teacher) return null;
 
-    renderTeacherProfileUI(container, teacher, assignments, kpis, avgRating, ratingRes.data?.length || 0);
+        const [assignRes, ratingRes] = await Promise.all([
+            _supabase.from('teacher_assignments').select('*').eq('teacher_id', currentUser.id),
+            _supabase.from('teacher_ratings').select('rating').eq('teacher_id', currentUser.id)
+        ]);
+
+        const assignments = assignRes.data || [];
+        const kpis = typeof window.calculateMonthlyKPIs === 'function' ? await window.calculateMonthlyKPIs(currentUser.id, assignments) : { totalXP: 0, attCount: 0, attMeta: 10, evalCount: 0, evalMeta: 10 };
+
+        return {
+            teacher,
+            assignments,
+            kpis,
+            ratings: ratingRes.data || []
+        };
+    }, (data) => {
+        if (!data) return;
+        const avgRating = data.ratings.length > 0 ? (data.ratings.reduce((s, r) => s + r.rating, 0) / data.ratings.length).toFixed(1) : 0;
+        window.renderTeacherProfileUI(container, data.teacher, data.assignments, data.kpis, avgRating, data.ratings.length);
+    });
 }
 
-function renderTeacherProfileUI(container, teacher, assignments, kpis, avgRating, totalRatings) {
+window.renderTeacherProfileUI = function renderTeacherProfileUI(container, teacher, assignments, kpis, avgRating, totalRatings) {
     container.innerHTML = `
     <div class="flex flex-col md:flex-row gap-8 mb-10 items-center text-center md:text-left">
         <div class="w-32 h-32 rounded-3xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center text-5xl shadow-inner border border-indigo-500/20 shrink-0 overflow-hidden">
@@ -236,7 +274,7 @@ function renderTeacherProfileUI(container, teacher, assignments, kpis, avgRating
             </div>
         </div>
         <div class="flex gap-3">
-            <button onclick="openUploadPhotoModal()" class="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:text-primary transition-colors"><i class="fas fa-camera text-xl"></i></button>
+            <button onclick="window.openUploadPhotoModal()" class="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:text-primary transition-colors"><i class="fas fa-camera text-xl"></i></button>
             <button onclick="window.print()" class="btn-primary-tw flex items-center gap-2">
                 <i class="fas fa-print"></i> EXPORTAR FICHA
             </button>
@@ -290,14 +328,14 @@ function renderTeacherProfileUI(container, teacher, assignments, kpis, avgRating
                 </div>
             </div>
         </div>
-        <button onclick="viewAllTeacherComments()" class="w-full mt-10 py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold rounded-2xl transition-all uppercase tracking-widest text-xs">
+        <button onclick="window.viewAllTeacherComments && window.viewAllTeacherComments()" class="w-full mt-10 py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold rounded-2xl transition-all uppercase tracking-widest text-xs">
             VER FEEDBACK DETALLADO DE ESTUDIANTES
         </button>
     </div>
   `;
 }
 
-async function loadAdminProfile() {
+window.loadAdminProfile = async function loadAdminProfile() {
     const container = document.getElementById('profile-content');
     container.innerHTML = `
     <div class="glass-card p-12 text-center">
@@ -306,7 +344,7 @@ async function loadAdminProfile() {
         </div>
         <h2 class="text-3xl font-bold text-slate-800 dark:text-white mb-2">Panel Ejecutivo</h2>
         <p class="text-slate-500 dark:text-slate-400 mb-10 max-w-sm mx-auto">Tienes acceso total a la configuración del sistema y reportes de exportación masiva.</p>
-        <button onclick="exportStudentsCSV()" class="btn-primary-tw w-full sm:w-auto">
+        <button onclick="window.exportStudentsCSV()" class="btn-primary-tw w-full sm:w-auto">
             <i class="fas fa-file-csv mr-2"></i> EXPORTAR LISTADO GLOBAL DE ALUMNOS
         </button>
     </div>

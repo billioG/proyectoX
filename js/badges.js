@@ -135,10 +135,19 @@ async function awardBadge(userId, badgeId) {
 
 async function checkAllBadges(studentId) {
   try {
+    // Obtener grupos del estudiante
+    const { data: myGroups } = await _supabase
+      .from('group_members')
+      .select('group_id')
+      .eq('student_id', studentId);
+
+    const groupIds = myGroups?.map(g => g.group_id) || [];
+
+    // Buscar proyectos propios o de sus grupos
     const { data: projects } = await _supabase
       .from('projects')
       .select('id, score, votes')
-      .eq('user_id', studentId);
+      .or(`user_id.eq.${studentId}${groupIds.length > 0 ? `,group_id.in.(${groupIds.join(',')})` : ''}`);
 
     const totalProjects = projects?.length || 0;
     const totalLikes = projects?.reduce((sum, p) => sum + (p.votes || 0), 0) || 0;

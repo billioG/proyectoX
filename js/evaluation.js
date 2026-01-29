@@ -2,36 +2,46 @@
  * EVALUACIÓN - Controlador principal (Premium Edition)
  */
 
-let currentEvalProjectId = null;
+window.currentEvalProjectId = null;
 
-async function loadEvaluationProjects() {
+window.loadEvaluationProjects = async function loadEvaluationProjects() {
   const container = document.getElementById('eval-projects-container');
   if (!container) return;
 
-  container.innerHTML = `
-    <div class="flex flex-col items-center justify-center p-20 text-slate-400">
-        <i class="fas fa-circle-notch fa-spin text-4xl mb-4 text-primary"></i>
-        <span class="font-black uppercase text-xs tracking-widest text-center">Sincronizando Proyectos por Evaluar...</span>
-    </div>
-  `;
+  const userRole = window.userRole;
+  const _supabase = window._supabase;
+  const currentUser = window.currentUser;
+  const fetchWithCache = window.fetchWithCache;
+
+  if (!container.innerHTML || container.innerHTML.includes('fa-circle-notch')) {
+    container.innerHTML = `
+            <div class="flex flex-col items-center justify-center p-20 text-slate-400">
+                <i class="fas fa-circle-notch fa-spin text-4xl mb-4 text-primary"></i>
+                <span class="font-black uppercase text-xs tracking-widest text-center">Sincronizando Proyectos por Evaluar...</span>
+            </div>
+        `;
+  }
 
   try {
-    if (userRole === 'docente') await loadTeacherNotifications();
+    if (userRole === 'docente' && typeof window.loadTeacherNotifications === 'function') await window.loadTeacherNotifications();
 
-    const { data: allProjects, error } = await _supabase.from('projects')
-      .select(`*, students(*, schools(*)), groups(name), evaluations(id, total_score)`)
-      .order('created_at', { ascending: false });
+    await fetchWithCache('evaluation_projects_list', async () => {
+      const { data: allProjects, error } = await _supabase.from('projects')
+        .select(`*, students(*, schools(*)), groups(name), evaluations(id, total_score)`)
+        .order('created_at', { ascending: false });
 
-    if (error) throw error;
+      if (error) throw error;
 
-    let finalProjects = allProjects;
-    if (userRole === 'docente') {
-      const { data: assignments } = await _supabase.from('teacher_assignments').select('school_code, grade, section').eq('teacher_id', currentUser.id);
-      finalProjects = allProjects.filter(p => assignments.some(a => p.students?.school_code === a.school_code && p.students?.grade === a.grade && p.students?.section === a.section));
-    }
-
-    window.allEvalProjects = finalProjects;
-    renderEvaluationDashboard(finalProjects, container);
+      let finalProjects = allProjects;
+      if (userRole === 'docente') {
+        const { data: assignments } = await _supabase.from('teacher_assignments').select('school_code, grade, section').eq('teacher_id', currentUser.id);
+        finalProjects = allProjects.filter(p => (assignments || []).some(a => p.students?.school_code === a.school_code && p.students?.grade === a.grade && p.students?.section === a.section));
+      }
+      return finalProjects;
+    }, (projects) => {
+      window.allEvalProjects = projects;
+      window.renderEvaluationDashboard(projects, container);
+    });
 
   } catch (err) {
     console.error(err);
@@ -39,7 +49,7 @@ async function loadEvaluationProjects() {
   }
 }
 
-function renderEvaluationDashboard(projects, container) {
+window.renderEvaluationDashboard = function renderEvaluationDashboard(projects, container) {
   const total = projects.length;
   const evaluated = projects.filter(p => (p.evaluations?.length > 0) || p.score > 0).length;
   const pending = total - evaluated;
@@ -52,7 +62,15 @@ function renderEvaluationDashboard(projects, container) {
                class="input-field-tw pl-14" 
                oninput="window.debouncedFilter(this.value)">
       </div>
-      <div class="flex gap-3 shrink-0">
+      <div class="flex gap-3 shrink-0 items-center">
+        <label class="flex items-center gap-2 mr-4 cursor-pointer group">
+            <div class="relative w-10 h-6 bg-slate-200 dark:bg-slate-700 rounded-full transition-colors group-has-[:checked]:bg-primary">
+                <input type="checkbox" id="eval-toggle-pending" class="sr-only peer" checked onchange="window.filterEvaluationProjects(document.getElementById('eval-search-input').value)">
+                <div class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4"></div>
+            </div>
+            <span class="text-[0.6rem] font-black uppercase tracking-widest text-slate-400">Sólo Pendientes</span>
+        </label>
+
         <div class="bg-primary/10 text-primary px-5 py-3 rounded-2xl font-black flex flex-col items-center min-w-[80px]">
             <span class="text-xl leading-none">${total}</span>
             <span class="text-[0.6rem] uppercase opacity-70">Total</span>
@@ -68,27 +86,38 @@ function renderEvaluationDashboard(projects, container) {
       </div>
     </div>
 
-    <div id="eval-grouped-container" class="space-y-6 animate-fadeIn">${renderGroupedProjects(projects)}</div>
+    <div id="eval-grouped-container" class="space-y-6 animate-fadeIn">${window.renderGroupedProjects(projects)}</div>
   `;
 }
 
-window.debouncedFilter = typeof debounce === 'function' ? debounce(val => window.filterEvaluationProjects(val), 300) : val => window.filterEvaluationProjects(val);
+window.debouncedFilter = typeof window.debounce === 'function' ? window.debounce(val => window.filterEvaluationProjects(val), 300) : val => window.filterEvaluationProjects(val);
 
 window.filterEvaluationProjects = function (val) {
-  const query = val.toLowerCase().trim();
+  const query = (val || '').toLowerCase().trim();
   const container = document.getElementById('eval-grouped-container');
   if (!container || !window.allEvalProjects) return;
 
-  const filtered = query ? window.allEvalProjects.filter(p =>
-    (p.title || '').toLowerCase().includes(query) ||
-    (p.students?.full_name || '').toLowerCase().includes(query) ||
-    (p.students?.schools?.name || '').toLowerCase().includes(query)
-  ) : window.allEvalProjects;
+  const onlyPending = document.getElementById('eval-toggle-pending')?.checked || false;
 
-  container.innerHTML = renderGroupedProjects(filtered);
+  let filtered = window.allEvalProjects || [];
+
+  if (query) {
+    filtered = filtered.filter(p =>
+      (p.title || '').toLowerCase().includes(query) ||
+      (p.students?.full_name || '').toLowerCase().includes(query) ||
+      (p.students?.schools?.name || '').toLowerCase().includes(query)
+    );
+  }
+
+  if (onlyPending) {
+    filtered = filtered.filter(p => !((p.evaluations?.length > 0) || p.score > 0));
+  }
+
+  container.innerHTML = window.renderGroupedProjects(filtered);
 };
 
-function renderGroupedProjects(projects) {
+window.renderGroupedProjects = function renderGroupedProjects(projects) {
+  const sanitizeInput = window.sanitizeInput;
   if (projects.length === 0) return `
     <div class="text-center py-20 bg-slate-100 dark:bg-slate-900/50 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-700">
         <i class="fas fa-folder-open text-5xl text-slate-300 dark:text-slate-700 mb-4 opacity-50"></i>
@@ -124,7 +153,7 @@ function renderGroupedProjects(projects) {
           </summary>
           <div class="p-6 pt-0">
               <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  ${grouped[school].map(p => renderProjectEvalCard(p)).join('')}
+                  ${grouped[school].map(p => window.renderProjectEvalCard(p)).join('')}
               </div>
           </div>
       </details>
@@ -132,7 +161,8 @@ function renderGroupedProjects(projects) {
   }).join('');
 }
 
-function renderProjectEvalCard(p) {
+window.renderProjectEvalCard = function renderProjectEvalCard(p) {
+  const sanitizeInput = window.sanitizeInput;
   const isEvaluated = (p.evaluations?.length > 0) || p.score > 0;
   return `
     <div class="glass-card p-6 flex flex-col relative overflow-hidden transition-all duration-300 ${isEvaluated ? 'opacity-70 grayscale-[0.5]' : 'border-2 border-primary/20 bg-primary/5 shadow-lg shadow-primary/5'}">
@@ -152,11 +182,11 @@ function renderProjectEvalCard(p) {
       
       <div class="mt-auto flex gap-3 pt-4 border-t border-slate-100 dark:border-slate-800/50">
         <button class="grow btn-primary-tw py-2.5 text-xs uppercase" 
-                onclick="openEvaluationModal(${p.id})">
+                onclick="window.openEvaluationModal(${p.id})">
             ${isEvaluated ? '<i class="fas fa-edit"></i> ACTUALIZAR' : '<i class="fas fa-clipboard-check"></i> EVALUAR'}
         </button>
         <button class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-primary transition-all flex items-center justify-center" 
-                onclick="viewProjectDetails(${p.id})">
+                onclick="window.viewProjectDetails(${p.id})">
             <i class="fas fa-eye text-sm"></i>
         </button>
       </div>
@@ -164,7 +194,7 @@ function renderProjectEvalCard(p) {
   `;
 }
 
-async function submitEvaluation() {
+window.submitEvaluation = async function submitEvaluation() {
   const creativity = parseInt(document.getElementById('creativity_score')?.value) || 0;
   const clarity = parseInt(document.getElementById('clarity_score')?.value) || 0;
   const functionality = parseInt(document.getElementById('functionality_score')?.value) || 0;
@@ -173,26 +203,29 @@ async function submitEvaluation() {
   const feedback = document.getElementById('eval-feedback')?.value.trim();
   const total = creativity + clarity + functionality + teamwork + socialImpact;
 
+  const evalData = {
+    project_id: currentEvalProjectId,
+    teacher_id: window.currentUser.id,
+    total_score: total,
+    creativity_score: creativity,
+    clarity_score: clarity,
+    functionality_score: functionality,
+    teamwork_score: teamwork,
+    social_impact_score: socialImpact,
+    feedback: feedback
+  };
+
   try {
-    const { error } = await _supabase.from('evaluations').upsert({
-      project_id: currentEvalProjectId,
-      teacher_id: currentUser.id,
-      total_score: total,
-      creativity_score: creativity,
-      clarity_score: clarity,
-      functionality_score: functionality,
-      teamwork_score: teamwork,
-      social_impact_score: socialImpact,
-      feedback: feedback
-    }, { onConflict: 'project_id' });
+    // USAR EL GESTOR DE SINCRONIZACIÓN (MODO KOLIBRI / OFFLINE)
+    await window._syncManager.enqueue('save_evaluation', evalData);
 
-    if (error) throw error;
-    await _supabase.from('projects').update({ score: total }).eq('id', currentEvalProjectId);
-
-    showToast('✅ Evaluación guardada con éxito', 'success');
-    closeEvaluationModal();
-    loadEvaluationProjects();
-  } catch (err) { console.error(err); showToast('❌ Error al guardar evaluación', 'error'); }
+    window.showToast('✅ Evaluación registrada (Pendiente Sync)', 'success');
+    if (typeof window.closeEvaluationModal === 'function') window.closeEvaluationModal();
+    window.loadEvaluationProjects();
+  } catch (err) {
+    console.error(err);
+    window.showToast('❌ Error al registrar evaluación', 'error');
+  }
 }
 
 console.log('✅ evaluation.js refacturado (Premium Edition)');

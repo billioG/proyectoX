@@ -1,3 +1,6 @@
+// main.js - Módulo Principal (ES Modules Edition)
+import { showToast } from './utils.js';
+
 // Variables de UI
 let sidebarActive = false;
 
@@ -22,30 +25,37 @@ const MODULE_MAP = {
     'bonus-system': ['js/bonus-system.js', 'js/certificates.js']
 };
 
-async function loadModule(name) {
+export async function loadModule(name) {
     if (!MODULE_MAP[name]) return;
 
     const scripts = MODULE_MAP[name];
-    const loaders = scripts.map(src => {
-        if (LOADED_MODULES.has(src)) return Promise.resolve();
 
-        // Verificar si ya está en el DOM por el index.html original (mientras migramos)
-        const existing = document.querySelector(`script[src="${src}"]`);
-        if (existing) {
+    // Migración a import() dinámico
+    const loaders = scripts.map(async (src) => {
+        if (LOADED_MODULES.has(src)) return;
+
+        try {
+            // Nota: Algunos archivos aún no son módulos, por lo que importirlos 
+            // puede ejecutarlos pero no retornar nada útil si no tienen export.
+            // Para archivos que no son módulos, seguimos usando inyección si es necesario,
+            // pero probaremos import() primero ya que es más limpio.
+            // Agregamos ./ para rutas relativas correctas en ESM
+            const path = src.startsWith('js/') ? `./${src.split('js/')[1]}` : src;
+            await import(path);
             LOADED_MODULES.add(src);
-            return Promise.resolve();
+        } catch (e) {
+            console.warn(`Fallback de carga para ${src}. Probando inyección tradicional...`);
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = src;
+                script.onload = () => {
+                    LOADED_MODULES.add(src);
+                    resolve();
+                };
+                script.onerror = () => reject(new Error(`Error al cargar el módulo: ${src}`));
+                document.body.appendChild(script);
+            });
         }
-
-        return new Promise((resolve, reject) => {
-            const script = document.createElement('script');
-            script.src = src;
-            script.onload = () => {
-                LOADED_MODULES.add(src);
-                resolve();
-            };
-            script.onerror = () => reject(new Error(`Error al cargar el módulo: ${src}`));
-            document.body.appendChild(script);
-        });
     });
 
     try {
@@ -65,41 +75,47 @@ window.addEventListener('load', () => {
     }
 });
 
-function initTheme() {
+export function initTheme() {
     const savedTheme = localStorage.getItem('theme') || 'light';
     const isDark = savedTheme === 'dark';
     document.documentElement.classList.toggle('dark', isDark);
     updateThemeIcon(isDark);
 }
+window.initTheme = initTheme;
 
-function toggleTheme() {
+export function toggleTheme() {
     const isDark = document.documentElement.classList.toggle('dark');
     localStorage.setItem('theme', isDark ? 'dark' : 'light');
     updateThemeIcon(isDark);
 }
+window.toggleTheme = toggleTheme;
 
-function updateThemeIcon(isDark) {
+export function updateThemeIcon(isDark) {
     const icon = document.querySelector('#theme-toggle i');
     if (icon) {
         icon.className = isDark ? 'fas fa-sun' : 'fas fa-moon';
     }
 }
+window.updateThemeIcon = updateThemeIcon;
 
-function toggleSidebar() {
+
+export function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
-    const toggle = document.querySelector('.sidebar-toggle');
+    // Buscamos por ID (nuevo botón) o por clase (antiguo botón, fallback)
+    const toggle = document.getElementById('mobile-menu-btn') || document.querySelector('.sidebar-toggle');
     sidebarActive = !sidebarActive;
 
     if (sidebarActive) {
         sidebar.classList.add('active');
-        toggle.innerHTML = '<i class="fas fa-times"></i>';
+        if (toggle) toggle.innerHTML = '<i class="fas fa-times"></i>';
     } else {
         sidebar.classList.remove('active');
-        toggle.innerHTML = '<i class="fas fa-bars"></i>';
+        if (toggle) toggle.innerHTML = '<i class="fas fa-bars"></i>';
     }
 }
+window.toggleSidebar = toggleSidebar;
 
-function nav(view) {
+export function nav(view) {
     console.log('📍 Navegando a:', view);
 
     // Ocultar todas las vistas
@@ -129,7 +145,8 @@ function nav(view) {
     // Cerrar sidebar en móvil después de navegar
     if (window.innerWidth <= 768) {
         const sidebar = document.getElementById('sidebar');
-        const toggle = document.querySelector('.sidebar-toggle');
+        const toggle = document.getElementById('mobile-menu-btn') || document.querySelector('.sidebar-toggle');
+
         if (sidebar) sidebar.classList.remove('active');
         if (toggle) toggle.innerHTML = '<i class="fas fa-bars"></i>';
         sidebarActive = false;
@@ -145,89 +162,75 @@ function nav(view) {
 
     console.log(`✅ Navegación completada: ${view}`);
 }
+window.nav = nav;
 
-function loadViewContent(view) {
+export function loadViewContent(view) {
+    const userRole = window.userRole;
     switch (view) {
         case 'admin-dashboard':
-            if (userRole === 'admin' && typeof loadAdminDashboard === 'function') loadAdminDashboard();
+            if (userRole === 'admin' && typeof window.loadAdminDashboard === 'function') window.loadAdminDashboard();
             break;
         case 'admin-teacher-performance':
-            if (userRole === 'admin' && typeof loadAdminTeacherPerformance === 'function') loadAdminTeacherPerformance();
+            if (userRole === 'admin' && typeof window.loadAdminTeacherPerformance === 'function') window.loadAdminTeacherPerformance();
             break;
         case 'admin-success':
-            if (userRole === 'admin' && typeof loadAdminSuccessHub === 'function') loadAdminSuccessHub();
+            if (userRole === 'admin' && typeof window.loadAdminSuccessHub === 'function') window.loadAdminSuccessHub();
+            break;
+        case 'admin-rocks':
+            if (userRole === 'admin' && typeof window.loadAdminRocksManagement === 'function') window.loadAdminRocksManagement();
             break;
         case 'feed':
-            if (typeof loadFeed === 'function') loadFeed();
+            if (typeof window.loadFeed === 'function') window.loadFeed();
             break;
         case 'schools':
-            if (userRole === 'admin' && typeof loadSchools === 'function') loadSchools();
+            if (userRole === 'admin' && typeof window.loadSchools === 'function') window.loadSchools();
             break;
         case 'students':
-            if ((userRole === 'admin' || userRole === 'docente') && typeof loadStudents === 'function') loadStudents();
+            if ((userRole === 'admin' || userRole === 'docente') && typeof window.loadStudents === 'function') window.loadStudents();
             break;
         case 'teachers':
-            if (userRole === 'admin' && typeof loadTeachers === 'function') loadTeachers();
+            if (userRole === 'admin' && typeof window.loadTeachers === 'function') window.loadTeachers();
             break;
         case 'groups':
-            if (typeof loadGroups === 'function') loadGroups();
+            if (typeof window.loadGroups === 'function') window.loadGroups();
             break;
         case 'attendance':
-            if (typeof loadAttendance === 'function') loadAttendance();
+            if (typeof window.loadAttendance === 'function') window.loadAttendance();
             break;
         case 'admin-attendance-report':
-            if (userRole === 'admin' && typeof loadAdminAttendanceReport === 'function') loadAdminAttendanceReport();
+            if (userRole === 'admin' && typeof window.loadAdminAttendanceReport === 'function') window.loadAdminAttendanceReport();
             break;
         case 'admin-eval-report':
-            if (userRole === 'admin' && typeof loadAdminEvalReport === 'function') loadAdminEvalReport();
+            if (userRole === 'admin' && typeof window.loadAdminEvalReport === 'function') window.loadAdminEvalReport();
             break;
         case 'evaluate':
-            if (typeof loadEvaluationProjects === 'function') loadEvaluationProjects();
+            if (typeof window.loadEvaluationProjects === 'function') window.loadEvaluationProjects();
             break;
         case 'ranking':
-            if (typeof loadRanking === 'function') loadRanking();
+            if (typeof window.loadRanking === 'function') window.loadRanking();
             break;
         case 'upload':
-            if (typeof initUploadView === 'function') initUploadView();
+            if (typeof window.initUploadView === 'function') window.initUploadView();
             break;
         case 'bonus-system':
-            if (typeof loadBonusSystem === 'function') loadBonusSystem();
+            if (typeof window.loadBonusSystem === 'function') window.loadBonusSystem();
             break;
         case 'profile':
-            if (typeof loadProfile === 'function') loadProfile();
-            if (typeof initGamification === 'function') initGamification();
+            if (typeof window.loadProfile === 'function') window.loadProfile();
+            if (typeof window.initGamification === 'function') window.initGamification();
             break;
     }
 
     // Gamification check on feed too
-    if (view === 'feed' && typeof initGamification === 'function') {
-        initGamification();
+    if (view === 'feed' && typeof window.initGamification === 'function') {
+        window.initGamification();
     }
 }
+window.loadViewContent = loadViewContent;
+window.loadModule = loadModule;
 
-// ================================================
-// TOAST NOTIFICATIONS
-// ================================================
-
-function showToast(message, type = 'default') {
-    let container = document.getElementById('toast-container');
-    if (!container) {
-        container = document.createElement('div');
-        container.id = 'toast-container';
-        document.body.appendChild(container);
-    }
-
-    const toast = document.createElement('div');
-    toast.className = `toast toast-${type} show`; // Añadir show por defecto para simplificar
-    toast.innerHTML = message;
-
-    container.appendChild(toast);
-
-    // Eliminar después de 3 segundos
-    setTimeout(() => {
-        toast.classList.remove('show');
-        setTimeout(() => toast.remove(), 300);
-    }, 3000);
-}
+// Exportar showToast para que otros módulos lo usen
+export { showToast };
+window.showToast = showToast;
 
 console.log('✅ main.js reparado y cargado correctamente');

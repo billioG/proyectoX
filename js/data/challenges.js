@@ -2,7 +2,7 @@
 // RETOS MENSUALES DOCENTES - DATA CENTRALIZADA (Clásica)
 // ================================================
 
-const MONTHLY_CHALLENGES = [
+export const MONTHLY_CHALLENGES = [
     { id: 'jan_2026', name: 'Enero: El Poder de la Escucha', description: 'Dedica 5 minutos al día a practicar la escucha activa...', reward: 'Growth Bonus + 10 XP', isActive: true },
     { id: 'feb_2026', name: 'Febrero: Gestión del Tiempo Consciente', description: 'Implementa la técnica Pomodoro en tus planeaciones...', reward: 'Growth Bonus + 10 XP', isActive: false },
     { id: 'mar_2026', name: 'Marzo: Empatía Radical', description: 'Identifica al estudiante con más dificultades...', reward: 'Growth Bonus + 10 XP', isActive: false },
@@ -16,3 +16,4 @@ const MONTHLY_CHALLENGES = [
     { id: 'nov_2026', name: 'Noviembre: Resiliencia Emocional', description: 'Practica la autorregulación mediante respiración...', reward: 'Growth Bonus + 10 XP', isActive: false },
     { id: 'dec_2026', name: 'Diciembre: Cierre con Propósito', description: 'Reflexiona sobre tu mayor impacto humano...', reward: 'Growth Bonus + 10 XP', isActive: false }
 ];
+window.MONTHLY_CHALLENGES = MONTHLY_CHALLENGES;

@@ -1,16 +1,18 @@
+
 // ================================================
 // PROCESAMIENTO DE PDF - EXTRAE ESTABLECIMIENTOS Y ESTUDIANTES
 // ================================================
 
-let extractedStudents = [];
-let extractedSchool = null;
+window.extractedStudents = [];
+window.extractedSchool = null;
+window.isProcessingCanceled = false;
 
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', () => {
     const fileInput = document.getElementById('pdf-file-input');
     const btn = document.getElementById('btn-process-pdf');
 
     if (fileInput && btn) {
-        fileInput.addEventListener('change', function (e) {
+        fileInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file && file.type === 'application/pdf') {
                 btn.disabled = false;
@@ -23,16 +25,18 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 });
 
-async function processPDFFile() {
+window.processPDFFile = async function processPDFFile() {
     const fileInput = document.getElementById('pdf-file-input');
     const file = fileInput?.files[0];
 
     if (!file) {
-        return showToast('❌ Selecciona un archivo PDF', 'error');
+        return window.showToast('❌ Selecciona un archivo PDF', 'error');
     }
 
+    window.isProcessingCanceled = false;
+
     if (typeof pdfjsLib === 'undefined') {
-        return showToast('❌ Error: Librería PDF.js no cargada', 'error');
+        return window.showToast('❌ Error: Librería PDF.js no cargada', 'error');
     }
 
     const progressContainer = document.getElementById('pdf-processing-progress');
@@ -55,8 +59,9 @@ async function processPDFFile() {
         let allText = '';
 
         for (let i = 1; i <= numPages; i++) {
-            progressBar.style.width = `${(i / numPages) * 40}%`;
-            progressBar.textContent = `${Math.round((i / numPages) * 40)}%`;
+            if (window.isProcessingCanceled) return;
+            progressBar.style.width = `${(i / numPages) * 40}% `;
+            progressBar.textContent = `${Math.round((i / numPages) * 40)}% `;
             statusText.textContent = `Extrayendo texto de página ${i}/${numPages}...`;
 
             const page = await pdf.getPage(i);
@@ -68,34 +73,34 @@ async function processPDFFile() {
         progressBar.style.width = '50%';
         statusText.textContent = 'Extrayendo información del establecimiento...';
 
-        extractedSchool = extractSchoolInfo(allText);
+        window.extractedSchool = extractSchoolInfo(allText);
 
         progressBar.style.width = '60%';
-        statusText.textContent = 'Guardando establecimiento...';
+        statusText.textContent = 'Analizando estructura...';
 
-        await saveSchool(extractedSchool);
+        // await saveSchool(window.extractedSchool); // ELIMINADO: No guardar hasta confirmar
 
         progressBar.style.width = '70%';
         statusText.textContent = 'Extrayendo estudiantes...';
 
-        extractedStudents = extractStudentsFromText(allText, extractedSchool);
-        extractedStudents = await ensureUniqueUsernames(extractedStudents);
+        window.extractedStudents = extractStudentsFromText(allText, window.extractedSchool);
+        window.extractedStudents = await ensureUniqueUsernames(window.extractedStudents);
 
         progressBar.style.width = '100%';
         progressBar.textContent = '100%';
-        statusText.textContent = `✅ ${extractedStudents.length} estudiantes extraídos`;
+        statusText.textContent = `✅ ${window.extractedStudents.length} estudiantes extraídos`;
 
-        showToast(`✅ Establecimiento y ${extractedStudents.length} estudiantes encontrados`, 'success');
+        window.showToast(`✅ Establecimiento y ${window.extractedStudents.length} estudiantes encontrados`, 'success');
 
-        displaySchoolPreview(extractedSchool);
-        displayStudentsPreview(extractedStudents);
-        showConfirmationButton(extractedStudents);
+        displaySchoolPreview(window.extractedSchool);
+        displayStudentsPreview(window.extractedStudents);
+        showConfirmationButton(window.extractedStudents);
 
     } catch (err) {
         console.error('Error procesando PDF:', err);
         statusText.textContent = '❌ Error procesando PDF';
         progressBar.style.background = 'var(--danger-color)';
-        showToast('❌ Error: ' + err.message, 'error');
+        window.showToast('❌ Error: ' + err.message, 'error');
     } finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-file-pdf"></i> Procesar PDF';
@@ -141,7 +146,7 @@ function extractSchoolInfo(text) {
 
 async function saveSchool(schoolData) {
     try {
-        const { data: existing } = await _supabase
+        const { data: existing } = await window._supabase
             .from('schools')
             .select('id')
             .eq('code', schoolData.code)
@@ -152,7 +157,7 @@ async function saveSchool(schoolData) {
             return;
         }
 
-        const { error } = await _supabase
+        const { error } = await window._supabase
             .from('schools')
             .insert({
                 code: schoolData.code,
@@ -169,7 +174,7 @@ async function saveSchool(schoolData) {
         if (error) throw error;
 
         console.log('✓ Establecimiento creado:', schoolData.name);
-        showToast('✅ Establecimiento registrado', 'success');
+        window.showToast('✅ Establecimiento registrado', 'success');
 
     } catch (err) {
         console.error('Error guardando establecimiento:', err);
@@ -317,40 +322,60 @@ function generateUsername(primerNombre, segundoNombre, apellido1, apellido2) {
 
     const nombre1 = cleanName(primerNombre);
     const nombre2 = cleanName(segundoNombre);
-    const ap1 = cleanName(apellido1).charAt(0);
-    const ap2 = cleanName(apellido2).charAt(0);
+    const ap1 = cleanName(apellido1);
 
-    const baseUsername = nombre1 + ap1 + ap2;
-    const altUsername = nombre2 ? nombre1 + nombre2.charAt(0) + ap1 + ap2 : '';
+    // Nomenclatura sugerida: primer letra del nombre + el apellido
+    const baseUsername = nombre1.charAt(0) + ap1;
+    // Variación: primer letra del nombre + primer letra del segundo nombre + apellido
+    const altUsername = nombre2 ? nombre1.charAt(0) + nombre2.charAt(0) + ap1 : '';
 
     return { base: baseUsername, alternative: altUsername };
 }
 
 async function ensureUniqueUsernames(students) {
-    const { data: existingStudents } = await _supabase
-        .from('students')
-        .select('username');
+    console.log(`🔍 Iniciando validación de unicidad para ${students.length} estudiantes...`);
+    window.showToast(`🚀 Creando ${students.length} usuarios... Por favor espera.`, 'info');
 
-    const existingUsernames = new Set(existingStudents?.map(s => s.username) || []);
-    const usedUsernames = new Set();
+    let existingUsernames = new Set();
+    try {
+        // Obtenemos todos los usernames para evitar consultas repetitivas en el loop
+        const { data: existingStudents, error } = await window._supabase
+            .from('students')
+            .select('username');
 
-    return students.map(student => {
-        const { base, alternative } = generateUsername(
-            student.primerNombre,
-            student.segundoNombre,
-            student.apellido1,
-            student.apellido2
-        );
+        if (error) {
+            console.error('Error al obtener usernames existentes:', error);
+        } else {
+            existingUsernames = new Set(existingStudents?.map(s => s.username) || []);
+            console.log(`✅ ${existingUsernames.size} usernames existentes cargados.`);
+        }
+    } catch (e) {
+        console.warn('⚠️ No se pudo conectar con la DB para verificar unicidad, procediendo con precaución local.', e);
+    }
+
+    const usedInThisBatch = new Set();
+
+    return students.map((student, index) => {
+        // Asegurar que tenemos strings válidos
+        const p1 = student.primerNombre || 'estudiante';
+        const p2 = student.segundoNombre || '';
+        const a1 = student.apellido1 || '1bot';
+        const a2 = student.apellido2 || '';
+
+        const { base, alternative } = generateUsername(p1, p2, a1, a2);
 
         let finalUsername = base;
 
-        if (existingUsernames.has(base) || usedUsernames.has(base)) {
-            if (alternative && !existingUsernames.has(alternative) && !usedUsernames.has(alternative)) {
+        // Si ya existe en DB o en este lote
+        if (existingUsernames.has(base) || usedInThisBatch.has(base)) {
+            if (alternative && !existingUsernames.has(alternative) && !usedInThisBatch.has(alternative)) {
                 finalUsername = alternative;
             } else {
+                // Generar variante con números
                 let counter = 1;
                 let testUsername = base + counter;
-                while (existingUsernames.has(testUsername) || usedUsernames.has(testUsername)) {
+                // Límite de seguridad para evitar loops infinitos
+                while ((existingUsernames.has(testUsername) || usedInThisBatch.has(testUsername)) && counter < 1000) {
                     counter++;
                     testUsername = base + counter;
                 }
@@ -358,7 +383,9 @@ async function ensureUniqueUsernames(students) {
             }
         }
 
-        usedUsernames.add(finalUsername);
+        usedInThisBatch.add(finalUsername);
+
+        if (index % 50 === 0) console.log(`⏳ Procesados ${index}/${students.length} usernames...`);
 
         return {
             ...student,
@@ -475,9 +502,10 @@ function showConfirmationButton(students) {
     }
 }
 
-function cancelPDFImport() {
-    extractedStudents = [];
-    extractedSchool = null;
+window.cancelPDFImport = function cancelPDFImport() {
+    window.isProcessingCanceled = true;
+    window.extractedStudents = [];
+    window.extractedSchool = null;
 
     const previewContainer = document.getElementById('pdf-preview-container');
     const schoolPreview = document.getElementById('school-preview-container');
@@ -497,16 +525,16 @@ function cancelPDFImport() {
         btn.innerHTML = '<i class="fas fa-file-pdf"></i> Procesar PDF';
     }
 
-    showToast('❌ Importación cancelada', 'warning');
+    window.showToast('❌ Importación cancelada', 'warning');
 }
 
-window.confirmAndCreateUsers = async function () {
-    await createUsersFromExtractedData(extractedStudents);
+window.confirmAndCreateUsers = async function confirmAndCreateUsers() {
+    await window.createUsersFromExtractedData(window.extractedStudents);
 }
 
-async function createUsersFromExtractedData(students) {
+window.createUsersFromExtractedData = async function createUsersFromExtractedData(students) {
     if (students.length === 0) {
-        return showToast('❌ No hay estudiantes para crear', 'error');
+        return window.showToast('❌ No hay estudiantes para crear', 'error');
     }
 
     const actionsContainer = document.getElementById('pdf-actions-container');
@@ -514,187 +542,137 @@ async function createUsersFromExtractedData(students) {
     const progressBar = document.getElementById('pdf-progress-bar');
     const statusText = document.getElementById('pdf-processing-status');
 
-    // Ocultar botones mientras se crean usuarios
     if (actionsContainer) actionsContainer.style.display = 'none';
+    if (window.isProcessingCanceled) return;
+
+    // CLIENTE TEMPORAL: Esto es clave. Creamos una instancia de Supabase que NO guarda sesión
+    // para que el signUp de los alumnos no sobrescriba la sesión del administrador.
+    const tempSupabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: {
+            persistSession: false,
+            autoRefreshToken: false,
+            detectSessionInUrl: false
+        }
+    });
+
+    if (window.extractedSchool) {
+        statusText.textContent = 'Guardando establecimiento...';
+        await saveSchool(window.extractedSchool);
+    }
+
+    const existingUsernames = new Set();
+    const existingEmails = new Set();
+    const existingCUIs = new Set();
+
+    try {
+        statusText.textContent = 'Verificando duplicados en la nube...';
+        const { data: allExisting } = await window._supabase.from('students').select('username, email, cui');
+        if (allExisting) {
+            allExisting.forEach(s => {
+                if (s.username) existingUsernames.add(s.username);
+                if (s.email) existingEmails.add(s.email);
+                if (s.cui) existingCUIs.add(s.cui);
+            });
+        }
+    } catch (e) {
+        console.error('Error lookup:', e);
+    }
 
     let successCount = 0;
     let errorCount = 0;
     let skippedCount = 0;
-    const errors = [];
 
-    // Mostrar el contenedor de progreso
     progressContainer.style.display = 'block';
 
-    const batchSize = 1;
+    for (let i = 0; i < students.length; i++) {
+        if (window.isProcessingCanceled) break;
 
-    for (let i = 0; i < students.length; i += batchSize) {
-        const batch = students.slice(i, i + batchSize);
+        const student = students[i];
+        const progress = ((i + 1) / students.length) * 100;
 
-        for (const student of batch) {
-            const globalIndex = i + batch.indexOf(student);
-            const progress = ((globalIndex + 1) / students.length) * 100;
+        progressBar.style.width = `${progress}%`;
+        progressBar.textContent = `${Math.round(progress)}%`;
 
-            progressBar.style.width = `${progress}%`;
-            progressBar.textContent = `${Math.round(progress)}%`;
+        statusText.innerHTML = `
+            <div style="margin-bottom: 8px;"><strong>Creando estudiantes...</strong> (${i + 1}/${students.length})</div>
+            <div style="font-size: 0.9rem; color: #64748b;">👤 <code>${student.username}</code> - ${student.fullName}</div>
+        `;
 
-            // Actualizar información del progreso más detallada
-            statusText.innerHTML = `
-                <div style="margin-bottom: 8px;">
-                    <strong>Creando estudiantes...</strong> (${globalIndex + 1}/${students.length})
-                </div>
-                <div style="font-size: 0.9rem; color: var(--text-light);">
-                    👤 <code>${student.username}</code> - ${student.fullName}
-                </div>
-            `;
+        if (existingUsernames.has(student.username) || existingEmails.has(student.email) || (student.cui && existingCUIs.has(student.cui))) {
+            skippedCount++;
+            continue;
+        }
 
-            try {
-                const { data: existingByUsername } = await _supabase
-                    .from('students')
-                    .select('id')
-                    .eq('username', student.username)
-                    .maybeSingle();
-
-                if (existingByUsername) {
-                    skippedCount++;
-                    // Esperar incluso cuando se salta para no saturar el servidor
-                    await new Promise(resolve => setTimeout(resolve, 300));
-                    continue;
-                }
-
-                const { data: existingByEmail } = await _supabase
-                    .from('students')
-                    .select('id')
-                    .eq('email', student.email)
-                    .maybeSingle();
-
-                if (existingByEmail) {
-                    skippedCount++;
-                    await new Promise(resolve => setTimeout(resolve, 300));
-                    continue;
-                }
-
-                const { data: existingByCUI } = await _supabase
-                    .from('students')
-                    .select('id')
-                    .eq('cui', student.cui)
-                    .maybeSingle();
-
-                if (existingByCUI) {
-                    skippedCount++;
-                    await new Promise(resolve => setTimeout(resolve, 300));
-                    continue;
-                }
-
-                const { data: authData, error: authError } = await _supabase.auth.signUp({
-                    email: student.email,
-                    password: student.password,
-                    options: {
-                        data: {
-                            full_name: student.fullName,
-                            role: 'estudiante'
-                        },
-                        emailRedirectTo: undefined
-                    }
-                });
-
-                if (authError) {
-                    if (authError.message.includes('already registered')) {
-                        skippedCount++;
-                        await new Promise(resolve => setTimeout(resolve, 300));
-                        continue;
-                    }
-                    // Log más detallado del error
-                    console.error(`Error signUp para ${student.email}:`, authError.status, authError.message);
-                    throw authError;
-                }
-
-                if (!authData.user) {
-                    throw new Error('No se pudo crear usuario en auth');
-                }
-
-                // Esperar antes de guardar en base de datos
-                await new Promise(resolve => setTimeout(resolve, 1000));
-
-                const { error: dbError } = await _supabase
-                    .from('students')
-                    .insert({
-                        id: authData.user.id,
+        try {
+            // Usamos el cliente TEMPORAL para el signUp. 
+            // Al tener persistSession: false, NO tocará el localStorage ni cerrará tu sesión.
+            const { data: authData, error: authError } = await tempSupabase.auth.signUp({
+                email: student.email,
+                password: student.password,
+                options: {
+                    data: {
                         full_name: student.fullName,
-                        username: student.username,
-                        email: student.email,
-                        school_code: student.school_code,
-                        grade: student.grade,
-                        section: student.section,
-                        cui: student.cui,
-                        gender: student.gender || null,
-                        birth_date: student.birth_date || null
-                    });
+                        role: 'estudiante',
+                        needs_password_change: true
+                    }
+                }
+            });
 
-                if (dbError) throw dbError;
-
-                successCount++;
-
-                // IMPORTANTE: Delay más largo para evitar 429 (Too Many Requests) de Supabase
-                // El límite de Supabase Free suele ser de pocos registros por minuto
-                await new Promise(resolve => setTimeout(resolve, 5000));
-
-            } catch (err) {
-                if (err.status === 429 || err.message.includes('rate limit')) {
-                    console.error(`🛑 Límite de velocidad alcanzado. Esperando 30 segundos...`);
-                    statusText.innerHTML += `<div style="color: var(--danger-color); font-size: 0.8rem;">⚠️ Límite de Supabase alcanzado. Esperando 30s...</div>`;
-                    await new Promise(resolve => setTimeout(resolve, 30000));
-                    // Reintentar este mismo estudiante restando 1 al índice si fuera un for normal, 
-                    // pero aquí usaremos un mecanismo de reintento simple o simplemente informamos.
-                    i--; // Reintentar este lote/estudiante
+            if (authError) {
+                if (authError.message.includes('already registered')) {
+                    skippedCount++;
                     continue;
                 }
-
-                console.error(`❌ ${student.username}:`, err.message);
-                errors.push({ student: student.username, error: err.message });
-                errorCount++;
-
-                await new Promise(resolve => setTimeout(resolve, 2000));
+                if (authError.status === 429) {
+                    statusText.innerHTML += `<div class="text-rose-500 font-bold mt-2 animate-pulse">⚠️ LÍMITE ALCANZADO. ESPERANDO 60S...</div>`;
+                    await new Promise(r => setTimeout(r, 60000));
+                    i--; continue;
+                }
+                throw authError;
             }
+
+            if (!authData.user) throw new Error('Auth error');
+            await new Promise(r => setTimeout(r, 500));
+
+            const { error: dbError } = await window._supabase.from('students').insert({
+                id: authData.user.id,
+                full_name: student.fullName,
+                username: student.username,
+                email: student.email,
+                school_code: student.school_code,
+                grade: student.grade,
+                section: student.section,
+                cui: student.cui,
+                gender: student.gender || null,
+                birth_date: student.birth_date || null,
+                password_generated: student.password
+            });
+
+            if (dbError) throw dbError;
+            successCount++;
+
+            await new Promise(r => setTimeout(r, 2000));
+
+        } catch (err) {
+            console.error(`Error:`, err);
+            errorCount++;
+            await new Promise(r => setTimeout(r, 2000));
         }
     }
 
     progressBar.style.background = successCount > 0 ? '#10b981' : '#f59e0b';
     progressBar.style.width = '100%';
-    progressBar.textContent = '100%';
     statusText.innerHTML = `
-        <div class="text-center mb-6">
-            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-100 text-emerald-500 mb-4 animate-bounce">
-                <i class="fas fa-check text-3xl"></i>
-            </div>
-            <h3 class="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Proceso Completado</h3>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div class="bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-xl border border-emerald-100 dark:border-emerald-900/30 text-center">
-                <div class="text-3xl font-black text-emerald-500 mb-1">${successCount}</div>
-                <div class="text-[0.65rem] font-bold text-emerald-600/70 uppercase tracking-widest">Creados Exitosamente</div>
-            </div>
-            <div class="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl border border-amber-100 dark:border-amber-900/30 text-center">
-                <div class="text-3xl font-black text-amber-500 mb-1">${skippedCount}</div>
-                <div class="text-[0.65rem] font-bold text-amber-600/70 uppercase tracking-widest">Ya Existentes (Omitidos)</div>
-            </div>
-            <div class="bg-rose-50 dark:bg-rose-900/20 p-4 rounded-xl border border-rose-100 dark:border-rose-900/30 text-center">
-                <div class="text-3xl font-black text-rose-500 mb-1">${errorCount}</div>
-                <div class="text-[0.65rem] font-bold text-rose-600/70 uppercase tracking-widest">Errores de Registro</div>
-            </div>
+        <div class="text-center mb-6"><h3 class="text-xl font-black uppercase">Proceso Completado</h3></div>
+        <div class="grid grid-cols-3 gap-4">
+            <div class="bg-emerald-50 p-4 rounded-xl text-center"><div class="text-2xl font-black text-emerald-500">${successCount}</div><div class="text-[0.6rem] uppercase tracking-tighter">Éxito</div></div>
+            <div class="bg-amber-50 p-4 rounded-xl text-center"><div class="text-2xl font-black text-amber-500">${skippedCount}</div><div class="text-[0.6rem] uppercase tracking-tighter">Omitidos</div></div>
+            <div class="bg-rose-50 p-4 rounded-xl text-center"><div class="text-2xl font-black text-rose-500">${errorCount}</div><div class="text-[0.6rem] uppercase tracking-tighter">Errores</div></div>
         </div>
     `;
 
-    if (successCount > 0) {
-        showToast(`✅ ${successCount} estudiantes creados`, 'success');
-    }
-
-    if (typeof loadStudents === 'function') {
-        setTimeout(loadStudents, 2000);
-    }
-    if (typeof updateTotalUsersCount === 'function') {
-        setTimeout(updateTotalUsersCount, 2000);
-    }
+    if (successCount > 0) window.showToast(`✅ ${successCount} estudiantes creados`, 'success');
+    if (typeof window.loadStudents === 'function') setTimeout(window.loadStudents, 2000);
 }
 
 console.log('✅ pdf-processor.js cargado correctamente');

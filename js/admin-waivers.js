@@ -2,9 +2,9 @@
 // GESTIÓN DE EXENCIONES DE ASISTENCIA (ADMIN)
 // ================================================
 
-async function loadPendingWaivers() {
+window.loadPendingWaivers = async function loadPendingWaivers() {
   try {
-    const { data: waivers, error } = await _supabase
+    const { data: waivers, error } = await window._supabase
       .from('attendance_waivers')
       .select(`
         *,
@@ -22,7 +22,7 @@ async function loadPendingWaivers() {
   }
 }
 
-async function approveWaiver(waiverId) {
+window.approveWaiver = async function approveWaiver(waiverId) {
   const btn = event.target;
   const oldText = btn.innerHTML;
   btn.disabled = true;
@@ -30,7 +30,7 @@ async function approveWaiver(waiverId) {
 
   try {
     // 1. Obtener detalles de la exención
-    const { data: waiver, error: waiverError } = await _supabase
+    const { data: waiver, error: waiverError } = await window._supabase
       .from('attendance_waivers')
       .select('*')
       .eq('id', waiverId)
@@ -39,7 +39,7 @@ async function approveWaiver(waiverId) {
     if (waiverError) throw waiverError;
 
     // 2. Aprobar la exención
-    const { error: updateError } = await _supabase
+    const { error: updateError } = await window._supabase
       .from('attendance_waivers')
       .update({
         status: 'approved',
@@ -51,28 +51,28 @@ async function approveWaiver(waiverId) {
     if (updateError) throw updateError;
 
     // 3. Registrar asistencia automática para los estudiantes afectados
-    await registerAttendanceForWaiver(waiver);
+    await window.registerAttendanceForWaiver(waiver);
 
-    showToast('✅ Exención aprobada y asistencia registrada', 'success');
+    window.showToast('✅ Exención aprobada y asistencia registrada', 'success');
 
     // Recargar dashboard
-    if (typeof loadAdminDashboard === 'function') {
-      await loadAdminDashboard();
+    if (typeof window.loadAdminDashboard === 'function') {
+      await window.loadAdminDashboard();
     }
 
   } catch (err) {
     console.error('Error aprobando exención:', err);
-    showToast('❌ Error: ' + err.message, 'error');
+    window.showToast('❌ Error: ' + err.message, 'error');
     btn.disabled = false;
     btn.innerHTML = oldText;
   }
 }
 
-async function rejectWaiver(waiverId) {
+window.rejectWaiver = async function rejectWaiver(waiverId) {
   const reason = prompt('¿Por qué rechazas esta solicitud? (opcional)');
 
   try {
-    const { error } = await _supabase
+    const { error } = await window._supabase
       .from('attendance_waivers')
       .update({
         status: 'rejected',
@@ -83,25 +83,25 @@ async function rejectWaiver(waiverId) {
 
     if (error) throw error;
 
-    showToast('✅ Exención rechazada', 'success');
+    window.showToast('✅ Exención rechazada', 'success');
 
     // Recargar dashboard
-    if (typeof loadAdminDashboard === 'function') {
-      await loadAdminDashboard();
+    if (typeof window.loadAdminDashboard === 'function') {
+      await window.loadAdminDashboard();
     }
 
   } catch (err) {
     console.error('Error rechazando exención:', err);
-    showToast('❌ Error: ' + err.message, 'error');
+    window.showToast('❌ Error: ' + err.message, 'error');
   }
 }
 
-async function registerAttendanceForWaiver(waiver) {
+window.registerAttendanceForWaiver = async function registerAttendanceForWaiver(waiver) {
   try {
     const { teacher_id, date, school_code, grade, section } = waiver;
 
     // Determinar qué estudiantes se ven afectados
-    let studentsQuery = _supabase
+    let studentsQuery = window._supabase
       .from('students')
       .select('id')
       .eq('school_code', school_code);
@@ -137,7 +137,7 @@ async function registerAttendanceForWaiver(waiver) {
     const batchSize = 100;
     for (let i = 0; i < attendanceRecords.length; i += batchSize) {
       const batch = attendanceRecords.slice(i, i + batchSize);
-      const { error: insertError } = await _supabase
+      const { error: insertError } = await window._supabase
         .from('attendance')
         .upsert(batch, { onConflict: 'student_id,date', ignoreDuplicates: false });
 
@@ -155,7 +155,7 @@ async function registerAttendanceForWaiver(waiver) {
   }
 }
 
-async function showWaiverDetailsModal(waiver) {
+window.showWaiverDetailsModal = async function showWaiverDetailsModal(waiver) {
   const modal = document.createElement('div');
   modal.className = 'modal active';
 
@@ -175,13 +175,13 @@ async function showWaiverDetailsModal(waiver) {
         <div style="display: grid; gap: 16px;">
           <div>
             <strong style="color: var(--heading-color);">👨‍🏫 Docente:</strong>
-            <p style="margin: 4px 0 0 0;">${sanitizeInput(teacherName)}</p>
+            <p style="margin: 4px 0 0 0;">${window.sanitizeInput(teacherName)}</p>
             <small style="color: var(--text-light);">${teacherEmail}</small>
           </div>
 
           <div>
             <strong style="color: var(--heading-color);">📅 Fecha Afectada:</strong>
-            <p style="margin: 4px 0 0 0;">${formatDate(waiver.date)}</p>
+            <p style="margin: 4px 0 0 0;">${window.formatDate(waiver.date)}</p>
           </div>
 
           <div>
@@ -197,22 +197,22 @@ async function showWaiverDetailsModal(waiver) {
           <div>
             <strong style="color: var(--heading-color);">📝 Motivo:</strong>
             <p style="margin: 4px 0 0 0; padding: 12px; background: var(--light-gray); border-radius: 8px;">
-              ${sanitizeInput(waiver.reason)}
+              ${window.sanitizeInput(waiver.reason)}
             </p>
           </div>
 
           <div>
             <strong style="color: var(--heading-color);">🕐 Solicitado:</strong>
-            <p style="margin: 4px 0 0 0;">${formatDate(waiver.created_at)}</p>
+            <p style="margin: 4px 0 0 0;">${window.formatDate(waiver.created_at)}</p>
           </div>
         </div>
 
         <div style="display: flex; gap: 10px; margin-top: 24px; justify-content: flex-end;">
           <button class="btn-secondary" onclick="this.closest('.modal').remove()">Cerrar</button>
-          <button class="btn-secondary" onclick="rejectWaiver('${waiver.id}'); this.closest('.modal').remove();" style="background: var(--danger-color); border-color: var(--danger-color);">
+          <button class="btn-secondary" onclick="window.rejectWaiver('${waiver.id}'); this.closest('.modal').remove();" style="background: var(--danger-color); border-color: var(--danger-color);">
             <i class="fas fa-times"></i> Rechazar
           </button>
-          <button class="btn-primary" onclick="approveWaiver('${waiver.id}'); this.closest('.modal').remove();">
+          <button class="btn-primary" onclick="window.approveWaiver('${waiver.id}'); this.closest('.modal').remove();">
             <i class="fas fa-check"></i> Aprobar
           </button>
         </div>
@@ -223,52 +223,62 @@ async function showWaiverDetailsModal(waiver) {
   document.body.appendChild(modal);
 }
 
-async function showWaiverReports() {
+window.showWaiverReports = async function showWaiverReports() {
   const modal = document.createElement('div');
   modal.className = 'modal active';
-  modal.innerHTML = '<div class="modal-content"><p>Cargando reporte completo de exenciones...</p></div>';
+  modal.id = 'waiver-reports-modal';
+  modal.innerHTML = '<div class="modal-content"><p><i class="fas fa-spinner fa-spin"></i> Cargando historial de exenciones...</p></div>';
   document.body.appendChild(modal);
 
   try {
-    let { data: waivers } = await _supabase
-      .from('attendance_waivers')
-      .select('*, teachers(full_name), schools(name)')
-      .order('created_at', { ascending: false });
+    await window.fetchWithCache('admin_waivers_history', async () => {
+      return await window._supabase
+        .from('attendance_waivers')
+        .select('*, teachers(full_name), schools(name)')
+        .order('created_at', { ascending: false });
+    }, (waivers) => {
+      window.renderWaiverReportsUI(modal, waivers);
+    });
+  } catch (e) {
+    console.error(e);
+    modal.innerHTML = '<div class="modal-content"><p class="text-rose-500">❌ Error cargando historial</p></div>';
+  }
+}
 
-    modal.innerHTML = `
-            <div class="modal-content" style="max-width: 900px;">
-                <div class="modal-header">
-                    <h2>📋 Historial de Exenciones</h2>
-                    <button class="close-modal" onclick="this.closest('.modal').remove()">×</button>
-                </div>
-                <div class="modal-body">
-                    <div class="table-container" style="max-height: 500px; overflow-y: auto;">
-                        <table class="data-table">
-                            <thead>
+window.renderWaiverReportsUI = function renderWaiverReportsUI(modal, waivers) {
+  modal.innerHTML = `
+        <div class="modal-content" style="max-width: 900px;">
+            <div class="modal-header">
+                <h2>📋 Historial de Exenciones</h2>
+                <button class="close-modal" onclick="this.closest('.modal').remove()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="table-container" style="max-height: 500px; overflow-y: auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Docente</th>
+                                <th>Establecimiento</th>
+                                <th>Motivo</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${(waivers || []).map(w => `
                                 <tr>
-                                    <th>Fecha</th>
-                                    <th>Docente</th>
-                                    <th>Establecimiento</th>
-                                    <th>Motivo</th>
-                                    <th>Estado</th>
+                                    <td>${formatDate(w.date)}</td>
+                                    <td><strong>${w.teachers?.full_name || 'N/A'}</strong></td>
+                                    <td>${w.schools?.name || w.school_code}</td>
+                                    <td>${sanitizeInput(w.reason)}</td>
+                                    <td><span class="status-badge status-${w.status}">${w.status.toUpperCase()}</span></td>
                                 </tr>
-                            </thead>
-                            <tbody>
-                                ${waivers.map(w => `
-                                    <tr>
-                                        <td>${formatDate(w.date)}</td>
-                                        <td><strong>${w.teachers?.full_name || 'N/A'}</strong></td>
-                                        <td>${w.schools?.name || w.school_code}</td>
-                                        <td>${sanitizeInput(w.reason)}</td>
-                                        <td><span class="status-badge status-${w.status}">${w.status.toUpperCase()}</span></td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
+                            `).join('')}
+                        </tbody>
+                    </table>
                 </div>
-            </div>`;
-  } catch (e) { console.error(e); }
+            </div>
+        </div>`;
 }
 
 console.log('✅ admin-waivers.js actualizado');

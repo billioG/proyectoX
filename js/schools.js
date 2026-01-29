@@ -2,42 +2,59 @@
 // GESTIÓN DE ESTABLECIMIENTOS - PARTE 1
 // ================================================
 
-async function loadSchools() {
+window.loadSchools = async function loadSchools() {
   const container = document.getElementById('schools-container');
   if (!container) return;
 
-  container.innerHTML = `
-    <div class="flex flex-col items-center justify-center p-20 text-slate-400">
-        <i class="fas fa-circle-notch fa-spin text-4xl mb-4 text-primary"></i>
-        <span class="font-bold tracking-widest uppercase text-xs">Sincronizando Establecimientos...</span>
-    </div>
-  `;
+  const _supabase = window._supabase;
+  const fetchWithCache = window.fetchWithCache;
+
+  if (!container.innerHTML || container.innerHTML.includes('fa-circle-notch')) {
+    container.innerHTML = `
+      <div class="flex flex-col items-center justify-center p-20 text-slate-400">
+          <i class="fas fa-circle-notch fa-spin text-4xl mb-4 text-primary"></i>
+          <span class="font-bold tracking-widest uppercase text-xs">Sincronizando Establecimientos...</span>
+      </div>
+    `;
+  }
 
   try {
-    const { data: schools, error } = await _supabase
-      .from('schools')
-      .select('*')
-      .order('department, municipality, name');
+    await fetchWithCache('schools_list', async () => {
+      const { data, error } = await _supabase
+        .from('schools')
+        .select('*')
+        .order('department, municipality, name');
+      if (error) throw error;
+      return data;
+    }, (schools) => {
+      window.renderSchoolsContent(container, schools);
+    });
 
-    if (error) throw error;
+  } catch (err) {
+    console.error('Error cargando establecimientos:', err);
+    container.innerHTML = '<div class="glass-card p-10 text-rose-500 font-bold text-center">❌ Falló la sincronización de establecimientos</div>';
+  }
+}
 
-    container.innerHTML = `
+window.renderSchoolsContent = function renderSchoolsContent(container, schools) {
+  const sanitizeInput = window.sanitizeInput;
+  container.innerHTML = `
       <div class="flex flex-col md:flex-row gap-6 mb-10 items-center animate-slideUp">
         <div class="relative grow w-full">
             <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-            <input type="text" id="search-schools" class="input-field-tw pl-12 h-12 text-sm font-semibold" placeholder="FILTRO: NOMBRE, CÓDIGO O MUNICIPIO..." oninput="filterSchools()">
+            <input type="text" id="search-schools" class="input-field-tw pl-12 h-12 text-sm font-semibold" placeholder="FILTRO: NOMBRE, CÓDIGO O MUNICIPIO..." oninput="window.filterSchools()">
         </div>
         <div class="flex gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl shrink-0">
-            <button id="btn-list-view" class="px-6 h-10 rounded-xl text-[0.6rem] font-black uppercase tracking-widest transition-all bg-white dark:bg-slate-700 shadow-sm text-primary" onclick="toggleSchoolView('list')">
+            <button id="btn-list-view" class="px-6 h-10 rounded-xl text-[0.6rem] font-black uppercase tracking-widest transition-all bg-white dark:bg-slate-700 shadow-sm text-primary" onclick="window.toggleSchoolView('list')">
                 <i class="fas fa-list-ul mr-2"></i> LISTADO
             </button>
-            <button id="btn-map-view" class="px-6 h-10 rounded-xl text-[0.6rem] font-black uppercase tracking-widest transition-all text-slate-500 hover:text-primary" onclick="toggleSchoolView('map')">
+            <button id="btn-map-view" class="px-6 h-10 rounded-xl text-[0.6rem] font-black uppercase tracking-widest transition-all text-slate-500 hover:text-primary" onclick="window.toggleSchoolView('map')">
                 <i class="fas fa-map-marked-alt mr-2"></i> DISTRIBUCIÓN
             </button>
         </div>
         <div class="flex gap-3 w-full md:w-auto shrink-0">
-            <button class="btn-primary-tw grow h-12 px-6 text-xs uppercase font-bold tracking-widest" onclick="openAddSchoolModal()">
-              <i class="fas fa-plus"></i> AGREGAR
+            <button type="button" onclick="window.saveSchoolChanges(${schoolId})" class="btn-primary-tw w-full h-12 uppercase text-xs font-black tracking-widest shadow-lg shadow-emerald-500/20">
+                <i class="fas fa-save"></i> Guardar Cambios
             </button>
         </div>
       </div>
@@ -47,7 +64,7 @@ async function loadSchools() {
           <div class="glass-card p-16 text-center border-2 border-dashed border-slate-100 dark:border-slate-800">
               <i class="fas fa-school text-6xl text-slate-200 dark:text-slate-800 mb-4 mx-auto block"></i>
               <p class="text-slate-500 font-bold uppercase tracking-widest text-sm mb-6">No hay establecimientos registrados</p>
-              <button class="btn-primary-tw mx-auto h-11 px-8" onclick="openAddSchoolModal()"><i class="fas fa-plus"></i> COMENZAR REGISTRO</button>
+              <button class="btn-primary-tw mx-auto h-11 px-8" onclick="window.openAddSchoolModal()"><i class="fas fa-plus"></i> COMENZAR REGISTRO</button>
           </div>
         ` : `
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -62,7 +79,7 @@ async function loadSchools() {
                              <span class="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 text-[0.6rem] font-bold uppercase tracking-widest">${sanitizeInput(s.code)}</span>
                              <div class="flex gap-1">
                                  <span class="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[0.55rem] font-bold uppercase tracking-tighter border border-emerald-500/10">${sanitizeInput(s.level)}</span>
-                                 <span class="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500 text-[0.55rem] font-bold uppercase tracking-tighter border border-blue-500/10">${sanitizeInput(s.sector)}</span>
+                                 <span class="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500 text-[0.55rem] font-bold uppercase tracking-tighter border border-blue-500/10">${window.sanitizeInput(s.sector)}</span>
                              </div>
                           </div>
                           <h3 class="text-lg font-bold text-slate-800 dark:text-white leading-tight uppercase mb-1">${sanitizeInput(s.name)}</h3>
@@ -76,10 +93,10 @@ async function loadSchools() {
                               <span class="px-2.5 py-1 rounded-lg bg-violet-50 dark:bg-violet-900/10 text-violet-600 dark:text-violet-400 text-[0.6rem] font-bold uppercase tracking-widest border border-violet-500/10">${sanitizeInput(s.schedule)}</span>
                           </div>
                           <div class="flex gap-2">
-                              <button class="w-9 h-9 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-primary transition-all flex items-center justify-center border border-slate-50 dark:border-slate-800" onclick="editSchool(${s.id})" title="Editar">
+                              <button class="w-9 h-9 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-primary transition-all flex items-center justify-center border border-slate-50 dark:border-slate-800" onclick="window.editSchool(${s.id})" title="Editar">
                                   <i class="fas fa-edit text-sm"></i>
                               </button>
-                              <button class="w-9 h-9 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-rose-500 transition-all flex items-center justify-center border border-slate-50 dark:border-slate-800" onclick="deleteSchool(${s.id}, '${sanitizeInput(s.name).replace(/'/g, "\\'")}')" title="Eliminar">
+                              <button class="w-9 h-9 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-rose-500 transition-all flex items-center justify-center border border-slate-50 dark:border-slate-800" onclick="window.deleteSchool(${s.id}, '${sanitizeInput(s.name).replace(/'/g, "\\'")}')" title="Eliminar">
                                   <i class="fas fa-trash text-sm"></i>
                               </button>
                           </div>
@@ -92,19 +109,12 @@ async function loadSchools() {
       </div>
 
       <div id="schools-map-view" class="hidden animate-fadeIn">
-        ${renderDepartmentalHeatmap(schools)}
+        ${typeof window.renderDepartmentalHeatmap === 'function' ? window.renderDepartmentalHeatmap(schools) : '<p class="text-center p-10 opacity-50">Mapa no disponible</p>'}
       </div>
     `;
-
-  } catch (err) {
-    console.error('Error cargando establecimientos:', err);
-    container.innerHTML = '<div class="glass-card p-10 text-rose-500 font-bold text-center">❌ Falló la sincronización de establecimientos</div>';
-  }
 }
 
-
-
-function filterSchools() {
+window.filterSchools = function filterSchools() {
   const searchTerm = (document.getElementById('search-schools')?.value || '').toLowerCase().trim();
   const cards = document.querySelectorAll('.school-card');
 
@@ -125,9 +135,9 @@ function filterSchools() {
 // PARTE 3: EDITAR Y ELIMINAR ESTABLECIMIENTOS
 // ================================================
 
-async function editSchool(schoolId) {
+window.editSchool = async function editSchool(schoolId) {
   try {
-    const { data: school, error } = await _supabase
+    const { data: school, error } = await window._supabase
       .from('schools')
       .select('*')
       .eq('id', schoolId)
@@ -174,7 +184,7 @@ async function editSchool(schoolId) {
                         <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-2 block ml-1">Radio de Geocerca (Metros)</label>
                         <input type="number" id="edit-school-radius" class="input-field-tw h-11 text-sm" value="${school.geofence_radius || 100}">
                     </div>
-                    <button class="btn-secondary-tw h-11 text-[0.6rem] font-black uppercase" onclick="captureSchoolGPS()">
+                    <button class="btn-secondary-tw h-11 text-[0.6rem] font-black uppercase" onclick="window.captureSchoolGPS()">
                         <i class="fas fa-crosshairs mr-2"></i> Capturar Mi GPS
                     </button>
                 </div>
@@ -245,7 +255,7 @@ async function editSchool(schoolId) {
 
         <div class="p-8 bg-slate-50 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3">
             <button class="btn-secondary-tw px-6 h-12 text-xs uppercase font-bold tracking-widest" onclick="this.closest('.fixed').remove()">CANCELAR</button>
-            <button class="btn-primary-tw px-10 h-12 text-xs uppercase font-bold tracking-widest shadow-xl shadow-primary/30" onclick="saveSchoolChanges(${schoolId})" id="btn-save-school">
+            <button class="btn-primary-tw px-10 h-12 text-xs uppercase font-bold tracking-widest shadow-xl shadow-primary/30" onclick="window.saveSchoolChanges(${schoolId})" id="btn-save-school">
               <i class="fas fa-save mr-2 shadow-none"></i> ACTUALIZAR DATOS
             </button>
         </div>
@@ -260,7 +270,7 @@ async function editSchool(schoolId) {
   }
 }
 
-function captureSchoolGPS() {
+window.captureSchoolGPS = function captureSchoolGPS() {
   const btn = event.currentTarget;
   const originalHTML = btn.innerHTML;
   btn.disabled = true;
@@ -292,7 +302,7 @@ function captureSchoolGPS() {
   );
 }
 
-async function saveSchoolChanges(schoolId) {
+window.saveSchoolChanges = async function saveSchoolChanges(schoolId) {
   const name = document.getElementById('edit-school-name')?.value.trim();
   const address = document.getElementById('edit-school-address')?.value.trim();
   const phone = document.getElementById('edit-school-phone')?.value.trim();
@@ -319,7 +329,7 @@ async function saveSchoolChanges(schoolId) {
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
 
   try {
-    const { error } = await _supabase
+    const { error } = await window._supabase
       .from('schools')
       .update({
         name,
@@ -344,11 +354,10 @@ async function saveSchoolChanges(schoolId) {
     showToast('✅ Establecimiento actualizado correctamente', 'success');
 
     // Remover específicamente el modal de edición
-    const editModal = document.querySelector('.fixed.z-\\[200\\]');
+    const editModal = document.querySelector('.fixed.z-\\[200\\]') || document.querySelector('.fixed.inset-0.z-\\[100\\]');
     if (editModal) editModal.remove();
-    else document.querySelector('.fixed').remove(); // Fallback
 
-    await loadSchools();
+    if (typeof window.loadSchools === 'function') await window.loadSchools();
 
   } catch (err) {
     console.error('Error actualizando establecimiento:', err);
@@ -359,13 +368,13 @@ async function saveSchoolChanges(schoolId) {
   }
 }
 
-async function deleteSchool(schoolId, schoolName) {
+window.deleteSchool = async function deleteSchool(schoolId, schoolName) {
   if (!confirm(`¿Eliminar "${schoolName}"?\n\nAdvertencia: Esto puede afectar a estudiantes y docentes asignados.`)) {
     return;
   }
 
   try {
-    const { error } = await _supabase
+    const { error } = await window._supabase
       .from('schools')
       .delete()
       .eq('id', schoolId);
@@ -373,17 +382,17 @@ async function deleteSchool(schoolId, schoolName) {
     if (error) throw error;
 
     showToast('✅ Establecimiento eliminado', 'success');
-    await loadSchools();
+    if (typeof window.loadSchools === 'function') await window.loadSchools();
 
   } catch (err) {
     console.error('Error eliminando establecimiento:', err);
-    showToast('❌ Error: ' + err.message, 'error');
+    window.showToast('❌ Error eliminando establecimiento', 'error');
   }
 }
 
-async function exportSchoolsCSV() {
+window.exportSchoolsCSV = async function exportSchoolsCSV() {
   try {
-    const { data: schools } = await _supabase
+    const { data: schools } = await window._supabase
       .from('schools')
       .select('*')
       .order('department, municipality, name');
@@ -401,16 +410,16 @@ async function exportSchoolsCSV() {
       csvContent += `${s.code},"${nombre}","${direccion}",${s.phone || ''},${s.email || ''},${s.department},${s.municipality},${s.sector},${s.level},${s.schedule},${s.area}\n`;
     });
 
-    downloadCSV(csvContent, 'establecimientos_export.csv');
-    showToast(`✅ ${schools.length} establecimientos exportados`, 'success');
+    window.downloadCSV(csvContent, 'establecimientos_export.csv');
+    window.showToast(`✅ ${schools.length} establecimientos exportados`, 'success');
 
   } catch (err) {
     console.error('Error exportando:', err);
-    showToast('❌ Error al exportar', 'error');
+    window.showToast('❌ Error al exportar', 'error');
   }
 }
 
-function toggleSchoolView(view) {
+window.toggleSchoolView = function toggleSchoolView(view) {
   const list = document.getElementById('schools-list-view');
   const map = document.getElementById('schools-map-view');
   const btnList = document.getElementById('btn-list-view');
@@ -433,7 +442,7 @@ function toggleSchoolView(view) {
   }
 }
 
-function renderDepartmentalHeatmap(schools) {
+window.renderDepartmentalHeatmap = function renderDepartmentalHeatmap(schools) {
   if (!schools || schools.length === 0) return '';
 
   const deptCounts = {};

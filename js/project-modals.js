@@ -2,7 +2,13 @@
  * PROJECT MODALS - Gestión de ventanas emergentes (Tailwind Edition)
  */
 
-async function viewProjectDetails(projectId) {
+window.viewProjectDetails = async function viewProjectDetails(projectId) {
+  const _supabase = window._supabase;
+  const currentUser = window.currentUser;
+  const userRole = window.userRole;
+  const sanitizeInput = window.sanitizeInput || ((v) => v);
+  const showToast = window.showToast;
+
   try {
     const { data: project, error } = await _supabase
       .from('projects')
@@ -10,12 +16,29 @@ async function viewProjectDetails(projectId) {
         *,
         students(id, full_name, school_code, grade, section, schools(name)),
         groups(id, name, group_members(role, student_id, students(full_name))),
-        evaluations!project_id(*)
+        evaluations(*)
       `)
       .eq('id', projectId)
       .single();
 
     if (error) throw error;
+    console.log("PROYECTO CARGADO:", project);
+
+    // REINTENTO DE CARGA DE EVALUACIÓN (Si el join falló o el score es > 0)
+    if (project.score > 0 && (!project.evaluations || project.evaluations.length === 0)) {
+      try {
+        const { data: directEval } = await _supabase
+          .from('evaluations')
+          .select('*')
+          .eq('project_id', projectId);
+
+        if (directEval && directEval.length > 0) {
+          project.evaluations = directEval;
+        }
+      } catch (e) {
+        console.warn("No se pudo obtener el desglose de evaluación (RLS o Error):", e);
+      }
+    }
 
     const isOwner = project.user_id === currentUser?.id;
     const isTeacherOrAdmin = userRole === 'docente' || userRole === 'admin';
@@ -82,19 +105,22 @@ async function viewProjectDetails(projectId) {
                   <i class="fas fa-chart-bar text-primary"></i> Desglose de Evaluación
               </h4>
               <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-                ${[
-          { l: 'Creatividad', v: project.evaluations?.[0]?.creativity_score, i: '💡' },
-          { l: 'Claridad', v: project.evaluations?.[0]?.clarity_score, i: '🎯' },
-          { l: 'Función', v: project.evaluations?.[0]?.functionality_score, i: '⚙️' },
-          { l: 'Equipo', v: project.evaluations?.[0]?.teamwork_score, i: '👥' },
-          { l: 'Impacto', v: project.evaluations?.[0]?.social_impact_score, i: '🌍' }
-        ].map(c => `
+                ${(() => {
+          const ev = Array.isArray(project.evaluations) ? project.evaluations[0] : project.evaluations;
+          return [
+            { l: 'Creatividad', v: ev?.creativity_score, i: '💡' },
+            { l: 'Claridad', v: ev?.clarity_score, i: '🎯' },
+            { l: 'Función', v: ev?.functionality_score, i: '⚙️' },
+            { l: 'Equipo', v: ev?.teamwork_score, i: '👥' },
+            { l: 'Impacto', v: ev?.social_impact_score, i: '🌍' }
+          ].map(c => `
                     <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm text-center transform hover:scale-105 transition-all">
                         <div class="text-2xl mb-2">${c.i}</div>
                         <div class="text-[0.6rem] font-bold uppercase text-slate-400 mb-1">${c.l}</div>
-                        <div class="text-xl font-bold text-primary">${c.v || 0}<span class="text-[0.7rem] opacity-50 ml-0.5">/20</span></div>
+                        <div class="text-xl font-bold text-primary">${c.v !== undefined ? c.v : 0}<span class="text-[0.7rem] opacity-50 ml-0.5">/20</span></div>
                     </div>
-                `).join('')}
+                  `).join('');
+        })()}
               </div>
               ${project.evaluations?.[0]?.feedback ? `
                 <div class="mt-8 bg-amber-50 dark:bg-amber-900/20 p-6 rounded-3xl border-l-4 border-amber-500">
@@ -118,11 +144,11 @@ async function viewProjectDetails(projectId) {
     document.body.appendChild(modal);
   } catch (err) {
     console.error(err);
-    showToast('❌ Error al cargar detalles', 'error');
+    if (typeof showToast === 'function') showToast('❌ Error al cargar detalles', 'error');
   }
 }
 
-function openChallengeEvidenceModal(challengeId) {
+window.openChallengeEvidenceModal = function openChallengeEvidenceModal(challengeId) {
   const modal = document.createElement('div');
   modal.className = 'fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm';
   modal.innerHTML = `
@@ -144,101 +170,121 @@ function openChallengeEvidenceModal(challengeId) {
         
         <div class="flex gap-4">
             <button class="grow bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold py-3 rounded-xl transition-all" onclick="this.closest('.fixed').remove()">CANCELAR</button>
-            <button class="grow bg-primary hover:bg-primary-dark text-white font-bold py-3 rounded-xl shadow-lg shadow-primary/20 transition-all" onclick="submitChallengeEvidence('${challengeId}')">ENVIAR EVIDENCIA</button>
+            <button class="grow bg-primary hover:bg-primary-dark text-white font-bold py-3 rounded-xl shadow-lg shadow-primary/20 transition-all" onclick="window.submitChallengeEvidence && window.submitChallengeEvidence('${challengeId}')">ENVIAR EVIDENCIA</button>
         </div>
       </div>
   `;
   document.body.appendChild(modal);
 }
 
-async function uploadProject() {
+window.uploadProject = async function uploadProject() {
   const title = document.getElementById('project-title')?.value.trim();
   const description = document.getElementById('project-description')?.value.trim();
   const videoFile = document.getElementById('project-video')?.files[0];
   const groupId = document.getElementById('project-group')?.value || null;
   const btn = document.getElementById('btn-upload-project');
+  const showToast = window.showToast;
+  const currentUser = window.currentUser;
+  const _syncManager = window._syncManager;
+  const nav = window.nav;
 
-  if (!title || !description || !videoFile) return showToast('❌ Completa los campos', 'error');
+  if (!title || !description || !videoFile) {
+    if (typeof showToast === 'function') showToast('❌ Completa los campos', 'error');
+    return;
+  }
 
   const MAX_SIZE = 50 * 1024 * 1024;
-  if (videoFile.size > MAX_SIZE) return showToast('❌ Video muy pesado (Máx 50MB)', 'error');
+  if (videoFile.size > MAX_SIZE) {
+    if (typeof showToast === 'function') showToast('❌ Video muy pesado (Máx 50MB)', 'error');
+    return;
+  }
 
   btn.disabled = true;
-  btn.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-2"></i> Subiendo Proyecto...';
+  btn.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-2"></i> Guardando Proyecto...';
 
   try {
-    // 1. Detección de IP y Fraude (Antigravity Anti-Fraud System)
-    let clientIP = 'unknown';
-    try {
-      const ipRes = await fetch('https://api.ipify.org?format=json');
-      const ipData = await ipRes.json();
-      clientIP = ipData.ip;
-    } catch (e) { console.warn('ipify failed, using fallback'); }
-
-    // Verificar ráfagas (Max 10 en 5 min)
-    const fiveMinsAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-    const { count: recentUploads } = await _supabase.from('projects')
-      .select('*', { count: 'exact', head: true })
-      .eq('upload_ip', clientIP)
-      .gte('created_at', fiveMinsAgo);
-
-    if (recentUploads >= 10 && userRole !== 'admin') {
-      throw new Error('⚠️ Alerta de Fraude: Demasiados uploads desde esta IP. Intenta más tarde.');
+    // Detección de IP (solo si hay conexión)
+    let clientIP = 'offline';
+    if (navigator.onLine && _syncManager && !_syncManager.simulatedOffline) {
+      try {
+        const ipRes = await fetch('https://api.ipify.org?format=json', { timeout: 3000 });
+        const ipData = await ipRes.json();
+        clientIP = ipData.ip;
+      } catch (e) {
+        console.warn('IP detection failed, continuing offline');
+      }
     }
 
-    const fileName = `${Date.now()}_${videoFile.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
-    const { error: uploadError } = await _supabase.storage.from('project-videos').upload(fileName, videoFile);
-    if (uploadError) throw uploadError;
-
-    const { data: urlData } = _supabase.storage.from('project-videos').getPublicUrl(fileName);
     const bimestre = document.getElementById('project-bimestre')?.value || 1;
 
-    const { error: insertError } = await _supabase.from('projects').insert({
+    // Preparar datos del proyecto
+    const projectData = {
       user_id: currentUser.id,
       group_id: groupId,
       title,
       description,
-      video_url: urlData.publicUrl,
       bimestre: parseInt(bimestre),
       upload_ip: clientIP,
-      client_metadata: { agent: navigator.userAgent, platform: navigator.platform }
-    });
+      client_metadata: { agent: navigator.userAgent, platform: navigator.platform },
+      _fileBlob: videoFile // El archivo se guardará en IndexedDB
+    };
 
-    if (insertError) throw insertError;
-
-    // Rotar roles si es proyecto grupal
-    if (groupId && typeof rotateRoles === 'function') {
-      await rotateRoles(groupId);
+    // USAR EL GESTOR DE SINCRONIZACIÓN (MODO KOLIBRI / OFFLINE)
+    if (_syncManager && typeof _syncManager.enqueue === 'function') {
+      await _syncManager.enqueue('upload_project', projectData);
     }
 
-    showToast('🚀 ¡Proyecto publicado con éxito!', 'success');
-    nav('feed');
+    if (typeof showToast === 'function') showToast('🚀 Proyecto guardado (Pendiente Sync)', 'success');
+
+    // Limpiar formulario
+    document.getElementById('project-title').value = '';
+    document.getElementById('project-description').value = '';
+    if (typeof window.clearVideoPreview === 'function') window.clearVideoPreview();
+
+    if (typeof nav === 'function') nav('feed');
   } catch (err) {
     console.error(err);
-    showToast('❌ Error al subir proyecto', 'error');
+    if (typeof showToast === 'function') showToast('❌ Error al guardar proyecto', 'error');
   } finally {
     btn.disabled = false;
-    btn.innerHTML = 'Publicar Proyecto';
+    btn.innerHTML = '<i class="fas fa-paper-plane text-xl"></i> PUBLICAR PROYECTO AHORA';
   }
 }
 
-async function initUploadView() {
+window.initUploadView = async function initUploadView() {
   const select = document.getElementById('project-group');
   if (!select) return;
+  const _supabase = window._supabase;
+  const currentUser = window.currentUser;
+  const sanitizeInput = window.sanitizeInput || ((v) => v);
 
   try {
-    const { data: groups } = await _supabase
+    // Consulta simplificada para evitar errores de ambigüedad
+    const { data: memberships, error } = await _supabase
       .from('group_members')
       .select('group_id, groups(name)')
       .eq('student_id', currentUser.id);
 
-    select.innerHTML = '<option value="">Individual</option>' + (groups || []).map(g => `
-      <option value="${g.group_id}">${sanitizeInput(g.groups.name)}</option>
-    `).join('');
-  } catch (e) { console.error(e); }
+    if (error) throw error;
+
+    let html = '<option value="">Individual</option>';
+    if (memberships && memberships.length > 0) {
+      memberships.forEach(m => {
+        const team = m.groups;
+        const teamName = Array.isArray(team) ? team[0]?.name : team?.name;
+        if (teamName) {
+          html += `<option value="${m.group_id}">${sanitizeInput(teamName)}</option>`;
+        }
+      });
+    }
+    select.innerHTML = html;
+  } catch (e) {
+    console.error("Error cargando equipos para subida:", e);
+    select.innerHTML = '<option value="">Individual (Error cargando equipos)</option>';
+  }
 }
 
-function previewUploadVideo(input) {
+window.previewUploadVideo = function previewUploadVideo(input) {
   const container = document.getElementById('video-preview-container');
   const player = document.getElementById('video-preview-player');
 
@@ -247,12 +293,12 @@ function previewUploadVideo(input) {
     const url = URL.createObjectURL(file);
     if (player) {
       player.src = url;
-      container.classList.remove('hidden');
+      if (container) container.classList.remove('hidden');
     }
   }
 }
 
-function clearVideoPreview() {
+window.clearVideoPreview = function clearVideoPreview() {
   const input = document.getElementById('project-video');
   const container = document.getElementById('video-preview-container');
   const player = document.getElementById('video-preview-player');

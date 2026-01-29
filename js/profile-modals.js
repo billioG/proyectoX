@@ -119,7 +119,7 @@ window.showXPInfoModal = function () {
   document.body.appendChild(modal);
 }
 
-function openUploadPhotoModal() {
+window.openUploadPhotoModal = function openUploadPhotoModal() {
   const modal = document.createElement('div');
   modal.className = 'fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn';
   modal.id = 'upload-photo-modal';
@@ -146,7 +146,7 @@ function openUploadPhotoModal() {
                   id="photo-input" 
                   accept="image/*" 
                   class="w-full h-32 opacity-0 cursor-pointer"
-                  onchange="previewPhoto(this)"
+                  onchange="window.previewPhoto(this)"
                 >
             </div>
             
@@ -154,12 +154,12 @@ function openUploadPhotoModal() {
                 <div class="w-24 h-24 mx-auto rounded-full overflow-hidden ring-4 ring-white dark:ring-slate-800 shadow-xl">
                     <img id="preview-image" class="w-full h-full object-cover">
                 </div>
-                <button onclick="clearPhotoPreview()" class="text-[0.6rem] font-bold text-rose-500 uppercase tracking-widest mt-2 hover:underline">Eliminar selección</button>
+                <button onclick="window.clearPhotoPreview()" class="text-[0.6rem] font-bold text-rose-500 uppercase tracking-widest mt-2 hover:underline">Eliminar selección</button>
             </div>
             
             <div class="flex gap-3">
                 <button class="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white rounded-xl font-bold text-xs uppercase tracking-wide transition-colors" onclick="document.getElementById('upload-photo-modal').remove()">Cancelar</button>
-                <button class="flex-[2] py-3 btn-primary-tw rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-primary/30" onclick="uploadProfilePhoto()" id="btn-upload-photo">
+                <button class="flex-[2] py-3 btn-primary-tw rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-primary/30" onclick="window.uploadProfilePhoto()" id="btn-upload-photo">
                   <i class="fas fa-check mr-2"></i> Guardar
                 </button>
             </div>
@@ -170,7 +170,7 @@ function openUploadPhotoModal() {
   document.body.appendChild(modal);
 }
 
-function previewPhoto(input) {
+window.previewPhoto = function previewPhoto(input) {
   const container = document.getElementById('photo-preview-container');
   const image = document.getElementById('preview-image');
   const uploadText = input.parentElement.querySelector('div'); // The dashed box
@@ -186,7 +186,7 @@ function previewPhoto(input) {
   }
 }
 
-function clearPhotoPreview() {
+window.clearPhotoPreview = function clearPhotoPreview() {
   const input = document.getElementById('photo-input');
   const container = document.getElementById('photo-preview-container');
   const uploadText = input.parentElement.querySelector('div');
@@ -196,7 +196,7 @@ function clearPhotoPreview() {
   if (uploadText) uploadText.style.opacity = '1';
 }
 
-async function uploadProfilePhoto() {
+window.uploadProfilePhoto = async function uploadProfilePhoto() {
   const fileInput = document.getElementById('photo-input');
   const file = fileInput?.files[0];
   const btn = document.getElementById('btn-upload-photo');
@@ -213,9 +213,9 @@ async function uploadProfilePhoto() {
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Subiendo...';
 
   try {
-    const fileName = `${currentUser.id}_${Date.now()}.${file.name.split('.').pop()}`;
+    const fileName = `${window.currentUser.id}_${Date.now()}.${file.name.split('.').pop()}`;
 
-    const { data: uploadData, error: uploadError } = await _supabase.storage
+    const { data: uploadData, error: uploadError } = await window._supabase.storage
       .from('profile-photos')
       .upload(fileName, file, {
         cacheControl: '3600',
@@ -224,14 +224,14 @@ async function uploadProfilePhoto() {
 
     if (uploadError) throw uploadError;
 
-    const { data: urlData } = _supabase.storage
+    const { data: urlData } = window._supabase.storage
       .from('profile-photos')
       .getPublicUrl(fileName);
 
     let table = '';
-    if (userRole === 'estudiante') table = 'students';
-    else if (userRole === 'docente') table = 'teachers';
-    else if (userRole === 'admin') table = 'admins';
+    if (window.userRole === 'estudiante') table = 'students';
+    else if (window.userRole === 'docente') table = 'teachers';
+    else if (window.userRole === 'admin') table = 'admins';
 
     // Update in DB (using 'teachers' specifically for this context if needed, but logic seems generic)
     // Note: 'admins' table likely doesn't exist based on previous turns, usually admins are in teachers or separate auth logic, 
@@ -240,11 +240,11 @@ async function uploadProfilePhoto() {
     // Fix: If admin, we usually don't have a profile photo table unless defined.
     // Assuming 'teachers' table is correct for the request context (teacher profile)
 
-    const isFirstTime = !userData.profile_photo_url;
-    const { error: updateError } = await _supabase
+    const isFirstTime = !window.userData.profile_photo_url;
+    const { error: updateError } = await window._supabase
       .from(table)
       .update({ profile_photo_url: urlData.publicUrl })
-      .eq('id', currentUser.id);
+      .eq('id', window.currentUser.id);
 
     if (updateError) throw updateError;
 
@@ -252,28 +252,28 @@ async function uploadProfilePhoto() {
     if (isFirstTime) {
       const rewardXP = 100;
       const rewardGems = 25;
-      const newXP = (userData.xp || 0) + rewardXP;
-      const newGems = (userData.gems || 0) + rewardGems;
+      const newXP = (window.userData.xp || 0) + rewardXP;
+      const newGems = (window.userData.gems || 0) + rewardGems;
 
-      const { error: rewardError } = await _supabase
+      const { error: rewardError } = await window._supabase
         .from(table)
         .update({ xp: newXP, gems: newGems })
-        .eq('id', currentUser.id);
+        .eq('id', window.currentUser.id);
 
       if (!rewardError) {
-        userData.xp = newXP;
-        userData.gems = newGems;
+        window.userData.xp = newXP;
+        window.userData.gems = newGems;
         showToast(`✨ ¡Primer foto! Ganaste ${rewardXP} XP y ${rewardGems} Gemas`, 'success');
-        if (typeof initGamification === 'function') initGamification();
+        if (typeof window.initGamification === 'function') window.initGamification();
       }
     }
 
-    userData.profile_photo_url = urlData.publicUrl;
-    updateHeaderUI();
+    window.userData.profile_photo_url = urlData.publicUrl;
+    if (typeof window.updateHeaderUI === 'function') window.updateHeaderUI();
 
     showToast('✅ Foto de perfil actualizada', 'success');
     document.getElementById('upload-photo-modal').remove();
-    if (typeof loadProfile === 'function') await loadProfile();
+    if (typeof window.loadProfile === 'function') await window.loadProfile();
 
   } catch (err) {
     console.error('Error subiendo foto:', err);
@@ -287,7 +287,7 @@ async function uploadProfilePhoto() {
 }
 
 
-function openSuggestionModal() {
+window.openSuggestionModal = function openSuggestionModal() {
   const modal = document.createElement('div');
   // Ajustamos el z-index a 40 para que quede por debajo del sidebar (50) y header (60)
   // Y añadimos márgenes en desktop para que se centre solo en el área de contenido
@@ -309,7 +309,7 @@ function openSuggestionModal() {
       <div class="p-8 overflow-y-auto custom-scrollbar">
         <div class="mb-6">
           <label class="text-[0.7rem] font-black uppercase text-slate-400 mb-2 block tracking-widest leading-none">Tipo de Comunicación</label>
-          <select id="suggestion-type" class="input-field-tw h-11 text-sm pt-0 pb-0" onchange="toggleRatingSection()">
+          <select id="suggestion-type" class="input-field-tw h-11 text-sm pt-0 pb-0" onchange="window.toggleRatingSection()">
             <option value="suggestion">💡 Sugerencia para el Establecimiento</option>
             <option value="rating">⭐ Evaluar Clase de la Semana</option>
           </select>
@@ -331,7 +331,7 @@ function openSuggestionModal() {
           <textarea id="suggestion-message" rows="4" placeholder="Escribe tu sugerencia..." class="input-field-tw min-h-[120px] resize-none text-sm"></textarea>
         </div>
 
-        <button class="btn-primary-tw w-full h-14 shrink-0" onclick="submitSuggestion()" id="btn-submit-suggestion">
+        <button class="btn-primary-tw w-full h-14 shrink-0" onclick="window.submitSuggestion()" id="btn-submit-suggestion">
           <i class="fas fa-paper-plane"></i> ENVIAR AL DOCENTE
         </button>
       </div>
@@ -341,7 +341,7 @@ function openSuggestionModal() {
   document.body.appendChild(modal);
 }
 
-function toggleRatingSection() {
+window.toggleRatingSection = function toggleRatingSection() {
   const type = document.getElementById('suggestion-type')?.value;
   const ratingSection = document.getElementById('rating-section');
   const msgLabel = document.getElementById('msg-label');
@@ -373,7 +373,7 @@ function toggleRatingSection() {
             ${[
           { v: 1, e: '😞' }, { v: 2, e: '😐' }, { v: 3, e: '🙂' }, { v: 4, e: '😃' }, { v: 5, e: '🤩' }
         ].map(opt => `
-              <div onclick="selectEvalOption('${q.id}', ${opt.v})" class="eval-opt-${q.id} flex-1 h-12 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center cursor-pointer hover:border-primary grayscale opacity-40 transition-all hover:scale-110" data-value="${opt.v}">
+              <div onclick="window.selectEvalOption('${q.id}', ${opt.v})" class="eval-opt-${q.id} flex-1 h-12 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center cursor-pointer hover:border-primary grayscale opacity-40 transition-all hover:scale-110" data-value="${opt.v}">
                 <div class="text-2xl">${opt.e}</div>
               </div>
             `).join('')}
@@ -389,7 +389,7 @@ function toggleRatingSection() {
   }
 }
 
-function selectEvalOption(questionId, value) {
+window.selectEvalOption = function selectEvalOption(questionId, value) {
   criteriaRatings[questionId] = value;
   document.querySelectorAll(`.eval-opt-${questionId}`).forEach(el => {
     const val = parseInt(el.getAttribute('data-value'));
@@ -410,7 +410,7 @@ function selectEvalOption(questionId, value) {
   }
 }
 
-async function submitSuggestion() {
+window.submitSuggestion = async function submitSuggestion() {
   const type = document.getElementById('suggestion-type')?.value;
   const message = document.getElementById('suggestion-message')?.value.trim();
   const btn = document.getElementById('btn-submit-suggestion');
@@ -423,13 +423,13 @@ async function submitSuggestion() {
   }
 
   try {
-    const { data: student } = await _supabase
+    const { data: student } = await window._supabase
       .from('students')
       .select('school_code, grade, section')
-      .eq('id', currentUser.id)
+      .eq('id', window.currentUser.id)
       .single();
 
-    const { data: assignment } = await _supabase
+    const { data: assignment } = await window._supabase
       .from('teacher_assignments')
       .select('teacher_id')
       .eq('school_code', student.school_code)
@@ -446,10 +446,10 @@ async function submitSuggestion() {
       startOfWeek.setDate(diff);
       startOfWeek.setHours(0, 0, 0, 0);
 
-      const { data: existingRating } = await _supabase
+      const { data: existingRating } = await window._supabase
         .from('teacher_ratings')
         .select('id')
-        .eq('student_id', currentUser.id)
+        .eq('student_id', window.currentUser.id)
         .eq('teacher_id', assignment.teacher_id)
         .gte('created_at', startOfWeek.toISOString())
         .maybeSingle();
@@ -465,8 +465,8 @@ async function submitSuggestion() {
         }
 
         // Si acepta, procedemos a insertar como sugerencia
-        const { error } = await _supabase.from('student_suggestions').insert({
-          student_id: currentUser.id,
+        const { error } = await window._supabase.from('student_suggestions').insert({
+          student_id: window.currentUser.id,
           message: `(Redirigido de Evaluación) ${message}`,
           type: 'suggestion'
         });
@@ -476,8 +476,8 @@ async function submitSuggestion() {
       } else {
         // Si no ha evaluado esta semana, procedemos con la evaluación normal
         const avg = (criteriaRatings.interest + criteriaRatings.practice + criteriaRatings.resources + criteriaRatings.respect + criteriaRatings.clarity) / 5;
-        const { error } = await _supabase.from('teacher_ratings').insert({
-          student_id: currentUser.id,
+        const { error } = await window._supabase.from('teacher_ratings').insert({
+          student_id: window.currentUser.id,
           teacher_id: assignment.teacher_id,
           rating: parseFloat(avg.toFixed(1)),
           message: message,
@@ -494,15 +494,15 @@ async function submitSuggestion() {
       }
 
     } else {
-      const { error } = await _supabase.from('student_suggestions').insert({
-        student_id: currentUser.id, message: message, type: 'suggestion'
+      const { error } = await window._supabase.from('student_suggestions').insert({
+        student_id: window.currentUser.id, message: message, type: 'suggestion'
       });
       if (error) throw error;
       showToast('✅ Sugerencia recibida. ¡Gracias!', 'success');
     }
 
     document.getElementById('suggestion-modal')?.remove();
-    if (typeof loadProfile === 'function') await loadProfile();
+    if (typeof window.loadProfile === 'function') await window.loadProfile();
   } catch (err) {
     console.error(err);
     if (err.message.includes('Evaluación cancelada')) {
@@ -518,10 +518,10 @@ async function submitSuggestion() {
   }
 }
 
-async function viewAllTeacherComments(teacherId = null) {
-  const targetId = teacherId || currentUser.id;
+window.viewAllTeacherComments = async function viewAllTeacherComments(teacherId = null) {
+  const targetId = teacherId || window.currentUser.id;
   try {
-    const { data: ratings } = await _supabase
+    const { data: ratings } = await window._supabase
       .from('teacher_ratings')
       .select(`*, students(full_name, school_code, grade, section)`)
       .eq('teacher_id', targetId)
@@ -568,7 +568,7 @@ async function viewAllTeacherComments(teacherId = null) {
               </div>
 
               <p class="text-[0.85rem] font-medium text-slate-600 dark:text-slate-300 italic leading-relaxed bg-white/50 dark:bg-slate-900/30 p-4 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
-                "${sanitizeInput(r.message || 'Sin comentario adicional.')}"
+                "${window.sanitizeInput(r.message || 'Sin comentario adicional.')}"
               </p>
             </div>
           `).join('')}

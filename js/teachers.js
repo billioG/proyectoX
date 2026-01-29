@@ -2,48 +2,65 @@
 // GESTIÓN DE DOCENTES Y ASIGNACIONES
 // ================================================
 
-async function loadTeachers() {
+window.loadTeachers = async function loadTeachers() {
   const container = document.getElementById('teachers-container');
   if (!container) {
     console.warn('⚠️ Contenedor de docentes no encontrado en el DOM.');
     return;
   }
 
-  container.innerHTML = `
-    <div class="flex flex-col items-center justify-center p-20 text-slate-400">
-        <i class="fas fa-circle-notch fa-spin text-4xl mb-4 text-primary"></i>
-        <span class="font-bold tracking-widest uppercase text-xs">Cargando equipo docente...</span>
-    </div>
-  `;
+  const _supabase = window._supabase;
+  const fetchWithCache = window.fetchWithCache;
+
+  if (!container.innerHTML || container.innerHTML.includes('fa-circle-notch')) {
+    container.innerHTML = `
+      <div class="flex flex-col items-center justify-center p-20 text-slate-400">
+          <i class="fas fa-circle-notch fa-spin text-4xl mb-4 text-primary"></i>
+          <span class="font-bold tracking-widest uppercase text-xs">Cargando equipo docente...</span>
+      </div>
+    `;
+  }
 
   try {
-    const { data: teachers, error } = await _supabase
-      .from('teachers')
-      .select(`
-        *,
-        teacher_assignments(
-          id,
-          school_code,
-          grade,
-          section,
-          schools(name)
-        )
-      `)
-      .order('full_name');
+    await fetchWithCache('teachers_list', async () => {
+      const { data, error } = await _supabase
+        .from('teachers')
+        .select(`
+            *,
+            teacher_assignments(
+              id,
+              school_code,
+              grade,
+              section,
+              schools(name)
+            )
+          `)
+        .order('full_name');
+      if (error) throw error;
+      return data;
+    }, (teachers) => {
+      window.renderTeachersContent(container, teachers);
+    });
 
-    if (error) throw error;
+  } catch (err) {
+    console.error('Error cargando docentes:', err);
+    container.innerHTML = '<div class="error-state">❌ Error al cargar docentes</div>';
+  }
+}
 
-    container.innerHTML = `
+window.renderTeachersContent = function renderTeachersContent(container, teachers) {
+  const sanitizeInput = window.sanitizeInput || ((v) => v);
+  container.innerHTML = `
       <div class="flex flex-col md:flex-row gap-6 mb-10 items-center animate-slideUp">
         <div class="relative grow w-full">
             <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-            <input type="text" id="search-teachers" class="input-field-tw pl-12 h-12 text-sm font-semibold" placeholder="FILTRO: NOMBRE, EMAIL O ASIGNACIÓN..." oninput="filterTeachers()">
+            <input type="text" id="search-teachers" class="input-field-tw pl-12 h-12 text-sm font-semibold" placeholder="FILTRO: NOMBRE, EMAIL O ASIGNACIÓN..." oninput="window.filterTeachers()">
         </div>
         <div class="flex gap-3 w-full md:w-auto shrink-0">
-            <button class="btn-primary-tw grow h-12 px-6 text-xs uppercase font-bold tracking-widest" onclick="openAddTeacherModal()">
+            <button class="btn-primary-tw grow h-12 px-6 text-xs uppercase font-bold tracking-widest" onclick="window.openAddTeacherModal()">
               <i class="fas fa-user-plus"></i> NUEVO DOCENTE
             </button>
-            <button class="btn-secondary-tw grow h-12 px-6 text-xs uppercase font-bold tracking-widest" onclick="exportTeachersCSV()">
+            <button class="btn-secondary-tw grow h-12 px-6 text-xs uppercase font-bold tracking-widest" onclick="window.exportTeachersCSV()">
               <i class="fas fa-file-csv"></i> EXPORTAR
             </button>
         </div>
@@ -53,7 +70,7 @@ async function loadTeachers() {
         <div class="glass-card p-16 text-center border-2 border-dashed border-slate-100 dark:border-slate-800">
             <i class="fas fa-chalkboard-teacher text-6xl text-slate-200 dark:text-slate-800 mb-4 mx-auto block"></i>
             <p class="text-slate-500 font-bold uppercase tracking-widest text-sm mb-6">No hay docentes registrados</p>
-            <button class="btn-primary-tw mx-auto h-11 px-8" onclick="openAddTeacherModal()"><i class="fas fa-plus"></i> AGREGAR EL PRIMERO</button>
+            <button class="btn-primary-tw mx-auto h-11 px-8" onclick="window.openAddTeacherModal()"><i class="fas fa-plus"></i> AGREGAR EL PRIMERO</button>
         </div>
       ` : `
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -89,10 +106,10 @@ async function loadTeachers() {
                     </div>
 
                     <div class="grid grid-cols-2 gap-2">
-                        <button onclick="viewTeacherAssignments('${t.id}', '${sanitizeInput(t.full_name)}')" class="py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-900/20 dark:hover:text-indigo-400 text-xs font-bold uppercase tracking-wider transition-all border border-transparent hover:border-indigo-200">
+                        <button onclick="window.viewTeacherAssignments('${t.id}', '${sanitizeInput(t.full_name)}')" class="py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-900/20 dark:hover:text-indigo-400 text-xs font-bold uppercase tracking-wider transition-all border border-transparent hover:border-indigo-200">
                             <i class="fas fa-school mr-1"></i> Carga
                         </button>
-                        <button onclick="openAssignTeacherModal('${t.id}', '${sanitizeInput(t.full_name)}')" class="py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-primary/10 hover:text-primary dark:hover:bg-primary/20 text-xs font-bold uppercase tracking-wider transition-all border border-transparent hover:border-primary/20">
+                        <button onclick="window.openAssignTeacherModal('${t.id}', '${sanitizeInput(t.full_name)}')" class="py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-primary/10 hover:text-primary dark:hover:bg-primary/20 text-xs font-bold uppercase tracking-wider transition-all border border-transparent hover:border-primary/20">
                             <i class="fas fa-plus mr-1"></i> Asignar
                         </button>
                     </div>
@@ -101,10 +118,10 @@ async function loadTeachers() {
                 <div class="bg-slate-50/50 dark:bg-slate-800/30 p-3 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center group-hover:bg-slate-100 dark:group-hover:bg-slate-800 transition-colors">
                      <span class="text-[0.6rem] font-bold text-slate-400 uppercase tracking-widest pl-2">ID: ...${t.id.substr(-6)}</span>
                      <div class="flex gap-1">
-                        <button onclick="editTeacher('${t.id}')" class="w-8 h-8 rounded-lg text-slate-400 hover:text-primary hover:bg-white dark:hover:bg-slate-700 transition-all shadow-sm">
+                        <button onclick="window.editTeacher('${t.id}')" class="w-8 h-8 rounded-lg text-slate-400 hover:text-primary hover:bg-white dark:hover:bg-slate-700 transition-all shadow-sm">
                             <i class="fas fa-edit"></i>
                         </button>
-                        <button onclick="deleteTeacher('${t.id}', '${sanitizeInput(t.full_name)}')" class="w-8 h-8 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-white dark:hover:bg-slate-700 transition-all shadow-sm">
+                        <button onclick="window.deleteTeacher('${t.id}', '${sanitizeInput(t.full_name)}')" class="w-8 h-8 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-white dark:hover:bg-slate-700 transition-all shadow-sm">
                             <i class="fas fa-trash"></i>
                         </button>
                      </div>
@@ -114,14 +131,9 @@ async function loadTeachers() {
         </div>
       `}
     `;
-
-  } catch (err) {
-    console.error('Error cargando docentes:', err);
-    container.innerHTML = '<div class="error-state">❌ Error al cargar docentes</div>';
-  }
 }
 
-function openAddTeacherModal() {
+window.openAddTeacherModal = function openAddTeacherModal() {
   const modal = document.createElement('div');
   modal.className = 'fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn';
   modal.id = 'add-teacher-modal';
@@ -163,7 +175,12 @@ function openAddTeacherModal() {
           <input type="password" id="teacher-password" class="input-field-tw" placeholder="Mínimo 6 caracteres" value="1bot.org">
         </div>
 
-        <button class="btn-primary-tw w-full mt-4" onclick="addTeacher()" id="btn-add-teacher">
+        <label class="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors">
+          <input type="checkbox" id="teacher-is-1bot" class="w-5 h-5 rounded text-primary focus:ring-primary border-slate-300">
+          <span class="text-sm font-bold text-slate-700 dark:text-slate-300">Es equipo de 1bot (Habilitar Bonos)</span>
+        </label>
+
+        <button class="btn-primary-tw w-full mt-4" onclick="window.addTeacher()" id="btn-add-teacher">
           <i class="fas fa-save"></i> Crear Cuenta Docente
         </button>
       </div>
@@ -173,20 +190,26 @@ function openAddTeacherModal() {
   document.body.appendChild(modal);
 }
 
-async function addTeacher() {
+window.addTeacher = async function addTeacher() {
   const name = document.getElementById('teacher-name')?.value.trim();
   const email = document.getElementById('teacher-email')?.value.trim();
   const phone = document.getElementById('teacher-phone')?.value.trim();
   const birth = document.getElementById('teacher-birth')?.value;
   const password = document.getElementById('teacher-password')?.value.trim();
+  const is1bot = document.getElementById('teacher-is-1bot')?.checked || false;
   const btn = document.getElementById('btn-add-teacher');
+  const showToast = window.showToast;
+  const _supabase = window._supabase;
+  const loadTeachers = window.loadTeachers;
 
   if (!name || !email || !password) {
-    return showToast('❌ Completa nombre, email y contraseña', 'error');
+    if (typeof showToast === 'function') showToast('❌ Completa nombre, email y contraseña', 'error');
+    return;
   }
 
   if (password.length < 6) {
-    return showToast('❌ La contraseña debe tener al menos 6 caracteres', 'error');
+    if (typeof showToast === 'function') showToast('❌ La contraseña debe tener al menos 6 caracteres', 'error');
+    return;
   }
 
   btn.disabled = true;
@@ -218,25 +241,27 @@ async function addTeacher() {
         email: email,
         phone: phone || null,
         birth_date: birth || null,
-        role: 'docente'
+        role: 'docente',
+        is_1bot_team: is1bot
       });
 
     if (dbError) throw dbError;
 
-    showToast('✅ Docente creado correctamente', 'success');
+    if (typeof showToast === 'function') showToast('✅ Docente creado correctamente', 'success');
     document.getElementById('add-teacher-modal').remove();
-    await loadTeachers();
+    if (typeof loadTeachers === 'function') await loadTeachers();
 
   } catch (err) {
     console.error('Error creando docente:', err);
-    showToast('❌ Error: ' + err.message, 'error');
+    if (typeof showToast === 'function') showToast('❌ Error: ' + err.message, 'error');
   } finally {
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-user-plus"></i> Crear Docente';
   }
 }
 
-function openAssignTeacherModal(teacherId, teacherName) {
+window.openAssignTeacherModal = function openAssignTeacherModal(teacherId, teacherName) {
+  const sanitizeInput = window.sanitizeInput || ((v) => v);
   const modal = document.createElement('div');
   modal.className = 'fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn';
   modal.id = 'assign-teacher-modal';
@@ -260,20 +285,20 @@ function openAssignTeacherModal(teacherId, teacherName) {
 
         <div>
            <label class="text-[0.7rem] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Establecimiento</label>
-           <select id="assign-school" class="input-field-tw" onchange="loadGradesForAssignment()">
+           <select id="assign-school" class="input-field-tw" onchange="window.loadGradesForAssignment()">
              <option value="">Seleccionar...</option>
            </select>
         </div>
 
         <label class="flex items-center gap-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors">
-          <input type="checkbox" id="assign-all" onchange="toggleBulkAssignment(this.checked)" class="w-5 h-5 rounded text-primary focus:ring-primary border-slate-300">
+          <input type="checkbox" id="assign-all" onchange="window.toggleBulkAssignment(this.checked)" class="w-5 h-5 rounded text-primary focus:ring-primary border-slate-300">
           <span class="text-sm font-bold text-slate-700 dark:text-slate-300">Asignar TODOS los grados y secciones de este colegio</span>
         </label>
 
         <div id="individual-assign-fields" class="grid grid-cols-2 gap-4 transition-opacity duration-300">
           <div>
              <label class="text-[0.7rem] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Grado</label>
-             <select id="assign-grade" class="input-field-tw" onchange="loadSectionsForAssignment()">
+             <select id="assign-grade" class="input-field-tw" onchange="window.loadSectionsForAssignment()">
                <option value="">Seleccionar...</option>
              </select>
           </div>
@@ -285,7 +310,7 @@ function openAssignTeacherModal(teacherId, teacherName) {
           </div>
         </div>
 
-        <button class="btn-primary-tw w-full mt-2" onclick="assignTeacher('${teacherId}')" id="btn-assign">
+        <button class="btn-primary-tw w-full mt-2" onclick="window.assignTeacher('${teacherId}')" id="btn-assign">
           <i class="fas fa-check-circle"></i> Confirmar Asignación
         </button>
       </div>
@@ -293,12 +318,14 @@ function openAssignTeacherModal(teacherId, teacherName) {
   `;
 
   document.body.appendChild(modal);
-  loadSchoolsForAssignment();
+  window.loadSchoolsForAssignment();
 }
 
-async function loadSchoolsForAssignment() {
+window.loadSchoolsForAssignment = async function loadSchoolsForAssignment() {
   const select = document.getElementById('assign-school');
   if (!select) return;
+  const _supabase = window._supabase;
+  const sanitizeInput = window.sanitizeInput || ((v) => v);
 
   try {
     const { data: schools } = await _supabase
@@ -315,7 +342,7 @@ async function loadSchoolsForAssignment() {
   }
 }
 
-function loadGradesForAssignment() {
+window.loadGradesForAssignment = function loadGradesForAssignment() {
   const schoolSelect = document.getElementById('assign-school');
   const gradeSelect = document.getElementById('assign-grade');
   const sectionSelect = document.getElementById('assign-section');
@@ -330,12 +357,13 @@ function loadGradesForAssignment() {
   sectionSelect.innerHTML = '<option value="">Seleccionar grado primero...</option>';
 
   // Cargar solo los grados disponibles para este establecimiento
-  loadAvailableGrades(schoolCode, level);
+  window.loadAvailableGrades(schoolCode, level);
 }
 
-async function loadAvailableGrades(schoolCode, level) {
+window.loadAvailableGrades = async function loadAvailableGrades(schoolCode, level) {
   const gradeSelect = document.getElementById('assign-grade');
   if (!gradeSelect) return;
+  const _supabase = window._supabase;
 
   try {
     // Obtener estudiantes del establecimiento para ver qué grados existen
@@ -360,7 +388,7 @@ async function loadAvailableGrades(schoolCode, level) {
   }
 }
 
-async function loadSectionsForAssignment() {
+window.loadSectionsForAssignment = async function loadSectionsForAssignment() {
   const schoolSelect = document.getElementById('assign-school');
   const gradeSelect = document.getElementById('assign-grade');
   const sectionSelect = document.getElementById('assign-section');
@@ -369,6 +397,7 @@ async function loadSectionsForAssignment() {
 
   const schoolCode = schoolSelect.value;
   const grade = gradeSelect.value;
+  const _supabase = window._supabase;
 
   if (!schoolCode || !grade) {
     sectionSelect.innerHTML = '<option value="">Seleccionar...</option>';
@@ -399,7 +428,7 @@ async function loadSectionsForAssignment() {
   }
 }
 
-function toggleBulkAssignment(isBulk) {
+window.toggleBulkAssignment = function toggleBulkAssignment(isBulk) {
   const individualFields = document.getElementById('individual-assign-fields');
   if (individualFields) {
     individualFields.style.opacity = isBulk ? '0.3' : '1';
@@ -407,19 +436,24 @@ function toggleBulkAssignment(isBulk) {
   }
 }
 
-async function assignTeacher(teacherId) {
+window.assignTeacher = async function assignTeacher(teacherId) {
   const schoolCode = document.getElementById('assign-school')?.value;
   const grade = document.getElementById('assign-grade')?.value;
   const section = document.getElementById('assign-section')?.value;
   const isBulk = document.getElementById('assign-all')?.checked;
   const btn = document.getElementById('btn-assign');
+  const _supabase = window._supabase;
+  const showToast = window.showToast;
+  const loadTeachers = window.loadTeachers;
 
   if (!schoolCode) {
-    return showToast('❌ Selecciona un establecimiento', 'error');
+    if (typeof showToast === 'function') showToast('❌ Selecciona un establecimiento', 'error');
+    return;
   }
 
   if (!isBulk && (!grade || !section)) {
-    return showToast('❌ Completa grado y sección o selecciona "Asignar a todos"', 'error');
+    if (typeof showToast === 'function') showToast('❌ Completa grado y sección o selecciona "Asignar a todos"', 'error');
+    return;
   }
 
   btn.disabled = true;
@@ -471,13 +505,13 @@ async function assignTeacher(teacherId) {
         }));
 
       if (newAssignments.length === 0) {
-        showToast('ℹ️ El docente ya está asignado a todos los grados existentes', 'info');
+        if (typeof showToast === 'function') showToast('ℹ️ El docente ya está asignado a todos los grados existentes', 'info');
       } else {
         const { error: insertError } = await _supabase
           .from('teacher_assignments')
           .insert(newAssignments);
         if (insertError) throw insertError;
-        showToast(`✅ Se crearon ${newAssignments.length} asignaciones correctamente`, 'success');
+        if (typeof showToast === 'function') showToast(`✅ Se crearon ${newAssignments.length} asignaciones correctamente`, 'success');
       }
 
     } else {
@@ -492,7 +526,7 @@ async function assignTeacher(teacherId) {
         .maybeSingle();
 
       if (existing) {
-        showToast('⚠️ Esta asignación ya existe', 'warning');
+        if (typeof showToast === 'function') showToast('⚠️ Esta asignación ya existe', 'warning');
       } else {
         const { error } = await _supabase
           .from('teacher_assignments')
@@ -503,23 +537,27 @@ async function assignTeacher(teacherId) {
             section: section
           });
         if (error) throw error;
-        showToast('✅ Asignación creada correctamente', 'success');
+        if (typeof showToast === 'function') showToast('✅ Asignación creada correctamente', 'success');
       }
     }
 
     document.getElementById('assign-teacher-modal').remove();
-    await loadTeachers();
+    if (typeof loadTeachers === 'function') await loadTeachers();
 
   } catch (err) {
     console.error('Error asignando docente:', err);
-    showToast('❌ Error: ' + err.message, 'error');
+    if (typeof showToast === 'function') showToast('❌ Error: ' + err.message, 'error');
   } finally {
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-check"></i> Finalizar Asignación';
   }
 }
 
-async function viewTeacherAssignments(teacherId, teacherName) {
+window.viewTeacherAssignments = async function viewTeacherAssignments(teacherId, teacherName) {
+  const _supabase = window._supabase;
+  const showToast = window.showToast;
+  const sanitizeInput = window.sanitizeInput || ((v) => v);
+
   try {
     const { data: assignments, error } = await _supabase
       .from('teacher_assignments')
@@ -578,7 +616,7 @@ async function viewTeacherAssignments(teacherId, teacherName) {
                         </span>
                     </div>
                   </div>
-                  <button class="px-3 py-1.5 rounded-lg bg-rose-50 dark:bg-rose-900/20 text-rose-500 text-xs font-bold hover:bg-rose-500 hover:text-white transition-all opacity-0 group-hover:opacity-100 focus:opacity-100" onclick="removeAssignment(${a.id}, '${teacherId}')">
+                  <button class="px-3 py-1.5 rounded-lg bg-rose-50 dark:bg-rose-900/20 text-rose-500 text-xs font-bold hover:bg-rose-500 hover:text-white transition-all opacity-0 group-hover:opacity-100 focus:opacity-100" onclick="window.removeAssignment && window.removeAssignment(${a.id}, '${teacherId}')">
                     <i class="fas fa-trash-alt"></i>
                   </button>
                 </div>
@@ -587,7 +625,7 @@ async function viewTeacherAssignments(teacherId, teacherName) {
           `}
         </div>
         <div class="p-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 text-center">
-             <button class="text-xs font-bold text-primary hover:underline uppercase tracking-widest" onclick="this.closest('.fixed').remove(); openAssignTeacherModal('${teacherId}', '${sanitizeInput(teacherName)}')">
+             <button class="text-xs font-bold text-primary hover:underline uppercase tracking-widest" onclick="this.closest('.fixed').remove(); window.openAssignTeacherModal && window.openAssignTeacherModal('${teacherId}', '${sanitizeInput(teacherName)}')">
                 <i class="fas fa-plus mr-1"></i> Agregar Nueva Asignación
              </button>
         </div>
@@ -598,11 +636,15 @@ async function viewTeacherAssignments(teacherId, teacherName) {
 
   } catch (err) {
     console.error('Error cargando asignaciones:', err);
-    showToast('❌ Error al cargar asignaciones', 'error');
+    if (typeof showToast === 'function') showToast('❌ Error al cargar asignaciones', 'error');
   }
 }
 
-async function editTeacher(teacherId) {
+window.editTeacher = async function editTeacher(teacherId) {
+  const _supabase = window._supabase;
+  const showToast = window.showToast;
+  const sanitizeInput = window.sanitizeInput || ((v) => v);
+
   try {
     const { data: teacher, error } = await _supabase
       .from('teachers')
@@ -648,7 +690,12 @@ async function editTeacher(teacherId) {
             <input type="date" id="edit-teacher-birth" class="input-field-tw" value="${teacher.birth_date || ''}">
           </div>
 
-          <button class="btn-primary-tw w-full mt-4" onclick="updateTeacher('${teacherId}')" id="btn-update-teacher">
+          <label class="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors mb-4">
+            <input type="checkbox" id="edit-teacher-is-1bot" class="w-5 h-5 rounded text-primary focus:ring-primary border-slate-300" ${teacher.is_1bot_team ? 'checked' : ''}>
+            <span class="text-sm font-bold text-slate-700 dark:text-slate-300">Es equipo de 1bot (Habilitar Bonos)</span>
+          </label>
+
+          <button class="btn-primary-tw w-full mt-4" onclick="window.updateTeacher('${teacherId}')" id="btn-update-teacher">
             <i class="fas fa-save"></i> Guardar Cambios
           </button>
         </div>
@@ -659,18 +706,23 @@ async function editTeacher(teacherId) {
 
   } catch (err) {
     console.error('Error cargando docente para editar:', err);
-    showToast('❌ Error al cargar datos del docente', 'error');
+    if (typeof showToast === 'function') showToast('❌ Error al cargar datos del docente', 'error');
   }
 }
 
-async function updateTeacher(teacherId) {
+window.updateTeacher = async function updateTeacher(teacherId) {
   const name = document.getElementById('edit-teacher-name')?.value.trim();
   const phone = document.getElementById('edit-teacher-phone')?.value.trim();
   const birth = document.getElementById('edit-teacher-birth')?.value;
+  const is1bot = document.getElementById('edit-teacher-is-1bot')?.checked || false;
   const btn = document.getElementById('btn-update-teacher');
+  const _supabase = window._supabase;
+  const showToast = window.showToast;
+  const loadTeachers = window.loadTeachers;
 
   if (!name) {
-    return showToast('❌ El nombre es obligatorio', 'error');
+    if (typeof showToast === 'function') showToast('❌ El nombre es obligatorio', 'error');
+    return;
   }
 
   btn.disabled = true;
@@ -682,26 +734,31 @@ async function updateTeacher(teacherId) {
       .update({
         full_name: name,
         phone: phone || null,
-        birth_date: birth || null
+        birth_date: birth || null,
+        is_1bot_team: is1bot
       })
       .eq('id', teacherId);
 
     if (error) throw error;
 
-    showToast('✅ Datos actualizados correctamente', 'success');
+    if (typeof showToast === 'function') showToast('✅ Datos actualizados correctamente', 'success');
     document.getElementById('edit-teacher-modal').remove();
-    await loadTeachers();
+    if (typeof loadTeachers === 'function') await loadTeachers();
 
   } catch (err) {
     console.error('Error actualizando docente:', err);
-    showToast('❌ Error: ' + err.message, 'error');
+    if (typeof showToast === 'function') showToast('❌ Error: ' + err.message, 'error');
   } finally {
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-save"></i> Guardar Cambios';
   }
 }
 
-async function deleteTeacher(teacherId, teacherName) {
+window.deleteTeacher = async function deleteTeacher(teacherId, teacherName) {
+  const _supabase = window._supabase;
+  const showToast = window.showToast;
+  const loadTeachers = window.loadTeachers;
+
   if (!confirm(`¿Eliminar a ${teacherName}?\n\nEsto eliminará:\n- El usuario de autenticación\n- Todas sus asignaciones\n- Sus evaluaciones a proyectos`)) {
     return;
   }
@@ -714,16 +771,20 @@ async function deleteTeacher(teacherId, teacherName) {
 
     if (error) throw error;
 
-    showToast('✅ Docente eliminado', 'success');
-    await loadTeachers();
+    if (typeof showToast === 'function') showToast('✅ Docente eliminado', 'success');
+    if (typeof loadTeachers === 'function') await loadTeachers();
 
   } catch (err) {
     console.error('Error eliminando docente:', err);
-    showToast('❌ Error: ' + err.message, 'error');
+    if (typeof showToast === 'function') showToast('❌ Error: ' + err.message, 'error');
   }
 }
 
-async function exportTeachersCSV() {
+window.exportTeachersCSV = async function exportTeachersCSV() {
+  const _supabase = window._supabase;
+  const showToast = window.showToast;
+  const downloadCSV = window.downloadCSV;
+
   try {
     const { data: teachers } = await _supabase
       .from('teachers')
@@ -739,7 +800,8 @@ async function exportTeachersCSV() {
       .order('full_name');
 
     if (!teachers || teachers.length === 0) {
-      return showToast('❌ No hay docentes para exportar', 'error');
+      if (typeof showToast === 'function') showToast('❌ No hay docentes para exportar', 'error');
+      return;
     }
 
     let csvContent = 'Nombre,Email,Telefono,Asignaciones\n';
@@ -755,17 +817,18 @@ async function exportTeachersCSV() {
       csvContent += `"${nombre}",${email},${telefono},"${asignaciones}"\n`;
     });
 
-    downloadCSV(csvContent, 'docentes_export.csv');
-    showToast(`✅ ${teachers.length} docentes exportados`, 'success');
+    if (typeof downloadCSV === 'function') {
+      downloadCSV(csvContent, 'docentes_export.csv');
+      if (typeof showToast === 'function') showToast(`✅ ${teachers.length} docentes exportados`, 'success');
+    }
 
   } catch (err) {
     console.error('Error exportando docentes:', err);
-    showToast('❌ Error al exportar', 'error');
+    if (typeof showToast === 'function') showToast('❌ Error al exportar', 'error');
   }
 }
 
-
-function filterTeachers() {
+window.filterTeachers = function filterTeachers() {
   const term = (document.getElementById('search-teachers')?.value || '').toLowerCase().trim();
   const cards = document.querySelectorAll('.teacher-card');
   cards.forEach(card => {
@@ -774,4 +837,5 @@ function filterTeachers() {
     if (match) card.classList.add('animate-fadeIn');
   });
 }
+
 console.log('✅ teachers.js cargado correctamente (Tailwind Premium)');

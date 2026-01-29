@@ -10,15 +10,21 @@ async function loadTeamPerformanceDashboard() {
         const now = new Date();
         const currentMonth = now.getMonth() + 1;
         const currentYear = now.getFullYear();
+        const startOfMonth = new Date(currentYear, currentMonth - 1, 1).toISOString().split('T')[0];
+        const endOfMonth = new Date(currentYear, currentMonth, 0, 23, 59, 59).toISOString().split('T')[0];
         const monthName = now.toLocaleDateString('es-ES', { month: 'long' });
 
-        const [teachersRes, attendanceRes, evalsRes, weeklyEvidenceRes, monthlyReportsRes, assignmentsRes] = await Promise.all([
+        // Cargar todos los datos necesarios en paralelo
+        const [teachersRes, attendanceRes, evalsRes, weeklyEvidenceRes, monthlyReportsRes, assignmentsRes, waiversRes, groupsRes, schoolsRes] = await Promise.all([
             _supabase.from('teachers').select('*'),
             _supabase.from('attendance').select('teacher_id, date, status'),
             _supabase.from('evaluations').select('teacher_id, created_at'),
             _supabase.from('weekly_evidence').select('teacher_id, created_at'),
             _supabase.from('teacher_monthly_reports').select('teacher_id, month, year'),
-            _supabase.from('teacher_assignments').select('teacher_id, school_code, grade, section')
+            _supabase.from('teacher_assignments').select('teacher_id, school_code, grade, section'),
+            _supabase.from('attendance_waivers').select('*').eq('status', 'approved').gte('date', startOfMonth).lte('date', endOfMonth),
+            _supabase.from('groups').select('*'),
+            _supabase.from('schools').select('id, code, projects_per_bimestre')
         ]);
 
         const teachers = teachersRes.data || [];
@@ -27,32 +33,56 @@ async function loadTeamPerformanceDashboard() {
         const evidence = weeklyEvidenceRes.data || [];
         const reports = monthlyReportsRes.data || [];
         const assignments = assignmentsRes.data || [];
+        const approvedWaivers = waiversRes.data || [];
+        const allGroups = groupsRes.data || [];
+        const schools = schoolsRes.data || [];
 
-        // Filtrar docentes con al menos una asignación (estos son los "activos" para metas)
+        // Filtrar docentes activos (con al menos una asignación)
         const activeTeachers = teachers.filter(t => assignments.some(a => a.teacher_id === t.id));
 
-        // METAS DINÁMICAS (12 listas por asignación/grupo al mes)
-        let totalAttendanceTarget = 0;
-        let totalEvalTarget = 0;
-        let totalEvidenceTarget = 0;
-        let totalReportTarget = activeTeachers.length; // 1 por docente
+        // ============================================
+        // CÁLCULO DE METAS DINÁMICAS AGREGADAS
+        // ============================================
 
-        activeTeachers.forEach(t => {
-            const tAssignments = assignments.filter(a => a.teacher_id === t.id).length;
-            totalAttendanceTarget += (tAssignments * 12); // Si tiene 2 grupos, meta = 24. Si tiene 1, meta = 12.
-            totalEvalTarget += (tAssignments * 25); // Meta de evaluaciones por grupo
-            totalEvidenceTarget += (tAssignments * 4); // 4 evidencias por grupo al mes
+        // 1. META DE ASISTENCIA: Total de asignaciones * 4 sesiones/mes - exenciones aprobadas
+        const SESSIONS_PER_MONTH = 4;
+        const rawAttendanceTarget = assignments.length * SESSIONS_PER_MONTH;
+        const totalAttendanceTarget = Math.max(0, rawAttendanceTarget - approvedWaivers.length);
+
+        // 2. META DE EVALUACIONES: Total de equipos en todos los establecimientos * meta de proyectos
+        // Obtener códigos únicos de establecimientos asignados
+        const assignedSchoolCodes = [...new Set(assignments.map(a => a.school_code))];
+
+        // Filtrar grupos que pertenecen a los establecimientos asignados
+        const relevantGroups = allGroups.filter(g => assignedSchoolCodes.includes(g.school_code));
+
+        // Calcular meta de evaluaciones considerando la meta personalizada de cada establecimiento
+        let totalEvalTarget = 0;
+        assignedSchoolCodes.forEach(code => {
+            const school = schools.find(s => s.code === code);
+            const projectsPerBimester = school?.projects_per_bimestre || SYSTEM_CONFIG.projectsPerBimester || 4;
+            const groupsInSchool = relevantGroups.filter(g => g.school_code === code).length;
+            totalEvalTarget += (groupsInSchool * projectsPerBimester);
         });
 
-        // CONTEO DE "LISTAS" (No alumnos)
-        // Agrupamos por docente y fecha para saber cuántas listas únicas firmó
-        const startOfMonth = new Date(currentYear, currentMonth - 1, 1);
-        const endOfMonth = new Date(currentYear, currentMonth, 0, 23, 59, 59);
+        // 3. META DE EVIDENCIA: 4 evidencias por asignación al mes
+        const totalEvidenceTarget = assignments.length * 4;
 
+        // 4. META DE REPORTES: 1 por docente activo
+        const totalReportTarget = activeTeachers.length;
+
+        // ============================================
+        // CONTEO DE COMPLETADOS
+        // ============================================
+
+        const startDate = new Date(currentYear, currentMonth - 1, 1);
+        const endDate = new Date(currentYear, currentMonth, 0, 23, 59, 59);
+
+        // Contar listas únicas (por docente y fecha)
         const uniqueLists = new Set();
         attendanceRaw.forEach(r => {
             const date = new Date(r.date);
-            if (date >= startOfMonth && date <= endOfMonth) {
+            if (date >= startDate && date <= endDate) {
                 uniqueLists.add(`${r.teacher_id}_${r.date}`);
             }
         });
@@ -61,20 +91,21 @@ async function loadTeamPerformanceDashboard() {
             attendance: uniqueLists.size,
             evaluations: evaluations.filter(e => {
                 const d = new Date(e.created_at);
-                return d >= startOfMonth && d <= endOfMonth;
+                return d >= startDate && d <= endDate;
             }).length,
             evidence: evidence.filter(ev => {
                 const d = new Date(ev.created_at);
-                return d >= startOfMonth && d <= endOfMonth;
+                return d >= startDate && d <= endDate;
             }).length,
             reports: reports.filter(r => r.month === currentMonth && r.year === currentYear).length
         };
 
+        // Calcular XP total (ponderaciones: 30% Asist, 40% Eval, 20% Evid, 10% Report)
         const xp = Math.min(100, Math.round(
-            ((completed.attendance / totalAttendanceTarget) * 30) +
-            ((completed.evaluations / totalEvalTarget) * 40) +
-            ((completed.evidence / totalEvidenceTarget) * 20) +
-            ((completed.reports / totalReportTarget) * 10)
+            ((completed.attendance / (totalAttendanceTarget || 1)) * 30) +
+            ((completed.evaluations / (totalEvalTarget || 1)) * 40) +
+            ((completed.evidence / (totalEvidenceTarget || 1)) * 20) +
+            ((completed.reports / (totalReportTarget || 1)) * 10)
         ) || 0);
 
         renderTeamPerformanceWidget(container, {
@@ -88,8 +119,8 @@ async function loadTeamPerformanceDashboard() {
         });
 
     } catch (err) {
-        console.error('Error KPI:', err);
-        container.innerHTML = `<div class="p-4 bg-rose-50 dark:bg-rose-900/20 text-rose-500 rounded-xl text-center font-bold">Error calculando metas</div>`;
+        console.error('Error calculando KPIs de equipo:', err);
+        container.innerHTML = `<div class="p-4 bg-rose-50 dark:bg-rose-900/20 text-rose-500 rounded-xl text-center font-bold">Error calculando metas del equipo</div>`;
     }
 }
 

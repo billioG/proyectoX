@@ -6,7 +6,7 @@
 // 1. REPORTE MENSUAL (26 de cada mes)
 // ------------------------------------------------
 
-async function openMonthlyReportModal() {
+window.openMonthlyReportModal = async function openMonthlyReportModal() {
   const modal = document.createElement('div');
   modal.className = 'fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn';
   modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
@@ -26,7 +26,7 @@ async function openMonthlyReportModal() {
       </div>
 
       <div class="flex-1 overflow-y-auto custom-scrollbar p-8">
-        <form id="monthly-report-form" onsubmit="submitMonthlyReport(event)" class="space-y-6 text-left">
+        <form id="monthly-report-form" onsubmit="window.submitMonthlyReport(event)" class="space-y-6 text-left">
           <!-- INTRODUCCIÓN -->
           <div>
             <label class="text-[0.7rem] font-black uppercase text-slate-400 mb-2 block tracking-widest">1. Introducción</label>
@@ -51,7 +51,7 @@ async function openMonthlyReportModal() {
                 <input type="text" class="input-field-tw h-11 text-sm" name="results[]" placeholder="Hito o resultado clave 2" required>
               </div>
             </div>
-            <button type="button" class="mt-4 text-[0.65rem] font-black uppercase text-primary hover:text-indigo-600 tracking-widest flex items-center gap-2 transition-colors" onclick="addResultField()">
+            <button type="button" class="mt-4 text-[0.65rem] font-black uppercase text-primary hover:text-indigo-600 tracking-widest flex items-center gap-2 transition-colors" onclick="window.addResultField()">
               <i class="fas fa-plus-circle"></i> Agregar otro punto
             </button>
           </div>
@@ -82,7 +82,7 @@ async function openMonthlyReportModal() {
                      <i class="fas fa-images text-2xl text-slate-300 dark:text-slate-600 mb-2 group-hover:text-primary transition-colors"></i>
                      <span class="text-[0.6rem] font-black text-slate-400 group-hover:text-primary uppercase tracking-widest">Seleccionar Imágenes</span>
                 </div>
-                <input type="file" id="report-photos" class="w-full h-24 opacity-0 cursor-pointer" accept="image/*" multiple onchange="previewReportPhotos(this)">
+                <input type="file" id="report-photos" class="w-full h-24 opacity-0 cursor-pointer" accept="image/*" multiple onchange="window.previewReportPhotos(this)">
             </div>
             <div id="photos-preview" class="flex gap-2 flex-wrap min-h-[60px]"></div>
             <p class="text-[0.55rem] font-bold text-slate-400 uppercase tracking-widest mt-2 flex items-center gap-1"><i class="fas fa-info-circle text-primary"></i> Se requieren exactamente 5 fotografías para el reporte.</p>
@@ -101,7 +101,7 @@ async function openMonthlyReportModal() {
   document.body.appendChild(modal);
 }
 
-function addResultField() {
+window.addResultField = function addResultField() {
   const container = document.getElementById('results-list');
   const div = document.createElement('div');
   div.className = 'flex gap-2 animate-fadeIn';
@@ -114,7 +114,7 @@ function addResultField() {
   container.appendChild(div);
 }
 
-function previewReportPhotos(input) {
+window.previewReportPhotos = function previewReportPhotos(input) {
   const container = document.getElementById('photos-preview');
   container.innerHTML = '';
 
@@ -140,7 +140,11 @@ function previewReportPhotos(input) {
 // 2. EVIDENCIA SEMANAL (Por Grupo)
 // ------------------------------------------------
 
-async function openWeeklyEvidenceModal() {
+// ------------------------------------------------
+// 2. EVIDENCIA SEMANAL (Por Grupo)
+// ------------------------------------------------
+
+window.openWeeklyEvidenceModal = async function openWeeklyEvidenceModal() {
   let locationText = 'Cargando ubicación...';
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
@@ -171,7 +175,7 @@ async function openWeeklyEvidenceModal() {
       </div>
 
       <div class="p-8">
-        <form onsubmit="submitWeeklyEvidence(event)" class="space-y-5 text-left">
+        <form onsubmit="window.submitWeeklyEvidence(event)" class="space-y-5 text-left">
           <input type="hidden" name="location" id="evidence-location" value="${locationText}">
 
           <div>
@@ -191,7 +195,7 @@ async function openWeeklyEvidenceModal() {
                      <i class="fas fa-cloud-upload-alt text-xl text-slate-300 dark:text-slate-600 mb-1 group-hover:text-primary transition-colors"></i>
                      <span class="text-[0.6rem] font-black text-slate-400 group-hover:text-primary uppercase">Click para subir</span>
                 </div>
-                <input type="file" id="evidence-photos" class="w-full h-20 opacity-0 cursor-pointer" accept="image/*" multiple required onchange="previewReportPhotos(this)">
+                <input type="file" id="evidence-photos" class="w-full h-20 opacity-0 cursor-pointer" accept="image/*" multiple required onchange="window.previewReportPhotos(this)">
             </div>
             <div id="photos-preview" class="flex gap-2 flex-wrap min-h-[40px]"></div>
           </div>
@@ -232,7 +236,7 @@ async function openWeeklyEvidenceModal() {
 // LOGICA DE ENVÍO (Simulada para UI)
 // ------------------------------------------------
 
-async function submitMonthlyReport(e) {
+window.submitMonthlyReport = async function submitMonthlyReport(e) {
   e.preventDefault();
   const btn = document.getElementById('btn-submit-report');
   const formData = new FormData(e.target);
@@ -270,7 +274,7 @@ async function submitMonthlyReport(e) {
   }
 }
 
-async function submitWeeklyEvidence(e) {
+window.submitWeeklyEvidence = async function submitWeeklyEvidence(e) {
   e.preventDefault();
   const btn = e.target.querySelector('button[type="submit"]');
   const formData = new FormData(e.target);
@@ -311,7 +315,8 @@ async function submitWeeklyEvidence(e) {
     if (error) throw error;
 
     showToast('✅ Evidencia subida con éxito y +10 XP sumados.', 'success');
-    e.target.closest('.modal').remove();
+    const modal = e.target.closest('.fixed') || e.target.closest('.modal');
+    if (modal) modal.remove();
 
     // Recargar XP y Feed para ocultar el botón
     initGamification();

@@ -2,12 +2,16 @@
  * EVALUATION NOTIFICATIONS - Gestión de alertas y badges de proyectos pendientes
  */
 
-async function loadTeacherNotifications() {
+window.loadTeacherNotifications = async function loadTeacherNotifications() {
+    const userRole = window.userRole;
+    const _supabase = window._supabase;
+    const currentUser = window.currentUser;
+
     if (userRole !== 'docente') return;
 
     try {
         const { data: assignments } = await _supabase.from('teacher_assignments').select('school_code, grade, section').eq('teacher_id', currentUser.id);
-        if (!assignments || assignments.length === 0) return updateNotificationBadge(0);
+        if (!assignments || assignments.length === 0) return window.updateNotificationBadge(0);
 
         const { data: projects } = await _supabase.from('projects').select(`id, score, students!inner(school_code, grade, section), evaluations(id)`);
 
@@ -17,11 +21,11 @@ async function loadTeacherNotifications() {
             return assignments.some(a => p.students?.school_code === a.school_code && p.students?.grade === a.grade && p.students?.section === a.section);
         }).length;
 
-        updateNotificationBadge(pendingCount);
+        window.updateNotificationBadge(pendingCount);
     } catch (err) { console.error('Error notif:', err); }
 }
 
-function updateNotificationBadge(count) {
+window.updateNotificationBadge = function updateNotificationBadge(count) {
     document.querySelectorAll('.nav-item').forEach(item => {
         if (item.textContent.includes('Evaluar')) {
             const existing = item.querySelector('.notification-badge');

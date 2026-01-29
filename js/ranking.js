@@ -2,31 +2,36 @@
  * RANKING - Hall de la Fama 1Bot (Premium Edition)
  */
 
-async function loadRanking() {
+window.loadRanking = async function loadRanking() {
   const container = document.getElementById('ranking-container');
   if (!container) return;
 
-  container.innerHTML = `
-    <div class="flex flex-col items-center justify-center p-20 text-slate-400">
-        <i class="fas fa-circle-notch fa-spin text-4xl mb-4 text-primary"></i>
-        <span class="font-black uppercase text-xs tracking-widest text-center">Analizando el Top Global del Año...</span>
-    </div>
-  `;
+  const _supabase = window._supabase;
+  const fetchWithCache = window.fetchWithCache;
+
+  if (!container.innerHTML || container.innerHTML.includes('fa-circle-notch')) {
+    container.innerHTML = `
+      <div class="flex flex-col items-center justify-center p-20 text-slate-400">
+          <i class="fas fa-circle-notch fa-spin text-4xl mb-4 text-primary"></i>
+          <span class="font-black uppercase text-xs tracking-widest text-center">Analizando el Top Global del Año...</span>
+      </div>
+    `;
+  }
 
   try {
-    // Para el ranking, mostramos los top 20 más innovadores (combinación de likes y puntaje)
-    const { data: projects, error } = await _supabase.from('projects')
-      .select(`*, students(id, full_name, school_code, grade, section, schools(name)), groups(name)`)
-      .not('score', 'is', null)
-      .order('votes', { ascending: false })
-      .order('score', { ascending: false })
-      .limit(20);
-
-    if (error) throw error;
-    window.allRankingProjects = projects;
-
-    renderRankingInterface(container);
-    renderRankingRows(projects);
+    await fetchWithCache('global_ranking_top_20', async () => {
+      // Para el ranking, mostramos los top 20 más innovadores (combinación de likes y puntaje)
+      return await _supabase.from('projects')
+        .select(`*, students(id, full_name, school_code, grade, section, schools(name)), groups(name)`)
+        .not('score', 'is', null)
+        .order('votes', { ascending: false })
+        .order('score', { ascending: false })
+        .limit(20);
+    }, (projects) => {
+      window.allRankingProjects = projects;
+      window.renderRankingInterface(container);
+      window.renderRankingRows(projects);
+    });
 
   } catch (err) {
     console.error(err);
@@ -34,7 +39,9 @@ async function loadRanking() {
   }
 }
 
-function renderRankingInterface(container) {
+window.renderRankingInterface = function renderRankingInterface(container) {
+  const userRole = window.userRole;
+  const sanitizeInput = window.sanitizeInput;
   container.innerHTML = `
     <div class="glass-card p-6 md:p-8 mb-8 overflow-hidden relative border-none bg-slate-900 text-white shadow-xl">
         <div class="absolute -right-10 -top-10 text-[10rem] opacity-[0.05] rotate-12 text-blue-400 pointer-events-none transition-transform group-hover:rotate-45"><i class="fas fa-award"></i></div>
@@ -50,19 +57,19 @@ function renderRankingInterface(container) {
         <div class="grow flex flex-col md:flex-row gap-4">
             <div class="w-full md:w-64">
                 <label class="text-[0.8rem] font-bold uppercase text-slate-400 tracking-wider ml-1 mb-2 block">Establecimiento</label>
-                <select id="rank-school" class="input-field-tw border-slate-100 dark:border-slate-800 text-sm h-11" onchange="filterRanking()">
+                <select id="rank-school" class="input-field-tw border-slate-100 dark:border-slate-800 text-sm h-11" onchange="window.filterRanking()">
                     <option value="">Planteles (Todos)</option>
                 </select>
             </div>
             <div class="w-full md:w-40">
                 <label class="text-[0.8rem] font-bold uppercase text-slate-400 tracking-wider ml-1 mb-2 block">Grado</label>
-                <select id="rank-grade" class="input-field-tw border-slate-100 dark:border-slate-800 text-sm h-11" onchange="filterRanking()">
+                <select id="rank-grade" class="input-field-tw border-slate-100 dark:border-slate-800 text-sm h-11" onchange="window.filterRanking()">
                     <option value="">Grados</option>
                 </select>
             </div>
             <div class="w-full md:w-40">
                 <label class="text-[0.8rem] font-bold uppercase text-slate-400 tracking-wider ml-1 mb-2 block">Bimestre</label>
-                <select id="rank-bimestre" class="input-field-tw border-slate-100 dark:border-slate-800 text-sm h-11" onchange="filterRanking()">
+                <select id="rank-bimestre" class="input-field-tw border-slate-100 dark:border-slate-800 text-sm h-11" onchange="window.filterRanking()">
                     <option value="">Año Completo</option>
                     <option value="1">1º Bimestre</option>
                     <option value="2">2º Bimestre</option>
@@ -72,7 +79,7 @@ function renderRankingInterface(container) {
             </div>
         </div>
         <div class="shrink-0 flex items-end">
-            <button onclick="loadRanking()" class="btn-secondary-tw h-11 px-6 uppercase tracking-widest text-xs font-bold"><i class="fas fa-sync-alt shadow-none mb-0"></i></button>
+            <button onclick="window.loadRanking()" class="btn-secondary-tw h-11 px-6 uppercase tracking-widest text-xs font-bold"><i class="fas fa-sync-alt shadow-none mb-0"></i></button>
         </div>
     </div>
     ` : ''}
@@ -89,7 +96,7 @@ function renderRankingInterface(container) {
   if (grdSelect) grdSelect.innerHTML += grades.map(g => `<option value="${g}">${sanitizeInput(g)}</option>`).join('');
 }
 
-function renderRankingRows(projects) {
+window.renderRankingRows = function renderRankingRows(projects) {
   const list = document.getElementById('ranking-list');
   if (!list) return;
 

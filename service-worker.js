@@ -2,12 +2,13 @@
 // SERVICE WORKER - PROJECTX PWA
 // ================================================
 
-const CACHE_NAME = 'projectx-v1.0.0';
+const CACHE_NAME = 'projectx-v1.0.3';
 const urlsToCache = [
   '/',
   '/index.html',
   '/css/styles.css',
   '/js/config.js',
+  '/js/utils.js',
   '/js/sync-manager.js',
   '/js/auth.js',
   '/js/main.js',
@@ -23,6 +24,17 @@ const urlsToCache = [
   '/js/csv.js',
   '/js/pdf-processor.js',
   '/js/attendance.js',
+  '/js/admin-dashboard.js',
+  '/js/admin-reports.js',
+  '/js/admin-success.js',
+  '/js/admin-evaluations.js',
+  '/js/admin-attendance.js',
+  '/js/attendance-summary-view.js',
+  '/js/team-performance-widget.js',
+  '/js/kpi-engine.js',
+  '/js/activity-tracker.js',
+  '/js/ai-service.js',
+  '/js/mascot-widget.js',
   '/manifest.json',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
@@ -34,7 +46,7 @@ const urlsToCache = [
 
 // Instalación del Service Worker
 self.addEventListener('install', event => {
-  console.log('📦 Service Worker: Instalando...');
+  console.log('📦 Service Worker: Instalando v1.0.3...');
 
   event.waitUntil(
     caches.open(CACHE_NAME)
@@ -98,10 +110,16 @@ self.addEventListener('fetch', event => {
             return cachedResponse;
           }
 
-          // Si no está en caché, mostrar página offline
+          // Si no está en caché, mostrar página offline para documentos o un error para otros
           if (request.destination === 'document') {
             return caches.match('/index.html');
           }
+
+          // MUY IMPORTANTE: Retornar una respuesta de error válida en lugar de undefined
+          return new Response('Network error and no cache available', {
+            status: 404,
+            statusText: 'Not Found'
+          });
         });
       })
   );

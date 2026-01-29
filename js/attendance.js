@@ -2,9 +2,11 @@
  * ATTENDANCE - Gestión de Asistencia (Premium Edition)
  */
 
-async function loadAttendance() {
+window.loadAttendance = async function loadAttendance() {
     const container = document.getElementById('attendance-container');
     if (!container) return;
+
+    const userRole = window.userRole;
 
     container.innerHTML = `
     <div class="flex flex-col items-center justify-center p-20 text-slate-400">
@@ -19,7 +21,7 @@ async function loadAttendance() {
         <div id="attendance-stats-container" class="mb-8 animate-fadeIn"></div>
         <div id="attendance-main-interface" class="space-y-8 animate-fadeIn" style="animation-delay: 100ms"></div>
       `;
-            await loadAttendanceInterface();
+            await window.loadAttendanceInterface();
         } else {
             container.innerHTML = '<div class="glass-card p-10 text-slate-500 font-bold text-center text-xs uppercase tracking-widest">Acceso denegado para este rol.</div>';
         }
@@ -29,15 +31,37 @@ async function loadAttendance() {
     }
 }
 
-async function loadAttendanceInterface() {
+window.loadAttendanceInterface = async function loadAttendanceInterface() {
     const container = document.getElementById('attendance-main-interface');
     if (!container) return;
 
-    const { data: assignments } = await _supabase.from('teacher_assignments').select('school_code, grade, section, schools(name)').eq('teacher_id', currentUser.id);
-    const today = new Date().toISOString().split('T')[0];
-    const { data: todayWaivers } = await _supabase.from('attendance_waivers').select('school_code, grade, section, status').eq('teacher_id', currentUser.id).eq('date', today);
+    const _supabase = window._supabase;
+    const currentUser = window.currentUser;
+    const fetchWithCache = window.fetchWithCache;
 
-    const { count: waiverCount } = await _supabase.from('attendance_waivers').select('*', { count: 'exact', head: true }).eq('teacher_id', currentUser.id);
+    const cacheKey = `attendance_init_${currentUser.id}`;
+
+    await fetchWithCache(cacheKey, async () => {
+        const today = new Date().toISOString().split('T')[0];
+        const [assignments, todayWaivers, waiverCount] = await Promise.all([
+            _supabase.from('teacher_assignments').select('school_code, grade, section, schools(name)').eq('teacher_id', currentUser.id),
+            _supabase.from('attendance_waivers').select('school_code, grade, section, status').eq('teacher_id', currentUser.id).eq('date', today),
+            _supabase.from('attendance_waivers').select('*', { count: 'exact', head: true }).eq('teacher_id', currentUser.id)
+        ]);
+
+        return {
+            assignments: assignments.data || [],
+            todayWaivers: todayWaivers.data || [],
+            waiverCount: waiverCount.count || 0
+        };
+    }, (snapshot) => {
+        window.renderAttendanceUI(container, snapshot);
+    });
+}
+
+window.renderAttendanceUI = window.renderAttendanceUI = function renderAttendanceUI(container, snapshot) {
+    const sanitizeInput = window.sanitizeInput;
+    const { assignments, todayWaivers, waiverCount } = snapshot;
     const hasWaivers = (waiverCount || 0) > 0;
     const safeAssignments = assignments || [];
 
@@ -55,14 +79,14 @@ async function loadAttendanceInterface() {
                 
                 <div class="w-full md:w-80">
                     <label class="text-[0.6rem] font-black uppercase text-slate-400 tracking-widest mb-2 block ml-1">Equipo en Aula</label>
-                    <select id="attendance-assignment" class="input-field-tw border-slate-200 dark:border-slate-800 focus:border-emerald-500 focus:ring-emerald-500/20" onchange="loadStudentsForAttendance()">
+                    <select id="attendance-assignment" class="input-field-tw border-slate-200 dark:border-slate-800 focus:border-emerald-500 focus:ring-emerald-500/20" onchange="window.loadStudentsForAttendance()">
                         <option value="" class="dark:bg-slate-900">Seleccionar Equipo...</option>
                         ${safeAssignments.map((a, index) => {
         const schoolWaiver = todayWaivers?.find(w => w.school_code === a.school_code && w.grade === null);
         const groupWaiver = todayWaivers?.find(w => w.school_code === a.school_code && w.grade === a.grade && w.section === a.section);
         const isSuspended = schoolWaiver || groupWaiver;
         return `<option value="${index}" class="dark:bg-slate-900" data-school="${a.school_code}" data-grade="${a.grade || ''}" data-section="${a.section || ''}" ${isSuspended ? 'disabled' : ''}>
-                               ${sanitizeInput(a.schools?.name || 'Establecimiento')} - ${sanitizeInput(a.grade || '')} ${sanitizeInput(a.section || '')} ${isSuspended ? '(SUSPENDIDO)' : ''}
+                                ${sanitizeInput(a.schools?.name || 'Establecimiento')} - ${sanitizeInput(a.grade || '')} ${sanitizeInput(a.section || '')} ${isSuspended ? '(SUSPENDIDO)' : ''}
                            </option>`;
     }).join('')}
                     </select>
@@ -80,10 +104,10 @@ async function loadAttendanceInterface() {
                         </div>
                         
                         <div class="mt-6 flex flex-col gap-3 w-full">
-                            <button onclick="startQRScanner()" id="btn-start-scanner" class="btn-primary-tw bg-emerald-500 hover:bg-emerald-600 h-12 uppercase tracking-widest text-xs font-black">
+                            <button onclick="window.startQRScanner()" id="btn-start-scanner" class="btn-primary-tw bg-emerald-500 hover:bg-emerald-600 h-12 uppercase tracking-widest text-xs font-black">
                                 <i class="fas fa-camera"></i> ACTIVAR CÁMARA
                             </button>
-                            <button onclick="stopQRScanner()" id="btn-stop-scanner" class="hidden btn-secondary-tw bg-rose-500 text-white border-none h-12 uppercase tracking-widest text-xs font-black">
+                            <button onclick="window.stopQRScanner()" id="btn-stop-scanner" class="hidden btn-secondary-tw bg-rose-500 text-white border-none h-12 uppercase tracking-widest text-xs font-black">
                                 <i class="fas fa-stop"></i> DETENER
                             </button>
                             <div id="scan-result" class="text-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 min-h-[40px] flex items-center justify-center">
@@ -149,7 +173,7 @@ let qrScanning = false;
 let lastScannedIds = {};
 const SCAN_COOLDOWN = 5000;
 
-async function startQRScanner() {
+window.startQRScanner = async function startQRScanner() {
     const video = document.getElementById('qr-video');
     const container = document.getElementById('qr-video-container');
     const btnStart = document.getElementById('btn-start-scanner');
@@ -174,7 +198,7 @@ async function startQRScanner() {
     }
 }
 
-function stopQRScanner() {
+window.stopQRScanner = function stopQRScanner() {
     if (qrStream) qrStream.getTracks().forEach(t => t.stop());
     qrScanning = false;
     const container = document.getElementById('qr-video-container');
@@ -186,7 +210,7 @@ function stopQRScanner() {
     if (btnStop) btnStop.classList.add('hidden');
 }
 
-function tickScanner() {
+window.tickScanner = function tickScanner() {
     if (!qrScanning) return;
     const video = document.getElementById('qr-video');
     if (video && video.readyState === video.HAVE_ENOUGH_DATA) {
@@ -205,10 +229,11 @@ function tickScanner() {
     requestAnimationFrame(tickScanner);
 }
 
-async function handleQRCodeDetected(data) {
+window.handleQRCodeDetected = async function handleQRCodeDetected(data) {
     try {
         const parsed = JSON.parse(data);
-        const id = parsed.id || parsed.student_id;
+        // Soporte para formato comprimido (si=student_id) o legado (id/student_id)
+        const id = parsed.si || parsed.id || parsed.student_id;
         if (!id || (lastScannedIds[id] && Date.now() - lastScannedIds[id] < SCAN_COOLDOWN)) return;
 
         lastScannedIds[id] = Date.now();
@@ -219,7 +244,7 @@ async function handleQRCodeDetected(data) {
         const select = document.getElementById('attendance-assignment');
         const opt = select.options[select.selectedIndex];
 
-        const { error } = await _supabase.from('attendance').upsert({
+        const attendanceData = {
             student_id: id,
             teacher_id: currentUser.id,
             school_code: opt.dataset.school,
@@ -227,16 +252,19 @@ async function handleQRCodeDetected(data) {
             section: opt.dataset.section,
             date: new Date().toISOString().split('T')[0],
             status: 'present'
-        });
+        };
 
-        if (!error) {
-            showToast('✅ Asistencia registrada', 'success');
-            loadStudentsForAttendance();
-        }
-    } catch (e) { }
+        // USAR EL GESTOR DE SINCRONIZACIÓN (MODO KOLIBRI / OFFLINE)
+        await _syncManager.enqueue('mark_attendance', attendanceData);
+
+        showToast('✅ Asistencia registrada (Pendiente Sync)', 'success');
+        loadStudentsForAttendance();
+    } catch (e) {
+        console.error('Error en escaneo QR:', e);
+    }
 }
 
-async function loadStudentsForAttendance() {
+window.loadStudentsForAttendance = async function loadStudentsForAttendance() {
     const select = document.getElementById('attendance-assignment');
     const container = document.getElementById('attendance-students-list');
     const section = document.getElementById('qr-scanner-section');
@@ -246,41 +274,61 @@ async function loadStudentsForAttendance() {
     if (!opt.value) return section.classList.add('hidden');
 
     section.classList.remove('hidden');
-    container.innerHTML = '<div class="flex flex-col items-center py-10 opacity-50"><i class="fas fa-circle-notch fa-spin mb-2"></i></div>';
+
+    // Loader si está vacío
+    if (!container.innerHTML || container.innerHTML.includes('fa-users')) {
+        container.innerHTML = '<div class="flex flex-col items-center py-10 opacity-50"><i class="fas fa-circle-notch fa-spin mb-2"></i></div>';
+    }
+
+    const school = opt.dataset.school;
+    const grade = opt.dataset.grade;
+    const sec = opt.dataset.section;
+    const cacheKey = `att_students_${school}_${grade}_${sec}`;
 
     try {
-        const today = new Date().toISOString().split('T')[0];
-        const { data: students } = await _supabase.from('students').select('id, full_name, username').eq('school_code', opt.dataset.school).eq('grade', opt.dataset.grade).eq('section', opt.dataset.section).order('full_name');
-        const { data: att } = await _supabase.from('attendance').select('student_id').eq('date', today);
-        const presentIds = new Set(att.map(a => a.student_id));
+        await fetchWithCache(cacheKey, async () => {
+            const today = new Date().toISOString().split('T')[0];
+            const [students, att] = await Promise.all([
+                _supabase.from('students').select('id, full_name, username').eq('school_code', school).eq('grade', grade).eq('section', sec).order('full_name'),
+                _supabase.from('attendance').select('student_id').eq('date', today)
+            ]);
+            return {
+                students: students.data || [],
+                presentIds: new Set((att.data || []).map(a => a.student_id))
+            };
+        }, (data) => {
+            renderStudentsAttendanceList(container, data.students, data.presentIds);
+        });
+    } catch (e) { console.error(e); }
+}
 
-        container.innerHTML = `
+window.renderStudentsAttendanceList = function renderStudentsAttendanceList(container, students, presentIds) {
+    container.innerHTML = `
         <div class="flex justify-between items-center mb-4 border-b border-slate-100 dark:border-slate-800 pb-3">
             <span class="text-[0.6rem] font-black uppercase text-slate-400 tracking-widest">${students.length} ESTUDIANTES</span>
             <span class="bg-emerald-500/10 text-emerald-500 text-[0.55rem] font-black px-2 py-0.5 rounded-full">${presentIds.size} PRESENTES</span>
         </div>
         <div class="space-y-2">
             ${students.map(s => {
-            const isP = presentIds.has(s.id);
-            return `
+        const isP = presentIds.has(s.id);
+        return `
                     <div class="flex items-center gap-3 p-3 rounded-2xl bg-white dark:bg-slate-900 border ${isP ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-slate-100 dark:border-slate-800'} transition-all">
                         <div class="w-8 h-8 rounded-lg ${isP ? 'bg-emerald-500' : 'bg-slate-100 dark:bg-slate-800'} text-white flex items-center justify-center text-xs">
                             <i class="fas ${isP ? 'fa-check' : 'fa-user'}"></i>
                         </div>
                         <div class="grow min-w-0">
-                            <p class="text-[0.7rem] font-black text-slate-800 dark:text-slate-100 truncate leading-none mb-1">${sanitizeInput(s.full_name)}</p>
+                            <p class="text-[0.7rem] font-black text-slate-800 dark:text-white truncate leading-none mb-1">${sanitizeInput(s.full_name)}</p>
                             <p class="text-[0.5rem] font-bold text-slate-400 uppercase tracking-widest">@${s.username}</p>
                         </div>
                     </div>
                 `;
-        }).join('')}
+    }).join('')}
         </div>
     `;
-    } catch (e) { console.error(e); }
 }
 
 // WAIVER MODAL
-async function openWaiverModal() {
+window.openWaiverModal = async function openWaiverModal() {
     const { data: assignments } = await _supabase.from('teacher_assignments').select('school_code, grade, section, schools(name)').eq('teacher_id', currentUser.id);
     const safeAssignments = assignments || [];
     const schools = [...new Set(safeAssignments.map(a => JSON.stringify({ code: a.school_code, name: a.schools.name })))].map(s => JSON.parse(s));
@@ -328,13 +376,13 @@ async function openWaiverModal() {
     document.body.appendChild(modal);
 }
 
-function toggleWaiverType() {
+window.toggleWaiverType = function toggleWaiverType() {
     const type = document.getElementById('waiver-type').value;
     document.getElementById('waiver-group-div').style.display = type === 'group' ? 'block' : 'none';
     document.getElementById('waiver-school-div').style.display = type === 'school' ? 'block' : 'none';
 }
 
-async function submitWaiver() {
+window.submitWaiver = async function submitWaiver() {
     const type = document.getElementById('waiver-type').value;
     const reason = document.getElementById('waiver-reason').value.trim();
     if (!reason) return showToast('❌ Indica el motivo', 'error');
@@ -358,13 +406,14 @@ async function submitWaiver() {
         const { error } = await _supabase.from('attendance_waivers').insert(payload);
         if (error) throw error;
         showToast('✅ Solicitud enviada', 'success');
-        document.querySelector('.fixed').remove();
+        const modal = document.getElementById('waiver-modal') || document.querySelector('.fixed.inset-0.z-\\[100\\]');
+        if (modal) modal.remove();
         loadAttendanceInterface();
     } catch (e) { showToast('❌ Error en el proceso', 'error'); }
 }
 
 // REAL EXPORT CSV
-async function exportAttendanceCSV() {
+window.exportAttendanceCSV = async function exportAttendanceCSV() {
     const select = document.getElementById('attendance-assignment');
     const opt = select?.options[select.selectedIndex];
     if (!opt || !opt.value) return showToast('❌ Selecciona un equipo primero', 'error');
@@ -393,7 +442,7 @@ async function exportAttendanceCSV() {
     } catch (e) { showToast('❌ Error al exportar', 'error'); }
 }
 
-async function printSectionQRs() {
+window.printSectionQRs = async function printSectionQRs() {
     const select = document.getElementById('attendance-assignment');
     const opt = select?.options[select.selectedIndex];
     if (!opt || !opt.value) return showToast('❌ Selecciona un equipo primero', 'error');
@@ -406,43 +455,146 @@ async function printSectionQRs() {
         .eq('grade', opt.dataset.grade)
         .eq('section', opt.dataset.section);
 
+    // 1. Crear contenedor oculto para renderizar QRs
+    let hiddenContainer = document.getElementById('qr-render-temp');
+    if (!hiddenContainer) {
+        hiddenContainer = document.createElement('div');
+        hiddenContainer.id = 'qr-render-temp';
+        hiddenContainer.style.display = 'none';
+        document.body.appendChild(hiddenContainer);
+    }
+    hiddenContainer.innerHTML = '';
+
+    // 2. Generar QRs y capturar como Base64
+    const qrImages = {};
+    for (const s of students) {
+        const tempDiv = document.createElement('div');
+        hiddenContainer.appendChild(tempDiv);
+
+        // Generar QR
+        const qr = new QRCode(tempDiv, {
+            text: JSON.stringify(compressData({ student_id: s.id })),
+            width: 160,
+            height: 160,
+            correctLevel: QRCode.CorrectLevel.H
+        });
+
+        // Esperar un micro-momento a que el canvas se genere
+        await new Promise(r => setTimeout(r, 50));
+
+        const canvas = tempDiv.querySelector('canvas');
+        if (canvas) {
+            qrImages[s.id] = canvas.toDataURL();
+        } else {
+            // Fallback si usa img en lugar de canvas
+            const img = tempDiv.querySelector('img');
+            if (img) qrImages[s.id] = img.src;
+        }
+    }
+
+    // 3. Abrir ventana de impresión con las imágenes ya listas
     const printWindow = window.open('', '_blank');
     printWindow.document.write(`
     <html>
       <head>
         <title>Credenciales - ${opt.text}</title>
-        <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
         <style>
-            body { font-family: sans-serif; display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; padding: 40px; }
-            .card { border: 2px solid #000; padding: 20px; text-align: center; border-radius: 15px; page-break-inside: avoid; }
-            .qr { margin: 10px auto; width: 128px; height: 128px; }
-            h2 { font-size: 14px; margin: 10px 0 5px; }
-            p { font-size: 10px; color: #666; margin: 0; }
+            @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap');
+            
+            @page {
+                size: auto;
+                margin: 10mm;
+            }
+            body { 
+                font-family: 'Outfit', sans-serif; 
+                display: grid; 
+                grid-template-columns: 1fr 1fr; 
+                gap: 15px; 
+                padding: 0; 
+                margin: 0;
+                background: white;
+            }
+            .card { 
+                border: 2px solid #000; 
+                padding: 20px; 
+                text-align: center; 
+                border-radius: 25px; 
+                background: white;
+                page-break-inside: avoid; 
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                height: 46vh; /* Aproximado para que 2 quepan verticalmente */
+                box-sizing: border-box;
+            }
+            /* Garantizar el salto de página */
+            .card:nth-child(4n) {
+                page-break-after: always;
+            }
+            .qr-container { 
+                margin: 0 auto 15px; 
+                padding: 5px;
+            }
+            .qr-container img {
+                display: block;
+                margin: 0 auto;
+                width: 170px;
+                height: 170px;
+            }
+            h2 { 
+                font-size: 1.3rem; 
+                font-weight: 900;
+                margin: 0 0 5px; 
+                text-transform: uppercase;
+                letter-spacing: -0.025em;
+                color: #0f172a;
+                line-height: 1.1;
+                max-width: 90%;
+            }
+            .username { 
+                font-size: 0.9rem; 
+                font-weight: 700;
+                color: #64748b; 
+                margin: 0 0 10px; 
+            }
+            .meta {
+                font-size: 0.7rem;
+                font-weight: 700;
+                color: #94a3b8;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                line-height: 1.3;
+                max-width: 85%;
+            }
+            @media print {
+                body { background: white; }
+                .card { box-shadow: none; }
+            }
         </style>
       </head>
       <body>
         ${students.map(s => `
             <div class="card">
-                <div id="qr-${s.id}" class="qr"></div>
-                <h2>${s.full_name}</h2>
-                <p>@${s.username}</p>
-                <p>${opt.text}</p>
+                <div class="qr-container">
+                    <img src="${qrImages[s.id] || ''}" />
+                </div>
+                <h2>${sanitizeInput(s.full_name)}</h2>
+                <p class="username">@${sanitizeInput(s.username)}</p>
+                <p class="meta">${sanitizeInput(opt.text)}</p>
             </div>
         `).join('')}
         <script>
-            setTimeout(() => {
-                ${students.map(s => `
-                    new QRCode(document.getElementById('qr-${s.id}'), {
-                        text: JSON.stringify({id: '${s.id}', username: '${s.username}'}),
-                        width: 128, height: 128
-                    });
-                `).join('')}
-                setTimeout(() => window.print(), 1000);
-            }, 500);
+            window.onload = function() {
+                setTimeout(() => {
+                    window.print();
+                }, 500);
+            };
         </script>
       </body>
     </html>
   `);
+    printWindow.document.close();
 }
 
 console.log('✅ attendance.js restablecido y mejorado (Premium Edition)');

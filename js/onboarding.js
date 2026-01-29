@@ -87,16 +87,17 @@ const TEACHER_ONBOARDING_SLIDES = [
 let ACTIVE_SLIDES = [];
 
 function shouldShowOnboarding() {
-  if (!currentUser) {
+  const user = window.currentUser;
+  if (!user) {
     console.warn('⚠️ No hay usuario actual para verificar onboarding');
     return false;
   }
 
   // La combinación de id de usuario y localStorage garantiza que se muestre en cada dispositivo nuevo
-  const key = `onboarding_seen_${currentUser.id}`;
+  const key = `onboarding_seen_${user.id}`;
   const hasSeenOnboarding = localStorage.getItem(key);
 
-  console.log(`🧐 Verificando onboarding para ${currentUser.id}: ${hasSeenOnboarding ? 'VISTO' : 'PENDIENTE'}`);
+  console.log(`🧐 Verificando onboarding para ${user.id}: ${hasSeenOnboarding ? 'VISTO' : 'PENDIENTE'}`);
   return !hasSeenOnboarding;
 }
 
@@ -106,39 +107,42 @@ function showOnboarding() {
   }
 
   // Establecer slides según el rol
-  if (userRole === 'estudiante') {
+  if (window.userRole === 'estudiante') {
     ACTIVE_SLIDES = STUDENT_ONBOARDING_SLIDES;
   } else {
     ACTIVE_SLIDES = TEACHER_ONBOARDING_SLIDES;
   }
 
-  console.log('🚀 Mostrando onboarding...');
+  // Crear modal si no existe
+  if (document.getElementById('onboarding-modal')) return;
+
   const modal = document.createElement('div');
-  modal.className = 'modal active onboarding-modal';
   modal.id = 'onboarding-modal';
-  modal.style.zIndex = '10000';
+  modal.className = 'fixed inset-0 z-[1000] flex items-center justify-center bg-slate-950/90 backdrop-blur-md animate-fadeIn';
 
   modal.innerHTML = `
-    <div class="onboarding-container">
-      <div class="onboarding-content">
-        <button class="onboarding-skip" onclick="skipOnboarding()">
-          Saltar <i class="fas fa-times"></i>
-        </button>
-        
-        <div class="onboarding-slides" id="onboarding-slides">
-          <!-- Las slides se generarán dinámicamente -->
+    <div class="onboarding-container shadow-2xl animate-slideUp">
+      <div id="onboarding-slides" class="onboarding-slides-wrapper">
+        <!-- Slides dynamically injected -->
+      </div>
+      
+      <div class="onboarding-footer">
+        <div id="onboarding-dots" class="onboarding-dots">
+          <!-- Dots dynamically injected -->
         </div>
-
-        <div class="onboarding-navigation">
-          <button class="btn-secondary" id="onboarding-prev" onclick="previousSlide()" style="visibility: hidden;">
+        
+        <div class="onboarding-nav">
+          <button id="onboarding-prev" class="onboarding-btn-text" onclick="window.previousSlide()" style="visibility: hidden;">
             <i class="fas fa-chevron-left"></i> Anterior
           </button>
           
-          <div class="onboarding-dots" id="onboarding-dots">
-            <!-- Los dots se generarán dinámicamente -->
-          </div>
+          <div style="flex: 1;"></div>
           
-          <button class="btn-primary" id="onboarding-next" onclick="nextSlide()">
+          <button class="onboarding-btn-text" onclick="window.skipOnboarding()" style="color: #94a3b8;">
+            Saltar
+          </button>
+          
+          <button id="onboarding-next" class="onboarding-btn" onclick="window.nextSlide()">
             Siguiente <i class="fas fa-chevron-right"></i>
           </button>
         </div>
@@ -186,7 +190,7 @@ function generateSlides() {
         
         ${slide.cta ? `
           <div style="margin-top: 30px;">
-            <button class="btn-primary btn-lg" onclick="completeOnboarding()" style="font-size: 1.1rem; padding: 15px 40px;">
+            <button class="btn-primary btn-lg" onclick="window.completeOnboarding()" style="font-size: 1.1rem; padding: 15px 40px;">
               <i class="fas fa-rocket"></i> ¡Empezar Ahora!
             </button>
           </div>
@@ -196,7 +200,7 @@ function generateSlides() {
   `).join('');
 
   dotsContainer.innerHTML = ACTIVE_SLIDES.map((_, index) => `
-    <span class="onboarding-dot" data-index="${index}" onclick="goToSlide(${index})"></span>
+    <span class="onboarding-dot" data-index="${index}" onclick="window.goToSlide(${index})"></span>
   `).join('');
 }
 
@@ -240,7 +244,6 @@ function showSlide(index) {
 
   currentSlideIndex = index;
 }
-
 function nextSlide() {
   if (currentSlideIndex < ACTIVE_SLIDES.length - 1) {
     showSlide(currentSlideIndex + 1);
@@ -257,6 +260,10 @@ function goToSlide(index) {
   showSlide(index);
 }
 
+window.nextSlide = nextSlide;
+window.previousSlide = previousSlide;
+window.goToSlide = goToSlide;
+
 function skipOnboarding() {
   if (confirm('¿Estás seguro de que quieres saltar el tutorial? Puedes verlo más tarde desde tu perfil.')) {
     completeOnboarding();
@@ -265,7 +272,10 @@ function skipOnboarding() {
 
 function completeOnboarding() {
   // Marcar como visto
-  localStorage.setItem(`onboarding_seen_${currentUser?.id}`, 'true');
+  const userId = window.currentUser?.id;
+  if (userId) {
+    localStorage.setItem(`onboarding_seen_${userId}`, 'true');
+  }
 
   // Cerrar modal con animación
   const modal = document.getElementById('onboarding-modal');
@@ -273,30 +283,35 @@ function completeOnboarding() {
     modal.style.animation = 'fadeOut 0.3s ease-out';
     setTimeout(() => {
       modal.remove();
-      showToast('✅ ¡Bienvenido a ProjectX!', 'success');
+      if (typeof window.showToast === 'function') {
+        window.showToast('¡Tutorial completado!', 'success');
+      }
     }, 300);
   }
 }
 
 function resetOnboarding() {
-  console.log('🔄 Reiniciando onboarding...');
-  if (!currentUser) {
-    showToast('⚠️ Error: Usuario no identificado', 'error');
-    return;
+  const userId = window.currentUser?.id;
+  if (userId) {
+    localStorage.removeItem(`onboarding_seen_${userId}`);
+    window.location.reload();
+  } else {
+    if (typeof window.showToast === 'function') window.showToast('⚠️ Error: Usuario no identificado', 'error');
   }
-  const key = `onboarding_seen_${currentUser.id}`;
-  localStorage.removeItem(key);
-  showOnboarding();
 }
 
-// Inicializar onboarding cuando el usuario inicia sesión
 function initOnboarding() {
-  // Esperar un poco después del login para mostrar el onboarding
-  setTimeout(() => {
-    if (shouldShowOnboarding()) {
+  if (shouldShowOnboarding()) {
+    setTimeout(() => {
       showOnboarding();
-    }
-  }, 1000);
+    }, 1500);
+  }
 }
+
+window.skipOnboarding = skipOnboarding;
+window.completeOnboarding = completeOnboarding;
+window.resetOnboarding = resetOnboarding;
+window.initOnboarding = initOnboarding;
+window.showOnboarding = showOnboarding;
 
 console.log('✅ onboarding.js cargado correctamente');

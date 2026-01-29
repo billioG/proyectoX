@@ -2,42 +2,46 @@
 // DASHBOARD DE RESULTADOS ACADÉMICOS (VISTA ADMINISTRATIVA)
 // ================================================
 
-async function loadAdminEvalReport() {
+window.loadAdminEvalReport = async function loadAdminEvalReport() {
     console.log('📈 Cargando reporte de resultados académicos...');
     const container = document.getElementById('admin-eval-report-container');
     if (!container) return;
 
-    container.innerHTML = `
-        <div class="flex flex-col items-center justify-center p-20 text-slate-400">
-            <i class="fas fa-circle-notch fa-spin text-4xl mb-4 text-primary"></i>
-            <span class="font-bold tracking-widest uppercase text-xs">Analizando métricas académicas...</span>
-        </div>
-    `;
+    if (!container.innerHTML || container.innerHTML.includes('fa-circle-notch')) {
+        container.innerHTML = `
+            <div class="flex flex-col items-center justify-center p-20 text-slate-400">
+                <i class="fas fa-circle-notch fa-spin text-4xl mb-4 text-primary"></i>
+                <span class="font-bold tracking-widest uppercase text-xs">Analizando métricas académicas...</span>
+            </div>
+        `;
+    }
 
     try {
-        // Obtenemos los proyectos con su puntaje directo (score) y relación con estudiantes
-        const [projectsRes, schoolsRes] = await Promise.all([
-            _supabase.from('projects').select('id, title, score, students:user_id(school_code)'),
-            _supabase.from('schools').select('code, name')
-        ]);
+        const _supabase = window._supabase;
+        const fetchWithCache = window.fetchWithCache;
+        await fetchWithCache('admin_academic_evals', async () => {
+            // Obtenemos los proyectos con su puntaje directo (score) y relación con estudiantes
+            const [projectsRes, schoolsRes] = await Promise.all([
+                _supabase.from('projects').select('id, title, score, students(school_code)'),
+                _supabase.from('schools').select('code, name')
+            ]);
 
-        if (projectsRes.error) {
-            console.warn('Error primary query, trying fallback join...');
-            const backup = await _supabase.from('projects').select('id, title, score, students(school_code)');
-            if (backup.error) throw backup.error;
-            projectsRes.data = backup.data;
-        }
+            if (projectsRes.error) throw projectsRes.error;
+            if (schoolsRes.error) throw schoolsRes.error;
 
-        const projects = projectsRes.data || [];
-        const schools = schoolsRes.data || [];
+            return {
+                projects: projectsRes.data || [],
+                schools: schoolsRes.data || []
+            };
+        }, (snapshot) => {
+            console.log(`📋 Reporte Académico: Procesando ${snapshot.projects.length} proyectos.`);
 
-        console.log(`📋 Reporte Académico: Procesando ${projects.length} proyectos.`);
+            // 2. Calcular estadísticas basadas en el 'score' de la tabla projects
+            const stats = window.calculateEvalStats(snapshot.projects, snapshot.schools);
 
-        // 2. Calcular estadísticas basadas en el 'score' de la tabla projects
-        const stats = calculateEvalStats(projects, schools);
-
-        // 3. Renderizar Dashboard
-        renderEvalDashboard(container, stats);
+            // 3. Renderizar Dashboard
+            window.renderEvalDashboard(container, stats);
+        });
 
     } catch (err) {
         console.error('Error cargando reporte académico:', err);
@@ -51,7 +55,7 @@ async function loadAdminEvalReport() {
     }
 }
 
-function calculateEvalStats(projects, schools) {
+window.calculateEvalStats = function calculateEvalStats(projects, schools) {
     const totalProjects = projects.length;
 
     // Un proyecto está calificado si tiene un score > 0
@@ -96,7 +100,7 @@ function calculateEvalStats(projects, schools) {
     };
 }
 
-function renderEvalDashboard(container, stats) {
+window.renderEvalDashboard = function renderEvalDashboard(container, stats) {
     container.innerHTML = `
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10 animate-slideUp">
              <div>
@@ -213,19 +217,19 @@ function renderEvalDashboard(container, stats) {
     `;
 }
 
-function getScoreColor(score) {
+window.getScoreColor = function getScoreColor(score) {
     if (score >= 85) return '#10b981';
     if (score >= 70) return '#f59e0b';
     return '#ef4444';
 }
 
-function getScoreStatus(score) {
+window.getScoreStatus = function getScoreStatus(score) {
     if (score >= 85) return 'status-active';
     if (score >= 70) return 'status-pending';
     return 'status-inactive';
 }
 
-function getScoreLabel(score) {
+window.getScoreLabel = function getScoreLabel(score) {
     if (score >= 90) return 'Sobresaliente';
     if (score >= 75) return 'Satisfactorio';
     if (score > 0) return 'Necesita Mejora';

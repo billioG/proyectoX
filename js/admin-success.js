@@ -10,94 +10,103 @@
  * - Target de proyectos por colegio = (Estudiantes / 3.5) * 4 (por bimestre).
  */
 
-async function loadAdminSuccessHub() {
+window.loadAdminSuccessHub = async function loadAdminSuccessHub() {
     console.log('🎯 Cargando Customer Success Hub...');
     const container = document.getElementById('admin-success-container');
     if (!container) return;
 
-    // 1. Sincronizar configuración global desde DB
-    await syncSystemConfig();
-
-    container.innerHTML = `
-        <div style="text-align:center; padding: 40px;">
-            <i class="fas fa-circle-notch fa-spin" style="font-size: 2rem; color: var(--primary-color);"></i>
-            <p style="margin-top: 10px; color: var(--text-light);">Calculando métricas de impacto...</p>
-        </div>
-    `;
+    // Loader inicial solo si no hay contenido o hay un spinner previo
+    if (!container.innerHTML || container.innerHTML.includes('fa-circle-notch') || container.innerHTML.includes('fa-spinner')) {
+        container.innerHTML = `
+            <div class="flex flex-col items-center justify-center py-20 text-slate-400">
+                <i class="fas fa-circle-notch fa-spin text-4xl mb-4 text-primary"></i>
+                <span class="font-black uppercase text-xs tracking-widest text-center animate-pulse">Calculando métricas de impacto...</span>
+            </div>
+        `;
+    }
 
     try {
-        // Fetch schools, projects, students AND teacher performance data
-        const [schoolsRes, projectsRes, studentsRes, teachersRes, ratingsRes, evalsRes] = await Promise.all([
-            _supabase.from('schools').select('*'),
-            _supabase.from('projects').select('id, created_at, students:user_id(school_code)'),
-            _supabase.from('students').select('id, school_code'),
-            _supabase.from('teachers').select('*'),
-            _supabase.from('teacher_ratings').select('rating, teacher_id, message, created_at, students:student_id(full_name)'),
-            _supabase.from('evaluations').select('id, teacher_id')
-        ]);
+        // 1. Sincronizar configuración global desde DB
+        await window.syncSystemConfig();
 
-        if (schoolsRes.error) throw schoolsRes.error;
-        if (projectsRes.error) {
-            console.warn('Proyectos con select user_id falló, intentando estándar:', projectsRes.error);
-            const backup = await _supabase.from('projects').select('id, created_at, students(school_code)');
-            if (backup.error) throw backup.error;
-            projectsRes.data = backup.data;
-        }
-        if (studentsRes.error) throw studentsRes.error;
+        const cacheKey = `admin_success_metrics_snapshot`;
 
-        const schools = schoolsRes.data || [];
-        const allProjects = projectsRes.data || [];
-        const allStudents = studentsRes.data || [];
-        const teachers = teachersRes.data || [];
-        const ratings = ratingsRes.data || [];
-        const evaluations = evalsRes.data || [];
+        const data = await window.fetchWithCache(cacheKey, async () => {
+            // Fetch schools, projects, students AND teacher performance data
+            const [schoolsRes, projectsRes, studentsRes, teachersRes, ratingsRes, evalsRes] = await Promise.all([
+                window._supabase.from('schools').select('*'),
+                window._supabase.from('projects').select('id, created_at, students(school_code)'),
+                window._supabase.from('students').select('id, school_code'),
+                window._supabase.from('teachers').select('*'),
+                window._supabase.from('teacher_ratings').select('rating, teacher_id, message, created_at, students(full_name)'),
+                window._supabase.from('evaluations').select('id, teacher_id')
+            ]);
 
-        // Calculate teacher performance KPIs
-        const performanceData = teachers.map(t => {
-            const tr = ratings.filter(r => r.teacher_id === t.id);
-            const te = evaluations.filter(e => e.teacher_id === t.id);
-            const avg = tr.length > 0 ? (tr.reduce((s, r) => s + r.rating, 0) / tr.length).toFixed(1) : 0;
+            if (schoolsRes.error) throw schoolsRes.error;
+            if (projectsRes.error) throw projectsRes.error;
+            if (studentsRes.error) throw studentsRes.error;
+
+            const teachers = teachersRes.data || [];
+            const ratings = ratingsRes.data || [];
+            const evaluations = evalsRes.data || [];
+
+            // Calculate teacher performance KPIs
+            const performanceData = teachers.map(t => {
+                const tr = ratings.filter(r => r.teacher_id === t.id);
+                const te = evaluations.filter(e => e.teacher_id === t.id);
+                const avg = tr.length > 0 ? (tr.reduce((s, r) => s + r.rating, 0) / tr.length).toFixed(1) : 0;
+
+                return {
+                    ...t,
+                    avgRating: parseFloat(avg),
+                    totalRatings: tr.length,
+                    totalEvals: te.length,
+                    isActive: tr.length > 0 || te.length > 0
+                };
+            });
+
+            const activeTeachers = performanceData.filter(t => t.isActive);
+            const aggregatedKPIs = {
+                totalActiveTeachers: activeTeachers.length,
+                totalInactiveTeachers: teachers.length - activeTeachers.length,
+                overallAvgRating: activeTeachers.length > 0
+                    ? (activeTeachers.reduce((sum, t) => sum + t.avgRating, 0) / activeTeachers.length).toFixed(1)
+                    : 0,
+                totalRatings: ratings.length,
+                totalEvaluations: evaluations.length,
+                avgRatingsPerTeacher: activeTeachers.length > 0 ? Math.round(ratings.length / activeTeachers.length) : 0,
+                avgEvalsPerTeacher: activeTeachers.length > 0 ? Math.round(evaluations.length / activeTeachers.length) : 0,
+                excellentTeachers: activeTeachers.filter(t => t.avgRating >= 4.5).length,
+                competentTeachers: activeTeachers.filter(t => t.avgRating >= 3.5 && t.avgRating < 4.5).length,
+                needsAttention: activeTeachers.filter(t => t.avgRating < 3.5 && t.avgRating > 0).length
+            };
 
             return {
-                ...t,
-                avgRating: parseFloat(avg),
-                totalRatings: tr.length,
-                totalEvals: te.length,
-                isActive: tr.length > 0 || te.length > 0
+                schools: schoolsRes.data || [],
+                allProjects: projectsRes.data || [],
+                allStudents: studentsRes.data || [],
+                kpis: aggregatedKPIs
             };
+        }, (res) => {
+            window.renderSuccessHubHTML(container, res.schools, res.allProjects, res.allStudents, res.kpis);
         });
 
-        const activeTeachers = performanceData.filter(t => t.isActive);
-        const aggregatedKPIs = {
-            totalActiveTeachers: activeTeachers.length,
-            totalInactiveTeachers: teachers.length - activeTeachers.length,
-            overallAvgRating: activeTeachers.length > 0
-                ? (activeTeachers.reduce((sum, t) => sum + t.avgRating, 0) / activeTeachers.length).toFixed(1)
-                : 0,
-            totalRatings: ratings.length,
-            totalEvaluations: evaluations.length,
-            avgRatingsPerTeacher: activeTeachers.length > 0
-                ? Math.round(ratings.length / activeTeachers.length)
-                : 0,
-            avgEvalsPerTeacher: activeTeachers.length > 0
-                ? Math.round(evaluations.length / activeTeachers.length)
-                : 0,
-            excellentTeachers: activeTeachers.filter(t => t.avgRating >= 4.5).length,
-            competentTeachers: activeTeachers.filter(t => t.avgRating >= 3.5 && t.avgRating < 4.5).length,
-            needsAttention: activeTeachers.filter(t => t.avgRating < 3.5 && t.avgRating > 0).length
-        };
-
-        console.log(`📋 CS Hub Data: ${allProjects.length} proyectos, ${allStudents.length} estudiantes, ${aggregatedKPIs.totalActiveTeachers} docentes activos`);
-
-        renderSuccessHubHTML(container, schools, allProjects, allStudents, aggregatedKPIs);
+        // Fail-safe: si no hay datos y el loader sigue
+        if (!data && container.innerHTML.includes('fa-circle-notch')) {
+            throw new Error("No se pudieron cargar las métricas. Verifique su conexión.");
+        }
 
     } catch (err) {
-        console.error('Error CS Hub:', err);
-        container.innerHTML = `<div class="error-state">❌ Error al cargar métricas: ${err.message}</div>`;
+        console.error('Error Admin Success Hub:', err);
+        container.innerHTML = `
+            <div class="p-10 bg-rose-50 dark:bg-rose-900/20 text-rose-500 rounded-3xl font-bold text-center">
+                ❌ Error al cargar métricas: ${err.message}
+            </div>
+        `;
     }
 }
 
-function renderSuccessHubHTML(container, schools, allProjects, allStudents, kpis) {
+window.renderSuccessHubHTML = function renderSuccessHubHTML(container, schools, allProjects, allStudents, kpis) {
     const schoolMetrics = schools.map(s => {
         const schoolStudents = allStudents.filter(st => String(st.school_code) === String(s.code));
 
@@ -270,13 +279,13 @@ function renderSuccessHubHTML(container, schools, allProjects, allStudents, kpis
                                 </td>
                                 <td class="px-6 py-4 text-right">
                                     <div class="flex justify-end gap-2">
-                                        <button class="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-all flex items-center justify-center border border-transparent" onclick="generateExecutiveReport('${s.code}')" title="Reporte Ejecutivo">
+                                        <button class="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-all flex items-center justify-center border border-transparent" onclick="window.generateExecutiveReport('${s.code}')" title="Reporte Ejecutivo">
                                             <i class="fas fa-file-invoice text-sm"></i>
                                         </button>
-                                        <button class="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-primary hover:bg-primary/10 transition-all flex items-center justify-center border border-transparent" onclick="showDigitalTalentMap('${s.code}')" title="Mapa de Talento">
+                                        <button class="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-primary hover:bg-primary/10 transition-all flex items-center justify-center border border-transparent" onclick="window.showDigitalTalentMap('${s.code}')" title="Mapa de Talento">
                                             <i class="fas fa-rocket text-sm"></i>
                                         </button>
-                                        <button class="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-all flex items-center justify-center border border-transparent" onclick="openSchoolGoalsModal(${s.id}, ${s.projects_per_bimestre || SYSTEM_CONFIG.projectsPerBimester}, '${sanitizeInput(s.name).replace(/'/g, "\\'")}')" title="Ajustar Meta Local">
+                                        <button class="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-all flex items-center justify-center border border-transparent" onclick="window.openSchoolGoalsModal(${s.id}, ${s.projects_per_bimestre || window.SYSTEM_CONFIG.projectsPerBimester}, '${sanitizeInput(s.name).replace(/'/g, "\\'")}')" title="Ajustar Meta Local">
                                             <i class="fas fa-bullseye text-sm"></i>
                                         </button>
                                     </div>
@@ -290,7 +299,7 @@ function renderSuccessHubHTML(container, schools, allProjects, allStudents, kpis
     `;
 }
 
-async function generateExecutiveReport(schoolCode) {
+window.generateExecutiveReport = async function generateExecutiveReport(schoolCode) {
     const container = document.getElementById('admin-success-container');
     container.innerHTML = '<div style="text-align:center; padding: 100px;"><i class="fas fa-sync fa-spin" style="font-size:3rem; color:var(--primary-color);"></i><p>Compilando Reporte...</p></div>';
 
@@ -337,26 +346,46 @@ async function generateExecutiveReport(schoolCode) {
     }
 }
 
-function getDynamicSuccessMessage(health) {
-    if (health >= 80) {
-        return {
-            note: "¡Resultados Extraordinarios! Su institución lidera la vanguardia digital. Es un privilegio ver cómo alumnos y docentes han convertido la tecnología en un motor de excelencia.",
-            next: "Planificación de expansión de impacto"
-        };
-    } else if (health >= 50) {
-        return {
-            note: "¡Gran trayectoria de crecimiento! Los indicadores reflejan una sólida adopción tecnológica. Felicitamos a su equipo por el compromiso constante en proyectos de innovación.",
-            next: "Optimización de participación docente"
-        };
-    } else {
-        return {
-            note: "¡Gran potencial detectado! Estamos en la etapa de despertar el talento digital. Apreciamos la base construida y estamos listos para acelerar juntos el éxito de sus estudiantes.",
-            next: "Estrategia de activación de talento"
-        };
-    }
+const SUCCESS_NOTES_HUB = {
+    optimal: [
+        "¡Excelente desempeño! El centro está operando en un nivel de madurez digital sobresaliente. Recomendamos mantener este ritmo y documentar estos casos de éxito como referencia regional.",
+        "Resultados impecables. La cultura de innovación está totalmente integrada. El siguiente paso es potenciar a los líderes digitales para que actúen como mentores de otras sedes.",
+        "Felicidades por alcanzar la cima del impacto. La satisfacción es alta y los resultados tangibles. Estamos ante un modelo a seguir en transformación educativa digital."
+    ],
+    improving: [
+        "Progreso sólido detectado. Se observa una tendencia positiva en la adopción. Recomendamos una sesión enfocada en optimizar la calidad de los proyectos para subir al siguiente nivel.",
+        "El motor digital está encendido. Estamos en la fase de aceleración. Un pequeño empuje en la participación de docentes clave nos llevará a la zona de optimización total.",
+        "Buen camino recorrido. Los indicadores racionales están mejorando. Vamos a trabajar en fortalecer el impacto emocional para consolidar el compromiso de la comunidad."
+    ],
+    critical: [
+        "¡Gran potencial detectado! Estamos en la etapa de despertar el talento digital. Apreciamos la base construida y estamos listos para acelerar juntos el éxito de sus estudiantes.",
+        "Oportunidad de crecimiento identificada. El centro tiene todo para brillar; solo necesitamos reactivar los protocolos de participación para ver resultados inmediatos.",
+        "Etapa de activación inicial. Es el momento perfecto para reajustar la estrategia y dar ese primer gran salto hacia la transformación digital que sus alumnos merecen."
+    ]
+};
+
+window.getDynamicSuccessMessage = function getDynamicSuccessMessage(health) {
+    const month = new Date().getMonth(); // 0-11
+    let level = 'critical';
+    if (health >= 80) level = 'optimal';
+    else if (health >= 40) level = 'improving';
+
+    const notes = SUCCESS_NOTES_HUB[level];
+    const note = notes[month % notes.length];
+
+    const strategies = {
+        optimal: "Estrategia de Expansión Corporativa",
+        improving: "Optimización de Flujos de Valor",
+        critical: "Estrategia de Activación de Talento"
+    };
+
+    return {
+        note: note,
+        next: strategies[level]
+    };
 }
 
-function renderExecutiveReportView(container, school, projects, students, teachers, ratings, evals) {
+window.renderExecutiveReportView = function renderExecutiveReportView(container, school, projects, students, teachers, ratings, evals) {
     const avgScore = projects.length > 0 ? (projects.reduce((a, b) => a + (b.score || 0), 0) / projects.length).toFixed(1) : 0;
 
     // Matriz de salud
@@ -373,14 +402,18 @@ function renderExecutiveReportView(container, school, projects, students, teache
             <style>
                 @media print {
                     @page { 
-                        margin: 1.5cm 1.2cm; 
+                        margin: 1.5cm 1.5cm; 
                         size: A4 portrait;
                     }
-                    .no-print { display: none !important; }
+                    .no-print, header, #sidebar, #mobile-menu-btn { display: none !important; }
                     
                     /* Reset and Container */
                     body { background: white !important; color: black !important; font-size: 9pt !important; line-height: 1.3 !important; }
                     .dark { background: white !important; color: black !important; }
+                    #app-container { min-height: 0 !important; background: white !important; padding: 0 !important; margin: 0 !important; }
+                    .main-content { padding: 0 !important; margin: 0 !important; }
+                    .view-section { padding: 0 !important; border: none !important; }
+                    
                     #executive-report-root { 
                         border: none !important; 
                         box-shadow: none !important;
@@ -401,38 +434,38 @@ function renderExecutiveReportView(container, school, projects, students, teache
                         -webkit-print-color-adjust: exact; 
                         color: white !important; 
                         border-radius: 8px !important;
-                        margin-bottom: 1rem !important;
+                        margin-bottom: 1.5rem !important;
                     }
-                    .bg-slate-900.p-8 { padding: 1.2rem 1.5rem !important; }
+                    .bg-slate-900.p-8 { padding: 1.5rem 2rem !important; }
                     .text-white { color: white !important; }
-                    .text-3xl { font-size: 1.3rem !important; }
-                    .text-4xl { font-size: 1.5rem !important; }
+                    .text-3xl { font-size: 1.4rem !important; }
+                    .text-4xl { font-size: 1.6rem !important; }
                     .drop-shadow-lg, .blur-3xl { display: none !important; }
                     
-                    /* Section Spacing */
-                    .p-8, .p-12 { padding: 0.5rem 0 !important; }
-                    .md\\:p-12 { padding: 0.5rem 0 !important; }
-                    .space-y-8 > * + * { margin-top: 0.75rem !important; }
-                    .mb-6, .mb-4 { margin-bottom: 0.5rem !important; }
+                    /* Section Spacing - Fixed side margins */
+                    .p-8, .p-12 { padding: 1.5rem !important; }
+                    .md\\:p-12 { padding: 1.5rem !important; }
+                    .space-y-8 > * + * { margin-top: 1.5rem !important; }
+                    .mb-6, .mb-4 { margin-bottom: 1rem !important; }
                     
                     /* Grid Control */
-                    .grid { gap: 0.75rem !important; display: grid !important; }
+                    .grid { gap: 1rem !important; display: grid !important; }
                     .grid-cols-4 { grid-template-columns: repeat(4, 1fr) !important; }
                     .grid-cols-3 { grid-template-columns: repeat(3, 1fr) !important; }
                     .grid-cols-2 { grid-template-columns: repeat(2, 1fr) !important; }
                     
                     /* Metric Cards */
-                    .p-5 { padding: 0.8rem !important; border-radius: 10px !important; border: 1pt solid #eee !important; background: white !important; }
-                    .text-3xl { font-size: 1.4rem !important; }
-                    .text-[0.6rem], .text-[0.55rem], .text-[0.65rem] { font-size: 7pt !important; }
+                    .p-5 { padding: 1rem !important; border-radius: 12px !important; border: 1pt solid #eee !important; background: white !important; }
+                    .text-3xl { font-size: 1.6rem !important; }
+                    .text-[0.6rem], .text-[0.55rem], .text-[0.65rem] { font-size: 8pt !important; }
                     
                     /* Table Stats */
                     table { font-size: 8pt !important; width: 100% !important; border-spacing: 0 !important; border-collapse: collapse !important; }
-                    th { border-bottom: 1.5pt solid #0f172a !important; padding: 6px 8px !important; }
-                    td { padding: 6px 8px !important; border-bottom: 0.5pt solid #f1f5f9 !important; }
+                    th { border-bottom: 2pt solid #0f172a !important; padding: 10px 12px !important; text-align: left !important; }
+                    td { padding: 10px 12px !important; border-bottom: 1pt solid #f1f5f9 !important; }
                     
                     /* Professional Elements */
-                    .fa-award { font-size: 3rem !important; color: #f59e0b !important; -webkit-print-color-adjust: exact; }
+                    .fa-award { font-size: 4rem !important; color: #f59e0b !important; -webkit-print-color-adjust: exact; }
                     .bg-slate-900.border { border: none !important; }
                 }
             </style>
@@ -472,46 +505,126 @@ function renderExecutiveReportView(container, school, projects, students, teache
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div class="p-5 rounded-2xl bg-white dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700 shadow-sm text-left">
+                        <div class="p-5 rounded-2xl bg-emerald-50 dark:!bg-[#0f172a] border border-emerald-100 dark:border-emerald-500/30 shadow-sm text-left group transition-all relative">
                             <div class="flex justify-between items-start mb-3">
-                                <div class="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-xs"><i class="fas fa-chalkboard-teacher"></i></div>
-                                <span class="text-[0.6rem] font-bold uppercase tracking-widest text-slate-400">Participación</span>
+                                <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-xs shadow-inner border border-emerald-500/20"><i class="fas fa-chalkboard-teacher"></i></div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[0.6rem] font-black uppercase tracking-widest text-emerald-600/60 dark:text-emerald-400/70">Docentes Activos</span>
+                                    <!-- Tooltip Ayuda -->
+                                    <div class="w-4 h-4 bg-emerald-500/10 dark:bg-emerald-500/20 rounded-full flex items-center justify-center text-[0.5rem] text-emerald-600 dark:text-emerald-400 cursor-help group/help no-print">
+                                        <i class="fas fa-question"></i>
+                                        <div class="invisible group-hover/help:visible absolute bottom-full right-0 mb-2 w-64 p-4 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-[100] pointer-events-none text-left animate-slideUp">
+                                            <div class="text-[0.6rem] font-black text-emerald-400 uppercase mb-1 tracking-widest">Winning by Design: ADOPCIÓN</div>
+                                            <div class="text-xs font-bold text-white mb-3">Participación del Staff</div>
+                                            <div class="space-y-2">
+                                                <div>
+                                                    <div class="text-[0.5rem] font-black text-slate-500 uppercase tracking-tighter">Cálculo</div>
+                                                    <div class="text-[0.65rem] text-slate-300 font-medium leading-tight">% de docentes usando activamente la plataforma vs el total.</div>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[0.5rem] font-black text-slate-500 uppercase tracking-tighter">Importancia</div>
+                                                    <div class="text-[0.65rem] text-slate-300 font-medium leading-tight">Sin adopción no hay impacto. Es el primer paso de la escalera de valor.</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="text-3xl font-black text-slate-800 dark:text-white mb-1">
+                            <div class="text-3xl font-black text-emerald-900 dark:text-emerald-400 mb-1">
                                 ${Math.round((teachers.filter(t => evals.some(e => e.teacher_id === t.id)).length / (teachers.length || 1)) * 100)}%
                             </div>
-                            <div class="text-[0.65rem] font-bold uppercase text-slate-500 dark:text-slate-400 leading-tight">Docentes Activos</div>
+                            <div class="text-[0.65rem] font-bold uppercase text-emerald-700/70 dark:text-emerald-400/50 leading-tight">Nivel de Adopción</div>
                         </div>
 
-                        <div class="p-5 rounded-2xl bg-white dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700 shadow-sm text-left">
+                        <div class="p-5 rounded-2xl bg-blue-50 dark:!bg-[#0f172a] border border-blue-100 dark:border-blue-500/30 shadow-sm text-left group transition-all relative">
                              <div class="flex justify-between items-start mb-3">
-                                <div class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center text-xs"><i class="fas fa-chart-line"></i></div>
-                                <span class="text-[0.6rem] font-bold uppercase tracking-widest text-slate-400">Progreso</span>
+                                <div class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center text-xs shadow-inner border border-blue-500/20"><i class="fas fa-chart-line"></i></div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[0.6rem] font-black uppercase tracking-widest text-blue-600/60 dark:text-blue-400/70">Mejora Estudiantil</span>
+                                    <!-- Tooltip Ayuda -->
+                                    <div class="w-4 h-4 bg-blue-500/10 dark:bg-blue-500/20 rounded-full flex items-center justify-center text-[0.5rem] text-blue-600 dark:text-blue-400 cursor-help group/help no-print">
+                                        <i class="fas fa-question"></i>
+                                        <div class="invisible group-hover/help:visible absolute bottom-full right-0 mb-2 w-64 p-4 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-[100] pointer-events-none text-left animate-slideUp">
+                                            <div class="text-[0.6rem] font-black text-blue-400 uppercase mb-1 tracking-widest">Winning by Design: IMPACTO RACIONAL</div>
+                                            <div class="text-xs font-bold text-white mb-3">Resultados Medibles</div>
+                                            <div class="space-y-2">
+                                                <div>
+                                                    <div class="text-[0.5rem] font-black text-slate-500 uppercase tracking-tighter">Significado</div>
+                                                    <div class="text-[0.65rem] text-slate-300 font-medium leading-tight">Resultados tangibles y medibles (KPIs) obtenidos por los estudiantes.</div>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[0.5rem] font-black text-slate-500 uppercase tracking-tighter">Importancia</div>
+                                                    <div class="text-[0.65rem] text-slate-300 font-medium leading-tight">Es el ROI de la educación: ¿Están aprendiendo más rápido?</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="flex items-end gap-2 mb-1">
-                                <div class="text-3xl font-black text-slate-800 dark:text-white">+15%</div>
+                            <div class="text-3xl font-black text-blue-900 dark:text-blue-400 mb-1">
+                                +15%
                             </div>
-                            <div class="text-[0.65rem] font-bold uppercase text-slate-500 dark:text-slate-400 leading-tight">Mejora Estudiantil</div>
+                            <div class="text-[0.65rem] font-bold uppercase text-blue-700/70 dark:text-blue-400/50 leading-tight">Impacto Racional</div>
                         </div>
 
-                        <div class="p-5 rounded-2xl bg-white dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700 shadow-sm text-left">
+                        <div class="p-5 rounded-2xl bg-indigo-50 dark:!bg-[#0f172a] border border-indigo-100 dark:border-indigo-500/30 shadow-sm text-left group transition-all relative">
                              <div class="flex justify-between items-start mb-3">
-                                <div class="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-xs"><i class="fas fa-medal"></i></div>
-                                <span class="text-[0.6rem] font-bold uppercase tracking-widest text-slate-400">Liderazgo</span>
+                                <div class="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-xs shadow-inner border border-indigo-500/20"><i class="fas fa-medal"></i></div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[0.6rem] font-black uppercase tracking-widest text-indigo-600/60 dark:text-indigo-400/70">Líderes Digitales</span>
+                                    <!-- Tooltip Ayuda -->
+                                    <div class="w-4 h-4 bg-indigo-500/10 dark:bg-indigo-500/20 rounded-full flex items-center justify-center text-[0.5rem] text-indigo-600 dark:text-indigo-400 cursor-help group/help no-print">
+                                        <i class="fas fa-question"></i>
+                                        <div class="invisible group-hover/help:visible absolute bottom-full right-0 mb-2 w-64 p-4 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-[100] pointer-events-none text-left animate-slideUp">
+                                            <div class="text-[0.6rem] font-black text-indigo-400 uppercase mb-1 tracking-widest">Winning by Design: RETENCIÓN</div>
+                                            <div class="text-xs font-bold text-white mb-3">Talento Clave</div>
+                                            <div class="space-y-2">
+                                                <div>
+                                                    <div class="text-[0.5rem] font-black text-slate-500 uppercase tracking-tighter">Significado</div>
+                                                    <div class="text-[0.65rem] text-slate-300 font-medium leading-tight">Capacidad de mantener a los estudiantes de alto desempeño comprometidos.</div>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[0.5rem] font-black text-slate-500 uppercase tracking-tighter">Importancia</div>
+                                                    <div class="text-[0.65rem] text-slate-300 font-medium leading-tight">La retención de talento es clave para crear una cultura de excelencia.</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="text-3xl font-black text-slate-800 dark:text-white mb-1">
+                            <div class="text-3xl font-black text-indigo-900 dark:text-indigo-400 mb-1">
                                 ${teachers.filter(t => evals.filter(e => e.teacher_id === t.id).length > 5).length}
                             </div>
-                            <div class="text-[0.65rem] font-bold uppercase text-slate-500 dark:text-slate-400 leading-tight">Líderes Digitales</div>
+                            <div class="text-[0.65rem] font-bold uppercase text-indigo-700/70 dark:text-indigo-400/50 leading-tight">Nivel de Retención</div>
                         </div>
 
-                        <div class="p-5 rounded-2xl bg-white dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700 shadow-sm text-left">
+                        <div class="p-5 rounded-2xl bg-rose-50 dark:!bg-[#0f172a] border border-rose-100 dark:border-rose-500/30 shadow-sm text-left group transition-all relative">
                              <div class="flex justify-between items-start mb-3">
-                                <div class="w-8 h-8 rounded-lg bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 flex items-center justify-center text-xs"><i class="fas fa-smile"></i></div>
-                                <span class="text-[0.6rem] font-bold uppercase tracking-widest text-slate-400">Clima</span>
+                                <div class="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center text-xs shadow-inner border border-rose-500/20"><i class="fas fa-smile"></i></div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[0.6rem] font-black uppercase tracking-widest text-rose-600/60 dark:text-rose-400/70">Satisfacción</span>
+                                    <!-- Tooltip Ayuda -->
+                                    <div class="w-4 h-4 bg-rose-500/10 dark:bg-rose-500/20 rounded-full flex items-center justify-center text-[0.5rem] text-rose-600 dark:text-rose-400 cursor-help group/help no-print">
+                                        <i class="fas fa-question"></i>
+                                        <div class="invisible group-hover/help:visible absolute bottom-full right-0 mb-2 w-64 p-4 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-[100] pointer-events-none text-left animate-slideUp">
+                                            <div class="text-[0.6rem] font-black text-rose-400 uppercase mb-1 tracking-widest">Winning by Design: IMPACTO EMOCIONAL</div>
+                                            <div class="text-xs font-bold text-white mb-3">Sentimiento de Comunidad</div>
+                                            <div class="space-y-2">
+                                                <div>
+                                                    <div class="text-[0.5rem] font-black text-slate-500 uppercase tracking-tighter">Significado</div>
+                                                    <div class="text-[0.65rem] text-slate-300 font-medium leading-tight">Cómo se siente el cliente con la experiencia. Confianza y felicidad.</div>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[0.5rem] font-black text-slate-500 uppercase tracking-tighter">Importancia</div>
+                                                    <div class="text-[0.65rem] text-slate-300 font-medium leading-tight">El impacto racional se mantiene por el impacto emocional.</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="text-2xl font-black text-slate-800 dark:text-white">Positiva</div>
-                            <div class="text-[0.65rem] font-bold uppercase text-slate-500 dark:text-slate-400 leading-tight">Satisfacción</div>
+                            <div class="text-2xl font-black text-rose-900 dark:text-rose-400 uppercase tracking-tighter">Positivo</div>
+                            <div class="text-[0.65rem] font-bold uppercase text-rose-700/70 dark:text-rose-400/50 leading-tight">Impacto Emocional</div>
                         </div>
                     </div>
                 </section>
@@ -523,15 +636,41 @@ function renderExecutiveReportView(container, school, projects, students, teache
                     </h2>
                     
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                        <div class="bg-indigo-50 dark:bg-indigo-900/20 p-6 rounded-2xl border border-indigo-100 dark:border-indigo-800 text-center">
+                        <div class="bg-indigo-50 dark:bg-indigo-900/20 p-6 rounded-2xl border border-indigo-100 dark:border-indigo-800 text-center relative group">
+                            <!-- Tooltip Ayuda -->
+                            <div class="absolute top-2 right-2 w-4 h-4 bg-indigo-500/10 rounded-full flex items-center justify-center text-[0.5rem] text-indigo-400 cursor-help group/help no-print">
+                                <i class="fas fa-info"></i>
+                                <div class="invisible group-hover/help:visible absolute bottom-full right-0 mb-2 w-48 p-3 bg-slate-900 border border-slate-700 rounded-lg shadow-2xl z-[100] pointer-events-none text-left">
+                                    <div class="text-[0.5rem] font-black text-indigo-400 uppercase mb-1">Cálculo Meta</div>
+                                    <div class="text-[0.65rem] text-slate-300 leading-tight">(Proyectos Entregados / Meta Bimensual) * 100. Garantiza el cumplimiento académico.</div>
+                                </div>
+                            </div>
                              <div class="text-[0.6rem] font-black uppercase text-indigo-400 tracking-widest mb-1">Cumplimiento Meta</div>
                              <div class="text-4xl font-black text-indigo-600 dark:text-white">${health}%</div>
                         </div>
-                        <div class="bg-emerald-50 dark:bg-emerald-900/20 p-6 rounded-2xl border border-emerald-100 dark:border-emerald-800 text-center">
+
+                        <div class="bg-emerald-50 dark:bg-emerald-900/20 p-6 rounded-2xl border border-emerald-100 dark:border-emerald-800 text-center relative group">
+                            <!-- Tooltip Ayuda -->
+                            <div class="absolute top-2 right-2 w-4 h-4 bg-emerald-500/10 rounded-full flex items-center justify-center text-[0.5rem] text-emerald-400 cursor-help group/help no-print">
+                                <i class="fas fa-info"></i>
+                                <div class="invisible group-hover/help:visible absolute bottom-full right-0 mb-2 w-48 p-3 bg-slate-900 border border-slate-700 rounded-lg shadow-2xl z-[100] pointer-events-none text-left">
+                                    <div class="text-[0.5rem] font-black text-emerald-400 uppercase mb-1">Calidad Promedio</div>
+                                    <div class="text-[0.65rem] text-slate-300 leading-tight">Promedio de evaluaciones (1-10) de proyectos verificados. Asegura excelencia técnica.</div>
+                                </div>
+                            </div>
                              <div class="text-[0.6rem] font-black uppercase text-emerald-400 tracking-widest mb-1">Calidad Promedio</div>
                              <div class="text-4xl font-black text-emerald-600 dark:text-white">${avgScore}</div>
                         </div>
-                        <div class="bg-amber-50 dark:bg-amber-900/20 p-6 rounded-2xl border border-amber-100 dark:border-amber-800 text-center">
+
+                        <div class="bg-amber-50 dark:bg-amber-900/20 p-6 rounded-2xl border border-amber-100 dark:border-amber-800 text-center relative group">
+                            <!-- Tooltip Ayuda -->
+                            <div class="absolute top-2 right-2 w-4 h-4 bg-amber-500/10 rounded-full flex items-center justify-center text-[0.5rem] text-amber-400 cursor-help group/help no-print">
+                                <i class="fas fa-info"></i>
+                                <div class="invisible group-hover/help:visible absolute bottom-full right-0 mb-2 w-48 p-3 bg-slate-900 border border-slate-700 rounded-lg shadow-2xl z-[100] pointer-events-none text-left">
+                                    <div class="text-[0.5rem] font-black text-amber-400 uppercase mb-1">Productividad</div>
+                                    <div class="text-[0.65rem] text-slate-300 leading-tight">Suma total de evidencias procesadas. Refleja el volumen de actividad digital.</div>
+                                </div>
+                            </div>
                              <div class="text-[0.6rem] font-black uppercase text-amber-500 tracking-widest mb-1">Proyectos Totales</div>
                              <div class="text-4xl font-black text-amber-600 dark:text-white">${projects.length}</div>
                         </div>
@@ -588,10 +727,16 @@ function renderExecutiveReportView(container, school, projects, students, teache
                      <div class="bg-slate-900 border border-slate-800 p-8 rounded-2xl text-center flex flex-col justify-center relative overflow-hidden print:bg-slate-900">
                           <h4 class="text-[0.6rem] font-black uppercase text-emerald-400 tracking-[0.2em] mb-4">Próxima Sesión</h4>
                           <div class="text-2xl font-black text-white mb-6 leading-tight uppercase tracking-tighter">${dynamicData.next}</div>
-                          <div class="inline-block mx-auto bg-emerald-500/10 px-6 py-2 rounded-xl border border-emerald-500/30 text-[0.7rem] font-black text-emerald-400 uppercase tracking-widest">
-                              SUGERIDA: ${health < 40 ? '3 días' : (health < 80 ? '7 días' : '15 días')}
+                          <div class="space-y-4">
+                               <button onclick="window.open('https://calendar.app.google/X8DMwgVgMLY2yKCx7', '_blank')" class="inline-block mx-auto bg-emerald-500 text-slate-950 px-8 py-3 rounded-xl text-[0.7rem] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg shadow-emerald-500/20 no-print">
+                                    <i class="fas fa-calendar-check mr-2"></i> AGENDAR AHORA
+                               </button>
+                               
+                               <div class="inline-block mx-auto bg-emerald-500/10 px-6 py-2 rounded-xl border border-emerald-500/30 text-[0.7rem] font-black text-emerald-400 uppercase tracking-widest">
+                                    SUGERIDA: ${health < 40 ? '3 días' : (health < 80 ? '7 días' : '15 días')}
+                               </div>
                           </div>
-                     </div>
+                      </div>
                 </div>
 
                 <div class="flex justify-end pt-6 border-t border-slate-100 dark:border-slate-800 no-print">
@@ -602,7 +747,7 @@ function renderExecutiveReportView(container, school, projects, students, teache
     `;
 }
 
-async function showDigitalTalentMap(schoolCode) {
+window.showDigitalTalentMap = async function showDigitalTalentMap(schoolCode) {
     const container = document.getElementById('admin-success-container');
     container.innerHTML = '<div style="text-align:center; padding: 100px;"><i class="fas fa-rocket fa-spin" style="font-size:3rem; color:var(--primary-color);"></i><p>Generando Mapa de Talento...</p></div>';
 
@@ -656,7 +801,7 @@ async function showDigitalTalentMap(schoolCode) {
     }
 }
 
-function openSchoolGoalsModal(schoolId, currentTarget, schoolName) {
+window.openSchoolGoalsModal = function openSchoolGoalsModal(schoolId, currentTarget, schoolName) {
     const modal = document.createElement('div');
     modal.className = 'fixed inset-0 z-[250] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-sm animate-fadeIn';
     modal.innerHTML = `
@@ -684,7 +829,7 @@ function openSchoolGoalsModal(schoolId, currentTarget, schoolName) {
     document.body.appendChild(modal);
 }
 
-async function applySchoolGoals(schoolId) {
+window.applySchoolGoals = async function applySchoolGoals(schoolId) {
     const val = parseInt(document.getElementById('input-school-projects')?.value);
     if (isNaN(val) || val < 1) return showToast('❌ Ingresa un número válido', 'error');
 
@@ -704,7 +849,7 @@ async function applySchoolGoals(schoolId) {
     }
 }
 
-function openSystemGoalsModal() {
+window.openSystemGoalsModal = function openSystemGoalsModal() {
     const modal = document.createElement('div');
     modal.className = 'fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-sm animate-fadeIn';
     modal.innerHTML = `
@@ -730,17 +875,17 @@ function openSystemGoalsModal() {
     document.body.appendChild(modal);
 }
 
-function applySystemGoals() {
+window.applySystemGoals = function applySystemGoals() {
     const val = parseInt(document.getElementById('input-sys-projects')?.value);
     if (isNaN(val) || val < 1) return showToast('❌ Ingresa un número válido', 'error');
 
-    saveSystemConfig(val);
-    showToast('🚀 Metas globales actualizadas', 'success');
+    window.saveSystemConfig(val);
+    window.showToast('🚀 Metas globales actualizadas', 'success');
 
     const hubContainer = document.getElementById('admin-success-container');
     if (hubContainer) {
         document.querySelector('.fixed')?.remove();
-        loadAdminSuccessHub();
+        window.loadAdminSuccessHub();
     }
 }
 
