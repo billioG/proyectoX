@@ -52,11 +52,6 @@ window.renderSchoolsContent = function renderSchoolsContent(container, schools) 
                 <i class="fas fa-map-marked-alt mr-2"></i> DISTRIBUCIÓN
             </button>
         </div>
-        <div class="flex gap-3 w-full md:w-auto shrink-0">
-            <button type="button" onclick="window.saveSchoolChanges(${schoolId})" class="btn-primary-tw w-full h-12 uppercase text-xs font-black tracking-widest shadow-lg shadow-emerald-500/20">
-                <i class="fas fa-save"></i> Guardar Cambios
-            </button>
-        </div>
       </div>
 
       <div id="schools-list-view" class="space-y-6">
