@@ -63,9 +63,95 @@ export async function initAuth() {
     if (event === 'SIGNED_IN' && session) {
       await handleSuccessfulLogin(session.user);
     }
+    if (event === 'PASSWORD_RECOVERY') {
+      openSetNewPasswordModal();
+    }
   });
 }
 window.initAuth = initAuth;
+
+window.toggleLoginPasswordVisibility = function toggleLoginPasswordVisibility() {
+  const input = document.getElementById('login-password');
+  const icon = document.getElementById('login-password-eye');
+  if (!input || !icon) return;
+  const isHidden = input.type === 'password';
+  input.type = isHidden ? 'text' : 'password';
+  icon.className = isHidden ? 'fas fa-eye-slash' : 'fas fa-eye';
+}
+
+window.openForgotPasswordModal = function openForgotPasswordModal() {
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-sm animate-fadeIn';
+  modal.innerHTML = `
+    <div class="glass-card w-full max-w-sm p-8 shadow-2xl animate-slideUp">
+      <h2 class="text-lg font-bold text-slate-800 dark:text-white uppercase tracking-tighter mb-2"><i class="fas fa-key text-primary mr-2"></i> Recuperar Contraseña</h2>
+      <p class="text-xs text-slate-400 mb-6">Ingresá tu correo y te enviamos un enlace para restablecer tu contraseña.</p>
+      <input type="email" id="forgot-password-email" placeholder="tu@correo.com"
+        class="w-full px-4 py-3 bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 mb-4">
+      <div class="flex gap-3">
+        <button class="btn-secondary-tw flex-1 h-11 text-xs uppercase font-bold" onclick="this.closest('.fixed').remove()">Cancelar</button>
+        <button class="btn-primary-tw flex-1 h-11 text-xs uppercase font-bold" id="btn-send-reset" onclick="window.sendPasswordResetEmail()">Enviar</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  document.getElementById('forgot-password-email')?.focus();
+}
+
+window.sendPasswordResetEmail = async function sendPasswordResetEmail() {
+  const email = document.getElementById('forgot-password-email')?.value.trim();
+  const btn = document.getElementById('btn-send-reset');
+  if (!email) return showToast('❌ Ingresá tu correo', 'error');
+
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+
+  try {
+    const { error } = await _supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + window.location.pathname,
+    });
+    if (error) throw error;
+    document.querySelector('.fixed.z-\\[200\\]')?.remove();
+    showToast('✅ Revisá tu correo para restablecer tu contraseña', 'success');
+  } catch (err) {
+    showToast('❌ ' + err.message, 'error');
+    if (btn) { btn.disabled = false; btn.innerHTML = 'Enviar'; }
+  }
+}
+
+function openSetNewPasswordModal() {
+  if (document.getElementById('set-new-password-modal')) return;
+  const modal = document.createElement('div');
+  modal.id = 'set-new-password-modal';
+  modal.className = 'fixed inset-0 z-[300] flex items-center justify-center p-6 bg-slate-950/90 backdrop-blur-sm animate-fadeIn';
+  modal.innerHTML = `
+    <div class="glass-card w-full max-w-sm p-8 shadow-2xl animate-slideUp">
+      <h2 class="text-lg font-bold text-slate-800 dark:text-white uppercase tracking-tighter mb-2"><i class="fas fa-lock text-primary mr-2"></i> Nueva Contraseña</h2>
+      <p class="text-xs text-slate-400 mb-6">Ingresá tu nueva contraseña para continuar.</p>
+      <input type="password" id="new-password-input" placeholder="Nueva contraseña (mín. 6 caracteres)"
+        class="w-full px-4 py-3 bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 mb-4">
+      <button class="btn-primary-tw w-full h-12 text-xs uppercase font-bold" id="btn-set-new-password" onclick="window.submitNewPassword()">Guardar y Continuar</button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+
+window.submitNewPassword = async function submitNewPassword() {
+  const password = document.getElementById('new-password-input')?.value;
+  const btn = document.getElementById('btn-set-new-password');
+  if (!password || password.length < 6) return showToast('❌ Mínimo 6 caracteres', 'error');
+
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+
+  try {
+    const { error } = await _supabase.auth.updateUser({ password });
+    if (error) throw error;
+    document.getElementById('set-new-password-modal')?.remove();
+    showToast('✅ Contraseña actualizada', 'success');
+  } catch (err) {
+    showToast('❌ ' + err.message, 'error');
+    if (btn) { btn.disabled = false; btn.innerHTML = 'Guardar y Continuar'; }
+  }
+}
 
 function showLoginScreen() {
   const authContainer = document.getElementById('auth-container');
