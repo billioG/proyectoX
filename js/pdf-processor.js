@@ -84,11 +84,6 @@ window.processPDFFile = async function processPDFFile() {
         statusText.textContent = 'Extrayendo estudiantes...';
 
         window.extractedStudents = extractStudentsFromText(allText, window.extractedSchool);
-        if (window.extractedStudents.length === 0) {
-            console.warn('⚠️ 0 estudiantes extraídos. Texto crudo del PDF (primeros 3000 caracteres):');
-            console.warn(allText.slice(0, 3000));
-            window._debugPdfText = allText;
-        }
         window.extractedStudents = await ensureUniqueUsernames(window.extractedStudents);
 
         progressBar.style.width = '100%';
@@ -230,7 +225,9 @@ function displaySchoolPreview(school) {
 
 function extractStudentsFromText(text, schoolInfo) {
     const students = [];
-    const pattern = /(\d+)\s+[A-Z0-9]+\s+([A-ZÑÁÉÍÓÚ]+(?:\s+[A-ZÑÁÉÍÓÚ]+){1,3})\s+([A-ZÑÁÉÍÓÚ]+(?:\s+[A-ZÑÁÉÍÓÚ]+){0,3})\s+(\d{2}\/\d{2}\/\d{4})\s+(?:Guatemalteca|GUATEMALTECA)\s+(?:CUI|DPI)\s+(\d{13})\s+(MASCULINO|FEMENINO|Masculino|Femenino)/gi;
+    // El género es opcional: algunos PDF de MINEDUC no incluyen esa columna
+    // por alumno (varía según el establecimiento/exportación).
+    const pattern = /(\d+)\s+[A-Z0-9]+\s+([A-ZÑÁÉÍÓÚ]+(?:\s+[A-ZÑÁÉÍÓÚ]+){1,3})\s+([A-ZÑÁÉÍÓÚ]+(?:\s+[A-ZÑÁÉÍÓÚ]+){0,3})\s+(\d{2}\/\d{2}\/\d{4})\s+(?:Guatemalteca|GUATEMALTECA)\s+(?:CUI|DPI)\s+(\d{13})(?:\s+(MASCULINO|FEMENINO|Masculino|Femenino))?/gi;
     const gradeMatches = text.matchAll(/Grado:\s*(PRIMERO|SEGUNDO|TERCERO|CUARTO|QUINTO|SEXTO|PRIMER|SEGUNDO|TERCER)\s+(?:GRADO\s+)?(BASICO|BÁSICO|PRIMARIA|DIVERSIFICADO)?\s*Secci[oó]n:\s*([A-Z])/gi);
 
     const gradeArray = Array.from(gradeMatches);
@@ -252,14 +249,14 @@ function extractStudentsFromText(text, schoolInfo) {
             const nombresCompletos = match[3].trim();
             const birthDateStr = match[4]; // DD/MM/YYYY format
             const cui = match[5];
-            const genderRaw = match[6].toUpperCase();
+            const genderRaw = match[6] ? match[6].toUpperCase() : null;
 
             // Convertir fecha de DD/MM/YYYY a YYYY-MM-DD
             const [day, month, year] = birthDateStr.split('/');
             const birthDate = `${year}-${month}-${day}`;
 
-            // Normalizar género a minúsculas
-            const gender = genderRaw.includes('MASCULINO') ? 'masculino' : 'femenino';
+            // Normalizar género a minúsculas (null si el PDF no trae esa columna)
+            const gender = genderRaw ? (genderRaw.includes('MASCULINO') ? 'masculino' : 'femenino') : null;
 
             const apellidosParts = apellidosCompletos.split(/\s+/).filter(a => a.length > 0);
             const apellido1 = apellidosParts[0] || '';
