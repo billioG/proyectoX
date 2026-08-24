@@ -812,17 +812,17 @@
                     </div>
 
                     <div class="relative group mb-6">
-                        <div
+                        <div id="pdf-drop-hint"
                             class="absolute inset-0 bg-slate-50 dark:bg-slate-800/50 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl group-hover:border-rose-500/50 transition-colors flex flex-col items-center justify-center p-8 pointer-events-none">
-                            <i
+                            <i id="pdf-drop-icon"
                                 class="fas fa-cloud-upload-alt text-3xl text-slate-300 dark:text-slate-600 mb-2 group-hover:text-rose-500 transition-colors"></i>
-                            <span
-                                class="text-xs font-bold text-slate-400 group-hover:text-rose-500 uppercase tracking-widest">Arrastra
+                            <span id="pdf-drop-label"
+                                class="text-xs font-bold text-slate-400 group-hover:text-rose-500 uppercase tracking-widest text-center px-4">Arrastra
                                 tu PDF aquí o haz click</span>
                         </div>
                         <input type="file" id="pdf-file-input" accept="application/pdf"
                             class="w-full h-32 opacity-0 cursor-pointer"
-                            onchange="document.getElementById('btn-process-pdf').disabled = false; document.getElementById('btn-process-pdf').classList.remove('opacity-50', 'cursor-not-allowed')">
+                            onchange="window.handlePdfFileSelected(this.files[0])">
                     </div>
 
                     <button class="btn-primary-tw w-full h-12 opacity-50 cursor-not-allowed" id="btn-process-pdf"

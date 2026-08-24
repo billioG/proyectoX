@@ -502,6 +502,24 @@ function showConfirmationButton(students) {
     }
 }
 
+window.handlePdfFileSelected = function handlePdfFileSelected(file) {
+    const btn = document.getElementById('btn-process-pdf');
+    const icon = document.getElementById('pdf-drop-icon');
+    const label = document.getElementById('pdf-drop-label');
+
+    if (!file) {
+        if (btn) { btn.disabled = true; btn.classList.add('opacity-50', 'cursor-not-allowed'); }
+        return;
+    }
+
+    if (btn) { btn.disabled = false; btn.classList.remove('opacity-50', 'cursor-not-allowed'); }
+    if (icon) { icon.className = 'fas fa-file-circle-check text-3xl text-emerald-500 mb-2'; }
+    if (label) {
+        label.className = 'text-xs font-bold text-emerald-600 uppercase tracking-widest text-center px-4';
+        label.textContent = `✓ ${file.name}`;
+    }
+}
+
 window.cancelPDFImport = function cancelPDFImport() {
     window.isProcessingCanceled = true;
     window.extractedStudents = [];
@@ -513,6 +531,8 @@ window.cancelPDFImport = function cancelPDFImport() {
     const actionsContainer = document.getElementById('pdf-actions-container');
     const fileInput = document.getElementById('pdf-file-input');
     const btn = document.getElementById('btn-process-pdf');
+    const icon = document.getElementById('pdf-drop-icon');
+    const label = document.getElementById('pdf-drop-label');
 
     if (previewContainer) previewContainer.style.display = 'none';
     if (schoolPreview) schoolPreview.style.display = 'none';
@@ -523,6 +543,11 @@ window.cancelPDFImport = function cancelPDFImport() {
         btn.disabled = true;
         btn.style.opacity = '0.5';
         btn.innerHTML = '<i class="fas fa-file-pdf"></i> Procesar PDF';
+    }
+    if (icon) icon.className = 'fas fa-cloud-upload-alt text-3xl text-slate-300 dark:text-slate-600 mb-2 group-hover:text-rose-500 transition-colors';
+    if (label) {
+        label.className = 'text-xs font-bold text-slate-400 group-hover:text-rose-500 uppercase tracking-widest text-center px-4';
+        label.textContent = 'Arrastra tu PDF aquí o haz click';
     }
 
     window.showToast('❌ Importación cancelada', 'warning');
@@ -544,16 +569,6 @@ window.createUsersFromExtractedData = async function createUsersFromExtractedDat
 
     if (actionsContainer) actionsContainer.style.display = 'none';
     if (window.isProcessingCanceled) return;
-
-    // CLIENTE TEMPORAL: Esto es clave. Creamos una instancia de Supabase que NO guarda sesión
-    // para que el signUp de los alumnos no sobrescriba la sesión del administrador.
-    const tempSupabase = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY, {
-        auth: {
-            persistSession: false,
-            autoRefreshToken: false,
-            detectSessionInUrl: false
-        }
-    });
 
     if (window.extractedSchool) {
         statusText.textContent = 'Guardando establecimiento...';
@@ -578,90 +593,51 @@ window.createUsersFromExtractedData = async function createUsersFromExtractedDat
         console.error('Error lookup:', e);
     }
 
-    let successCount = 0;
-    let errorCount = 0;
-    let skippedCount = 0;
+    const toCreate = students.filter(s =>
+        !existingUsernames.has(s.username) && !existingEmails.has(s.email) && !(s.cui && existingCUIs.has(s.cui))
+    );
+    const skippedCount = students.length - toCreate.length;
 
     progressContainer.style.display = 'block';
+    progressBar.style.width = '30%';
+    statusText.innerHTML = `<strong>Creando ${toCreate.length} estudiantes en el servidor...</strong>`;
 
-    for (let i = 0; i < students.length; i++) {
-        if (window.isProcessingCanceled) break;
+    let successCount = 0;
+    let errorCount = 0;
+    let results = [];
 
-        const student = students[i];
-        const progress = ((i + 1) / students.length) * 100;
+    try {
+        // Se crea server-side (Admin API, sin límite de tasa) en vez de auth.signUp()
+        // público desde el cliente -- 200+ signUps directos chocaban contra el rate
+        // limit anti-spam de Supabase (429 Too Many Requests) casi de inmediato.
+        const { data: { session } } = await window._supabase.auth.getSession();
+        const res = await fetch(`${window.SUPABASE_URL}/functions/v1/admin-bulk-import-students`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session?.access_token || ''}`,
+            },
+            body: JSON.stringify({ students: toCreate }),
+        });
+        const body = await res.json();
+        if (!res.ok) throw new Error(body.error || 'Error en la importación');
 
-        progressBar.style.width = `${progress}%`;
-        progressBar.textContent = `${Math.round(progress)}%`;
+        results = body.results || [];
+        successCount = results.filter(r => r.status === 'created').length;
+        errorCount = results.filter(r => r.status === 'error').length;
 
-        statusText.innerHTML = `
-            <div style="margin-bottom: 8px;"><strong>Creando estudiantes...</strong> (${i + 1}/${students.length})</div>
-            <div style="font-size: 0.9rem; color: #64748b;">👤 <code>${student.username}</code> - ${student.fullName}</div>
-        `;
-
-        if (existingUsernames.has(student.username) || existingEmails.has(student.email) || (student.cui && existingCUIs.has(student.cui))) {
-            skippedCount++;
-            continue;
-        }
-
-        try {
-            // Usamos el cliente TEMPORAL para el signUp. 
-            // Al tener persistSession: false, NO tocará el localStorage ni cerrará tu sesión.
-            const { data: authData, error: authError } = await tempSupabase.auth.signUp({
-                email: student.email,
-                password: student.password,
-                options: {
-                    data: {
-                        full_name: student.fullName,
-                        role: 'estudiante',
-                        needs_password_change: true
-                    }
-                }
-            });
-
-            if (authError) {
-                if (authError.message.includes('already registered')) {
-                    skippedCount++;
-                    continue;
-                }
-                if (authError.status === 429) {
-                    statusText.innerHTML += `<div class="text-rose-500 font-bold mt-2 animate-pulse">⚠️ LÍMITE ALCANZADO. ESPERANDO 60S...</div>`;
-                    await new Promise(r => setTimeout(r, 60000));
-                    i--; continue;
-                }
-                throw authError;
-            }
-
-            if (!authData.user) throw new Error('Auth error');
-            await new Promise(r => setTimeout(r, 500));
-
-            const { error: dbError } = await window._supabase.from('students').insert({
-                id: authData.user.id,
-                full_name: student.fullName,
-                username: student.username,
-                email: student.email,
-                school_code: student.school_code,
-                grade: student.grade,
-                section: student.section,
-                cui: student.cui,
-                gender: student.gender || null,
-                birth_date: student.birth_date || null,
-                password_generated: student.password
-            });
-
-            if (dbError) throw dbError;
-            successCount++;
-
-            await new Promise(r => setTimeout(r, 2000));
-
-        } catch (err) {
-            console.error(`Error:`, err);
-            errorCount++;
-            await new Promise(r => setTimeout(r, 2000));
-        }
+    } catch (err) {
+        console.error('Error en importación masiva:', err);
+        window.showToast('❌ Error: ' + err.message, 'error');
+        errorCount = toCreate.length;
     }
 
     progressBar.style.background = successCount > 0 ? '#10b981' : '#f59e0b';
     progressBar.style.width = '100%';
+    const errorDetails = results.filter(r => r.status === 'error')
+        .slice(0, 10)
+        .map(r => `<div class="text-[0.7rem] text-rose-500">${window.sanitizeInput ? window.sanitizeInput(r.username) : r.username}: ${window.sanitizeInput ? window.sanitizeInput(r.message || '') : (r.message || '')}</div>`)
+        .join('');
     statusText.innerHTML = `
         <div class="text-center mb-6"><h3 class="text-xl font-black uppercase">Proceso Completado</h3></div>
         <div class="grid grid-cols-3 gap-4">
@@ -669,6 +645,7 @@ window.createUsersFromExtractedData = async function createUsersFromExtractedDat
             <div class="bg-amber-50 p-4 rounded-xl text-center"><div class="text-2xl font-black text-amber-500">${skippedCount}</div><div class="text-[0.6rem] uppercase tracking-tighter">Omitidos</div></div>
             <div class="bg-rose-50 p-4 rounded-xl text-center"><div class="text-2xl font-black text-rose-500">${errorCount}</div><div class="text-[0.6rem] uppercase tracking-tighter">Errores</div></div>
         </div>
+        ${errorDetails ? `<div class="mt-4 max-h-40 overflow-y-auto">${errorDetails}</div>` : ''}
     `;
 
     if (successCount > 0) window.showToast(`✅ ${successCount} estudiantes creados`, 'success');
