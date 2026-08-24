@@ -61,7 +61,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 4. Registrar Service Worker si aplica
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/service-worker.js')
+        navigator.serviceWorker.register('./service-worker.js')
             .then(r => console.log('✅ Service Worker:', r.scope))
             .catch(e => console.error('❌ Service Worker:', e));
     }
