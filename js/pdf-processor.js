@@ -84,6 +84,11 @@ window.processPDFFile = async function processPDFFile() {
         statusText.textContent = 'Extrayendo estudiantes...';
 
         window.extractedStudents = extractStudentsFromText(allText, window.extractedSchool);
+        if (window.extractedStudents.length === 0) {
+            console.warn('⚠️ 0 estudiantes extraídos. Texto crudo del PDF (primeros 3000 caracteres):');
+            console.warn(allText.slice(0, 3000));
+            window._debugPdfText = allText;
+        }
         window.extractedStudents = await ensureUniqueUsernames(window.extractedStudents);
 
         progressBar.style.width = '100%';
