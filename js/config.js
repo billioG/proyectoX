@@ -48,6 +48,11 @@ export const SCHEDULES = ['Matutina', 'Vespertina', 'Nocturna', 'Doble'];
 // Áreas
 export const AREAS = ['Rural', 'Urbana'];
 
+window.SCHOOL_SECTORS = SCHOOL_SECTORS;
+window.EDUCATION_LEVELS = EDUCATION_LEVELS;
+window.SCHEDULES = SCHEDULES;
+window.AREAS = AREAS;
+
 // Grados por nivel
 export const GRADES_BY_LEVEL = {
   'Primaria': ['1ro Primaria', '2do Primaria', '3ro Primaria', '4to Primaria', '5to Primaria', '6to Primaria'],
