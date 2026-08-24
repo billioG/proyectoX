@@ -34,6 +34,7 @@ window.userRole = AppState.userRole;
 window.userData = AppState.userData;
 window._supabase = _supabase;
 window.SUPABASE_URL = SUPABASE_URL;
+window.SUPABASE_ANON_KEY = SUPABASE_ANON_KEY;
 
 // Sectores de establecimientos
 export const SCHOOL_SECTORS = ['Oficial', 'Privado', 'Cooperativa', 'NUFED', 'Otro'];

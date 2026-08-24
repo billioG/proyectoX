@@ -547,7 +547,7 @@ window.createUsersFromExtractedData = async function createUsersFromExtractedDat
 
     // CLIENTE TEMPORAL: Esto es clave. Creamos una instancia de Supabase que NO guarda sesión
     // para que el signUp de los alumnos no sobrescriba la sesión del administrador.
-    const tempSupabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    const tempSupabase = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY, {
         auth: {
             persistSession: false,
             autoRefreshToken: false,
