@@ -17,24 +17,33 @@ export async function initAuth() {
   if (session) {
     await handleSuccessfulLogin(session.user);
   } else if (cachedUser && cachedData && cachedRole) {
-    // Si estamos offline y hay datos en cache, permitir entrada
-    console.log('🔌 Modo Offline: Cargando sesión desde caché');
+    // Si estamos offline y hay datos en cache, permitir entrada.
+    // PX_CACHED_ROLE viene de localStorage sin ninguna verificación
+    // criptográfica -- cualquiera puede escribirlo desde la consola. Sin
+    // sesión Supabase real no hay JWT, así que ninguna escritura a la base
+    // de datos va a pasar RLS de todas formas, pero por las dudas nunca
+    // se navega directo al panel admin solo por el rol cacheado: siempre
+    // aterriza en 'feed' (vista de solo lectura de datos ya propios) y se
+    // marca el modo para que la UI de escritura/admin quede deshabilitada
+    // hasta que exista una sesión real.
+    console.log('🔌 Modo Offline: Cargando sesión desde caché (solo lectura)');
     updateAppState('currentUser', JSON.parse(cachedUser));
     updateAppState('userData', JSON.parse(cachedData));
     updateAppState('userRole', cachedRole);
+    window.isOfflineCachedSession = true;
 
     document.getElementById('auth-container').style.display = 'none';
     document.getElementById('app-container').style.display = 'block';
 
     updateHeaderUI();
     setupNavigationUI();
-    nav(window.userRole === 'admin' ? 'admin-dashboard' : 'feed');
+    nav('feed');
 
     if (typeof window.initOnboarding === 'function') {
       window.initOnboarding();
     }
 
-    showToast('📶 Conectado en modo Offline', 'info');
+    showToast('📶 Conectado en modo Offline (solo lectura)', 'info');
   } else {
     showLoginScreen();
   }
@@ -121,34 +130,33 @@ export async function handleLogin() {
 
 export async function handleSuccessfulLogin(user) {
   updateAppState('currentUser', user);
-  // Rol prioritario desde metadatos
-  let role = user.user_metadata?.role || 'estudiante';
-  updateAppState('userRole', role);
-
-  // Sincronizar clases globales
-  document.documentElement.className = localStorage.getItem('theme') === 'dark' ? 'dark' : '';
-  document.body.className = `role-${role} bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300`;
 
   try {
-    let table = role === 'estudiante' ? 'students' : (role === 'admin' ? 'teachers' : 'students');
-    let { data, error: tableError } = await _supabase.from(table).select('*').eq('id', user.id).maybeSingle();
+    // El rol SIEMPRE se determina desde las tablas teachers/students (server-side,
+    // protegidas por RLS), NUNCA desde user_metadata: ese campo lo puede editar
+    // el propio usuario desde el navegador (auth.updateUser) y confiar en él acá
+    // permitía que cualquier docente se auto-asignara 'admin' en el cliente.
+    let role = 'estudiante';
+    let data = null;
 
-    // Auto-corrección: Si el metadato falla, buscar en la otra tabla
-    if (!data || tableError) {
-      const altTable = table === 'students' ? 'teachers' : 'students';
-      const { data: altData } = await _supabase.from(altTable).select('*').eq('id', user.id).maybeSingle();
-      if (altData) {
-        role = altTable === 'students' ? 'estudiante' : 'docente';
-        console.log(`🛡️ Auto-corrección de rol: ${window.userRole} -> ${role}`);
-        updateAppState('userRole', role);
-        updateAppState('userData', altData);
-        document.body.className = `role-${role} bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300`;
-      } else {
-        updateAppState('userData', data);
-      }
+    const { data: teacherRow } = await _supabase.from('teachers').select('*').eq('id', user.id).maybeSingle();
+    if (teacherRow) {
+      data = teacherRow;
+      role = teacherRow.role === 'admin' ? 'admin' : 'docente';
     } else {
-      updateAppState('userData', data);
+      const { data: studentRow } = await _supabase.from('students').select('*').eq('id', user.id).maybeSingle();
+      if (studentRow) {
+        data = studentRow;
+        role = 'estudiante';
+      }
     }
+
+    updateAppState('userRole', role);
+    updateAppState('userData', data);
+
+    // Sincronizar clases globales
+    document.documentElement.className = localStorage.getItem('theme') === 'dark' ? 'dark' : '';
+    document.body.className = `role-${role} bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300`;
 
     if (window.userData) {
       localStorage.setItem('PX_CACHED_USER', JSON.stringify(user));

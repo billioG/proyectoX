@@ -195,7 +195,7 @@ function displaySchoolPreview(school) {
                 </div>
                 <div class="sm:col-span-2">
                     <span class="text-[0.6rem] font-black uppercase text-slate-400 tracking-widest block mb-1">Nombre Oficial</span>
-                    <p class="text-sm font-bold text-slate-800 dark:text-white truncate" title="${sanitizeInput(school.name)}">${sanitizeInput(school.name)}</p>
+                    <p class="text-sm font-bold text-slate-800 dark:text-white truncate" title="${window.sanitizeAttr(school.name)}">${sanitizeInput(school.name)}</p>
                 </div>
                 <div>
                     <span class="text-[0.6rem] font-black uppercase text-slate-400 tracking-widest block mb-1">Departamento</span>

@@ -50,9 +50,9 @@ window.renderAdminPanel = function renderAdminPanel() {
 window.renderChallengeBanner = function renderChallengeBanner(activeChallenge, hasCompleted) {
   if (!activeChallenge) return '';
   return `
-    <div onclick="window.openChallengeEvidenceModal && window.openChallengeEvidenceModal('${activeChallenge.id}')" class="flex items-center gap-3 px-4 py-2 bg-amber-500/10 hover:bg-amber-500/20 rounded-xl border border-amber-500/20 animate-pulse cursor-pointer transition-all group/challenge relative" title="${activeChallenge.description}">
+    <div onclick="window.openChallengeEvidenceModal && window.openChallengeEvidenceModal('${activeChallenge.id}')" class="flex items-center gap-3 px-4 py-2 bg-amber-500/10 hover:bg-amber-500/20 rounded-xl border border-amber-500/20 animate-pulse cursor-pointer transition-all group/challenge relative" title="${window.sanitizeAttr(activeChallenge.description || '')}">
       <div class="w-3 h-3 rounded-full bg-amber-500 animate-ping"></div>
-      <span class="text-[0.8rem] font-semibold text-amber-600 uppercase tracking-widest">Reto Activo: ${activeChallenge.name}</span>
+      <span class="text-[0.8rem] font-semibold text-amber-600 uppercase tracking-widest">Reto Activo: ${window.sanitizeInput(activeChallenge.name || '')}</span>
       ${hasCompleted ? '<i class="fas fa-check-circle text-emerald-500 text-sm"></i>' : ''}
     </div>
   `;

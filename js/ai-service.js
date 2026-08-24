@@ -1,43 +1,25 @@
 /**
  * AI SERVICE - Integración con OpenAI para ProjectX
- * Nota: El API Key está hardcodeado a petición del usuario para esta fase.
+ * La llamada real pasa por la edge function `ai-proxy` -- la API key de
+ * OpenAI vive solo como secret server-side, nunca en el bundle del cliente.
  */
 
 const AIService = {
-    apiKey: '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',
-    model: 'gpt-4o-mini',
-
     async ask(prompt, context = '') {
         try {
-            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            const { data: { session } } = await window._supabase.auth.getSession();
+            const response = await fetch(`${window.SUPABASE_URL}/functions/v1/ai-proxy`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${this.apiKey}`
+                    'Authorization': `Bearer ${session?.access_token || ''}`
                 },
-                body: JSON.stringify({
-                    model: this.model,
-                    messages: [
-                        {
-                            role: 'system',
-                            content: `Eres "1Bot", la mascota robótica e inteligente de la plataforma educativa ProjectX. 
-                            Tu objetivo es motivar a estudiantes y docentes de robótica y tecnología. 
-                            Responde de forma entusiasta, breve y profesional. 
-                            Contexto actual del usuario: ${context}`
-                        },
-                        {
-                            role: 'user',
-                            content: prompt
-                        }
-                    ],
-                    max_tokens: 150,
-                    temperature: 0.7
-                })
+                body: JSON.stringify({ prompt, context })
             });
 
             const data = await response.json();
-            if (data.error) throw new Error(data.error.message);
-            return data.choices[0].message.content;
+            if (data.error) throw new Error(data.error);
+            return data.content;
         } catch (err) {
             console.error('AI Error:', err);
             return "Lo siento, mis circuitos están ocupados procesando datos. ¡Vuelve a intentarlo en un momento! 🤖⚡";

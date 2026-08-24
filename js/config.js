@@ -33,6 +33,7 @@ window.currentUser = AppState.currentUser;
 window.userRole = AppState.userRole;
 window.userData = AppState.userData;
 window._supabase = _supabase;
+window.SUPABASE_URL = SUPABASE_URL;
 
 // Sectores de establecimientos
 export const SCHOOL_SECTORS = ['Oficial', 'Privado', 'Cooperativa', 'NUFED', 'Otro'];

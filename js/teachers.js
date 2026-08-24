@@ -216,36 +216,22 @@ window.addTeacher = async function addTeacher() {
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creando...';
 
   try {
-    const { data: authData, error: authError } = await _supabase.auth.signUp({
-      email: email,
-      password: password,
-      options: {
-        data: {
-          full_name: name,
-          role: 'docente'
-        },
-        emailRedirectTo: undefined
-      }
+    // Se crea vía edge function (service role, gateada por is_admin() real) en
+    // vez de auth.signUp() desde el cliente -- signUp() puede reemplazar la
+    // sesión activa del admin por la del docente recién creado si la
+    // confirmación de email está desactivada, y además es un endpoint público
+    // que cualquiera podría llamar directamente para autoregistrarse como docente.
+    const { data: { session } } = await _supabase.auth.getSession();
+    const res = await fetch(`${window.SUPABASE_URL}/functions/v1/admin-create-teacher`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session?.access_token || ''}`,
+      },
+      body: JSON.stringify({ name, email, phone: phone || null, birth: birth || null, password, is1bot }),
     });
-
-    if (authError) throw authError;
-    if (!authData.user) throw new Error('No se pudo crear usuario');
-
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    const { error: dbError } = await _supabase
-      .from('teachers')
-      .insert({
-        id: authData.user.id,
-        full_name: name,
-        email: email,
-        phone: phone || null,
-        birth_date: birth || null,
-        role: 'docente',
-        is_1bot_team: is1bot
-      });
-
-    if (dbError) throw dbError;
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || 'Error creando docente');
 
     if (typeof showToast === 'function') showToast('✅ Docente creado correctamente', 'success');
     document.getElementById('add-teacher-modal').remove();
@@ -672,7 +658,7 @@ window.editTeacher = async function editTeacher(teacherId) {
         <div class="space-y-4">
           <div>
             <label class="text-[0.7rem] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Nombre Completo</label>
-            <input type="text" id="edit-teacher-name" class="input-field-tw" value="${sanitizeInput(teacher.full_name)}">
+            <input type="text" id="edit-teacher-name" class="input-field-tw" value="${window.sanitizeAttr(teacher.full_name)}">
           </div>
 
           <div>

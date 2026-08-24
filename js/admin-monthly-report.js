@@ -207,7 +207,7 @@ function renderMonthlyActivityUI(modal, waivers, startOfMonth) {
                                             ${formatDate(w.date)}
                                         </td>
                                         <td>
-                                            <div style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${sanitizeInput(w.reason)}">
+                                            <div style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${window.sanitizeAttr(w.reason)}">
                                                 ${sanitizeInput(w.reason)}
                                             </div>
                                         </td>

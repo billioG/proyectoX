@@ -159,13 +159,13 @@ window.editSchool = async function editSchool(schoolId) {
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
             <div class="col-span-full">
                 <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-2 block ml-1">Código del Establecimiento</label>
-                <input type="text" class="input-field-tw h-12 text-sm bg-slate-50 dark:bg-slate-800 cursor-not-allowed opacity-60" value="${sanitizeInput(school.code)}" readonly>
+                <input type="text" class="input-field-tw h-12 text-sm bg-slate-50 dark:bg-slate-800 cursor-not-allowed opacity-60" value="${window.sanitizeAttr(school.code)}" readonly>
                 <p class="text-[0.6rem] text-slate-400 mt-2 italic ml-1">* El código no es editable por integridad de datos.</p>
             </div>
 
             <div class="col-span-full">
                 <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-2 block ml-1">Nombre Oficial</label>
-                <input type="text" id="edit-school-name" class="input-field-tw h-12 text-sm" value="${sanitizeInput(school.name)}">
+                <input type="text" id="edit-school-name" class="input-field-tw h-12 text-sm" value="${window.sanitizeAttr(school.name)}">
             </div>
 
             <div class="col-span-full font-bold text-slate-800 dark:text-white py-2 border-b border-slate-50 dark:border-slate-800 uppercase text-[0.65rem] tracking-widest bg-primary/5 -mx-8 px-8 mb-2 mt-4">Localización y GPS (Antifraude)</div>
@@ -195,25 +195,25 @@ window.editSchool = async function editSchool(schoolId) {
 
             <div>
                 <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-2 block ml-1">Departamento</label>
-                <input type="text" id="edit-school-department" class="input-field-tw h-11 text-sm" value="${sanitizeInput(school.department)}">
+                <input type="text" id="edit-school-department" class="input-field-tw h-11 text-sm" value="${window.sanitizeAttr(school.department)}">
             </div>
             <div>
                 <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-2 block ml-1">Municipio</label>
-                <input type="text" id="edit-school-municipality" class="input-field-tw h-11 text-sm" value="${sanitizeInput(school.municipality)}">
+                <input type="text" id="edit-school-municipality" class="input-field-tw h-11 text-sm" value="${window.sanitizeAttr(school.municipality)}">
             </div>
 
             <div class="col-span-full">
                 <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-2 block ml-1">Dirección Completa</label>
-                <input type="text" id="edit-school-address" class="input-field-tw h-11 text-sm" value="${sanitizeInput(school.address || '')}">
+                <input type="text" id="edit-school-address" class="input-field-tw h-11 text-sm" value="${window.sanitizeAttr(school.address || '')}">
             </div>
 
             <div>
                 <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-2 block ml-1">Teléfono</label>
-                <input type="tel" id="edit-school-phone" class="input-field-tw h-11 text-sm" value="${sanitizeInput(school.phone || '')}">
+                <input type="tel" id="edit-school-phone" class="input-field-tw h-11 text-sm" value="${window.sanitizeAttr(school.phone || '')}">
             </div>
             <div>
                 <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-2 block ml-1">Email Institucional</label>
-                <input type="email" id="edit-school-email" class="input-field-tw h-11 text-sm" value="${sanitizeInput(school.email || '')}">
+                <input type="email" id="edit-school-email" class="input-field-tw h-11 text-sm" value="${window.sanitizeAttr(school.email || '')}">
             </div>
 
             <div class="col-span-full font-bold text-slate-800 dark:text-white py-2 border-b border-slate-50 dark:border-slate-800 uppercase text-[0.65rem] tracking-widest bg-primary/5 -mx-8 px-8 mb-2 mt-4">Categorización Educativa</div>

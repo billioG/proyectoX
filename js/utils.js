@@ -89,6 +89,13 @@ export function sanitizeInput(str) {
     return div.innerHTML;
 }
 
+// sanitizeInput() no escapa comillas (innerHTML de un text node no las
+// necesita) -- usar esta variante cuando el valor va dentro de un atributo
+// HTML entrecomillado (value="...", data-x="...") para evitar breakout.
+export function sanitizeAttr(str) {
+    return sanitizeInput(str).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 export function showToast(message, type = 'default') {
     let container = document.getElementById('toast-container');
     if (!container) {
@@ -254,6 +261,7 @@ window.formatDate = formatDate;
 window.formatDateTime = formatDateTime;
 window.debounce = debounce;
 window.sanitizeInput = sanitizeInput;
+window.sanitizeAttr = sanitizeAttr;
 window.showToast = showToast;
 window.getStatusBadge = getStatusBadge;
 window.fetchWithCache = fetchWithCache;

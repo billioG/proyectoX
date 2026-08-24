@@ -124,15 +124,15 @@ window.renderStudentsList = function renderStudentsList(container, students) {
             
             <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 pl-2 border-l-2 border-slate-100 dark:border-slate-800 ml-4">
               ${group.students.map(s => `
-                <div class="student-card bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 p-3 flex items-center gap-3 group relative overflow-hidden hover:border-primary/30 transition-all shadow-sm" 
-                     data-name="${s.full_name?.toLowerCase()}" 
-                     data-cui="${s.cui_last_4}"
-                     data-username="${s.username?.toLowerCase()}">
+                <div class="student-card bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 p-3 flex items-center gap-3 group relative overflow-hidden hover:border-primary/30 transition-all shadow-sm"
+                     data-name="${window.sanitizeAttr(s.full_name?.toLowerCase() || '')}"
+                     data-cui="${window.sanitizeAttr(s.cui_last_4 || '')}"
+                     data-username="${window.sanitizeAttr(s.username?.toLowerCase() || '')}">
                   <div class="w-10 h-10 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-500 group-hover:bg-primary group-hover:text-white transition-colors flex items-center justify-center font-bold text-sm shrink-0">
-                    ${(s.full_name || 'A')[0]}
+                    ${window.sanitizeInput((s.full_name || 'A')[0])}
                   </div>
                   <div class="min-w-0 flex-1">
-                    <h4 class="text-xs font-black text-slate-800 dark:text-white truncate uppercase tracking-tight">${s.full_name}</h4>
+                    <h4 class="text-xs font-black text-slate-800 dark:text-white truncate uppercase tracking-tight">${window.sanitizeInput(s.full_name || '')}</h4>
                     <div class="flex items-center gap-2 mt-1">
                         <span class="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[0.55rem] font-bold text-slate-500 uppercase tracking-widest">${s.grade} ${s.section}</span>
                         <span class="text-[0.6rem] font-mono text-slate-400">@${s.username || 'sin-usuario'}</span>
@@ -194,7 +194,7 @@ window.openAddStudentModal = async function openAddStudentModal(student = null) 
         
         <div>
           <label class="block text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Nombre Completo *</label>
-          <input type="text" id="student-name" value="${student?.full_name || ''}" required 
+          <input type="text" id="student-name" value="${window.sanitizeAttr(student?.full_name || '')}" required
                  class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary/20 transition-all"
                  oninput="window.generateStudentUsername(this.value)">
         </div>
