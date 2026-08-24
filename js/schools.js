@@ -109,6 +109,85 @@ window.renderSchoolsContent = function renderSchoolsContent(container, schools) 
     `;
 }
 
+window.openAddSchoolModal = function openAddSchoolModal() {
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-sm animate-fadeIn';
+
+  modal.innerHTML = `
+    <div class="glass-card w-full max-w-lg p-0 overflow-hidden shadow-2xl animate-slideUp">
+      <div class="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-white/50 dark:bg-slate-900/50 backdrop-blur-md sticky top-0 z-10">
+        <h2 class="text-xl font-bold text-slate-800 dark:text-white uppercase tracking-tighter"><i class="fas fa-school text-primary mr-2"></i> Nuevo Establecimiento</h2>
+        <button class="text-slate-400 hover:text-rose-500 font-bold text-2xl transition-colors" onclick="this.closest('.fixed').remove()">×</button>
+      </div>
+
+      <div class="p-8 max-h-[70vh] overflow-y-auto custom-scrollbar space-y-5">
+        <div>
+          <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-2 block ml-1">Código del Establecimiento *</label>
+          <input type="text" id="new-school-code" class="input-field-tw h-12 text-sm" placeholder="Ej: 01-01-0001-42">
+        </div>
+        <div>
+          <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-2 block ml-1">Nombre Oficial *</label>
+          <input type="text" id="new-school-name" class="input-field-tw h-12 text-sm">
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-2 block ml-1">Departamento *</label>
+            <input type="text" id="new-school-department" class="input-field-tw h-11 text-sm">
+          </div>
+          <div>
+            <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-2 block ml-1">Municipio *</label>
+            <input type="text" id="new-school-municipality" class="input-field-tw h-11 text-sm">
+          </div>
+        </div>
+        <p class="text-[0.6rem] text-slate-400 italic ml-1">El resto de los datos (GPS, sector, contacto, meta de proyectos) se completan editando el establecimiento luego de crearlo.</p>
+      </div>
+
+      <div class="p-8 bg-slate-50 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3">
+        <button class="btn-secondary-tw px-6 h-12 text-xs uppercase font-bold tracking-widest" onclick="this.closest('.fixed').remove()">CANCELAR</button>
+        <button class="btn-primary-tw px-10 h-12 text-xs uppercase font-bold tracking-widest shadow-xl shadow-primary/30" onclick="window.createSchool()" id="btn-create-school">
+          <i class="fas fa-plus mr-2"></i> CREAR
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+}
+
+window.createSchool = async function createSchool() {
+  const code = document.getElementById('new-school-code')?.value.trim();
+  const name = document.getElementById('new-school-name')?.value.trim();
+  const department = document.getElementById('new-school-department')?.value.trim();
+  const municipality = document.getElementById('new-school-municipality')?.value.trim();
+  const btn = document.getElementById('btn-create-school');
+
+  if (!code || !name || !department || !municipality) {
+    return window.showToast('❌ Completa código, nombre, departamento y municipio', 'error');
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creando...';
+
+  try {
+    const { error } = await window._supabase
+      .from('schools')
+      .insert({ code, name, department, municipality });
+
+    if (error) throw error;
+
+    window.showToast('✅ Establecimiento creado correctamente', 'success');
+    document.querySelector('.fixed.z-\\[200\\]')?.remove();
+    if (typeof window.loadSchools === 'function') await window.loadSchools();
+
+  } catch (err) {
+    console.error('Error creando establecimiento:', err);
+    window.showToast('❌ Error: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-plus"></i> CREAR';
+  }
+}
+
 window.filterSchools = function filterSchools() {
   const searchTerm = (document.getElementById('search-schools')?.value || '').toLowerCase().trim();
   const cards = document.querySelectorAll('.school-card');
