@@ -70,6 +70,30 @@ export async function initAuth() {
 }
 window.initAuth = initAuth;
 
+window.checkLoginPasswordMode = async function checkLoginPasswordMode() {
+  const userEl = document.getElementById('login-username');
+  const wrapEl = document.getElementById('login-password-wrap');
+  const hintEl = document.getElementById('login-passwordless-hint');
+  const username = userEl?.value.trim();
+  if (!username || username.includes('@')) {
+    // Email -> siempre requiere contraseña (docentes/admin), no aplica el modo clase.
+    if (wrapEl) wrapEl.classList.remove('hidden');
+    if (hintEl) hintEl.classList.add('hidden');
+    return;
+  }
+
+  try {
+    const { data: requiresPassword } = await _supabase.rpc('resolve_login_mode_by_username', { p_username: username });
+    const needsPassword = requiresPassword !== false;
+    if (wrapEl) wrapEl.classList.toggle('hidden', !needsPassword);
+    if (hintEl) hintEl.classList.toggle('hidden', needsPassword);
+  } catch (e) {
+    // Ante cualquier duda, mostrar el campo -- nunca ocultarlo por error.
+    if (wrapEl) wrapEl.classList.remove('hidden');
+    if (hintEl) hintEl.classList.add('hidden');
+  }
+}
+
 window.toggleLoginPasswordVisibility = function toggleLoginPasswordVisibility() {
   const input = document.getElementById('login-password');
   const icon = document.getElementById('login-password-eye');
