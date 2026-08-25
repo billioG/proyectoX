@@ -233,11 +233,18 @@ window.openCreateLessonModal = async function openCreateLessonModal(editLessonId
         <div>
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Tipo</label>
           <select id="lesson-type" class="input-field-tw h-11 text-sm" onchange="window.toggleLessonSourceField()">
-            <option value="video">Video (YouTube o link directo)</option>
-            <option value="pdf">PDF (link directo)</option>
-            <option value="image">Imagen (link directo)</option>
+            <option value="video">Video</option>
+            <option value="pdf">PDF</option>
+            <option value="image">Imagen</option>
             <option value="scorm">SCORM (.zip -- con nota automática)</option>
             <option value="h5p">H5P (.zip -- con nota automática)</option>
+          </select>
+        </div>
+        <div id="lesson-source-mode-wrap">
+          <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Origen</label>
+          <select id="lesson-source-mode" class="input-field-tw h-11 text-sm" onchange="window.toggleLessonSourceField()">
+            <option value="url">Link (YouTube, Drive con acceso público, etc.)</option>
+            <option value="file">Subir archivo (funciona offline, no depende de un link externo)</option>
           </select>
         </div>`}
         <div id="lesson-source-url-wrap" class="${isFileType ? 'hidden' : ''}">
@@ -245,6 +252,11 @@ window.openCreateLessonModal = async function openCreateLessonModal(editLessonId
           <input type="text" id="lesson-url" placeholder="https://..." class="input-field-tw h-11 text-sm" value="${editing && !isFileType ? window.sanitizeAttr(editing.content_url) : ''}">
         </div>
         ${editing && isFileType ? '<p class="text-[0.65rem] text-slate-400"><i class="fas fa-circle-info"></i> El archivo del paquete no se puede reemplazar acá -- borrá la lección y creá una nueva si necesitás subir otro paquete.</p>' : `
+        <div id="lesson-source-singlefile-wrap" class="hidden">
+          <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Archivo *</label>
+          <input type="file" id="lesson-single-file" class="input-field-tw text-sm py-2.5">
+          <p id="lesson-single-upload-progress" class="text-[0.65rem] text-slate-400 mt-2 hidden"></p>
+        </div>
         <div id="lesson-source-file-wrap" class="hidden">
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Archivo .zip *</label>
           <input type="file" id="lesson-file" class="input-field-tw text-sm py-2.5">
@@ -264,11 +276,33 @@ window.openCreateLessonModal = async function openCreateLessonModal(editLessonId
   window._editingLessonIsFileType = isFileType;
 }
 
+const SINGLEFILE_ACCEPT_BY_TYPE = { video: 'video/*', pdf: 'application/pdf', image: 'image/*' };
+
 window.toggleLessonSourceField = function toggleLessonSourceField() {
   const type = document.getElementById('lesson-type')?.value;
-  const isFile = LESSON_TYPES_WITH_GRADE.has(type);
-  document.getElementById('lesson-source-url-wrap')?.classList.toggle('hidden', isFile);
-  document.getElementById('lesson-source-file-wrap')?.classList.toggle('hidden', !isFile);
+  const isZipType = LESSON_TYPES_WITH_GRADE.has(type);
+  const sourceMode = document.getElementById('lesson-source-mode')?.value || 'url';
+
+  document.getElementById('lesson-source-mode-wrap')?.classList.toggle('hidden', isZipType);
+  document.getElementById('lesson-source-file-wrap')?.classList.toggle('hidden', !isZipType);
+
+  const showUrl = !isZipType && sourceMode === 'url';
+  const showSingleFile = !isZipType && sourceMode === 'file';
+  document.getElementById('lesson-source-url-wrap')?.classList.toggle('hidden', !showUrl);
+  document.getElementById('lesson-source-singlefile-wrap')?.classList.toggle('hidden', !showSingleFile);
+
+  const singleFileInput = document.getElementById('lesson-single-file');
+  if (singleFileInput) singleFileInput.accept = SINGLEFILE_ACCEPT_BY_TYPE[type] || '';
+}
+
+async function uploadSingleLessonFile(file, lessonId) {
+  const contentType = window.getFileMimeType(file.name);
+  const blob = new Blob([file], { type: contentType });
+  const path = `lessons/${lessonId}/${file.name}`;
+  const { error } = await window._supabase.storage.from(LESSON_STORAGE_BUCKET).upload(path, blob, { upsert: true, contentType });
+  if (error) throw new Error(`Error subiendo ${file.name}: ${error.message}`);
+  const { data: { publicUrl } } = window._supabase.storage.from(LESSON_STORAGE_BUCKET).getPublicUrl(path);
+  return { publicUrl, contentPath: `lessons/${lessonId}` };
 }
 
 window.saveLesson = async function saveLesson(editingId) {
@@ -277,13 +311,17 @@ window.saveLesson = async function saveLesson(editingId) {
   const description = document.getElementById('lesson-description')?.value.trim();
   let content_type = document.getElementById('lesson-type')?.value;
   const isFileType = LESSON_TYPES_WITH_GRADE.has(content_type);
+  const sourceMode = document.getElementById('lesson-source-mode')?.value || 'url';
+  const isSingleFileUpload = !isFileType && sourceMode === 'file';
   const content_url = document.getElementById('lesson-url')?.value.trim();
   const file = document.getElementById('lesson-file')?.files?.[0];
+  const singleFile = document.getElementById('lesson-single-file')?.files?.[0];
   const btn = document.getElementById('btn-save-lesson');
   const progressEl = document.getElementById('lesson-upload-progress');
 
   if (!title) return window.showToast('<i class="fas fa-circle-xmark"></i> Ponele un título', 'error');
-  if (!isFileType && !content_url) return window.showToast('<i class="fas fa-circle-xmark"></i> Completa la URL', 'error');
+  if (!isFileType && !isSingleFileUpload && !content_url) return window.showToast('<i class="fas fa-circle-xmark"></i> Completa la URL', 'error');
+  if (isSingleFileUpload && !singleFile) return window.showToast('<i class="fas fa-circle-xmark"></i> Elegí un archivo', 'error');
   const classOption = window._lessonClassOptions?.[classIndex];
   if (!classOption) return window.showToast('<i class="fas fa-circle-xmark"></i> Elegí una clase', 'error');
 
@@ -320,7 +358,12 @@ window.saveLesson = async function saveLesson(editingId) {
     let finalUrl = content_url;
     let contentPath = null;
 
-    if (isFileType) {
+    if (isSingleFileUpload) {
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Subiendo archivo...';
+      const uploaded = await uploadSingleLessonFile(singleFile, lessonId);
+      finalUrl = uploaded.publicUrl;
+      contentPath = uploaded.contentPath;
+    } else if (isFileType) {
       if (progressEl) progressEl.classList.remove('hidden');
       contentPath = `lessons/${lessonId}`;
       const uploaded = await window.extractAndUploadPackage(file, contentPath, (msg) => {
