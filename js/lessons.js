@@ -212,6 +212,21 @@ window.saveLesson = async function saveLesson() {
   }
 }
 
+const MIME_BY_EXT = {
+  html: 'text/html', htm: 'text/html', js: 'application/javascript', mjs: 'application/javascript',
+  css: 'text/css', json: 'application/json', xml: 'application/xml',
+  png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', svg: 'image/svg+xml', webp: 'image/webp',
+  mp3: 'audio/mpeg', ogg: 'audio/ogg', wav: 'audio/wav',
+  mp4: 'video/mp4', webm: 'video/webm',
+  woff: 'font/woff', woff2: 'font/woff2', ttf: 'font/ttf', otf: 'font/otf', eot: 'application/vnd.ms-fontobject',
+  pdf: 'application/pdf', txt: 'text/plain',
+};
+
+window.getFileMimeType = function getFileMimeType(filename) {
+  const ext = filename.split('.').pop().toLowerCase();
+  return MIME_BY_EXT[ext] || 'application/octet-stream';
+}
+
 // Descomprime un .zip en el navegador (JSZip) y sube cada archivo al
 // bucket de Storage bajo basePath. Devuelve la URL pública de la carpeta
 // base y, si existe un imsmanifest.xml (SCORM), la URL del archivo de
@@ -227,7 +242,11 @@ window.extractAndUploadPackage = async function extractAndUploadPackage(file, ba
   for (const entry of entries) {
     const blob = await entry.async('blob');
     const path = `${basePath}/${entry.name}`;
-    const { error } = await _supabase.storage.from(LESSON_STORAGE_BUCKET).upload(path, blob, { upsert: true });
+    // JSZip no le pone tipo MIME al blob -- sin esto, Storage lo sirve
+    // como application/octet-stream y el navegador nunca ejecuta el
+    // HTML/JS, solo lo muestra como texto crudo.
+    const contentType = window.getFileMimeType(entry.name);
+    const { error } = await _supabase.storage.from(LESSON_STORAGE_BUCKET).upload(path, blob, { upsert: true, contentType });
     if (error) throw new Error(`Error subiendo ${entry.name}: ${error.message}`);
     uploaded++;
     if (onProgress) onProgress(`Subiendo archivos... (${uploaded}/${entries.length})`);
