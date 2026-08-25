@@ -166,6 +166,8 @@ window.sendPasswordResetEmail = async function sendPasswordResetEmail() {
   }
 }
 
+window.openChangePasswordModal = openSetNewPasswordModal;
+
 function openSetNewPasswordModal() {
   if (document.getElementById('set-new-password-modal')) return;
   const modal = document.createElement('div');
