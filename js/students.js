@@ -328,7 +328,7 @@ window.renderStudentsList = function renderStudentsList(container, students) {
               ${group.students.map(s => `
                 <div class="student-card bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 p-3 flex items-center gap-3 group relative overflow-hidden hover:border-primary/30 transition-all shadow-sm"
                      data-name="${window.sanitizeAttr(s.full_name?.toLowerCase() || '')}"
-                     data-cui="${window.sanitizeAttr(s.cui_last_4 || '')}"
+                     data-cui="${window.sanitizeAttr(s.cui || '')}"
                      data-username="${window.sanitizeAttr(s.username?.toLowerCase() || '')}">
                   ${window.userRole === 'admin' ? `
                     <input type="checkbox" class="student-select-checkbox w-4 h-4 shrink-0" value="${window.sanitizeAttr(s.id)}" onchange="window.updateBulkDeleteBar()">
@@ -419,8 +419,8 @@ window.openAddStudentModal = async function openAddStudentModal(student = null) 
             </select>
           </div>
           <div>
-            <label class="block text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-1.5">DPI / CUI (4 dígitos) *</label>
-            <input type="text" id="student-cui" maxlength="4" placeholder="Ej: 1234" value="${student?.cui_last_4 || ''}" required
+            <label class="block text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-1.5">CUI (13 dígitos) *</label>
+            <input type="text" id="student-cui" maxlength="13" placeholder="Ej: 1234567890101" value="${student?.cui || ''}" required
                    class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary/20 transition-all">
           </div>
         </div>
@@ -479,11 +479,9 @@ window.submitStudent = async function submitStudent(e) {
   const studentData = {
     full_name: document.getElementById('student-name').value,
     school_code: document.getElementById('student-school').value,
-    cui_last_4: document.getElementById('student-cui').value,
-    level: document.getElementById('student-level').value,
+    cui: document.getElementById('student-cui').value,
     grade: document.getElementById('student-grade').value,
     section: document.getElementById('student-section').value,
-    is_active: true
   };
 
   try {

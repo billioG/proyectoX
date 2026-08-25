@@ -63,6 +63,9 @@ export const GRADES_BY_LEVEL = {
 // Secciones disponibles
 export const SECTIONS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
+window.GRADES_BY_LEVEL = GRADES_BY_LEVEL;
+window.SECTIONS = SECTIONS;
+
 // Roles de grupo
 export const GROUP_ROLES = [
   { value: 'planner', label: 'Planner (Planificador)' },
