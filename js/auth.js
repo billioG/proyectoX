@@ -7,6 +7,45 @@ import { MOTIVATIONAL_QUOTES } from './data/quotes.js';
  */
 
 export async function initAuth() {
+  // El link de "recuperar contraseña" también autentica al usuario (así
+  // funciona Supabase Auth) -- si no distinguimos este caso, getSession()
+  // de abajo ve una sesión válida y entra derecho a la app, sin nunca
+  // pedir la contraseña nueva. Se detecta por el ?type=recovery/#type=recovery
+  // que Supabase agrega al redirectTo, y en ese caso no se hace login normal:
+  // se espera al evento PASSWORD_RECOVERY para abrir el modal de nueva contraseña.
+  const isRecoveryLink = window.location.hash.includes('type=recovery') || window.location.search.includes('type=recovery');
+
+  // El listener se registra ANTES que cualquier otra cosa para no perderse
+  // el evento PASSWORD_RECOVERY si ya se dispara durante el getSession() de abajo.
+  _supabase.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_OUT') {
+      localStorage.removeItem('PX_CACHED_USER');
+      localStorage.removeItem('PX_CACHED_USER_DATA');
+      localStorage.removeItem('PX_CACHED_ROLE');
+      showLoginScreen();
+    }
+    if (event === 'PASSWORD_RECOVERY') {
+      openSetNewPasswordModal();
+      return;
+    }
+    if (event === 'SIGNED_IN' && session && !isRecoveryLink) {
+      await handleSuccessfulLogin(session.user);
+    }
+  });
+
+  if (isRecoveryLink) {
+    // No depende de que el evento PASSWORD_RECOVERY llegue a tiempo (puede
+    // dispararse antes de que este listener quede armado) -- ya sabemos por
+    // la URL que es un link de recuperación, así que se abre directo.
+    showLoginScreen();
+    document.getElementById('btn-login')?.addEventListener('click', handleLogin);
+    ['login-username', 'login-password'].forEach(id => {
+      document.getElementById(id)?.addEventListener('keypress', e => { if (e.key === 'Enter') handleLogin(); });
+    });
+    openSetNewPasswordModal();
+    return;
+  }
+
   // Intentar recuperar sesión offline primero
   const cachedUser = localStorage.getItem('PX_CACHED_USER');
   const cachedData = localStorage.getItem('PX_CACHED_USER_DATA');
@@ -51,21 +90,6 @@ export async function initAuth() {
   document.getElementById('btn-login')?.addEventListener('click', handleLogin);
   ['login-username', 'login-password'].forEach(id => {
     document.getElementById(id)?.addEventListener('keypress', e => { if (e.key === 'Enter') handleLogin(); });
-  });
-
-  _supabase.auth.onAuthStateChange(async (event, session) => {
-    if (event === 'SIGNED_OUT') {
-      localStorage.removeItem('PX_CACHED_USER');
-      localStorage.removeItem('PX_CACHED_USER_DATA');
-      localStorage.removeItem('PX_CACHED_ROLE');
-      showLoginScreen();
-    }
-    if (event === 'SIGNED_IN' && session) {
-      await handleSuccessfulLogin(session.user);
-    }
-    if (event === 'PASSWORD_RECOVERY') {
-      openSetNewPasswordModal();
-    }
   });
 }
 window.initAuth = initAuth;
