@@ -75,6 +75,9 @@ window.renderProjectCard = function renderProjectCard(p) {
   const isOwner = p.user_id === currentUser?.id;
   const isGroupMember = p.groups?.group_members?.some(m => m.student_id === currentUser?.id);
   const canSeeScore = isOwner || isGroupMember || userRole === 'docente' || userRole === 'admin';
+  // El feedback del docente es privado -- solo lo ve quien subió el
+  // proyecto o su equipo, ni siquiera otros docentes/admin navegando el feed.
+  const canSeeFeedback = isOwner || isGroupMember;
 
   return `
     <div class="project-card group bg-white dark:bg-slate-900 rounded-2xl overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col border border-slate-100 dark:border-slate-800" data-title="${(p.title || '').toLowerCase()}" data-school="${p.students?.schools?.name || ''}">
@@ -136,7 +139,7 @@ window.renderProjectCard = function renderProjectCard(p) {
           ${sanitizeInput(p.description || 'Este proyecto tecnológico aún no tiene una descripción detallada.')}
         </p>
 
-        ${canSeeScore && feedback ? `
+        ${canSeeFeedback && feedback ? `
           <div class="mb-3 p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/30 border-l-4 border-indigo-400">
             <div class="text-[0.55rem] font-black uppercase text-indigo-500 tracking-widest mb-1"><i class="fas fa-comment-dots"></i> Feedback del docente</div>
             <p class="text-[0.75rem] text-slate-600 dark:text-slate-300 italic line-clamp-3">"${sanitizeInput(feedback)}"</p>

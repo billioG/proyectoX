@@ -44,6 +44,9 @@ window.viewProjectDetails = async function viewProjectDetails(projectId) {
     const isTeacherOrAdmin = userRole === 'docente' || userRole === 'admin';
     const isGroupMember = project.groups?.group_members?.some(m => m.student_id === currentUser?.id);
     const canSeeFullInfo = isOwner || isGroupMember || isTeacherOrAdmin;
+    // El feedback escrito del docente es privado -- solo el equipo que
+    // subió el proyecto lo ve, ni otros docentes/admin navegando proyectos ajenos.
+    const canSeeFeedback = isOwner || isGroupMember;
 
     const modal = document.createElement('div');
     modal.className = 'fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-300';
@@ -124,7 +127,7 @@ window.viewProjectDetails = async function viewProjectDetails(projectId) {
               <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
                 ${criteriaHtml}
               </div>
-              ${ev?.feedback ? `
+              ${canSeeFeedback && ev?.feedback ? `
                 <div class="mt-8 bg-amber-50 dark:bg-amber-900/20 p-6 rounded-3xl border-l-4 border-amber-500">
                   <h5 class="text-xs font-bold uppercase text-amber-600 dark:text-amber-400 mb-2">Comentarios del Revisor</h5>
                   <p class="text-amber-900 dark:text-amber-200 italic leading-relaxed">"${sanitizeInput(ev.feedback)}"</p>
