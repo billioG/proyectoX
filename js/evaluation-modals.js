@@ -46,14 +46,15 @@ window.openEvaluationModal = async function openEvaluationModal(projectId) {
     modal.id = 'evaluation-modal';
 
     const criteria = [
-        { id: 'creativity', label: '<i class="fas fa-lightbulb"></i> Creatividad e Innovación', val: existingEval?.creativity_score || 0 },
-        { id: 'clarity', label: '<i class="fas fa-bullseye"></i> Claridad de Presentación', val: existingEval?.clarity_score || 0 },
-        { id: 'functionality', label: '<i class="fas fa-gear"></i>️ Funcionalidad Técnica', val: existingEval?.functionality_score || 0 },
-        { id: 'teamwork', label: '<i class="fas fa-users"></i> Trabajo en Equipo', val: existingEval?.teamwork_score || 0 },
-        { id: 'social_impact', label: '<i class="fas fa-earth-americas"></i> Impacto Social', val: existingEval?.social_impact_score || 0 }
+        { id: 'creativity', icon: 'fa-lightbulb', text: 'Creatividad e Innovación', val: existingEval?.creativity_score || 0 },
+        { id: 'clarity', icon: 'fa-bullseye', text: 'Claridad de Presentación', val: existingEval?.clarity_score || 0 },
+        { id: 'functionality', icon: 'fa-gear', text: 'Funcionalidad Técnica', val: existingEval?.functionality_score || 0 },
+        { id: 'teamwork', icon: 'fa-users', text: 'Trabajo en Equipo', val: existingEval?.teamwork_score || 0 },
+        { id: 'social_impact', icon: 'fa-earth-americas', text: 'Impacto Social', val: existingEval?.social_impact_score || 0 }
     ];
 
     modal.innerHTML = `
+      <button onclick="window.closeEvaluationModal()" class="fixed top-6 right-6 z-[110] w-10 h-10 rounded-full bg-white dark:bg-slate-800 shadow-xl flex items-center justify-center text-slate-400 hover:text-rose-500 transition-all font-bold text-2xl">×</button>
       <div class="glass-card w-full max-w-4xl p-0 animate-slideUp my-8 bg-white dark:bg-slate-900 border-none shadow-2xl overflow-hidden">
           <div class="flex flex-col h-full">
               <!-- Top Part: Project View -->
@@ -114,13 +115,13 @@ window.openEvaluationModal = async function openEvaluationModal(projectId) {
                       ${criteria.map(c => `
                           <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
                               <label class="flex justify-between items-center mb-2 px-1">
-                                  <span class="text-[0.6rem] font-black uppercase text-slate-400 tracking-widest">${c.label.split(' ')[0]}</span>
+                                  <span class="text-[0.6rem] font-black uppercase text-slate-400 tracking-widest"><i class="fas ${c.icon}"></i></span>
                                   <span class="text-[0.55rem] font-bold text-primary bg-primary/5 px-2 py-1 rounded-lg">20</span>
                               </label>
-                              <input type="number" id="${c.id}_score" min="0" max="20" value="${c.val}" 
+                              <input type="number" id="${c.id}_score" min="0" max="20" value="${c.val}"
                                      class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl h-11 text-lg font-black text-center text-primary focus:ring-2 focus:ring-primary/20 transition-all"
                                      onchange="window.updateEvaluationTotal()">
-                               <div class="text-[0.5rem] text-center mt-1 text-slate-400 font-bold uppercase">${c.label.split(' ').slice(1).join(' ')}</div>
+                               <div class="text-[0.5rem] text-center mt-1 text-slate-400 font-bold uppercase">${c.text}</div>
                           </div>
                       `).join('')}
                   </div>

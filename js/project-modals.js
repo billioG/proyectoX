@@ -198,8 +198,19 @@ window.uploadProject = async function uploadProject() {
   const _syncManager = window._syncManager;
   const nav = window.nav;
 
+  const MIN_TITLE_LENGTH = 5;
+  const MIN_DESCRIPTION_LENGTH = 40;
+
   if (!title || !description || !videoFile) {
-    if (typeof showToast === 'function') showToast('<i class="fas fa-circle-xmark"></i> Completa los campos', 'error');
+    if (typeof showToast === 'function') showToast('<i class="fas fa-circle-xmark"></i> Completa todos los campos', 'error');
+    return;
+  }
+  if (title.length < MIN_TITLE_LENGTH) {
+    if (typeof showToast === 'function') showToast(`<i class="fas fa-circle-xmark"></i> El título es muy corto (mínimo ${MIN_TITLE_LENGTH} caracteres)`, 'error');
+    return;
+  }
+  if (description.length < MIN_DESCRIPTION_LENGTH) {
+    if (typeof showToast === 'function') showToast(`<i class="fas fa-circle-xmark"></i> La descripción es muy corta -- explica bien tu proyecto (mínimo ${MIN_DESCRIPTION_LENGTH} caracteres, llevas ${description.length})`, 'error');
     return;
   }
 

@@ -27,6 +27,15 @@
     <meta name="apple-mobile-web-app-title" content="ProjectX">
 
 
+    <!-- Silenciar console.log/info/debug en producción (activar con localStorage.PX_DEBUG='true').
+         Va antes de todo lo demás porque los console.log de cada módulo corren
+         al importarse, antes de que cualquier script propio pueda interceptarlos. -->
+    <script>
+        if (localStorage.getItem('PX_DEBUG') !== 'true') {
+            console.log = console.info = console.debug = function () {};
+        }
+    </script>
+
     <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
