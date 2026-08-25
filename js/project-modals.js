@@ -99,37 +99,40 @@ window.viewProjectDetails = async function viewProjectDetails(projectId) {
             <p class="text-slate-700 dark:text-slate-300 leading-relaxed">${sanitizeInput(project.description)}</p>
           </div>
 
-          ${canSeeFullInfo && project.score ? `
-            <div class="border-t border-slate-200 dark:border-slate-800 pt-8 mt-4">
-              <h4 class="text-xl font-bold text-slate-800 dark:text-white mb-6 flex items-center gap-3">
-                  <i class="fas fa-chart-bar text-primary"></i> Desglose de Evaluación
-              </h4>
-              <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-                ${(() => {
+          ${canSeeFullInfo && project.score ? (() => {
+          // PostgREST embebe la relación como objeto (no array) por el
+          // UNIQUE constraint en evaluations.project_id.
           const ev = Array.isArray(project.evaluations) ? project.evaluations[0] : project.evaluations;
-          return [
-            { l: 'Creatividad', v: ev?.creativity_score, i: '<i class="fas fa-lightbulb"></i>' },
-            { l: 'Claridad', v: ev?.clarity_score, i: '<i class="fas fa-bullseye"></i>' },
-            { l: 'Función', v: ev?.functionality_score, i: '<i class="fas fa-gear"></i>️' },
-            { l: 'Equipo', v: ev?.teamwork_score, i: '<i class="fas fa-users"></i>' },
-            { l: 'Impacto', v: ev?.social_impact_score, i: '<i class="fas fa-earth-americas"></i>' }
+          const criteriaHtml = [
+            { l: 'Creatividad', v: ev?.creativity_score, i: '<i class="fas fa-lightbulb"></i>', d: 'Qué tan original e innovadora es la idea del proyecto.' },
+            { l: 'Claridad', v: ev?.clarity_score, i: '<i class="fas fa-bullseye"></i>', d: 'Qué tan bien se explica y se entiende el proyecto.' },
+            { l: 'Función', v: ev?.functionality_score, i: '<i class="fas fa-gear"></i>️', d: 'Qué tan bien funciona técnicamente lo que construyeron.' },
+            { l: 'Equipo', v: ev?.teamwork_score, i: '<i class="fas fa-users"></i>', d: 'Qué tan bien se nota la colaboración entre los integrantes.' },
+            { l: 'Impacto', v: ev?.social_impact_score, i: '<i class="fas fa-earth-americas"></i>', d: 'Qué tanto beneficia o resuelve un problema real de la comunidad.' }
           ].map(c => `
-                    <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm text-center transform hover:scale-105 transition-all">
+                    <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm text-center transform hover:scale-105 transition-all cursor-help" title="${window.sanitizeAttr ? window.sanitizeAttr(c.d) : c.d}">
                         <div class="text-2xl mb-2">${c.i}</div>
                         <div class="text-[0.6rem] font-bold uppercase text-slate-400 mb-1">${c.l}</div>
                         <div class="text-xl font-bold text-primary">${c.v !== undefined ? c.v : 0}<span class="text-[0.7rem] opacity-50 ml-0.5">/20</span></div>
                     </div>
                   `).join('');
-        })()}
+          return `
+            <div class="border-t border-slate-200 dark:border-slate-800 pt-8 mt-4">
+              <h4 class="text-xl font-bold text-slate-800 dark:text-white mb-6 flex items-center gap-3">
+                  <i class="fas fa-chart-bar text-primary"></i> Desglose de Evaluación
+              </h4>
+              <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+                ${criteriaHtml}
               </div>
-              ${project.evaluations?.[0]?.feedback ? `
+              ${ev?.feedback ? `
                 <div class="mt-8 bg-amber-50 dark:bg-amber-900/20 p-6 rounded-3xl border-l-4 border-amber-500">
                   <h5 class="text-xs font-bold uppercase text-amber-600 dark:text-amber-400 mb-2">Comentarios del Revisor</h5>
-                  <p class="text-amber-900 dark:text-amber-200 italic leading-relaxed">"${sanitizeInput(project.evaluations[0].feedback)}"</p>
+                  <p class="text-amber-900 dark:text-amber-200 italic leading-relaxed">"${sanitizeInput(ev.feedback)}"</p>
                 </div>
               ` : ''}
             </div>
-          ` : (canSeeFullInfo ? `
+          `;
+        })() : (canSeeFullInfo ? `
             <div class="bg-slate-100 dark:bg-slate-800 p-8 rounded-3xl text-center border-2 border-dashed border-slate-200 dark:border-slate-700">
                 <div class="w-16 h-16 bg-slate-200 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4">
                     <i class="fas fa-clock text-2xl text-slate-400"></i>

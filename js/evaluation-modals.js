@@ -46,11 +46,11 @@ window.openEvaluationModal = async function openEvaluationModal(projectId) {
     modal.id = 'evaluation-modal';
 
     const criteria = [
-        { id: 'creativity', icon: 'fa-lightbulb', text: 'Creatividad e Innovación', val: existingEval?.creativity_score || 0 },
-        { id: 'clarity', icon: 'fa-bullseye', text: 'Claridad de Presentación', val: existingEval?.clarity_score || 0 },
-        { id: 'functionality', icon: 'fa-gear', text: 'Funcionalidad Técnica', val: existingEval?.functionality_score || 0 },
-        { id: 'teamwork', icon: 'fa-users', text: 'Trabajo en Equipo', val: existingEval?.teamwork_score || 0 },
-        { id: 'social_impact', icon: 'fa-earth-americas', text: 'Impacto Social', val: existingEval?.social_impact_score || 0 }
+        { id: 'creativity', icon: 'fa-lightbulb', text: 'Creatividad e Innovación', desc: 'Qué tan original e innovadora es la idea del proyecto.', val: existingEval?.creativity_score || 0 },
+        { id: 'clarity', icon: 'fa-bullseye', text: 'Claridad de Presentación', desc: 'Qué tan bien se explica y se entiende el proyecto.', val: existingEval?.clarity_score || 0 },
+        { id: 'functionality', icon: 'fa-gear', text: 'Funcionalidad Técnica', desc: 'Qué tan bien funciona técnicamente lo que construyeron.', val: existingEval?.functionality_score || 0 },
+        { id: 'teamwork', icon: 'fa-users', text: 'Trabajo en Equipo', desc: 'Qué tan bien se nota la colaboración entre los integrantes.', val: existingEval?.teamwork_score || 0 },
+        { id: 'social_impact', icon: 'fa-earth-americas', text: 'Impacto Social', desc: 'Qué tanto beneficia o resuelve un problema real de la comunidad.', val: existingEval?.social_impact_score || 0 }
     ];
 
     modal.innerHTML = `
@@ -113,7 +113,7 @@ window.openEvaluationModal = async function openEvaluationModal(projectId) {
 
                   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
                       ${criteria.map(c => `
-                          <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+                          <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 cursor-help" title="${window.sanitizeAttr ? window.sanitizeAttr(c.desc) : c.desc}">
                               <label class="flex justify-between items-center mb-2 px-1">
                                   <span class="text-[0.6rem] font-black uppercase text-slate-400 tracking-widest"><i class="fas ${c.icon}"></i></span>
                                   <span class="text-[0.55rem] font-bold text-primary bg-primary/5 px-2 py-1 rounded-lg">20</span>

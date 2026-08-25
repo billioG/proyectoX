@@ -63,9 +63,13 @@ window.renderProjectCard = function renderProjectCard(p) {
   const userRole = window.userRole;
   const sanitizeInput = window.sanitizeInput || ((v) => v);
 
-  const isEvaluated = p.score > 0 || (p.evaluations && p.evaluations.length > 0);
-  const score = p.score || (p.evaluations?.[0]?.total_score || 0);
-  const feedback = p.evaluations?.[0]?.feedback;
+  // PostgREST embebe la relación como objeto (no array) cuando hay un
+  // UNIQUE constraint en evaluations.project_id -- por eso no se puede
+  // asumir p.evaluations[0], hay que soportar ambas formas.
+  const evalRow = Array.isArray(p.evaluations) ? p.evaluations[0] : p.evaluations;
+  const isEvaluated = p.score > 0 || !!evalRow;
+  const score = p.score || evalRow?.total_score || 0;
+  const feedback = evalRow?.feedback;
 
   // Privacidad: Estudiantes solo ven sus propios puntajes/votos o los de su grupo
   const isOwner = p.user_id === currentUser?.id;
