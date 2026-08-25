@@ -197,6 +197,10 @@ function displaySchoolPreview(school) {
                     <span class="text-[0.6rem] font-black uppercase text-slate-400 tracking-widest block mb-1">Nombre Oficial</span>
                     <p class="text-sm font-bold text-slate-800 dark:text-white truncate" title="${window.sanitizeAttr(school.name)}">${sanitizeInput(school.name)}</p>
                 </div>
+                <div class="sm:col-span-2 lg:col-span-4">
+                    <span class="text-[0.6rem] font-black uppercase text-slate-400 tracking-widest block mb-1">Dirección</span>
+                    <p class="text-sm font-bold text-slate-600 dark:text-slate-300">${sanitizeInput(school.address) || '<span class="text-slate-400 font-normal italic">No detectada</span>'}</p>
+                </div>
                 <div>
                     <span class="text-[0.6rem] font-black uppercase text-slate-400 tracking-widest block mb-1">Departamento</span>
                     <p class="text-sm font-bold text-slate-600 dark:text-slate-300">${sanitizeInput(school.department)}</p>

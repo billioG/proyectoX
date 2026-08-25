@@ -241,12 +241,15 @@ window.extractAndUploadPackage = async function extractAndUploadPackage(file, ba
   let uploaded = 0;
 
   for (const entry of entries) {
-    const blob = await entry.async('blob');
+    const rawBlob = await entry.async('blob');
     const path = `${basePath}/${entry.name}`;
-    // JSZip no le pone tipo MIME al blob -- sin esto, Storage lo sirve
-    // como application/octet-stream y el navegador nunca ejecuta el
-    // HTML/JS, solo lo muestra como texto crudo.
+    // JSZip entrega el blob con type "application/octet-stream" fijo, y el
+    // SDK de Supabase Storage usa blob.type para el header Content-Type
+    // ignorando la opción `contentType` -- por eso hay que reconstruir el
+    // Blob con el tipo correcto antes de subirlo (si no, el navegador nunca
+    // aplica el CSS/ejecuta el JS, solo lo muestra/ignora como texto crudo).
     const contentType = window.getFileMimeType(entry.name);
+    const blob = new Blob([rawBlob], { type: contentType });
     const { error } = await _supabase.storage.from(LESSON_STORAGE_BUCKET).upload(path, blob, { upsert: true, contentType });
     if (error) throw new Error(`Error subiendo ${entry.name}: ${error.message}`);
     uploaded++;
