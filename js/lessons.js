@@ -27,6 +27,7 @@ window.loadTeacherLessons = async function loadTeacherLessons(container) {
   container.innerHTML = `
     <div class="flex flex-col md:flex-row gap-4 mb-6 items-center">
       <p class="text-xs text-slate-400 grow">Creá lecciones con video, PDF o imágenes para tus clases. Los alumnos las ven desde su propia sección de Lecciones.</p>
+      <button class="btn-secondary-tw h-11 px-6 text-xs uppercase font-bold shrink-0" onclick="window.openSharedLibrary()"><i class="fas fa-book-bookmark"></i> Biblioteca Compartida</button>
       <button class="btn-primary-tw h-11 px-6 text-xs uppercase font-bold shrink-0" onclick="window.openCreateLessonModal()"><i class="fas fa-plus"></i> Nueva Lección</button>
     </div>
     <div id="lessons-list" class="space-y-3">
@@ -44,6 +45,8 @@ window.loadTeacherLessons = async function loadTeacherLessons(container) {
   if (error) { listEl.innerHTML = `<p class="text-rose-500 text-xs">Error: ${error.message}</p>`; return; }
   if (!lessons?.length) { listEl.innerHTML = '<div class="glass-card p-10 text-center text-slate-400 text-sm">Todavía no creaste ninguna lección.</div>'; return; }
 
+  window._myLessonsCache = lessons;
+
   listEl.innerHTML = lessons.map(l => `
     <div class="glass-card p-4 flex items-center gap-4">
       <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0"><i class="fas ${LESSON_TYPE_ICON[l.content_type]}"></i></div>
@@ -51,14 +54,136 @@ window.loadTeacherLessons = async function loadTeacherLessons(container) {
         <h4 class="text-sm font-bold text-slate-800 dark:text-white truncate">${window.sanitizeInput(l.title)}</h4>
         <p class="text-[0.7rem] text-slate-400">${window.sanitizeInput(l.schools?.name || l.school_code)} · ${window.sanitizeInput(l.grade)} ${window.sanitizeInput(l.section)} · ${LESSON_TYPE_LABEL[l.content_type]}${window.userRole === 'admin' ? ` · ${window.sanitizeInput(l.teachers?.full_name || '')}` : ''}</p>
       </div>
+      ${l.is_shared ? '<span class="text-[0.6rem] font-black uppercase px-2 py-1 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 shrink-0"><i class="fas fa-share-nodes"></i> Compartida</span>' : ''}
+      <button class="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-primary transition-colors flex items-center justify-center shrink-0" title="${l.is_shared ? 'Dejar de compartir' : 'Compartir en biblioteca'}" onclick="window.toggleLessonShare('${l.id}', ${!l.is_shared})"><i class="fas fa-share-nodes text-xs"></i></button>
+      <button class="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-primary transition-colors flex items-center justify-center shrink-0" onclick="window.openCreateLessonModal('${l.id}')"><i class="fas fa-pen text-xs"></i></button>
       <button class="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-rose-500 transition-colors flex items-center justify-center shrink-0" onclick="window.deleteLesson('${l.id}')"><i class="fas fa-trash-alt text-xs"></i></button>
     </div>
   `).join('');
 }
 
-window.openCreateLessonModal = async function openCreateLessonModal() {
+window.toggleLessonShare = async function toggleLessonShare(lessonId, share) {
+  const { error } = await window._supabase.from('lessons').update({ is_shared: share }).eq('id', lessonId);
+  if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
+  window.showToast(share ? '<i class="fas fa-circle-check"></i> Lección compartida en la biblioteca' : '<i class="fas fa-circle-check"></i> Lección ya no es pública', 'success');
+  window.loadLessons();
+}
+
+// ================================================
+// BIBLIOTECA COMPARTIDA -- lecciones de otros docentes, copiables
+// ================================================
+window.openSharedLibrary = async function openSharedLibrary() {
   const _supabase = window._supabase;
   const currentUser = window.currentUser;
+
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-sm animate-fadeIn';
+  modal.innerHTML = `
+    <div class="glass-card w-full max-w-2xl p-8 shadow-2xl animate-slideUp max-h-[85vh] flex flex-col">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-lg font-bold text-slate-800 dark:text-white uppercase tracking-tighter"><i class="fas fa-book-bookmark text-primary mr-2"></i> Biblioteca Compartida</h2>
+        <button class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500 transition-colors flex items-center justify-center shrink-0" onclick="this.closest('.fixed').remove()"><i class="fas fa-times"></i></button>
+      </div>
+      <div id="shared-library-list" class="space-y-3 overflow-y-auto custom-scrollbar">
+        <div class="text-center text-slate-400 text-xs py-10"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  const { data: lessons, error } = await _supabase.from('lessons')
+    .select('*, teachers(full_name), schools(name)')
+    .eq('is_shared', true)
+    .neq('created_by', currentUser.id)
+    .order('created_at', { ascending: false });
+
+  const listEl = document.getElementById('shared-library-list');
+  if (!listEl) return;
+
+  if (error) { listEl.innerHTML = `<p class="text-rose-500 text-xs">Error: ${error.message}</p>`; return; }
+  if (!lessons?.length) { listEl.innerHTML = '<div class="glass-card p-10 text-center text-slate-400 text-sm">Todavía no hay lecciones compartidas por otros docentes.</div>'; return; }
+
+  window._sharedLibraryCache = lessons;
+
+  listEl.innerHTML = lessons.map(l => `
+    <div class="glass-card p-4 flex items-center gap-4">
+      <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0"><i class="fas ${LESSON_TYPE_ICON[l.content_type]}"></i></div>
+      <div class="min-w-0 flex-1">
+        <h4 class="text-sm font-bold text-slate-800 dark:text-white truncate">${window.sanitizeInput(l.title)}</h4>
+        <p class="text-[0.7rem] text-slate-400">${LESSON_TYPE_LABEL[l.content_type]} · por ${window.sanitizeInput(l.teachers?.full_name || 'Docente')} · ${window.sanitizeInput(l.schools?.name || l.school_code)}</p>
+      </div>
+      <button class="btn-primary-tw h-9 px-4 text-[0.65rem] uppercase font-bold shrink-0" onclick="window.openCopyLessonModal('${l.id}')"><i class="fas fa-copy"></i> Copiar a mi clase</button>
+    </div>
+  `).join('');
+}
+
+window.openCopyLessonModal = async function openCopyLessonModal(lessonId) {
+  const source = (window._sharedLibraryCache || []).find(l => l.id === lessonId);
+  if (!source) return;
+
+  const { data: assignments } = await window._supabase.from('teacher_assignments').select('school_code, grade, section, schools(name)').eq('teacher_id', window.currentUser.id);
+  const classOptions = (assignments || []).map(a => ({ school_code: a.school_code, grade: a.grade, section: a.section, schoolName: a.schools?.name || a.school_code }));
+  if (!classOptions.length) return window.showToast('<i class="fas fa-circle-xmark"></i> No tenés clases asignadas todavía', 'error');
+
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 z-[210] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-sm animate-fadeIn';
+  modal.innerHTML = `
+    <div class="glass-card w-full max-w-md p-8 shadow-2xl animate-slideUp">
+      <h2 class="text-lg font-bold text-slate-800 dark:text-white uppercase tracking-tighter mb-2"><i class="fas fa-copy text-primary mr-2"></i> Copiar Lección</h2>
+      <p class="text-xs text-slate-400 mb-6">"${window.sanitizeInput(source.title)}" se copiará a la clase que elijas. Podés editarla después sin afectar la original.</p>
+      <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Clase destino</label>
+      <select id="copy-lesson-class" class="input-field-tw h-11 text-sm mb-6">
+        ${classOptions.map((c, i) => `<option value="${i}">${window.sanitizeInput(c.schoolName)} · ${window.sanitizeInput(c.grade)} ${window.sanitizeInput(c.section)}</option>`).join('')}
+      </select>
+      <div class="flex gap-3">
+        <button class="btn-secondary-tw flex-1 h-11 text-xs uppercase font-bold" onclick="this.closest('.fixed').remove()">Cancelar</button>
+        <button class="btn-primary-tw flex-1 h-11 text-xs uppercase font-bold" id="btn-confirm-copy-lesson" onclick="window.confirmCopyLesson('${lessonId}')">Copiar</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  window._copyLessonClassOptions = classOptions;
+}
+
+window.confirmCopyLesson = async function confirmCopyLesson(lessonId) {
+  const source = (window._sharedLibraryCache || []).find(l => l.id === lessonId);
+  const classIndex = document.getElementById('copy-lesson-class')?.value;
+  const classOption = window._copyLessonClassOptions?.[classIndex];
+  if (!source || !classOption) return;
+
+  const btn = document.getElementById('btn-confirm-copy-lesson');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+  const { error } = await window._supabase.from('lessons').insert({
+    title: source.title,
+    description: source.description,
+    content_type: source.content_type,
+    content_url: source.content_url,
+    content_path: source.content_path,
+    school_code: classOption.school_code,
+    grade: classOption.grade,
+    section: classOption.section,
+    created_by: window.currentUser.id,
+    is_shared: false,
+  });
+
+  if (error) {
+    window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
+    btn.disabled = false;
+    btn.innerHTML = 'Copiar';
+    return;
+  }
+
+  window.showToast('<i class="fas fa-circle-check"></i> Lección copiada a tu clase', 'success');
+  document.querySelectorAll('.fixed').forEach(m => m.remove());
+  window.loadLessons();
+}
+
+window.openCreateLessonModal = async function openCreateLessonModal(editLessonId) {
+  const _supabase = window._supabase;
+  const currentUser = window.currentUser;
+  const editing = (window._myLessonsCache || []).find(l => l.id === editLessonId) || null;
 
   let classOptions = [];
   if (window.userRole === 'admin') {
@@ -80,27 +205,31 @@ window.openCreateLessonModal = async function openCreateLessonModal() {
     return window.showToast('<i class="fas fa-circle-xmark"></i> No tenés clases asignadas todavía', 'error');
   }
 
+  const selectedIndex = editing ? classOptions.findIndex(c => c.school_code === editing.school_code && c.grade === editing.grade && c.section === editing.section) : -1;
+  const isFileType = editing ? LESSON_TYPES_WITH_GRADE.has(editing.content_type) : false;
+
   const modal = document.createElement('div');
   modal.className = 'fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-sm animate-fadeIn';
   modal.innerHTML = `
     <div class="glass-card w-full max-w-lg p-8 shadow-2xl animate-slideUp">
-      <h2 class="text-lg font-bold text-slate-800 dark:text-white uppercase tracking-tighter mb-6"><i class="fas fa-book-open text-primary mr-2"></i> Nueva Lección</h2>
+      <h2 class="text-lg font-bold text-slate-800 dark:text-white uppercase tracking-tighter mb-6"><i class="fas fa-book-open text-primary mr-2"></i> ${editing ? 'Editar Lección' : 'Nueva Lección'}</h2>
 
       <div class="space-y-4">
         <div>
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Clase</label>
           <select id="lesson-class" class="input-field-tw h-11 text-sm">
-            ${classOptions.map((c, i) => `<option value="${i}">${window.sanitizeInput(c.schoolName)} · ${window.sanitizeInput(c.grade)} ${window.sanitizeInput(c.section)}</option>`).join('')}
+            ${classOptions.map((c, i) => `<option value="${i}" ${i === selectedIndex ? 'selected' : ''}>${window.sanitizeInput(c.schoolName)} · ${window.sanitizeInput(c.grade)} ${window.sanitizeInput(c.section)}</option>`).join('')}
           </select>
         </div>
         <div>
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Título *</label>
-          <input type="text" id="lesson-title" class="input-field-tw h-11 text-sm">
+          <input type="text" id="lesson-title" class="input-field-tw h-11 text-sm" value="${editing ? window.sanitizeAttr(editing.title) : ''}">
         </div>
         <div>
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Descripción</label>
-          <textarea id="lesson-description" class="input-field-tw text-sm h-20 resize-none"></textarea>
+          <textarea id="lesson-description" class="input-field-tw text-sm h-20 resize-none">${editing ? window.sanitizeInput(editing.description || '') : ''}</textarea>
         </div>
+        ${editing ? `<input type="hidden" id="lesson-type" value="${editing.content_type}">` : `
         <div>
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Tipo</label>
           <select id="lesson-type" class="input-field-tw h-11 text-sm" onchange="window.toggleLessonSourceField()">
@@ -110,27 +239,29 @@ window.openCreateLessonModal = async function openCreateLessonModal() {
             <option value="scorm">SCORM (.zip -- con nota automática)</option>
             <option value="h5p">H5P (.zip -- con nota automática)</option>
           </select>
-        </div>
-        <div id="lesson-source-url-wrap">
+        </div>`}
+        <div id="lesson-source-url-wrap" class="${isFileType ? 'hidden' : ''}">
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">URL *</label>
-          <input type="text" id="lesson-url" placeholder="https://..." class="input-field-tw h-11 text-sm">
+          <input type="text" id="lesson-url" placeholder="https://..." class="input-field-tw h-11 text-sm" value="${editing && !isFileType ? window.sanitizeAttr(editing.content_url) : ''}">
         </div>
+        ${editing && isFileType ? '<p class="text-[0.65rem] text-slate-400"><i class="fas fa-circle-info"></i> El archivo del paquete no se puede reemplazar acá -- borrá la lección y creá una nueva si necesitás subir otro paquete.</p>' : `
         <div id="lesson-source-file-wrap" class="hidden">
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Archivo .zip *</label>
           <input type="file" id="lesson-file" class="input-field-tw text-sm py-2.5">
           <p class="text-[0.65rem] text-slate-400 mt-1">Aceptamos .zip y .h5p (es el mismo formato).</p>
           <p id="lesson-upload-progress" class="text-[0.65rem] text-slate-400 mt-2 hidden"></p>
-        </div>
+        </div>`}
       </div>
 
       <div class="flex gap-3 mt-8">
         <button class="btn-secondary-tw flex-1 h-11 text-xs uppercase font-bold" onclick="this.closest('.fixed').remove()">Cancelar</button>
-        <button class="btn-primary-tw flex-1 h-11 text-xs uppercase font-bold" id="btn-save-lesson" onclick="window.saveLesson()">Publicar</button>
+        <button class="btn-primary-tw flex-1 h-11 text-xs uppercase font-bold" id="btn-save-lesson" onclick="window.saveLesson('${editing ? editing.id : ''}')">${editing ? 'Guardar Cambios' : 'Publicar'}</button>
       </div>
     </div>
   `;
   document.body.appendChild(modal);
   window._lessonClassOptions = classOptions;
+  window._editingLessonIsFileType = isFileType;
 }
 
 window.toggleLessonSourceField = function toggleLessonSourceField() {
@@ -140,7 +271,7 @@ window.toggleLessonSourceField = function toggleLessonSourceField() {
   document.getElementById('lesson-source-file-wrap')?.classList.toggle('hidden', !isFile);
 }
 
-window.saveLesson = async function saveLesson() {
+window.saveLesson = async function saveLesson(editingId) {
   const classIndex = document.getElementById('lesson-class')?.value;
   const title = document.getElementById('lesson-title')?.value.trim();
   const description = document.getElementById('lesson-description')?.value.trim();
@@ -153,11 +284,35 @@ window.saveLesson = async function saveLesson() {
 
   if (!title) return window.showToast('<i class="fas fa-circle-xmark"></i> Ponele un título', 'error');
   if (!isFileType && !content_url) return window.showToast('<i class="fas fa-circle-xmark"></i> Completa la URL', 'error');
-  if (isFileType && !file) return window.showToast('<i class="fas fa-circle-xmark"></i> Elegí un archivo .zip', 'error');
   const classOption = window._lessonClassOptions?.[classIndex];
   if (!classOption) return window.showToast('<i class="fas fa-circle-xmark"></i> Elegí una clase', 'error');
 
   btn.disabled = true;
+
+  // Modo edición: la lección ya existe -- solo actualizamos metadata/clase.
+  // El archivo del paquete SCORM/H5P no se toca (ver aviso en el modal).
+  if (editingId) {
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+    const update = {
+      title, description: description || null,
+      school_code: classOption.school_code, grade: classOption.grade, section: classOption.section,
+    };
+    if (!isFileType) update.content_url = content_url;
+    const { error } = await window._supabase.from('lessons').update(update).eq('id', editingId);
+    if (error) {
+      window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
+      btn.disabled = false;
+      btn.innerHTML = 'Guardar Cambios';
+      return;
+    }
+    window.showToast('<i class="fas fa-circle-check"></i> Lección actualizada', 'success');
+    document.querySelector('.fixed.z-\\[200\\]')?.remove();
+    window.loadLessons();
+    return;
+  }
+
+  if (isFileType && !file) return window.showToast('<i class="fas fa-circle-xmark"></i> Elegí un archivo .zip', 'error');
+
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publicando...';
 
   try {
@@ -287,10 +442,16 @@ window.deleteLesson = async function deleteLesson(id) {
   const { error } = await window._supabase.from('lessons').delete().eq('id', id);
   if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
 
+  // Una lección copiada desde la biblioteca comparte content_path con el
+  // original -- solo borramos los archivos de Storage si ninguna otra
+  // lección (copia u original) sigue apuntando a esa misma carpeta.
   if (lesson?.content_path) {
-    const { data: files } = await window._supabase.storage.from(LESSON_STORAGE_BUCKET).list(lesson.content_path, { limit: 1000 });
-    if (files?.length) {
-      await window._supabase.storage.from(LESSON_STORAGE_BUCKET).remove(files.map(f => `${lesson.content_path}/${f.name}`));
+    const { count } = await window._supabase.from('lessons').select('id', { count: 'exact', head: true }).eq('content_path', lesson.content_path);
+    if (!count) {
+      const { data: files } = await window._supabase.storage.from(LESSON_STORAGE_BUCKET).list(lesson.content_path, { limit: 1000 });
+      if (files?.length) {
+        await window._supabase.storage.from(LESSON_STORAGE_BUCKET).remove(files.map(f => `${lesson.content_path}/${f.name}`));
+      }
     }
   }
 
