@@ -80,10 +80,11 @@ window.openSharedLibrary = async function openSharedLibrary() {
   modal.className = 'fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-sm animate-fadeIn';
   modal.innerHTML = `
     <div class="glass-card w-full max-w-2xl p-8 shadow-2xl animate-slideUp max-h-[85vh] flex flex-col">
-      <div class="flex justify-between items-center mb-6">
+      <div class="flex justify-between items-center mb-4">
         <h2 class="text-lg font-bold text-slate-800 dark:text-white uppercase tracking-tighter"><i class="fas fa-book-bookmark text-primary mr-2"></i> Biblioteca Compartida</h2>
         <button class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500 transition-colors flex items-center justify-center shrink-0" onclick="this.closest('.fixed').remove()"><i class="fas fa-times"></i></button>
       </div>
+      <div id="shared-library-tags" class="flex flex-wrap gap-2 mb-4"></div>
       <div id="shared-library-list" class="space-y-3 overflow-y-auto custom-scrollbar">
         <div class="text-center text-slate-400 text-xs py-10"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>
       </div>
@@ -104,17 +105,78 @@ window.openSharedLibrary = async function openSharedLibrary() {
   if (!lessons?.length) { listEl.innerHTML = '<div class="glass-card p-10 text-center text-slate-400 text-sm">Todavía no hay lecciones compartidas por otros docentes.</div>'; return; }
 
   window._sharedLibraryCache = lessons;
+  window._sharedLibraryTagFilter = null;
 
-  listEl.innerHTML = lessons.map(l => `
+  const allTags = [...new Set(lessons.flatMap(l => l.tags || []))].sort();
+  const tagsEl = document.getElementById('shared-library-tags');
+  if (tagsEl && allTags.length) {
+    tagsEl.innerHTML = [`<button class="shared-tag-chip px-3 py-1.5 rounded-full text-[0.65rem] font-bold uppercase tracking-wider bg-primary text-white" data-tag="" onclick="window.filterSharedLibraryByTag(null)">Todas</button>`]
+      .concat(allTags.map(t => `<button class="shared-tag-chip px-3 py-1.5 rounded-full text-[0.65rem] font-bold uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-500" data-tag="${window.sanitizeAttr(t)}" onclick="window.filterSharedLibraryByTag('${window.sanitizeAttr(t)}')">${window.sanitizeInput(t)}</button>`))
+      .join('');
+  }
+
+  window.renderSharedLibraryList();
+}
+
+function renderSharedLibraryLessonCard(l) {
+  return `
     <div class="glass-card p-4 flex items-center gap-4">
       <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0"><i class="fas ${LESSON_TYPE_ICON[l.content_type]}"></i></div>
       <div class="min-w-0 flex-1">
         <h4 class="text-sm font-bold text-slate-800 dark:text-white truncate">${window.sanitizeInput(l.title)}</h4>
         <p class="text-[0.7rem] text-slate-400">${LESSON_TYPE_LABEL[l.content_type]} · por ${window.sanitizeInput(l.teachers?.full_name || 'Docente')} · ${window.sanitizeInput(l.schools?.name || l.school_code)}</p>
+        ${l.tags?.length ? `<div class="flex flex-wrap gap-1 mt-1.5">${l.tags.map(t => `<span class="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[0.55rem] font-bold text-slate-500 uppercase">${window.sanitizeInput(t)}</span>`).join('')}</div>` : ''}
       </div>
       <button class="btn-primary-tw h-9 px-4 text-[0.65rem] uppercase font-bold shrink-0" onclick="window.openCopyLessonModal('${l.id}')"><i class="fas fa-copy"></i> Copiar a mi clase</button>
     </div>
-  `).join('');
+  `;
+}
+
+window.filterSharedLibraryByTag = function filterSharedLibraryByTag(tag) {
+  window._sharedLibraryTagFilter = tag;
+  document.querySelectorAll('.shared-tag-chip').forEach(chip => {
+    const active = chip.dataset.tag === (tag || '');
+    chip.classList.toggle('bg-primary', active);
+    chip.classList.toggle('text-white', active);
+    chip.classList.toggle('bg-slate-100', !active);
+    chip.classList.toggle('dark:bg-slate-800', !active);
+    chip.classList.toggle('text-slate-500', !active);
+  });
+  window.renderSharedLibraryList();
+}
+
+window.renderSharedLibraryList = function renderSharedLibraryList() {
+  const listEl = document.getElementById('shared-library-list');
+  if (!listEl) return;
+  const lessons = window._sharedLibraryCache || [];
+  const tagFilter = window._sharedLibraryTagFilter;
+
+  if (tagFilter) {
+    const filtered = lessons.filter(l => (l.tags || []).includes(tagFilter));
+    listEl.innerHTML = filtered.length ? filtered.map(renderSharedLibraryLessonCard).join('') : '<div class="glass-card p-10 text-center text-slate-400 text-sm">Nada con esa etiqueta.</div>';
+    return;
+  }
+
+  // Sin filtro: agrupar por etiqueta (una lección con varias etiquetas
+  // aparece en cada grupo al que pertenece; las sin etiqueta van aparte).
+  const byTag = new Map();
+  const untagged = [];
+  lessons.forEach(l => {
+    if (!l.tags?.length) { untagged.push(l); return; }
+    l.tags.forEach(t => {
+      if (!byTag.has(t)) byTag.set(t, []);
+      byTag.get(t).push(l);
+    });
+  });
+
+  let html = '';
+  for (const [tag, group] of [...byTag.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
+    html += `<details open><summary class="list-none cursor-pointer text-[0.65rem] font-black uppercase tracking-widest text-slate-400 mb-2">${window.sanitizeInput(tag)} (${group.length})</summary><div class="space-y-3 mb-4">${group.map(renderSharedLibraryLessonCard).join('')}</div></details>`;
+  }
+  if (untagged.length) {
+    html += `<details open><summary class="list-none cursor-pointer text-[0.65rem] font-black uppercase tracking-widest text-slate-400 mb-2">Sin etiqueta (${untagged.length})</summary><div class="space-y-3 mb-4">${untagged.map(renderSharedLibraryLessonCard).join('')}</div></details>`;
+  }
+  listEl.innerHTML = html;
 }
 
 window.openCopyLessonModal = async function openCopyLessonModal(lessonId) {
@@ -158,6 +220,7 @@ window.confirmCopyLesson = async function confirmCopyLesson(lessonId) {
   const { error } = await window._supabase.from('lessons').insert({
     title: source.title,
     description: source.description,
+    tags: source.tags || [],
     content_type: source.content_type,
     content_url: source.content_url,
     content_path: source.content_path,
@@ -228,6 +291,11 @@ window.openCreateLessonModal = async function openCreateLessonModal(editLessonId
         <div>
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Descripción</label>
           <textarea id="lesson-description" class="input-field-tw text-sm h-20 resize-none">${editing ? window.sanitizeInput(editing.description || '') : ''}</textarea>
+        </div>
+        <div>
+          <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Etiquetas</label>
+          <input type="text" id="lesson-tags" placeholder="matemática, tercero básico, repaso..." class="input-field-tw h-11 text-sm" value="${editing ? window.sanitizeAttr((editing.tags || []).join(', ')) : ''}">
+          <p class="text-[0.65rem] text-slate-400 mt-1">Separadas por coma. Sirven para filtrar en la Biblioteca Compartida.</p>
         </div>
         ${editing ? `<input type="hidden" id="lesson-type" value="${editing.content_type}">` : `
         <div>
@@ -309,6 +377,7 @@ window.saveLesson = async function saveLesson(editingId) {
   const classIndex = document.getElementById('lesson-class')?.value;
   const title = document.getElementById('lesson-title')?.value.trim();
   const description = document.getElementById('lesson-description')?.value.trim();
+  const tags = (document.getElementById('lesson-tags')?.value || '').split(',').map(t => t.trim().toLowerCase()).filter(Boolean);
   let content_type = document.getElementById('lesson-type')?.value;
   const isFileType = LESSON_TYPES_WITH_GRADE.has(content_type);
   const sourceMode = document.getElementById('lesson-source-mode')?.value || 'url';
@@ -332,7 +401,7 @@ window.saveLesson = async function saveLesson(editingId) {
   if (editingId) {
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
     const update = {
-      title, description: description || null,
+      title, description: description || null, tags,
       school_code: classOption.school_code, grade: classOption.grade, section: classOption.section,
     };
     if (!isFileType) update.content_url = content_url;
@@ -390,6 +459,7 @@ window.saveLesson = async function saveLesson(editingId) {
       id: lessonId,
       title,
       description: description || null,
+      tags,
       content_type,
       content_url: finalUrl,
       content_path: contentPath,
