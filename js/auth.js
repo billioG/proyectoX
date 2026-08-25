@@ -362,7 +362,7 @@ function updateHeaderUI() {
       avatarEl.innerHTML = `<img src="${userData.profile_photo_url}" class="w-full h-full object-cover rounded-xl">`;
       avatarEl.classList.remove('bg-primary/10', 'text-primary');
     } else {
-      avatarEl.textContent = avatar;
+      avatarEl.innerHTML = avatar;
       avatarEl.classList.add('bg-primary/10', 'text-primary');
     }
   }

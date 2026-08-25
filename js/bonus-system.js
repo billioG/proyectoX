@@ -1031,7 +1031,7 @@ window.submitChallengeEvidence = async function submitChallengeEvidence(challeng
             const isGeneric = /^\s*no\b/i.test((verdict || '').trim());
             if (isGeneric) {
                 if (feedbackEl) {
-                    feedbackEl.textContent = '<i class="fas fa-triangle-exclamation"></i>️ Tu reflexión parece muy genérica. Contá algo concreto: qué hiciste, con qué grupo, qué notaste.';
+                    feedbackEl.innerHTML = '<i class="fas fa-triangle-exclamation"></i> Tu reflexión parece muy genérica. Contá algo concreto: qué hiciste, con qué grupo, qué notaste.';
                     feedbackEl.classList.remove('hidden');
                 }
                 btn.disabled = false;

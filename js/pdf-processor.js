@@ -88,7 +88,7 @@ window.processPDFFile = async function processPDFFile() {
 
         progressBar.style.width = '100%';
         progressBar.textContent = '100%';
-        statusText.textContent = `<i class="fas fa-circle-check"></i> ${window.extractedStudents.length} estudiantes extraídos`;
+        statusText.innerHTML = `<i class="fas fa-circle-check"></i> ${window.extractedStudents.length} estudiantes extraídos`;
 
         window.showToast(`<i class="fas fa-circle-check"></i> Establecimiento y ${window.extractedStudents.length} estudiantes encontrados`, 'success');
 
@@ -98,7 +98,7 @@ window.processPDFFile = async function processPDFFile() {
 
     } catch (err) {
         console.error('Error procesando PDF:', err);
-        statusText.textContent = '<i class="fas fa-circle-xmark"></i> Error procesando PDF';
+        statusText.innerHTML = '<i class="fas fa-circle-xmark"></i> Error procesando PDF';
         progressBar.style.background = 'var(--danger-color)';
         window.showToast('<i class="fas fa-circle-xmark"></i> Error: ' + err.message, 'error');
     } finally {
@@ -552,7 +552,7 @@ window.handlePdfFileSelected = function handlePdfFileSelected(file) {
     if (icon) { icon.className = 'fas fa-file-circle-check text-3xl text-emerald-500 mb-2'; }
     if (label) {
         label.className = 'text-xs font-bold text-emerald-600 uppercase tracking-widest text-center px-4';
-        label.textContent = `<i class="fas fa-check"></i> ${file.name}`;
+        label.innerHTML = `<i class="fas fa-check"></i> ${window.sanitizeInput(file.name)}`;
     }
 }
 

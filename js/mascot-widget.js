@@ -157,25 +157,36 @@ const MascotWidget = {
             
             <div class="mascot-robot mascot-animate-float" onclick="MascotWidget.openAIChat()">
                 <svg viewBox="0 0 100 100" id="mascot-svg">
-                    <!-- Head -->
-                    <rect x="20" y="20" width="60" height="50" rx="15" fill="#00ADEF" />
-                    <rect x="25" y="25" width="50" height="40" rx="10" fill="#E2E8F0" class="face-screen" />
-                    
-                    <!-- Eyes -->
+                    <!-- Cola larga del quetzal -->
+                    <path d="M50 70 Q22 85 14 108" stroke="#0D9488" stroke-width="5" fill="none" stroke-linecap="round" />
+                    <path d="M50 70 Q78 85 86 108" stroke="#0D9488" stroke-width="5" fill="none" stroke-linecap="round" />
+                    <path d="M50 72 Q36 90 30 105" stroke="#10B981" stroke-width="4" fill="none" stroke-linecap="round" />
+                    <path d="M50 72 Q64 90 70 105" stroke="#10B981" stroke-width="4" fill="none" stroke-linecap="round" />
+
+                    <!-- Alas -->
+                    <path d="M28 55 Q16 65 24 80" fill="#10B981" />
+                    <path d="M72 55 Q84 65 76 80" fill="#10B981" />
+
+                    <!-- Cuerpo -->
+                    <ellipse cx="50" cy="68" rx="20" ry="18" fill="#059669" />
+
+                    <!-- Pecho rojo (bandera de Guatemala) -->
+                    <path d="M36 68 Q50 84 64 68 Q57 78 50 78 Q43 78 36 68 Z" fill="#CE1126" />
+
+                    <!-- Cabeza -->
+                    <circle cx="50" cy="42" r="17" fill="#059669" />
+
+                    <!-- Cresta -->
+                    <path d="M40 27 Q50 14 60 27 Q50 22 40 27 Z" fill="#0D9488" />
+
+                    <!-- Ojos -->
                     <g class="eyes-container">
-                        <circle cx="40" cy="45" r="5" fill="#1E293B" class="mascot-eye" id="eye-l" />
-                        <circle cx="60" cy="45" r="5" fill="#1E293B" class="mascot-eye" id="eye-r" />
+                        <circle cx="43" cy="42" r="3.5" fill="#1E293B" class="mascot-eye" id="eye-l" />
+                        <circle cx="57" cy="42" r="3.5" fill="#1E293B" class="mascot-eye" id="eye-r" />
                     </g>
-                    
-                    <!-- Mouth -->
-                    <path d="M40 55 Q50 60 60 55" stroke="#1E293B" stroke-width="3" fill="transparent" id="mascot-mouth" />
-                    
-                    <!-- Antennas -->
-                    <line x1="50" y1="20" x2="50" y2="10" stroke="#00ADEF" stroke-width="4" />
-                    <circle cx="50" cy="8" r="4" fill="#6366F1" />
-                    
-                    <!-- Body (partial) -->
-                    <path d="M30 70 L70 70 L75 90 L25 90 Z" fill="#00ADEF" />
+
+                    <!-- Pico -->
+                    <path d="M40 55 Q50 60 60 55" stroke="#F59E0B" stroke-width="3.5" fill="transparent" stroke-linecap="round" id="mascot-mouth" />
                 </svg>
             </div>
         `;
@@ -207,7 +218,7 @@ const MascotWidget = {
             message = stateMessages[Math.floor(Math.random() * stateMessages.length)];
         }
 
-        bubble.innerText = message;
+        bubble.innerHTML = message;
         bubble.classList.add('show');
         this.setFace(this.currentState);
 

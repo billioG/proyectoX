@@ -349,7 +349,7 @@ window.toggleRatingSection = function toggleRatingSection() {
 
   if (type === 'rating') {
     ratingSection?.classList.remove('hidden');
-    if (msgLabel) msgLabel.querySelector('label').textContent = '<i class="fas fa-star"></i> ¿Qué fue lo mejor de la semana?';
+    if (msgLabel) msgLabel.querySelector('label').innerHTML = '<i class="fas fa-star"></i> ¿Qué fue lo mejor de la semana?';
     if (msgArea) msgArea.placeholder = 'Lo mejor fue... (Resume en una línea)';
 
     const container = document.getElementById('suggestion-eval-questions');
