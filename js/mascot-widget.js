@@ -305,7 +305,7 @@ const MascotWidget = {
         history.scrollTop = history.scrollHeight;
 
         try {
-            const context = `Usuario: ${currentUser.full_name}, Rol: ${userRole}, Racha: ${userData.streak || 0}`;
+            const context = `Usuario: ${window.userData?.full_name || ''}, Rol: ${window.userRole}, Racha: ${window.userData?.streak || 0}`;
             const response = await AIService.ask(text, context);
             document.getElementById(loadingId).remove();
 
@@ -319,7 +319,9 @@ const MascotWidget = {
             `;
             history.scrollTop = history.scrollHeight;
         } catch (err) {
-            document.getElementById(loadingId).innerHTML = "Error al conectar con la IA.";
+            console.error('Mascot chat error:', err);
+            const loadingEl = document.getElementById(loadingId);
+            if (loadingEl) loadingEl.innerHTML = 'Error al conectar con la IA.';
         }
     },
 
