@@ -157,36 +157,32 @@ const MascotWidget = {
             
             <div class="mascot-robot mascot-animate-float" onclick="MascotWidget.openAIChat()">
                 <svg viewBox="0 0 100 100" id="mascot-svg">
-                    <!-- Cola larga del quetzal -->
-                    <path d="M50 70 Q22 85 14 108" stroke="#0D9488" stroke-width="5" fill="none" stroke-linecap="round" />
-                    <path d="M50 70 Q78 85 86 108" stroke="#0D9488" stroke-width="5" fill="none" stroke-linecap="round" />
-                    <path d="M50 72 Q36 90 30 105" stroke="#10B981" stroke-width="4" fill="none" stroke-linecap="round" />
-                    <path d="M50 72 Q64 90 70 105" stroke="#10B981" stroke-width="4" fill="none" stroke-linecap="round" />
+                    <!-- Penacho de plumas de quetzal -->
+                    <path d="M50 26 Q33 -6 17 12" stroke="#0D9488" stroke-width="5" fill="none" stroke-linecap="round" />
+                    <path d="M50 26 Q67 -6 83 12" stroke="#0D9488" stroke-width="5" fill="none" stroke-linecap="round" />
+                    <path d="M50 23 Q40 -9 27 2" stroke="#10B981" stroke-width="4" fill="none" stroke-linecap="round" />
+                    <path d="M50 23 Q60 -9 73 2" stroke="#10B981" stroke-width="4" fill="none" stroke-linecap="round" />
+                    <path d="M50 20 L50 -8" stroke="#059669" stroke-width="4" fill="none" stroke-linecap="round" />
 
-                    <!-- Alas -->
-                    <path d="M28 55 Q16 65 24 80" fill="#10B981" />
-                    <path d="M72 55 Q84 65 76 80" fill="#10B981" />
-
-                    <!-- Cuerpo -->
-                    <ellipse cx="50" cy="68" rx="20" ry="18" fill="#059669" />
-
-                    <!-- Pecho rojo (bandera de Guatemala) -->
-                    <path d="M36 68 Q50 84 64 68 Q57 78 50 78 Q43 78 36 68 Z" fill="#CE1126" />
+                    <!-- Hombros / capa -->
+                    <path d="M26 80 Q50 70 74 80 L78 96 L22 96 Z" fill="#B45309" />
+                    <path d="M33 80 Q50 90 67 80 L65 94 L35 94 Z" fill="#CE1126" />
 
                     <!-- Cabeza -->
-                    <circle cx="50" cy="42" r="17" fill="#059669" />
+                    <circle cx="50" cy="48" r="18" fill="#C68642" />
 
-                    <!-- Cresta -->
-                    <path d="M40 27 Q50 14 60 27 Q50 22 40 27 Z" fill="#0D9488" />
+                    <!-- Diadema -->
+                    <path d="M31 42 Q50 31 69 42" stroke="#D4AF37" stroke-width="5" fill="none" stroke-linecap="round" />
+                    <circle cx="50" cy="35" r="3" fill="#0D9488" />
 
                     <!-- Ojos -->
                     <g class="eyes-container">
-                        <circle cx="43" cy="42" r="3.5" fill="#1E293B" class="mascot-eye" id="eye-l" />
-                        <circle cx="57" cy="42" r="3.5" fill="#1E293B" class="mascot-eye" id="eye-r" />
+                        <circle cx="43" cy="49" r="3.5" fill="#1E293B" class="mascot-eye" id="eye-l" />
+                        <circle cx="57" cy="49" r="3.5" fill="#1E293B" class="mascot-eye" id="eye-r" />
                     </g>
 
-                    <!-- Pico -->
-                    <path d="M40 55 Q50 60 60 55" stroke="#F59E0B" stroke-width="3.5" fill="transparent" stroke-linecap="round" id="mascot-mouth" />
+                    <!-- Boca -->
+                    <path d="M40 58 Q50 62 60 58" stroke="#7C2D12" stroke-width="3" fill="transparent" stroke-linecap="round" id="mascot-mouth" />
                 </svg>
             </div>
         `;
