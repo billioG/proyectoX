@@ -153,7 +153,7 @@ export function nav(view) {
     }
 
     // Limpiar modales abiertos al navegar (pero NO remover el sidebar o el header)
-    document.querySelectorAll('.fixed:not(#sidebar):not(#header), .modal').forEach(m => m.remove());
+    document.querySelectorAll('.fixed:not(#sidebar):not(#header):not(#mascot-widget-container), .modal').forEach(m => m.remove());
 
     // Cargar módulos necesarios antes de ejecutar contenido
     loadModule(view).then(() => {
