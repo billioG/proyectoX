@@ -138,7 +138,7 @@ function showOnboarding() {
           
           <div style="flex: 1;"></div>
           
-          <button class="onboarding-btn-text" onclick="window.skipOnboarding()" style="color: #94a3b8;">
+          <button id="onboarding-skip" class="onboarding-btn-text" onclick="window.skipOnboarding()" style="color: #94a3b8;">
             Saltar
           </button>
           
@@ -209,6 +209,7 @@ function showSlide(index) {
   const dots = document.querySelectorAll('.onboarding-dot');
   const prevBtn = document.getElementById('onboarding-prev');
   const nextBtn = document.getElementById('onboarding-next');
+  const skipBtn = document.getElementById('onboarding-skip');
 
   // Ocultar todas las slides
   slides.forEach(slide => slide.style.display = 'none');
@@ -237,9 +238,11 @@ function showSlide(index) {
 
   if (index === ACTIVE_SLIDES.length - 1) {
     nextBtn.style.display = 'none';
+    if (skipBtn) skipBtn.style.display = 'none';
   } else {
     nextBtn.style.display = 'block';
     nextBtn.innerHTML = 'Siguiente <i class="fas fa-chevron-right"></i>';
+    if (skipBtn) skipBtn.style.display = 'block';
   }
 
   currentSlideIndex = index;
