@@ -229,6 +229,27 @@ window.openCreateRockModal = function (preselectedMonth = null, rockToEdit = nul
                         <textarea id="rock-description" rows="3" required
                                   class="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white focus:border-primary transition-all resize-none">${rockToEdit?.description || ''}</textarea>
                     </div>
+                    <div>
+                        <label class="text-[0.65rem] font-black uppercase text-slate-400 tracking-widest block mb-2">Mes *</label>
+                        <select id="rock-month" required class="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white focus:border-primary transition-all">
+                            ${['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'].map((m, i) => `<option value="${i + 1}" ${(rockToEdit?.month || preselectedMonth) === i + 1 ? 'selected' : ''}>${m}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-[0.65rem] font-black uppercase text-slate-400 tracking-widest block mb-2">Año *</label>
+                        <input type="number" id="rock-year" required value="${rockToEdit?.year || new Date().getFullYear()}"
+                               class="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white focus:border-primary transition-all">
+                    </div>
+                    <div>
+                        <label class="text-[0.65rem] font-black uppercase text-slate-400 tracking-widest block mb-2">XP</label>
+                        <input type="number" id="rock-xp" value="${rockToEdit?.xp_value ?? 10}"
+                               class="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white focus:border-primary transition-all">
+                    </div>
+                    <div>
+                        <label class="text-[0.65rem] font-black uppercase text-slate-400 tracking-widest block mb-2">Día límite (opcional)</label>
+                        <input type="number" id="rock-deadline" min="1" max="31" value="${rockToEdit?.deadline_day ?? ''}"
+                               class="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white focus:border-primary transition-all">
+                    </div>
                 </div>
                 <div class="flex gap-3 pt-6">
                     <button type="submit" class="flex-1 py-3 bg-amber-500 text-white font-black rounded-xl">GUARDAR</button>
@@ -246,10 +267,14 @@ window.submitCreateRock = async function (event) {
     event.preventDefault();
     if (!window._supabase || !window.currentUser) return;
 
+    const deadlineVal = document.getElementById('rock-deadline').value;
     const rockData = {
         name: document.getElementById('rock-name').value,
         description: document.getElementById('rock-description').value,
-        // (Other fields would go here, simplified for brevity)
+        month: parseInt(document.getElementById('rock-month').value),
+        year: parseInt(document.getElementById('rock-year').value),
+        xp_value: parseInt(document.getElementById('rock-xp').value) || 10,
+        deadline_day: deadlineVal ? parseInt(deadlineVal) : null,
         is_active: true
     };
 

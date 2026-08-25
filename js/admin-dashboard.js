@@ -180,18 +180,10 @@ window.renderDashboardUI = function renderDashboardUI(container, stats, teachers
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
-            <div id="team-performance-widget"></div>
-            
-            <div class="glass-card p-8 bg-white dark:bg-slate-900">
-                <div class="flex justify-between items-center mb-8">
-                    <h3 class="text-xl font-black text-slate-800 dark:text-white flex items-center gap-3">
-                        <i class="fas fa-bell text-rose-500"></i> Centro de Acción
-                    </h3>
-                    <span class="bg-rose-500/10 text-rose-500 text-[0.65rem] font-black px-3 py-1.5 rounded-full">INTERVENCIÓN REQUERIDA</span>
-                </div>
-                ${renderWaiverQuickAccess(stats.pendingWaivers)}
+            <div class="flex flex-col gap-8">
+                <div id="team-performance-widget"></div>
 
-                <div class="mt-10 pt-8 border-t border-slate-100 dark:border-slate-800">
+                <div class="glass-card p-8 bg-white dark:bg-slate-900">
                     <div class="flex items-center justify-between mb-6">
                         <h4 class="text-xs font-black uppercase text-slate-400 tracking-[0.2em]">Informes Mensuales -- ATT</h4>
                         <span class="text-[0.65rem] font-black px-3 py-1.5 rounded-full ${stats.monthlyReports.length >= stats.totalTeachers && stats.totalTeachers > 0 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}">${stats.monthlyReports.length} / ${stats.totalTeachers} DOCENTES</span>
@@ -201,6 +193,16 @@ window.renderDashboardUI = function renderDashboardUI(container, stats, teachers
                         <i class="fas fa-file-lines"></i> Generar Informe General
                     </button>
                 </div>
+            </div>
+
+            <div class="glass-card p-8 bg-white dark:bg-slate-900">
+                <div class="flex justify-between items-center mb-8">
+                    <h3 class="text-xl font-black text-slate-800 dark:text-white flex items-center gap-3">
+                        <i class="fas fa-bell text-rose-500"></i> Centro de Acción
+                    </h3>
+                    <span class="bg-rose-500/10 text-rose-500 text-[0.65rem] font-black px-3 py-1.5 rounded-full">INTERVENCIÓN REQUERIDA</span>
+                </div>
+                ${renderWaiverQuickAccess(stats.pendingWaivers)}
 
                 <div class="mt-10 pt-8 border-t border-slate-100 dark:border-slate-800">
                     <div class="flex items-center justify-between mb-6">

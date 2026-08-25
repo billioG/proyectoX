@@ -96,7 +96,8 @@ const MascotWidget = {
                 .mascot-bubble {
                     position: absolute;
                     bottom: 110%;
-                    left: 0;
+                    right: 0;
+                    max-width: calc(100vw - 48px);
                     background: white;
                     padding: 12px 16px;
                     border-radius: 20px;
@@ -121,7 +122,7 @@ const MascotWidget = {
                     content: '';
                     position: absolute;
                     top: 100%;
-                    left: 24px;
+                    right: 24px;
                     border: 10px solid transparent;
                     border-top-color: #00ADEF;
                 }
