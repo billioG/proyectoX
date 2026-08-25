@@ -2,7 +2,7 @@
  * FEED UI - Componentes visuales para el feed de proyectos (Premium Edition)
  */
 
-window.renderTeacherPanel = function renderTeacherPanel(hasWeeklyEvidence, showReportBtn) {
+window.renderTeacherPanel = function renderTeacherPanel(hasWeeklyEvidence, showReportBtn, reportAlreadySent) {
   return `
     <div class="glass-card px-6 py-5 border-none bg-slate-900 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6 grow mb-8">
       <div class="flex items-center gap-5">
@@ -24,8 +24,11 @@ window.renderTeacherPanel = function renderTeacherPanel(hasWeeklyEvidence, showR
             <div class="bg-amber-500/10 text-amber-500 font-bold py-2.5 px-6 rounded-xl flex items-center gap-2 text-[0.7rem] uppercase tracking-widest border border-amber-500/20 whitespace-nowrap">
                 <i class="fas fa-clock"></i> EVIDENCIA PENDIENTE
             </div>`}
-          ${showReportBtn ? `
-            <button class="bg-primary hover:bg-primary-dark text-white font-black py-2.5 px-6 rounded-xl transition-all text-[0.7rem] uppercase tracking-widest shadow-lg shadow-primary/20" onclick="window.openMonthlyReportModal && window.openMonthlyReportModal()">INFORME</button>` : ''}
+          ${showReportBtn ? (reportAlreadySent ? `
+            <div class="bg-emerald-500/10 text-emerald-400 font-bold py-2.5 px-6 rounded-xl flex items-center gap-2 text-[0.7rem] uppercase tracking-widest border border-emerald-500/20 whitespace-nowrap">
+                <i class="fas fa-check-circle"></i> INFORME ENVIADO
+            </div>` : `
+            <button class="bg-primary hover:bg-primary-dark text-white font-black py-2.5 px-6 rounded-xl transition-all text-[0.7rem] uppercase tracking-widest shadow-lg shadow-primary/20" onclick="window.openMonthlyReportModal && window.openMonthlyReportModal()">INFORME</button>`) : ''}
         </div>
       </div>
     </div>
@@ -76,8 +79,8 @@ window.renderProjectCard = function renderProjectCard(p) {
   const isGroupMember = p.groups?.group_members?.some(m => m.student_id === currentUser?.id);
   const canSeeScore = isOwner || isGroupMember || userRole === 'docente' || userRole === 'admin';
   // El feedback del docente es privado -- solo lo ve quien subió el
-  // proyecto o su equipo, ni siquiera otros docentes/admin navegando el feed.
-  const canSeeFeedback = isOwner || isGroupMember;
+  // proyecto/su equipo, o el admin. Otros docentes navegando el feed no.
+  const canSeeFeedback = isOwner || isGroupMember || userRole === 'admin';
 
   return `
     <div class="project-card group bg-white dark:bg-slate-900 rounded-2xl overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col border border-slate-100 dark:border-slate-800" data-title="${(p.title || '').toLowerCase()}" data-school="${p.students?.schools?.name || ''}">

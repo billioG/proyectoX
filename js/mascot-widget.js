@@ -82,7 +82,9 @@ const MascotWidget = {
 
         const container = document.createElement('div');
         container.id = this.containerId;
-        container.className = 'fixed bottom-6 left-6 z-[100] transition-all duration-500 transform hover:scale-105 group';
+        // bottom-24 en móvil para no tapar el botón de menú hamburguesa
+        // (fixed, bottom:24px, 60px alto -- ver #mobile-menu-btn en index.html).
+        container.className = 'fixed bottom-24 right-6 md:bottom-6 md:right-6 z-[100] transition-all duration-500 transform hover:scale-105 group';
         container.style.pointerEvents = 'none'; // So it doesn't block clicks when not interacting
 
         container.innerHTML = `

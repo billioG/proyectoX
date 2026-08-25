@@ -80,11 +80,22 @@ window.renderTeacherManagementPanel = async function renderTeacherManagementPane
   const currentUser = window.currentUser;
   const renderTeacherPanel = window.renderTeacherPanel;
 
-  const today = new Date().getDate();
+  const now = new Date();
+  const today = now.getDate();
   const showReportBtn = today >= 25 && today <= 31;
   const { count } = await _supabase.from('weekly_evidence').select('*', { count: 'exact', head: true }).eq('teacher_id', currentUser.id).gte('created_at', new Date(new Date().setDate(new Date().getDate() - 7)).toISOString());
 
-  let html = (typeof renderTeacherPanel === 'function') ? renderTeacherPanel(count > 0, showReportBtn) : '';
+  let reportAlreadySent = false;
+  if (showReportBtn) {
+    const { count: reportCount } = await _supabase.from('teacher_monthly_reports')
+      .select('*', { count: 'exact', head: true })
+      .eq('teacher_id', currentUser.id)
+      .eq('month', now.getMonth() + 1)
+      .eq('year', now.getFullYear());
+    reportAlreadySent = (reportCount || 0) > 0;
+  }
+
+  let html = (typeof renderTeacherPanel === 'function') ? renderTeacherPanel(count > 0, showReportBtn, reportAlreadySent) : '';
 
   // Inyectar el reto activo dinámicamente si existe
   const challengeHtml = await window.renderActiveChallengeBanner();

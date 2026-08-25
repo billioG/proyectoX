@@ -45,8 +45,9 @@ window.viewProjectDetails = async function viewProjectDetails(projectId) {
     const isGroupMember = project.groups?.group_members?.some(m => m.student_id === currentUser?.id);
     const canSeeFullInfo = isOwner || isGroupMember || isTeacherOrAdmin;
     // El feedback escrito del docente es privado -- solo el equipo que
-    // subió el proyecto lo ve, ni otros docentes/admin navegando proyectos ajenos.
-    const canSeeFeedback = isOwner || isGroupMember;
+    // subió el proyecto o el admin lo ve, otros docentes navegando proyectos
+    // ajenos no.
+    const canSeeFeedback = isOwner || isGroupMember || userRole === 'admin';
 
     const modal = document.createElement('div');
     modal.className = 'fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-300';

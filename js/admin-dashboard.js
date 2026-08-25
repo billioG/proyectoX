@@ -24,7 +24,8 @@ window.loadAdminDashboard = async function loadAdminDashboard() {
     try {
         // Patrón Local-First: Carga instantánea desde cache + actualización de red
         await fetchWithCache('admin_dashboard_snapshot', async () => {
-            const [projects, students, teachers, schools, evals, ratings, waivers, activeTime] = await Promise.all([
+            const now = new Date();
+            const [projects, students, teachers, schools, evals, ratings, waivers, activeTime, monthlyReports] = await Promise.all([
                 _supabase.from('projects').select('id, created_at'),
                 _supabase.from('students').select('gender, school_code'),
                 _supabase.from('teachers').select('*'),
@@ -32,7 +33,8 @@ window.loadAdminDashboard = async function loadAdminDashboard() {
                 _supabase.from('evaluations').select('total_score, teacher_id'),
                 _supabase.from('teacher_ratings').select('rating, teacher_id, students(school_code)'),
                 _supabase.from('attendance_waivers').select('*, teachers!teacher_id(full_name)').eq('status', 'pending'),
-                _supabase.from('active_time_tracking').select('total_seconds, role, school_code')
+                _supabase.from('active_time_tracking').select('total_seconds, role, school_code'),
+                _supabase.from('teacher_monthly_reports').select('*, teachers(full_name, email)').eq('month', now.getMonth() + 1).eq('year', now.getFullYear())
             ]);
 
             return {
@@ -43,7 +45,8 @@ window.loadAdminDashboard = async function loadAdminDashboard() {
                 evals: evals.data || [],
                 ratings: ratings.data || [],
                 waivers: waivers.data || [],
-                activeTime: activeTime.data || []
+                activeTime: activeTime.data || [],
+                monthlyReports: monthlyReports.data || []
             };
         }, (snapshot) => {
             // Procesar y renderizar los datos (ya sean de cache o frescos)
@@ -57,7 +60,8 @@ window.loadAdminDashboard = async function loadAdminDashboard() {
 }
 
 window.processAndRenderDashboard = function processAndRenderDashboard(container, data) {
-    const { projects, students, teachers, schools, evals, ratings, waivers, activeTime } = data;
+    const { projects, students, teachers, schools, evals, ratings, waivers, activeTime, monthlyReports } = data;
+    window._monthlyReportsCache = monthlyReports || [];
 
     const totalActiveSeconds = (activeTime || []).reduce((sum, entry) => sum + (entry.total_seconds || 0), 0);
     const activeTimeByRole = (activeTime || []).reduce((acc, entry) => {
@@ -71,6 +75,8 @@ window.processAndRenderDashboard = function processAndRenderDashboard(container,
         avgScore: evals?.length > 0 ? (evals.reduce((s, e) => s + (e.total_score || 0), 0) / evals.length).toFixed(1) : 0,
         globalSatisfaction: ratings?.length > 0 ? (ratings.reduce((s, r) => s + (r.rating || 0), 0) / ratings.length).toFixed(1) : 0,
         pendingWaivers: waivers || [],
+        monthlyReports: monthlyReports || [],
+        totalTeachers: teachers?.length || 0,
         gender: {
             F: students?.filter(s => s.gender?.toLowerCase().startsWith('f')).length || 0,
             M: students?.filter(s => s.gender?.toLowerCase().startsWith('m')).length || 0
@@ -184,7 +190,18 @@ window.renderDashboardUI = function renderDashboardUI(container, stats, teachers
                     <span class="bg-rose-500/10 text-rose-500 text-[0.65rem] font-black px-3 py-1.5 rounded-full">INTERVENCIÓN REQUERIDA</span>
                 </div>
                 ${renderWaiverQuickAccess(stats.pendingWaivers)}
-                
+
+                <div class="mt-10 pt-8 border-t border-slate-100 dark:border-slate-800">
+                    <div class="flex items-center justify-between mb-6">
+                        <h4 class="text-xs font-black uppercase text-slate-400 tracking-[0.2em]">Informes Mensuales -- ATT</h4>
+                        <span class="text-[0.65rem] font-black px-3 py-1.5 rounded-full ${stats.monthlyReports.length >= stats.totalTeachers && stats.totalTeachers > 0 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}">${stats.monthlyReports.length} / ${stats.totalTeachers} DOCENTES</span>
+                    </div>
+                    ${renderMonthlyReportsQuickAccess(stats.monthlyReports, teachers || [])}
+                    <button onclick="window.generateGeneralMonthlyReport()" class="w-full mt-4 h-11 rounded-xl bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all text-[0.65rem] font-black uppercase tracking-widest flex items-center justify-center gap-2" ${stats.monthlyReports.length === 0 ? 'disabled style="opacity:.4;cursor:not-allowed;"' : ''}>
+                        <i class="fas fa-file-lines"></i> Generar Informe General
+                    </button>
+                </div>
+
                 <div class="mt-10 pt-8 border-t border-slate-100 dark:border-slate-800">
                     <div class="flex items-center justify-between mb-6">
                         <h4 class="text-xs font-black uppercase text-slate-400 tracking-[0.2em]">Demografía Estudiantil</h4>
@@ -426,6 +443,102 @@ function renderWaiverQuickAccess(waivers) {
             VER HISTORIAL COMPLETO
         </button>
     `;
+}
+
+function renderMonthlyReportsQuickAccess(reports, allTeachers) {
+    const sentIds = new Set(reports.map(r => r.teacher_id));
+    const pending = (allTeachers || []).filter(t => !sentIds.has(t.id));
+
+    if (reports.length === 0) return `
+        <div class="bg-amber-50 dark:bg-amber-950/20 p-6 rounded-2xl text-center border border-amber-100 dark:border-amber-900/30">
+            <p class="text-amber-800 dark:text-amber-400 font-bold text-sm">Ningún docente ha enviado su informe este mes todavía.</p>
+        </div>
+    `;
+
+    return `
+        <div class="space-y-3 max-h-[240px] overflow-y-auto pr-2 custom-scrollbar">
+            ${reports.map(r => `
+                <div class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-primary/30 transition-all">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0"><i class="fas fa-check text-xs"></i></div>
+                        <span class="text-sm font-bold text-slate-700 dark:text-slate-200 truncate">${window.sanitizeInput(r.teachers?.full_name || 'Docente')}</span>
+                    </div>
+                    <button onclick="window.viewTeacherMonthlyReport(${r.id})" class="shrink-0 h-8 px-3 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-primary text-[0.6rem] font-black uppercase">Ver</button>
+                </div>
+            `).join('')}
+            ${pending.map(t => `
+                <div class="flex items-center gap-3 p-3 bg-slate-50/50 dark:bg-slate-800/20 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 opacity-60">
+                    <div class="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-400 flex items-center justify-center shrink-0"><i class="fas fa-clock text-xs"></i></div>
+                    <span class="text-sm font-bold text-slate-500 dark:text-slate-400 truncate">${window.sanitizeInput(t.full_name || 'Docente')} -- pendiente</span>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+window.viewTeacherMonthlyReport = function viewTeacherMonthlyReport(reportId) {
+    const r = (window._monthlyReportsCache || []).find(x => x.id === reportId);
+    if (!r) return;
+    const sanitizeInput = window.sanitizeInput || ((v) => v);
+    const monthName = new Date(r.year, r.month - 1, 1).toLocaleDateString('es-GT', { month: 'long', year: 'numeric' });
+
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn';
+    modal.innerHTML = `
+      <div class="glass-card w-full max-w-2xl max-h-[85vh] overflow-y-auto custom-scrollbar p-8 shadow-2xl animate-slideUp bg-white dark:bg-slate-900">
+        <div class="flex justify-between items-start mb-6">
+          <div>
+            <h2 class="text-xl font-black text-slate-800 dark:text-white uppercase">${sanitizeInput(r.teachers?.full_name || 'Docente')}</h2>
+            <p class="text-xs text-slate-400 uppercase tracking-widest mt-1">${monthName}</p>
+          </div>
+          <button onclick="this.closest('.fixed').remove()" class="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500 flex items-center justify-center"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="space-y-5 text-sm">
+          <div><h4 class="text-[0.65rem] font-black uppercase text-primary mb-2">Resultados Alcanzados</h4><p class="text-slate-600 dark:text-slate-300 mb-2 italic">${sanitizeInput(r.results_intro || '')}</p>
+            <ul class="list-disc pl-5 space-y-1">${(r.results || []).map(x => `<li class="text-slate-600 dark:text-slate-300">${sanitizeInput(x)}</li>`).join('')}</ul>
+          </div>
+          <div><h4 class="text-[0.65rem] font-black uppercase text-primary mb-2">Inconvenientes Externos</h4><p class="text-slate-600 dark:text-slate-300">${sanitizeInput(r.inconveniences || '')}</p></div>
+          <div><h4 class="text-[0.65rem] font-black uppercase text-primary mb-2">Acciones Implementadas</h4><p class="text-slate-600 dark:text-slate-300">${sanitizeInput(r.actions || '')}</p></div>
+          <div><h4 class="text-[0.65rem] font-black uppercase text-primary mb-2">Conclusión</h4><p class="text-slate-600 dark:text-slate-300">${sanitizeInput(r.conclusion || '')}</p></div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+window.generateGeneralMonthlyReport = function generateGeneralMonthlyReport() {
+    const reports = window._monthlyReportsCache || [];
+    if (!reports.length) return;
+    const sanitizeInput = window.sanitizeInput || ((v) => v);
+    const monthName = new Date(reports[0].year, reports[0].month - 1, 1).toLocaleDateString('es-GT', { month: 'long', year: 'numeric' });
+
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn';
+    modal.innerHTML = `
+      <div class="glass-card w-full max-w-3xl max-h-[90vh] overflow-y-auto custom-scrollbar p-0 shadow-2xl animate-slideUp bg-white dark:bg-slate-900">
+        <div class="bg-gradient-to-br from-primary to-indigo-600 p-8 text-center sticky top-0 z-10">
+          <h2 class="text-2xl font-black text-white uppercase tracking-tight">Informe General -- ATT</h2>
+          <p class="text-indigo-100 text-[0.65rem] font-bold uppercase tracking-[0.2em] mt-1">${monthName} -- ${reports.length} docente(s)</p>
+          <div class="flex justify-center gap-3 mt-4">
+            <button onclick="window.print()" class="bg-white/20 hover:bg-white/30 text-white text-[0.65rem] font-black uppercase px-4 py-2 rounded-lg"><i class="fas fa-print"></i> Imprimir</button>
+            <button onclick="this.closest('.fixed').remove()" class="bg-white/20 hover:bg-white/30 text-white text-[0.65rem] font-black uppercase px-4 py-2 rounded-lg">Cerrar</button>
+          </div>
+        </div>
+        <div class="p-8 space-y-8">
+          ${reports.map(r => `
+            <div class="border-b border-slate-100 dark:border-slate-800 pb-6">
+              <h3 class="text-lg font-black text-slate-800 dark:text-white mb-3">${sanitizeInput(r.teachers?.full_name || 'Docente')}</h3>
+              <p class="text-sm text-slate-600 dark:text-slate-300 italic mb-2">${sanitizeInput(r.results_intro || '')}</p>
+              <ul class="list-disc pl-5 mb-3 space-y-1">${(r.results || []).map(x => `<li class="text-sm text-slate-600 dark:text-slate-300">${sanitizeInput(x)}</li>`).join('')}</ul>
+              <p class="text-xs text-slate-500 dark:text-slate-400"><strong>Inconvenientes:</strong> ${sanitizeInput(r.inconveniences || '')}</p>
+              <p class="text-xs text-slate-500 dark:text-slate-400"><strong>Acciones:</strong> ${sanitizeInput(r.actions || '')}</p>
+              <p class="text-xs text-slate-500 dark:text-slate-400"><strong>Conclusión:</strong> ${sanitizeInput(r.conclusion || '')}</p>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
 }
 
 window.renderTeacherRow = function renderTeacherRow(t, stats) {

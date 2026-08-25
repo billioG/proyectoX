@@ -4,6 +4,15 @@
 
 window.currentEvalProjectId = null;
 
+// PostgREST embebe evaluations como objeto (no array) por el UNIQUE
+// constraint en project_id -- p.evaluations?.length siempre da undefined.
+function hasEvaluation(p) {
+  return Array.isArray(p.evaluations) ? p.evaluations.length > 0 : !!p.evaluations;
+}
+function getEvaluation(p) {
+  return Array.isArray(p.evaluations) ? p.evaluations[0] : p.evaluations;
+}
+
 window.loadEvaluationProjects = async function loadEvaluationProjects() {
   const container = document.getElementById('eval-projects-container');
   if (!container) return;
@@ -51,7 +60,7 @@ window.loadEvaluationProjects = async function loadEvaluationProjects() {
 
 window.renderEvaluationDashboard = function renderEvaluationDashboard(projects, container) {
   const total = projects.length;
-  const evaluated = projects.filter(p => (p.evaluations?.length > 0) || p.score > 0).length;
+  const evaluated = projects.filter(p => hasEvaluation(p) || p.score > 0).length;
   const pending = total - evaluated;
 
   container.innerHTML = `
@@ -110,7 +119,7 @@ window.filterEvaluationProjects = function (val) {
   }
 
   if (onlyPending) {
-    filtered = filtered.filter(p => !((p.evaluations?.length > 0) || p.score > 0));
+    filtered = filtered.filter(p => !(hasEvaluation(p) || p.score > 0));
   }
 
   container.innerHTML = window.renderGroupedProjects(filtered);
@@ -133,7 +142,7 @@ window.renderGroupedProjects = function renderGroupedProjects(projects) {
   }, {});
 
   return Object.keys(grouped).sort().map(school => {
-    const pendings = grouped[school].filter(p => !((p.evaluations?.length > 0) || p.score > 0)).length;
+    const pendings = grouped[school].filter(p => !(hasEvaluation(p) || p.score > 0)).length;
     return `
       <details class="group/school bg-white dark:bg-slate-900 overflow-hidden rounded-[2rem] border border-slate-100 dark:border-slate-800" ${pendings > 0 ? 'open' : ''}>
           <summary class="list-none cursor-pointer p-6 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
@@ -163,7 +172,7 @@ window.renderGroupedProjects = function renderGroupedProjects(projects) {
 
 window.renderProjectEvalCard = function renderProjectEvalCard(p) {
   const sanitizeInput = window.sanitizeInput;
-  const isEvaluated = (p.evaluations?.length > 0) || p.score > 0;
+  const isEvaluated = hasEvaluation(p) || p.score > 0;
   return `
     <div class="glass-card p-6 flex flex-col relative overflow-hidden transition-all duration-300 ${isEvaluated ? 'opacity-70 grayscale-[0.5]' : 'border-2 border-primary/20 bg-primary/5 shadow-lg shadow-primary/5'}">
       ${!isEvaluated ? `<div class="absolute -right-4 -top-4 w-12 h-12 bg-primary rotate-45 flex items-end justify-center pb-1"><i class="fas fa-bolt text-white text-[0.6rem] -rotate-45"></i></div>` : ''}
@@ -176,7 +185,7 @@ window.renderProjectEvalCard = function renderProjectEvalCard(p) {
             </div>
         </div>
         <div class="${isEvaluated ? 'bg-emerald-500 shadow-emerald-500/20' : 'bg-rose-500 shadow-rose-500/20'} text-white text-xs font-black px-3 py-1.5 rounded-xl shadow-lg">
-            ${isEvaluated ? p.score || p.evaluations[0].total_score : 'PENDIENTE'}
+            ${isEvaluated ? (p.score || getEvaluation(p)?.total_score || 0) : 'PENDIENTE'}
         </div>
       </div>
       
