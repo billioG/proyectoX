@@ -29,6 +29,13 @@ export async function initAuth() {
       return;
     }
     if (event === 'SIGNED_IN' && session && !isRecoveryLink) {
+      // Supabase puede re-emitir SIGNED_IN con la MISMA sesión al volver a
+      // enfocar la pestaña (revalida el token en segundo plano). Si ya
+      // tenemos a este mismo usuario cargado, handleSuccessfulLogin() de
+      // nuevo llama a nav() y eso borra cualquier modal abierto (ej. el
+      // formulario de crear curso) -- se veía como "la app se reinicia y
+      // pierdo lo que estaba escribiendo" al cambiar de pestaña y volver.
+      if (window.currentUser?.id === session.user.id) return;
       await handleSuccessfulLogin(session.user);
     }
   });
@@ -340,7 +347,10 @@ export async function handleSuccessfulLogin(user) {
     if (mustChangePassword) {
       showMandatoryPasswordChangeModal();
     } else {
-      nav(window.userRole === 'admin' ? 'admin-dashboard' : 'feed');
+      const defaultView = window.userRole === 'admin' ? 'admin-dashboard' : 'feed';
+      const lastView = sessionStorage.getItem('PX_LAST_VIEW');
+      const hasLastView = lastView && document.getElementById(`view-${lastView}`);
+      nav(hasLastView ? lastView : defaultView);
     }
 
     if (typeof initGamification === 'function') initGamification();

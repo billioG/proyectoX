@@ -118,6 +118,10 @@ window.toggleSidebar = toggleSidebar;
 
 export function nav(view) {
     console.log('📍 Navegando a:', view);
+    // Si Chrome descarta la pestaña en segundo plano y recarga la app al
+    // volver, esto permite reabrir en la misma vista en vez de mandar
+    // siempre al feed/dashboard por defecto (ver handleSuccessfulLogin).
+    sessionStorage.setItem('PX_LAST_VIEW', view);
 
     // Ocultar todas las vistas
     const allViews = document.querySelectorAll('.view-section');
