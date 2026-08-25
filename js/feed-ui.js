@@ -21,7 +21,7 @@ window.renderTeacherPanel = function renderTeacherPanel(hasWeeklyEvidence, showR
             <div class="bg-emerald-500/10 text-emerald-400 font-bold py-2.5 px-6 rounded-xl flex items-center gap-2 text-[0.7rem] uppercase tracking-widest border border-emerald-500/20 whitespace-nowrap">
                 <i class="fas fa-check-circle"></i> EVIDENCIA LISTA
             </div>` : `
-            <div class="bg-amber-500/10 text-amber-500 font-bold py-2.5 px-6 rounded-xl flex items-center gap-2 text-[0.7rem] uppercase tracking-widest border border-amber-500/20 animate-pulse whitespace-nowrap">
+            <div class="bg-amber-500/10 text-amber-500 font-bold py-2.5 px-6 rounded-xl flex items-center gap-2 text-[0.7rem] uppercase tracking-widest border border-amber-500/20 whitespace-nowrap">
                 <i class="fas fa-clock"></i> EVIDENCIA PENDIENTE
             </div>`}
           ${showReportBtn ? `

@@ -148,7 +148,7 @@ window.renderGamificationSidebar = function renderGamificationSidebar(level, tot
           </div>
         </div>
         <div class="flex flex-col items-end">
-            <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-orange-500/10 text-orange-500 border border-orange-500/10 shadow-sm animate-pulse">
+            <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-orange-500/10 text-orange-500 border border-orange-500/10 shadow-sm">
                 <i class="fas fa-fire text-sm"></i>
                 <span class="text-xs font-bold leading-none">${streak} DÍAS</span>
             </div>

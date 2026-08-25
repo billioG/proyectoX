@@ -626,7 +626,7 @@ window.renderKpiProgressTile = function renderKpiProgressTile(kpi) {
                                 ${isVerified ? `
                                     <span class="px-3 py-1 rounded-lg bg-blue-500/10 text-blue-500 text-[0.65rem] font-black uppercase">Validado Admin</span>
                                 ` : (isCompleted ? `
-                                    <span class="px-3 py-1 rounded-lg bg-amber-500/10 text-amber-500 text-[0.65rem] font-black uppercase italic animate-pulse">Pendiente Validación</span>
+                                    <span class="px-3 py-1 rounded-lg bg-amber-500/10 text-amber-500 text-[0.65rem] font-black uppercase italic">Pendiente Validación</span>
                                 ` : '')}
                             </div>
                         `;
@@ -943,7 +943,7 @@ window.selectTeacherForManager = async function selectTeacherForManager(teacherI
             return `
                                                     <div class="flex items-center justify-between p-6 rounded-[1.5rem] ${isDone ? 'bg-white dark:bg-white/5 shadow-md' : 'opacity-40 bg-slate-100/50 dark:bg-slate-800/30'} border border-slate-100 dark:border-slate-800 transition-all">
                                                         <div class="flex items-center gap-4">
-                                                            <div class="w-3 h-3 rounded-full ${isDone ? 'bg-emerald-500 shadow-lg shadow-emerald-500/50 animate-pulse' : 'bg-slate-300'}"></div>
+                                                            <div class="w-3 h-3 rounded-full ${isDone ? 'bg-emerald-500 shadow-lg shadow-emerald-500/50' : 'bg-slate-300'}"></div>
                                                             <div>
                                                                 <div class="text-sm font-black uppercase ${isDone ? 'text-slate-800 dark:text-white' : 'text-slate-400'}">${task.title}</div>
                                                                 <div class="text-[0.6rem] font-black uppercase tracking-tighter ${task.teacher_id ? 'text-indigo-500' : 'text-slate-400'} mt-1">

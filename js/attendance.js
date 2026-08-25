@@ -72,7 +72,7 @@ window.renderAttendanceUI = window.renderAttendanceUI = function renderAttendanc
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8 border-b border-slate-50 dark:border-slate-800 pb-8">
                 <div>
                     <h3 class="text-2xl font-black text-slate-800 dark:text-white mb-1 uppercase tracking-tighter flex items-center gap-3">
-                        Biometría QR <span class="text-[0.6rem] bg-emerald-500 text-white px-3 py-1 rounded-full animate-pulse tracking-widest font-black">ACTIVO</span>
+                        Biometría QR <span class="text-[0.6rem] bg-emerald-500 text-white px-3 py-1 rounded-full tracking-widest font-black">ACTIVO</span>
                     </h3>
                     <p class="text-[0.7rem] font-bold text-slate-400 uppercase tracking-widest">Sincronización en tiempo real con la nube.</p>
                 </div>

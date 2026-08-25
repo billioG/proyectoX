@@ -143,7 +143,7 @@ window.renderGroupedProjects = function renderGroupedProjects(projects) {
                       <h3 class="text-lg font-black text-slate-800 dark:text-white leading-none">${sanitizeInput(school)}</h3>
                       <div class="flex items-center gap-2 mt-1">
                           <span class="text-[0.6rem] font-bold text-slate-400 uppercase tracking-widest">${grouped[school].length} PROYECTOS</span>
-                          ${pendings > 0 ? `<span class="bg-rose-500 text-white text-[0.5rem] font-black px-2 py-0.5 rounded-full animate-pulse">${pendings} PENDIENTES</span>` : ''}
+                          ${pendings > 0 ? `<span class="bg-rose-500 text-white text-[0.5rem] font-black px-2 py-0.5 rounded-full">${pendings} PENDIENTES</span>` : ''}
                       </div>
                   </div>
               </div>
@@ -175,7 +175,7 @@ window.renderProjectEvalCard = function renderProjectEvalCard(p) {
                 <i class="fas fa-user-graduate"></i> <span class="truncate">${p.students?.full_name}</span>
             </div>
         </div>
-        <div class="${isEvaluated ? 'bg-emerald-500 shadow-emerald-500/20' : 'bg-rose-500 animate-pulse shadow-rose-500/20'} text-white text-xs font-black px-3 py-1.5 rounded-xl shadow-lg">
+        <div class="${isEvaluated ? 'bg-emerald-500 shadow-emerald-500/20' : 'bg-rose-500 shadow-rose-500/20'} text-white text-xs font-black px-3 py-1.5 rounded-xl shadow-lg">
             ${isEvaluated ? p.score || p.evaluations[0].total_score : 'PENDIENTE'}
         </div>
       </div>
