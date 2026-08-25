@@ -117,7 +117,7 @@ window.openCreateLessonModal = async function openCreateLessonModal() {
         </div>
         <div id="lesson-source-file-wrap" class="hidden">
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Archivo .zip *</label>
-          <input type="file" id="lesson-file" accept=".zip" class="input-field-tw text-sm py-2.5">
+          <input type="file" id="lesson-file" accept=".zip,.h5p" class="input-field-tw text-sm py-2.5">
           <p id="lesson-upload-progress" class="text-[0.65rem] text-slate-400 mt-2 hidden"></p>
         </div>
       </div>
@@ -143,7 +143,7 @@ window.saveLesson = async function saveLesson() {
   const classIndex = document.getElementById('lesson-class')?.value;
   const title = document.getElementById('lesson-title')?.value.trim();
   const description = document.getElementById('lesson-description')?.value.trim();
-  const content_type = document.getElementById('lesson-type')?.value;
+  let content_type = document.getElementById('lesson-type')?.value;
   const isFileType = LESSON_TYPES_WITH_GRADE.has(content_type);
   const content_url = document.getElementById('lesson-url')?.value.trim();
   const file = document.getElementById('lesson-file')?.files?.[0];
@@ -172,11 +172,18 @@ window.saveLesson = async function saveLesson() {
         btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${msg}`;
       });
 
-      if (content_type === 'scorm') {
+      // Muchos exportadores (Genially, Lumi, etc.) empaquetan H5P DENTRO
+      // de un SCORM real (traen imsmanifest.xml + SCORM_API_wrapper.js).
+      // Si el .zip trae manifiesto, es SCORM sin importar qué eligió el
+      // docente en el dropdown -- evita que quede mal etiquetado y sin
+      // reproducirse.
+      if (uploaded.entryUrl) {
+        content_type = 'scorm';
         finalUrl = uploaded.entryUrl;
-        if (!finalUrl) throw new Error('No se encontró el archivo de entrada del paquete SCORM (imsmanifest.xml)');
+      } else if (content_type === 'scorm') {
+        throw new Error('No se encontró el archivo de entrada del paquete SCORM (imsmanifest.xml)');
       } else {
-        finalUrl = uploaded.baseUrl; // H5P necesita la carpeta base, no un archivo puntual
+        finalUrl = uploaded.baseUrl; // H5P nativo necesita la carpeta base, no un archivo puntual
       }
     }
 
