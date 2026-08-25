@@ -473,35 +473,59 @@ window.submitStudent = async function submitStudent(e) {
   e.preventDefault();
   const _supabase = window._supabase;
   const showToast = window.showToast;
+  const btn = e.target.querySelector('button[type="submit"]') || document.querySelector('#student-form button.btn-primary-tw');
 
   const id = document.getElementById('student-id').value;
   const username = document.getElementById('student-username').value;
-  const studentData = {
-    full_name: document.getElementById('student-name').value,
-    school_code: document.getElementById('student-school').value,
-    cui: document.getElementById('student-cui').value,
-    grade: document.getElementById('student-grade').value,
-    section: document.getElementById('student-section').value,
-  };
+  const full_name = document.getElementById('student-name').value;
+  const school_code = document.getElementById('student-school').value;
+  const cui = document.getElementById('student-cui').value;
+  const grade = document.getElementById('student-grade').value;
+  const section = document.getElementById('student-section').value;
 
   try {
-    let error;
     if (id) {
-      const res = await _supabase.from('students').update(studentData).eq('id', id);
-      error = res.error;
-    } else {
-      // Generar username basado en input
-      studentData.username = username || (studentData.full_name.split(' ')[0].toLowerCase() + Math.floor(1000 + Math.random() * 9000));
-      const res = await _supabase.from('students').insert(studentData);
-      error = res.error;
+      // Editar: la cuenta de acceso ya existe, solo se tocan los datos.
+      const { error } = await _supabase.from('students').update({ full_name, school_code, cui, grade, section }).eq('id', id);
+      if (error) throw error;
+      showToast('<i class="fas fa-circle-check"></i> Alumno actualizado', 'success');
+      e.target.closest('.fixed').remove();
+      window.loadStudents();
+      return;
     }
 
-    if (error) throw error;
-    showToast('<i class="fas fa-circle-check"></i> Alumno guardado', 'success');
+    // Nuevo: hace falta una cuenta de acceso real (Auth + fila en
+    // students), igual que la importación masiva -- si solo se
+    // insertara la fila, el alumno jamás podría loguearse.
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creando...'; }
+
+    const finalUsername = username || (full_name.split(' ')[0].toLowerCase() + Math.floor(1000 + Math.random() * 9000));
+
+    const { data: classPw } = await _supabase.from('class_passwords').select('password, requires_password').eq('school_code', school_code).eq('grade', grade).eq('section', section).maybeSingle();
+    const password = classPw?.requires_password === false
+      ? Math.random().toString(36).slice(-10) // clase sin contraseña -- igual necesita alguna en Auth, no se usará para entrar
+      : (classPw?.password || Math.random().toString(36).slice(-10));
+
+    const { data: { session } } = await _supabase.auth.getSession();
+    const res = await fetch(`${window.SUPABASE_URL}/functions/v1/admin-bulk-import-students`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token || ''}` },
+      body: JSON.stringify({
+        students: [{ fullName: full_name, username: finalUsername, email: `${finalUsername}@estudiante.edu.gt`, password, school_code, grade, section, cui }],
+      }),
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || 'Error al crear alumno');
+    const item = result.results?.[0];
+    if (item?.status === 'error') throw new Error(item.message || 'Error al crear alumno');
+
+    showToast('<i class="fas fa-circle-check"></i> Alumno creado', 'success');
     e.target.closest('.fixed').remove();
     window.loadStudents();
   } catch (err) {
-    showToast('<i class="fas fa-circle-xmark"></i> Error al guardar', 'error');
+    console.error('Error guardando alumno:', err);
+    showToast('<i class="fas fa-circle-xmark"></i> ' + err.message, 'error');
+    if (btn) { btn.disabled = false; btn.innerHTML = 'Guardar Alumno'; }
   }
 }
 
