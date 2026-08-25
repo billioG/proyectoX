@@ -248,7 +248,7 @@ window.submitMonthlyReport = async function submitMonthlyReport(e) {
     const results = Array.from(formData.getAll('results[]'));
     const { error } = await _supabase
       .from('teacher_monthly_reports')
-      .insert({
+      .upsert({
         teacher_id: currentUser.id,
         month: parseInt(formData.get('month')),
         year: parseInt(formData.get('year')),
@@ -257,8 +257,7 @@ window.submitMonthlyReport = async function submitMonthlyReport(e) {
         inconveniences: formData.get('inconveniences'),
         actions: formData.get('actions'),
         conclusion: formData.get('conclusion'),
-        created_at: new Date().toISOString()
-      });
+      }, { onConflict: 'teacher_id,month,year' });
 
     if (error) throw error;
 

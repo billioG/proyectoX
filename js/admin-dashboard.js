@@ -508,7 +508,7 @@ window.viewTeacherMonthlyReport = function viewTeacherMonthlyReport(reportId) {
     document.body.appendChild(modal);
 }
 
-window.generateGeneralMonthlyReport = function generateGeneralMonthlyReport() {
+window.generateGeneralMonthlyReport = async function generateGeneralMonthlyReport() {
     const reports = window._monthlyReportsCache || [];
     if (!reports.length) return;
     const sanitizeInput = window.sanitizeInput || ((v) => v);
@@ -520,27 +520,59 @@ window.generateGeneralMonthlyReport = function generateGeneralMonthlyReport() {
       <div class="glass-card w-full max-w-3xl max-h-[90vh] overflow-y-auto custom-scrollbar p-0 shadow-2xl animate-slideUp bg-white dark:bg-slate-900">
         <div class="bg-gradient-to-br from-primary to-indigo-600 p-8 text-center sticky top-0 z-10">
           <h2 class="text-2xl font-black text-white uppercase tracking-tight">Informe General -- ATT</h2>
-          <p class="text-indigo-100 text-[0.65rem] font-bold uppercase tracking-[0.2em] mt-1">${monthName} -- ${reports.length} docente(s)</p>
+          <p class="text-indigo-100 text-[0.65rem] font-bold uppercase tracking-[0.2em] mt-1"><i class="fas fa-robot"></i> ${monthName} -- redactado por IA a partir de ${reports.length} docente(s)</p>
           <div class="flex justify-center gap-3 mt-4">
-            <button onclick="window.print()" class="bg-white/20 hover:bg-white/30 text-white text-[0.65rem] font-black uppercase px-4 py-2 rounded-lg"><i class="fas fa-print"></i> Imprimir</button>
+            <button id="btn-print-general-report" onclick="window.print()" class="bg-white/20 hover:bg-white/30 text-white text-[0.65rem] font-black uppercase px-4 py-2 rounded-lg hidden"><i class="fas fa-print"></i> Imprimir</button>
             <button onclick="this.closest('.fixed').remove()" class="bg-white/20 hover:bg-white/30 text-white text-[0.65rem] font-black uppercase px-4 py-2 rounded-lg">Cerrar</button>
           </div>
         </div>
-        <div class="p-8 space-y-8">
-          ${reports.map(r => `
-            <div class="border-b border-slate-100 dark:border-slate-800 pb-6">
-              <h3 class="text-lg font-black text-slate-800 dark:text-white mb-3">${sanitizeInput(r.teachers?.full_name || 'Docente')}</h3>
-              <p class="text-sm text-slate-600 dark:text-slate-300 italic mb-2">${sanitizeInput(r.results_intro || '')}</p>
-              <ul class="list-disc pl-5 mb-3 space-y-1">${(r.results || []).map(x => `<li class="text-sm text-slate-600 dark:text-slate-300">${sanitizeInput(x)}</li>`).join('')}</ul>
-              <p class="text-xs text-slate-500 dark:text-slate-400"><strong>Inconvenientes:</strong> ${sanitizeInput(r.inconveniences || '')}</p>
-              <p class="text-xs text-slate-500 dark:text-slate-400"><strong>Acciones:</strong> ${sanitizeInput(r.actions || '')}</p>
-              <p class="text-xs text-slate-500 dark:text-slate-400"><strong>Conclusión:</strong> ${sanitizeInput(r.conclusion || '')}</p>
-            </div>
-          `).join('')}
+        <div id="general-report-body" class="p-8">
+          <div class="flex flex-col items-center justify-center py-16 text-slate-400">
+            <i class="fas fa-circle-notch fa-spin text-3xl mb-4 text-primary"></i>
+            <span class="text-xs font-bold uppercase tracking-widest">La IA está redactando el informe...</span>
+          </div>
         </div>
       </div>
     `;
     document.body.appendChild(modal);
+
+    try {
+        const { data: { session } } = await window._supabase.auth.getSession();
+        const res = await fetch(`${window.SUPABASE_URL}/functions/v1/ai-generate-general-report`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
+            body: JSON.stringify({ month: reports[0].month, year: reports[0].year }),
+        });
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || 'Error generando el informe');
+
+        document.getElementById('btn-print-general-report')?.classList.remove('hidden');
+        document.getElementById('general-report-body').innerHTML = `
+          <div class="space-y-6 text-sm mb-8">
+            <div><h4 class="text-[0.65rem] font-black uppercase text-primary mb-2">Introducción</h4><p class="text-slate-600 dark:text-slate-300 leading-relaxed">${sanitizeInput(result.introduccion)}</p></div>
+            <div><h4 class="text-[0.65rem] font-black uppercase text-primary mb-2">Resultados Alcanzados</h4><p class="text-slate-600 dark:text-slate-300 leading-relaxed">${sanitizeInput(result.resultados)}</p></div>
+            <div><h4 class="text-[0.65rem] font-black uppercase text-primary mb-2">Inconvenientes Externos</h4><p class="text-slate-600 dark:text-slate-300 leading-relaxed">${sanitizeInput(result.inconvenientes)}</p></div>
+            <div><h4 class="text-[0.65rem] font-black uppercase text-primary mb-2">Acciones Implementadas</h4><p class="text-slate-600 dark:text-slate-300 leading-relaxed">${sanitizeInput(result.acciones)}</p></div>
+            <div><h4 class="text-[0.65rem] font-black uppercase text-primary mb-2">Conclusión</h4><p class="text-slate-600 dark:text-slate-300 leading-relaxed">${sanitizeInput(result.conclusion)}</p></div>
+          </div>
+          <details class="border-t border-slate-100 dark:border-slate-800 pt-6">
+            <summary class="cursor-pointer text-[0.65rem] font-black uppercase text-slate-400 tracking-widest mb-4">Ver informes originales por docente</summary>
+            <div class="space-y-6 mt-4">
+              ${reports.map(r => `
+                <div class="border-b border-slate-100 dark:border-slate-800 pb-6">
+                  <h3 class="text-sm font-black text-slate-800 dark:text-white mb-2">${sanitizeInput(r.teachers?.full_name || 'Docente')}</h3>
+                  <p class="text-xs text-slate-500 dark:text-slate-400"><strong>Resultados:</strong> ${sanitizeInput(r.results_intro || '')} ${(r.results || []).map(x => sanitizeInput(x)).join('; ')}</p>
+                  <p class="text-xs text-slate-500 dark:text-slate-400"><strong>Inconvenientes:</strong> ${sanitizeInput(r.inconveniences || '')}</p>
+                  <p class="text-xs text-slate-500 dark:text-slate-400"><strong>Acciones:</strong> ${sanitizeInput(r.actions || '')}</p>
+                  <p class="text-xs text-slate-500 dark:text-slate-400"><strong>Conclusión:</strong> ${sanitizeInput(r.conclusion || '')}</p>
+                </div>
+              `).join('')}
+            </div>
+          </details>
+        `;
+    } catch (err) {
+        document.getElementById('general-report-body').innerHTML = `<div class="p-8 text-center text-rose-500 text-sm font-bold"><i class="fas fa-circle-xmark"></i> ${sanitizeInput(err.message)}</div>`;
+    }
 }
 
 window.renderTeacherRow = function renderTeacherRow(t, stats) {

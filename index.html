@@ -601,7 +601,7 @@
                     </div>
                     <div class="nav-item" onclick="nav('lessons')">
                         <i class="fas fa-book-open"></i>
-                        <span>Lecciones</span>
+                        <span>Cursos</span>
                     </div>
                     <div class="nav-item" onclick="nav('upload')">
                         <i class="fas fa-upload"></i>
@@ -626,7 +626,7 @@
                     </div>
                     <div class="nav-item" onclick="nav('lessons')">
                         <i class="fas fa-book-open"></i>
-                        <span>Lecciones</span>
+                        <span>Cursos</span>
                     </div>
                     <div class="nav-item" onclick="nav('evaluate')">
                         <i class="fas fa-clipboard-check"></i>
@@ -690,7 +690,7 @@
                     </div>
                     <div class="nav-item" onclick="nav('lessons')">
                         <i class="fas fa-book-open"></i>
-                        <span>Lecciones</span>
+                        <span>Cursos</span>
                     </div>
                     <div class="nav-item" onclick="nav('ranking')">
                         <i class="fas fa-trophy"></i>
@@ -821,7 +821,7 @@
 
             <!-- LECCIONES -->
             <section id="view-lessons" class="view-section">
-                <h2><i class="fas fa-book-open"></i> Lecciones</h2>
+                <h2><i class="fas fa-book-open"></i> Cursos</h2>
                 <div id="lessons-container"></div>
             </section>
 
@@ -1007,17 +1007,17 @@
     </style>
 
     <script>
-        // Mostrar herramientas dev si está activado
+        // Mostrar herramientas dev si está activado -- solo admin
         window.addEventListener('DOMContentLoaded', () => {
-            if (localStorage.getItem('PX_DEV_MODE') === 'true') {
+            if (window.userRole === 'admin' && localStorage.getItem('PX_DEV_MODE') === 'true') {
                 const devTools = document.getElementById('dev-tools');
                 if (devTools) devTools.style.display = 'block';
             }
         });
 
-        // Atajo: Shift + D para activar modo dev
+        // Atajo: Shift + D para activar modo dev -- solo admin
         window.addEventListener('keydown', (e) => {
-            if (e.shiftKey && e.key === 'D') {
+            if (e.shiftKey && e.key === 'D' && window.userRole === 'admin') {
                 // Toggle dev mode
                 const isDevMode = localStorage.getItem('PX_DEV_MODE') === 'true';
                 localStorage.setItem('PX_DEV_MODE', !isDevMode);
