@@ -117,7 +117,8 @@ window.openCreateLessonModal = async function openCreateLessonModal() {
         </div>
         <div id="lesson-source-file-wrap" class="hidden">
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Archivo .zip *</label>
-          <input type="file" id="lesson-file" accept=".zip,.h5p" class="input-field-tw text-sm py-2.5">
+          <input type="file" id="lesson-file" class="input-field-tw text-sm py-2.5">
+          <p class="text-[0.65rem] text-slate-400 mt-1">Aceptamos .zip y .h5p (es el mismo formato).</p>
           <p id="lesson-upload-progress" class="text-[0.65rem] text-slate-400 mt-2 hidden"></p>
         </div>
       </div>
