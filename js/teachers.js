@@ -626,6 +626,29 @@ window.viewTeacherAssignments = async function viewTeacherAssignments(teacherId,
   }
 }
 
+window.removeAssignment = async function removeAssignment(assignmentId, teacherId) {
+  if (!confirm('¿Quitar esta asignación?')) return;
+  const _supabase = window._supabase;
+  const showToast = window.showToast;
+
+  const { error } = await _supabase.from('teacher_assignments').delete().eq('id', assignmentId);
+  if (error) {
+    console.error('Error quitando asignación:', error);
+    if (typeof showToast === 'function') showToast('<i class="fas fa-circle-xmark"></i> Error: ' + error.message, 'error');
+    return;
+  }
+
+  if (typeof showToast === 'function') showToast('<i class="fas fa-circle-check"></i> Asignación quitada', 'success');
+  document.getElementById('view-assignments-modal')?.remove();
+
+  // Recargar el modal con los datos frescos
+  const { data: teacher } = await _supabase.from('teachers').select('full_name').eq('id', teacherId).maybeSingle();
+  if (typeof window.viewTeacherAssignments === 'function') {
+    window.viewTeacherAssignments(teacherId, teacher?.full_name || '');
+  }
+  if (typeof window.loadTeachers === 'function') window.loadTeachers();
+}
+
 window.editTeacher = async function editTeacher(teacherId) {
   const _supabase = window._supabase;
   const showToast = window.showToast;
