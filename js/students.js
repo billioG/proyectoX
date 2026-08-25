@@ -300,7 +300,7 @@ window.renderStudentsList = function renderStudentsList(container, students) {
       ` : ''}
 
       <div class="space-y-6">
-        ${Object.values(groupedBySchool).map(group => `
+        ${Object.entries(groupedBySchool).map(([schoolCode, group]) => `
           <details class="group/school animate-fadeIn" open>
             <summary class="list-none cursor-pointer mb-4">
                 <div class="glass-card p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors border-none shadow-sm">
@@ -311,8 +311,15 @@ window.renderStudentsList = function renderStudentsList(container, students) {
                             <p class="text-[0.8rem] font-medium text-slate-400 uppercase tracking-widest mt-1">${group.students.length} Alumnos Registrados</p>
                         </div>
                     </div>
-                    <div class="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center group-open/school:rotate-180 transition-transform">
-                        <i class="fas fa-chevron-down text-[0.6rem] text-slate-400"></i>
+                    <div class="flex items-center gap-3">
+                        ${userRole === 'admin' ? `
+                          <button onclick="event.preventDefault(); event.stopPropagation(); window.deleteAllStudentsInSchool('${window.sanitizeAttr(schoolCode)}', '${window.sanitizeAttr(group.schoolName)}')" class="h-8 px-3 rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white transition-colors text-[0.65rem] font-bold uppercase tracking-widest flex items-center gap-1.5">
+                            <i class="fas fa-trash-alt"></i> Eliminar todos
+                          </button>
+                        ` : ''}
+                        <div class="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center group-open/school:rotate-180 transition-transform">
+                            <i class="fas fa-chevron-down text-[0.6rem] text-slate-400"></i>
+                        </div>
                     </div>
                 </div>
             </summary>
@@ -526,6 +533,15 @@ window.updateBulkDeleteBar = function updateBulkDeleteBar() {
   const countEl = document.getElementById('bulk-delete-count');
   if (countEl) countEl.textContent = checked.length;
   if (btn) btn.classList.toggle('hidden', checked.length === 0);
+}
+
+window.deleteAllStudentsInSchool = async function deleteAllStudentsInSchool(schoolCode, schoolName) {
+  const { data: students, error } = await window._supabase.from('students').select('id').eq('school_code', schoolCode);
+  if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
+  if (!students?.length) return window.showToast('<i class="fas fa-circle-info"></i> No hay alumnos en ese establecimiento', 'info');
+
+  if (!confirm(`¿Eliminar los ${students.length} alumno(s) de "${schoolName}"? Esto también elimina sus cuentas de acceso. No se puede deshacer.`)) return;
+  await window.deleteStudentsBulk(students.map(s => s.id));
 }
 
 window.bulkDeleteSelectedStudents = async function bulkDeleteSelectedStudents() {
