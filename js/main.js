@@ -22,7 +22,8 @@ const MODULE_MAP = {
     'profile': ['js/profile.js', 'js/badges.js', 'js/kpi-engine.js', 'js/gamification.js', 'js/profile-modals.js', 'js/feed-ui.js', 'js/project-modals.js', 'js/reports.js', 'js/certificates.js'],
     'feed': ['js/projects.js', 'js/gamification.js', 'js/kpi-engine.js', 'js/feed-ui.js', 'js/project-modals.js', 'js/profile-modals.js', 'js/reports.js', 'js/certificates.js'],
     'upload': ['js/project-modals.js', 'js/groups.js'],
-    'bonus-system': ['js/bonus-system.js', 'js/certificates.js']
+    'bonus-system': ['js/bonus-system.js', 'js/certificates.js'],
+    'lessons': ['js/lessons.js']
 };
 
 export async function loadModule(name) {
@@ -193,6 +194,9 @@ export function loadViewContent(view) {
             break;
         case 'groups':
             if (typeof window.loadGroups === 'function') window.loadGroups();
+            break;
+        case 'lessons':
+            if (typeof window.loadLessons === 'function') window.loadLessons();
             break;
         case 'attendance':
             if (typeof window.loadAttendance === 'function') window.loadAttendance();
