@@ -1014,14 +1014,33 @@ window.updateManualKpi = async function updateManualKpi(teacherId, kpiId, val) {
 
 window.submitChallengeEvidence = async function submitChallengeEvidence(challengeId) {
     const comment = document.getElementById('challenge-comment')?.value.trim();
+    const feedbackEl = document.getElementById('challenge-comment-feedback');
+    if (feedbackEl) { feedbackEl.classList.add('hidden'); feedbackEl.textContent = ''; }
     if (!comment) return showToast('❌ Cuéntanos un poco sobre tu experiencia', 'error');
 
     const btn = event.target;
     const originalText = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Enviando...';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Revisando con IA...';
 
     try {
+        if (window.AIService && comment.length < 400) {
+            const challenge = (window.MONTHLY_CHALLENGES || []).find(c => c.id === challengeId);
+            const judgePrompt = `Reto del mes: "${challenge?.name || challengeId}". Reflexión del docente: "${comment}". ¿Es una reflexión concreta y específica sobre su experiencia real en el aula (no una respuesta vaga tipo "ok", "listo", "bien", ni un relleno genérico)? Responde ÚNICAMENTE con la palabra SI o NO, nada más.`;
+            const verdict = await window.AIService.ask(judgePrompt, '');
+            const isGeneric = /^\s*no\b/i.test((verdict || '').trim());
+            if (isGeneric) {
+                if (feedbackEl) {
+                    feedbackEl.textContent = '⚠️ Tu reflexión parece muy genérica. Contá algo concreto: qué hiciste, con qué grupo, qué notaste.';
+                    feedbackEl.classList.remove('hidden');
+                }
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+                return;
+            }
+        }
+
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Enviando...';
         const { error } = await _supabase.from('teacher_challenges').insert({
             teacher_id: currentUser.id,
             challenge_id: challengeId,

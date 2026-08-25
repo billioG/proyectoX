@@ -16,4 +16,10 @@ export const MONTHLY_CHALLENGES = [
     { id: 'nov_2026', name: 'Noviembre: Resiliencia Emocional', description: 'Practica la autorregulación mediante respiración...', reward: 'Growth Bonus + 10 XP', isActive: false },
     { id: 'dec_2026', name: 'Diciembre: Cierre con Propósito', description: 'Reflexiona sobre tu mayor impacto humano...', reward: 'Growth Bonus + 10 XP', isActive: false }
 ];
+// Se activa automáticamente el reto que corresponde al mes calendario actual
+// (el array está en orden Enero->Diciembre) -- ya no depende de que alguien
+// vaya cambiando isActive a mano cada mes.
+const _currentMonthIndex = new Date().getMonth();
+MONTHLY_CHALLENGES.forEach((c, i) => { c.isActive = i === _currentMonthIndex; });
+
 window.MONTHLY_CHALLENGES = MONTHLY_CHALLENGES;

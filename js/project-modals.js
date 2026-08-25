@@ -149,6 +149,7 @@ window.viewProjectDetails = async function viewProjectDetails(projectId) {
 }
 
 window.openChallengeEvidenceModal = function openChallengeEvidenceModal(challengeId) {
+  const challenge = (window.MONTHLY_CHALLENGES || []).find(c => c.id === challengeId);
   const modal = document.createElement('div');
   modal.className = 'fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm';
   modal.innerHTML = `
@@ -161,16 +162,25 @@ window.openChallengeEvidenceModal = function openChallengeEvidenceModal(challeng
                 <i class="fas fa-times"></i>
             </button>
         </div>
-        
-        <p class="text-slate-600 dark:text-slate-400 text-sm mb-6 leading-relaxed">
+
+        ${challenge ? `
+        <div class="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 mb-6">
+            <p class="text-sm font-black text-amber-700 dark:text-amber-400 mb-1">${window.sanitizeInput(challenge.name)}</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400">${window.sanitizeInput(challenge.description)}</p>
+            <p class="text-[0.65rem] font-bold text-amber-600 mt-2 uppercase tracking-widest">🎁 ${window.sanitizeInput(challenge.reward)}</p>
+        </div>` : ''}
+
+        <p class="text-slate-600 dark:text-slate-400 text-sm mb-3 leading-relaxed">
             Comparte tu experiencia. Cuéntanos cómo impactó este reto en tu aula y qué resultados observaste con tus estudiantes.
         </p>
+        <p class="text-[0.7rem] text-slate-400 mb-3 italic">Una IA revisa que tu reflexión sea concreta antes de contarla como completada -- "ok" o "listo" no alcanza.</p>
 
-        <textarea id="challenge-comment" class="w-full h-32 p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all mb-8" placeholder="Escribe aquí tu reflexión educativa..."></textarea>
-        
+        <textarea id="challenge-comment" class="w-full h-32 p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all mb-2" placeholder="Escribe aquí tu reflexión educativa..."></textarea>
+        <p id="challenge-comment-feedback" class="text-xs text-rose-500 font-semibold mb-6 hidden"></p>
+
         <div class="flex gap-4">
             <button class="grow bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold py-3 rounded-xl transition-all" onclick="this.closest('.fixed').remove()">CANCELAR</button>
-            <button class="grow bg-primary hover:bg-primary-dark text-white font-bold py-3 rounded-xl shadow-lg shadow-primary/20 transition-all" onclick="window.submitChallengeEvidence && window.submitChallengeEvidence('${challengeId}')">ENVIAR EVIDENCIA</button>
+            <button id="btn-submit-challenge" class="grow bg-primary hover:bg-primary-dark text-white font-bold py-3 rounded-xl shadow-lg shadow-primary/20 transition-all" onclick="window.submitChallengeEvidence && window.submitChallengeEvidence('${challengeId}')">ENVIAR EVIDENCIA</button>
         </div>
       </div>
   `;
