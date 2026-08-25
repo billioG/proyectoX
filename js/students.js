@@ -276,7 +276,7 @@ window.renderStudentsList = function renderStudentsList(container, students) {
   }, {});
 
   container.innerHTML = `
-      <div class="flex flex-col md:flex-row gap-4 mb-8 items-center animate-slideUp">
+      <div class="flex flex-col md:flex-row gap-4 mb-4 items-center animate-slideUp">
         <div class="relative grow w-full">
             <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
             <input type="text" id="search-students" class="input-field-tw pl-12 h-11 text-sm font-bold" placeholder="FILTRO: NOMBRE, USUARIO O CUI..." oninput="window.filterStudents()">
@@ -286,7 +286,19 @@ window.renderStudentsList = function renderStudentsList(container, students) {
             <button class="btn-secondary-tw grow h-11 text-xs uppercase font-bold" onclick="window.exportStudentsCSV()"><i class="fas fa-download"></i> EXPORTAR</button>
         </div>
       </div>
-      
+
+      ${userRole === 'admin' ? `
+      <div class="flex items-center justify-between mb-6 px-1">
+        <label class="flex items-center gap-2 text-xs font-bold text-slate-500 cursor-pointer">
+          <input type="checkbox" id="select-all-students" onchange="window.toggleSelectAllStudents(this.checked)" class="w-4 h-4">
+          Seleccionar todos los visibles
+        </label>
+        <button id="btn-bulk-delete-students" class="btn-secondary-tw h-9 px-4 text-xs uppercase font-bold border border-rose-300 text-rose-500 hidden" onclick="window.bulkDeleteSelectedStudents()">
+          <i class="fas fa-trash-alt"></i> Eliminar seleccionados (<span id="bulk-delete-count">0</span>)
+        </button>
+      </div>
+      ` : ''}
+
       <div class="space-y-6">
         ${Object.values(groupedBySchool).map(group => `
           <details class="group/school animate-fadeIn" open>
@@ -311,6 +323,9 @@ window.renderStudentsList = function renderStudentsList(container, students) {
                      data-name="${window.sanitizeAttr(s.full_name?.toLowerCase() || '')}"
                      data-cui="${window.sanitizeAttr(s.cui_last_4 || '')}"
                      data-username="${window.sanitizeAttr(s.username?.toLowerCase() || '')}">
+                  ${window.userRole === 'admin' ? `
+                    <input type="checkbox" class="student-select-checkbox w-4 h-4 shrink-0" value="${window.sanitizeAttr(s.id)}" onchange="window.updateBulkDeleteBar()">
+                  ` : ''}
                   <div class="w-10 h-10 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-500 group-hover:bg-primary group-hover:text-white transition-colors flex items-center justify-center font-bold text-sm shrink-0">
                     ${window.sanitizeInput((s.full_name || 'A')[0])}
                   </div>
@@ -492,12 +507,57 @@ window.editStudent = async function editStudent(id) {
 }
 
 window.deleteStudent = async function deleteStudent(id) {
-  if (!confirm('¿Seguro?')) return;
-  const _supabase = window._supabase;
-  const { error } = await _supabase.from('students').delete().eq('id', id);
-  if (!error) {
-    window.showToast('<i class="fas fa-trash"></i>️ Alumno eliminado', 'success');
+  if (!confirm('¿Seguro? Esto también elimina su cuenta de acceso.')) return;
+  await window.deleteStudentsBulk([id]);
+}
+
+window.toggleSelectAllStudents = function toggleSelectAllStudents(checked) {
+  document.querySelectorAll('.student-card').forEach(card => {
+    if (card.style.display === 'none') return; // respeta el filtro de búsqueda
+    const cb = card.querySelector('.student-select-checkbox');
+    if (cb) cb.checked = checked;
+  });
+  window.updateBulkDeleteBar();
+}
+
+window.updateBulkDeleteBar = function updateBulkDeleteBar() {
+  const checked = document.querySelectorAll('.student-select-checkbox:checked');
+  const btn = document.getElementById('btn-bulk-delete-students');
+  const countEl = document.getElementById('bulk-delete-count');
+  if (countEl) countEl.textContent = checked.length;
+  if (btn) btn.classList.toggle('hidden', checked.length === 0);
+}
+
+window.bulkDeleteSelectedStudents = async function bulkDeleteSelectedStudents() {
+  const ids = Array.from(document.querySelectorAll('.student-select-checkbox:checked')).map(cb => cb.value);
+  if (!ids.length) return;
+  if (!confirm(`¿Eliminar ${ids.length} alumno(s)? Esto también elimina sus cuentas de acceso. No se puede deshacer.`)) return;
+  await window.deleteStudentsBulk(ids);
+}
+
+window.deleteStudentsBulk = async function deleteStudentsBulk(ids) {
+  const btn = document.getElementById('btn-bulk-delete-students');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Eliminando...'; }
+
+  try {
+    const { data: { session } } = await window._supabase.auth.getSession();
+    const res = await fetch(`${window.SUPABASE_URL}/functions/v1/admin-delete-students`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session?.access_token || ''}`,
+      },
+      body: JSON.stringify({ ids }),
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || 'Error al eliminar');
+
+    window.showToast(`<i class="fas fa-trash-alt"></i> ${result.deleted} alumno(s) eliminado(s)${result.errors?.length ? ` (${result.errors.length} con error)` : ''}`, result.errors?.length ? 'warning' : 'success');
+    if (result.errors?.length) console.error('Errores al eliminar alumnos:', result.errors);
     window.loadStudents();
+  } catch (err) {
+    window.showToast('<i class="fas fa-circle-xmark"></i> ' + err.message, 'error');
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-trash-alt"></i> Eliminar seleccionados (<span id="bulk-delete-count">0</span>)'; }
   }
 }
 
