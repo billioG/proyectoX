@@ -2,45 +2,21 @@
 // SERVICE WORKER - PROJECTX PWA
 // ================================================
 
-const CACHE_NAME = 'projectx-v1.0.3';
+const CACHE_NAME = 'projectx-v1.0.4';
+// Rutas RELATIVAS (sin "/" inicial) -- con "/" apuntaban siempre a la raíz
+// del dominio, lo cual rompe el sitio cuando se sirve desde un subpath
+// (ej. billiog.github.io/proyectoX/) porque pedía billiog.github.io/js/...
+// en vez de billiog.github.io/proyectoX/js/... (404 silencioso en cada
+// archivo, visible en Network como "Initiator: service-worker.js").
+// Lista corta a propósito: el resto de los archivos se cachean solos en
+// tiempo de ejecución vía el handler `fetch` de abajo (network-first).
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/css/styles.css',
-  '/js/config.js',
-  '/js/utils.js',
-  '/js/sync-manager.js',
-  '/js/auth.js',
-  '/js/main.js',
-  '/js/students.js',
-  '/js/teachers.js',
-  '/js/schools.js',
-  '/js/groups.js',
-  '/js/projects.js',
-  '/js/evaluation.js',
-  '/js/profile.js',
-  '/js/ranking.js',
-  '/js/badges.js',
-  '/js/csv.js',
-  '/js/pdf-processor.js',
-  '/js/attendance.js',
-  '/js/admin-dashboard.js',
-  '/js/admin-reports.js',
-  '/js/admin-success.js',
-  '/js/admin-evaluations.js',
-  '/js/admin-attendance.js',
-  '/js/attendance-summary-view.js',
-  '/js/team-performance-widget.js',
-  '/js/kpi-engine.js',
-  '/js/activity-tracker.js',
-  '/js/ai-service.js',
-  '/js/mascot-widget.js',
-  '/manifest.json',
+  './',
+  './index.html',
+  './css/styles.css',
+  './manifest.json',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
-  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
-  'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js',
   'https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap'
 ];
 
@@ -112,7 +88,7 @@ self.addEventListener('fetch', event => {
 
           // Si no está en caché, mostrar página offline para documentos o un error para otros
           if (request.destination === 'document') {
-            return caches.match('/index.html');
+            return caches.match('./index.html');
           }
 
           // MUY IMPORTANTE: Retornar una respuesta de error válida en lugar de undefined
