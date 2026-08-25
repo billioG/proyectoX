@@ -88,6 +88,7 @@ window.processPDFFile = async function processPDFFile() {
 
         progressBar.style.width = '100%';
         progressBar.textContent = '100%';
+        statusText.classList.remove('animate-pulse');
         statusText.innerHTML = `<i class="fas fa-circle-check"></i> ${window.extractedStudents.length} estudiantes extraídos`;
 
         window.showToast(`<i class="fas fa-circle-check"></i> Establecimiento y ${window.extractedStudents.length} estudiantes encontrados`, 'success');
@@ -674,6 +675,7 @@ window.createUsersFromExtractedData = async function createUsersFromExtractedDat
 
     progressBar.style.background = successCount > 0 ? '#10b981' : '#f59e0b';
     progressBar.style.width = '100%';
+    statusText.classList.remove('animate-pulse');
     const errorDetails = results.filter(r => r.status === 'error')
         .slice(0, 10)
         .map(r => `<div class="text-[0.7rem] text-rose-500">${window.sanitizeInput ? window.sanitizeInput(r.username) : r.username}: ${window.sanitizeInput ? window.sanitizeInput(r.message || '') : (r.message || '')}</div>`)
