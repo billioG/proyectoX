@@ -239,7 +239,6 @@ export async function handleLogin() {
       if (!res.ok) throw new Error(result.error || 'Login fallido');
 
       const { data, error } = await _supabase.auth.verifyOtp({
-        email: result.email,
         token_hash: result.token_hash,
         type: 'magiclink',
       });
