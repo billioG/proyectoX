@@ -100,7 +100,7 @@ window.loadAdminSuccessHub = async function loadAdminSuccessHub() {
         console.error('Error Admin Success Hub:', err);
         container.innerHTML = `
             <div class="p-10 bg-rose-50 dark:bg-rose-900/20 text-rose-500 rounded-3xl font-bold text-center">
-                ❌ Error al cargar métricas: ${err.message}
+                <i class="fas fa-circle-xmark"></i> Error al cargar métricas: ${err.message}
             </div>
         `;
     }
@@ -142,7 +142,7 @@ window.renderSuccessHubHTML = function renderSuccessHubHTML(container, schools, 
     container.innerHTML = `
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 animate-slideUp gap-4">
             <div>
-                <h1 class="text-3xl font-bold text-slate-800 dark:text-white tracking-tight leading-none mb-2">🎯 Centro de Fidelización (CS Hub)</h1>
+                <h1 class="text-3xl font-bold text-slate-800 dark:text-white tracking-tight leading-none mb-2"><i class="fas fa-bullseye"></i> Centro de Fidelización (CS Hub)</h1>
                 <p class="text-slate-500 dark:text-slate-400 font-medium">Monitor de salud institucional basado en métricas de cumplimiento (${SYSTEM_CONFIG.projectsPerBimester} proyectos/bimestre por equipo).</p>
             </div>
             <div class="flex gap-2">
@@ -179,7 +179,7 @@ window.renderSuccessHubHTML = function renderSuccessHubHTML(container, schools, 
                      <div class="relative z-10">
                         <div class="text-[0.65rem] font-bold uppercase text-blue-600 dark:text-blue-500 tracking-widest mb-2">Total Evaluaciones</div>
                         <div class="text-4xl font-bold text-blue-700 dark:text-blue-400 mb-1 leading-none">${kpis.totalRatings}</div>
-                        <div class="text-[0.6rem] font-bold text-blue-600/70 dark:text-blue-500/70 uppercase tracking-tight">📝 ${kpis.avgRatingsPerTeacher} por docente</div>
+                        <div class="text-[0.6rem] font-bold text-blue-600/70 dark:text-blue-500/70 uppercase tracking-tight"><i class="fas fa-pen-to-square"></i> ${kpis.avgRatingsPerTeacher} por docente</div>
                      </div>
                 </div>
 
@@ -189,7 +189,7 @@ window.renderSuccessHubHTML = function renderSuccessHubHTML(container, schools, 
                      <div class="relative z-10">
                         <div class="text-[0.65rem] font-bold uppercase text-emerald-600 dark:text-emerald-500 tracking-widest mb-2">Proyectos Calificados</div>
                         <div class="text-4xl font-bold text-emerald-700 dark:text-emerald-400 mb-1 leading-none">${kpis.totalEvaluations}</div>
-                        <div class="text-[0.6rem] font-bold text-emerald-600/70 dark:text-emerald-500/70 uppercase tracking-tight">📚 ${kpis.avgEvalsPerTeacher} por docente</div>
+                        <div class="text-[0.6rem] font-bold text-emerald-600/70 dark:text-emerald-500/70 uppercase tracking-tight"><i class="fas fa-book"></i> ${kpis.avgEvalsPerTeacher} por docente</div>
                      </div>
                 </div>
 
@@ -198,15 +198,15 @@ window.renderSuccessHubHTML = function renderSuccessHubHTML(container, schools, 
                      <div class="text-[0.65rem] font-bold uppercase text-violet-600 dark:text-violet-500 tracking-widest mb-3">Distribución de Talento</div>
                      <div class="space-y-2">
                         <div class="flex justify-between items-center">
-                            <span class="text-[0.65rem] font-bold text-violet-700 dark:text-violet-300 uppercase">🌟 Sobresaliente</span>
+                            <span class="text-[0.65rem] font-bold text-violet-700 dark:text-violet-300 uppercase"><i class="fas fa-star"></i> Sobresaliente</span>
                             <span class="text-sm font-bold text-emerald-500">${kpis.excellentTeachers}</span>
                         </div>
                         <div class="flex justify-between items-center">
-                            <span class="text-[0.65rem] font-bold text-violet-700 dark:text-violet-300 uppercase">✅ Competente</span>
+                            <span class="text-[0.65rem] font-bold text-violet-700 dark:text-violet-300 uppercase"><i class="fas fa-circle-check"></i> Competente</span>
                             <span class="text-sm font-bold text-blue-500">${kpis.competentTeachers}</span>
                         </div>
                         <div class="flex justify-between items-center">
-                            <span class="text-[0.65rem] font-bold text-violet-700 dark:text-violet-300 uppercase">⚠️ Requiere Apoyo</span>
+                            <span class="text-[0.65rem] font-bold text-violet-700 dark:text-violet-300 uppercase"><i class="fas fa-triangle-exclamation"></i>️ Requiere Apoyo</span>
                             <span class="text-sm font-bold text-rose-500">${kpis.needsAttention}</span>
                         </div>
                      </div>
@@ -700,7 +700,7 @@ window.renderExecutiveReportView = function renderExecutiveReportView(container,
                 <td class="px-6 py-3">
                     <div class="font-bold text-slate-800 dark:text-white">${sanitizeInput(t.full_name)}</div>
                 </td>
-                <td class="px-6 py-3 text-center font-bold text-amber-500">${avg} 🌟</td>
+                <td class="px-6 py-3 text-center font-bold text-amber-500">${avg} <i class="fas fa-star"></i></td>
                 <td class="px-6 py-3 text-center font-bold text-primary">${avgAcademic}</td>
                 <td class="px-6 py-3 text-center">
                     <span class="px-2 py-0.5 rounded text-[0.55rem] font-black uppercase border ${perfClass}">${perfText}</span>
@@ -831,7 +831,7 @@ window.openSchoolGoalsModal = function openSchoolGoalsModal(schoolId, currentTar
 
 window.applySchoolGoals = async function applySchoolGoals(schoolId) {
     const val = parseInt(document.getElementById('input-school-projects')?.value);
-    if (isNaN(val) || val < 1) return showToast('❌ Ingresa un número válido', 'error');
+    if (isNaN(val) || val < 1) return showToast('<i class="fas fa-circle-xmark"></i> Ingresa un número válido', 'error');
 
     try {
         const { error } = await _supabase.from('schools').update({
@@ -840,12 +840,12 @@ window.applySchoolGoals = async function applySchoolGoals(schoolId) {
 
         if (error) throw error;
 
-        showToast('🎯 Meta personalizada actualizada', 'success');
+        showToast('<i class="fas fa-bullseye"></i> Meta personalizada actualizada', 'success');
         document.querySelector('.fixed.z-\\[250\\]')?.remove();
         loadAdminSuccessHub();
     } catch (e) {
         console.error('Error actualizando meta local:', e);
-        showToast('❌ Error al guardar meta local (Verifica DB)', 'error');
+        showToast('<i class="fas fa-circle-xmark"></i> Error al guardar meta local (Verifica DB)', 'error');
     }
 }
 
@@ -877,10 +877,10 @@ window.openSystemGoalsModal = function openSystemGoalsModal() {
 
 window.applySystemGoals = function applySystemGoals() {
     const val = parseInt(document.getElementById('input-sys-projects')?.value);
-    if (isNaN(val) || val < 1) return showToast('❌ Ingresa un número válido', 'error');
+    if (isNaN(val) || val < 1) return showToast('<i class="fas fa-circle-xmark"></i> Ingresa un número válido', 'error');
 
     window.saveSystemConfig(val);
-    window.showToast('🚀 Metas globales actualizadas', 'success');
+    window.showToast('<i class="fas fa-rocket"></i> Metas globales actualizadas', 'success');
 
     const hubContainer = document.getElementById('admin-success-container');
     if (hubContainer) {

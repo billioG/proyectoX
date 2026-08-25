@@ -49,7 +49,7 @@ async function showMonthlyActivityReport() {
         console.error('Error en showMonthlyActivityReport:', err);
         modal.innerHTML = `
             <div class="modal-content">
-                <p class="error-msg">❌ Error generando reporte: ${err.message}</p>
+                <p class="error-msg"><i class="fas fa-circle-xmark"></i> Error generando reporte: ${err.message}</p>
                 <button class="btn-secondary" onclick="this.closest('.modal').remove()">Cerrar</button>
             </div>
         `;
@@ -92,7 +92,7 @@ function renderMonthlyActivityUI(modal, waivers, startOfMonth) {
     modal.innerHTML = `
         <div class="modal-content" style="max-width: 1000px;">
             <div class="modal-header">
-                <h2>📊 Reporte Detallado de Actividad - ${monthName}</h2>
+                <h2><i class="fas fa-chart-bar"></i> Reporte Detallado de Actividad - ${monthName}</h2>
                 <button class="close-modal" onclick="this.closest('.modal').remove()">×</button>
             </div>
             <div class="modal-body">
@@ -179,10 +179,10 @@ function renderMonthlyActivityUI(modal, waivers, startOfMonth) {
             statusBadge = '<span class="status-badge status-pending">⏳ Pendiente</span>';
             rowColor = '#fffbeb';
         } else if (w.status === 'approved') {
-            statusBadge = '<span class="status-badge status-active">✅ Aprobada</span>';
+            statusBadge = '<span class="status-badge status-active"><i class="fas fa-circle-check"></i> Aprobada</span>';
             rowColor = '#f0fdf4';
         } else if (w.status === 'rejected') {
-            statusBadge = '<span class="status-badge status-inactive">❌ Rechazada</span>';
+            statusBadge = '<span class="status-badge status-inactive"><i class="fas fa-circle-xmark"></i> Rechazada</span>';
             rowColor = '#fef2f2';
         }
 

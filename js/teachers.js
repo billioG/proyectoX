@@ -44,7 +44,7 @@ window.loadTeachers = async function loadTeachers() {
 
   } catch (err) {
     console.error('Error cargando docentes:', err);
-    container.innerHTML = '<div class="error-state">❌ Error al cargar docentes</div>';
+    container.innerHTML = '<div class="error-state"><i class="fas fa-circle-xmark"></i> Error al cargar docentes</div>';
   }
 }
 
@@ -203,12 +203,12 @@ window.addTeacher = async function addTeacher() {
   const loadTeachers = window.loadTeachers;
 
   if (!name || !email || !password) {
-    if (typeof showToast === 'function') showToast('❌ Completa nombre, email y contraseña', 'error');
+    if (typeof showToast === 'function') showToast('<i class="fas fa-circle-xmark"></i> Completa nombre, email y contraseña', 'error');
     return;
   }
 
   if (password.length < 6) {
-    if (typeof showToast === 'function') showToast('❌ La contraseña debe tener al menos 6 caracteres', 'error');
+    if (typeof showToast === 'function') showToast('<i class="fas fa-circle-xmark"></i> La contraseña debe tener al menos 6 caracteres', 'error');
     return;
   }
 
@@ -233,13 +233,13 @@ window.addTeacher = async function addTeacher() {
     const result = await res.json();
     if (!res.ok) throw new Error(result.error || 'Error creando docente');
 
-    if (typeof showToast === 'function') showToast('✅ Docente creado correctamente', 'success');
+    if (typeof showToast === 'function') showToast('<i class="fas fa-circle-check"></i> Docente creado correctamente', 'success');
     document.getElementById('add-teacher-modal').remove();
     if (typeof loadTeachers === 'function') await loadTeachers();
 
   } catch (err) {
     console.error('Error creando docente:', err);
-    if (typeof showToast === 'function') showToast('❌ Error: ' + err.message, 'error');
+    if (typeof showToast === 'function') showToast('<i class="fas fa-circle-xmark"></i> Error: ' + err.message, 'error');
   } finally {
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-user-plus"></i> Crear Docente';
@@ -433,12 +433,12 @@ window.assignTeacher = async function assignTeacher(teacherId) {
   const loadTeachers = window.loadTeachers;
 
   if (!schoolCode) {
-    if (typeof showToast === 'function') showToast('❌ Selecciona un establecimiento', 'error');
+    if (typeof showToast === 'function') showToast('<i class="fas fa-circle-xmark"></i> Selecciona un establecimiento', 'error');
     return;
   }
 
   if (!isBulk && (!grade || !section)) {
-    if (typeof showToast === 'function') showToast('❌ Completa grado y sección o selecciona "Asignar a todos"', 'error');
+    if (typeof showToast === 'function') showToast('<i class="fas fa-circle-xmark"></i> Completa grado y sección o selecciona "Asignar a todos"', 'error');
     return;
   }
 
@@ -497,7 +497,7 @@ window.assignTeacher = async function assignTeacher(teacherId) {
           .from('teacher_assignments')
           .insert(newAssignments);
         if (insertError) throw insertError;
-        if (typeof showToast === 'function') showToast(`✅ Se crearon ${newAssignments.length} asignaciones correctamente`, 'success');
+        if (typeof showToast === 'function') showToast(`<i class="fas fa-circle-check"></i> Se crearon ${newAssignments.length} asignaciones correctamente`, 'success');
       }
 
     } else {
@@ -512,7 +512,7 @@ window.assignTeacher = async function assignTeacher(teacherId) {
         .maybeSingle();
 
       if (existing) {
-        if (typeof showToast === 'function') showToast('⚠️ Esta asignación ya existe', 'warning');
+        if (typeof showToast === 'function') showToast('<i class="fas fa-triangle-exclamation"></i>️ Esta asignación ya existe', 'warning');
       } else {
         const { error } = await _supabase
           .from('teacher_assignments')
@@ -523,7 +523,7 @@ window.assignTeacher = async function assignTeacher(teacherId) {
             section: section
           });
         if (error) throw error;
-        if (typeof showToast === 'function') showToast('✅ Asignación creada correctamente', 'success');
+        if (typeof showToast === 'function') showToast('<i class="fas fa-circle-check"></i> Asignación creada correctamente', 'success');
       }
     }
 
@@ -532,7 +532,7 @@ window.assignTeacher = async function assignTeacher(teacherId) {
 
   } catch (err) {
     console.error('Error asignando docente:', err);
-    if (typeof showToast === 'function') showToast('❌ Error: ' + err.message, 'error');
+    if (typeof showToast === 'function') showToast('<i class="fas fa-circle-xmark"></i> Error: ' + err.message, 'error');
   } finally {
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-check"></i> Finalizar Asignación';
@@ -622,7 +622,7 @@ window.viewTeacherAssignments = async function viewTeacherAssignments(teacherId,
 
   } catch (err) {
     console.error('Error cargando asignaciones:', err);
-    if (typeof showToast === 'function') showToast('❌ Error al cargar asignaciones', 'error');
+    if (typeof showToast === 'function') showToast('<i class="fas fa-circle-xmark"></i> Error al cargar asignaciones', 'error');
   }
 }
 
@@ -692,7 +692,7 @@ window.editTeacher = async function editTeacher(teacherId) {
 
   } catch (err) {
     console.error('Error cargando docente para editar:', err);
-    if (typeof showToast === 'function') showToast('❌ Error al cargar datos del docente', 'error');
+    if (typeof showToast === 'function') showToast('<i class="fas fa-circle-xmark"></i> Error al cargar datos del docente', 'error');
   }
 }
 
@@ -707,7 +707,7 @@ window.updateTeacher = async function updateTeacher(teacherId) {
   const loadTeachers = window.loadTeachers;
 
   if (!name) {
-    if (typeof showToast === 'function') showToast('❌ El nombre es obligatorio', 'error');
+    if (typeof showToast === 'function') showToast('<i class="fas fa-circle-xmark"></i> El nombre es obligatorio', 'error');
     return;
   }
 
@@ -727,13 +727,13 @@ window.updateTeacher = async function updateTeacher(teacherId) {
 
     if (error) throw error;
 
-    if (typeof showToast === 'function') showToast('✅ Datos actualizados correctamente', 'success');
+    if (typeof showToast === 'function') showToast('<i class="fas fa-circle-check"></i> Datos actualizados correctamente', 'success');
     document.getElementById('edit-teacher-modal').remove();
     if (typeof loadTeachers === 'function') await loadTeachers();
 
   } catch (err) {
     console.error('Error actualizando docente:', err);
-    if (typeof showToast === 'function') showToast('❌ Error: ' + err.message, 'error');
+    if (typeof showToast === 'function') showToast('<i class="fas fa-circle-xmark"></i> Error: ' + err.message, 'error');
   } finally {
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-save"></i> Guardar Cambios';
@@ -757,12 +757,12 @@ window.deleteTeacher = async function deleteTeacher(teacherId, teacherName) {
 
     if (error) throw error;
 
-    if (typeof showToast === 'function') showToast('✅ Docente eliminado', 'success');
+    if (typeof showToast === 'function') showToast('<i class="fas fa-circle-check"></i> Docente eliminado', 'success');
     if (typeof loadTeachers === 'function') await loadTeachers();
 
   } catch (err) {
     console.error('Error eliminando docente:', err);
-    if (typeof showToast === 'function') showToast('❌ Error: ' + err.message, 'error');
+    if (typeof showToast === 'function') showToast('<i class="fas fa-circle-xmark"></i> Error: ' + err.message, 'error');
   }
 }
 
@@ -786,7 +786,7 @@ window.exportTeachersCSV = async function exportTeachersCSV() {
       .order('full_name');
 
     if (!teachers || teachers.length === 0) {
-      if (typeof showToast === 'function') showToast('❌ No hay docentes para exportar', 'error');
+      if (typeof showToast === 'function') showToast('<i class="fas fa-circle-xmark"></i> No hay docentes para exportar', 'error');
       return;
     }
 
@@ -805,12 +805,12 @@ window.exportTeachersCSV = async function exportTeachersCSV() {
 
     if (typeof downloadCSV === 'function') {
       downloadCSV(csvContent, 'docentes_export.csv');
-      if (typeof showToast === 'function') showToast(`✅ ${teachers.length} docentes exportados`, 'success');
+      if (typeof showToast === 'function') showToast(`<i class="fas fa-circle-check"></i> ${teachers.length} docentes exportados`, 'success');
     }
 
   } catch (err) {
     console.error('Error exportando docentes:', err);
-    if (typeof showToast === 'function') showToast('❌ Error al exportar', 'error');
+    if (typeof showToast === 'function') showToast('<i class="fas fa-circle-xmark"></i> Error al exportar', 'error');
   }
 }
 

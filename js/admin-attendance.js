@@ -10,7 +10,7 @@ window.loadAdminAttendanceReport = async function loadAdminAttendanceReport() {
         window.showAttendanceSummaryView();
     } else {
         const container = document.getElementById('admin-attendance-report-container');
-        if (container) container.innerHTML = '<div class="error-state">❌ Error: No se pudo cargar el módulo de resumen.</div>';
+        if (container) container.innerHTML = '<div class="error-state"><i class="fas fa-circle-xmark"></i> Error: No se pudo cargar el módulo de resumen.</div>';
     }
 }
 

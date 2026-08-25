@@ -129,7 +129,7 @@ function renderTeamPerformanceWidget(container, data) {
         <div class="glass-card p-6 bg-white dark:bg-slate-900 h-full relative group">
             <!-- Tooltip / Explanation -->
             <div class="absolute top-4 right-4 text-slate-300 dark:text-slate-600 hover:text-primary transition-colors cursor-help group-hover:opacity-100 opacity-50 z-20" 
-                 onclick="alert('👶 EXPLICACIÓN SIMPLE:\n\nImagina que ganar XP es como un videojuego 🎮\n\n1. ASISTENCIA (30%): Pasar lista en tus clases.\n2. EVALUACIÓN (40%): Calificar los proyectos de tus alumnos.\n3. EVIDENCIA (20%): Subir fotos de actividades semanales.\n4. INFORME (10%): Enviar tu resumen mensual.\n\n¡Si cumples todas tus metas del mes, ganas 100 XP! 🌟')">
+                 onclick="alert('EXPLICACIÓN SIMPLE:\n\nImagina que ganar XP es como un videojuego\n\n1. ASISTENCIA (30%): Pasar lista en tus clases.\n2. EVALUACIÓN (40%): Calificar los proyectos de tus alumnos.\n3. EVIDENCIA (20%): Subir fotos de actividades semanales.\n4. INFORME (10%): Enviar tu resumen mensual.\n\n¡Si cumples todas tus metas del mes, ganas 100 XP!')">
                 <i class="fas fa-question-circle text-lg"></i>
             </div>
 

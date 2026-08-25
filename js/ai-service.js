@@ -22,7 +22,7 @@ const AIService = {
             return data.content;
         } catch (err) {
             console.error('AI Error:', err);
-            return "Lo siento, mis circuitos están ocupados procesando datos. ¡Vuelve a intentarlo en un momento! 🤖⚡";
+            return "Lo siento, mis circuitos están ocupados procesando datos. ¡Vuelve a intentarlo en un momento! <i class="fas fa-robot"></i><i class="fas fa-bolt"></i>";
         }
     },
 

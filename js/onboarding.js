@@ -5,37 +5,37 @@
 // Slides para Estudiantes
 const STUDENT_ONBOARDING_SLIDES = [
   {
-    icon: '🚀',
+    icon: '<i class="fas fa-rocket"></i>',
     title: '¡Bienvenido Estudiante!',
     description: 'ProjectX es tu espacio para mostrar tus talentos, aprender haciendo y competir sanamente.',
     color: 'linear-gradient(135deg, #00bcd4 0%, #00acc1 100%)'
   },
   {
-    icon: '📤',
+    icon: '<i class="fas fa-upload"></i>',
     title: 'Sube tus Proyectos',
     description: 'Comparte videos de tus creaciones. ¡Cada proyecto te ayuda a mejorar!',
     features: [
-      '✅ Graba y sube tus videos',
-      '✅ Describe tu trabajo',
-      '✅ Gana puntos de experiencia (XP)',
-      '✅ Desbloquea insignias'
+      '<i class="fas fa-circle-check"></i> Graba y sube tus videos',
+      '<i class="fas fa-circle-check"></i> Describe tu trabajo',
+      '<i class="fas fa-circle-check"></i> Gana puntos de experiencia (XP)',
+      '<i class="fas fa-circle-check"></i> Desbloquea insignias'
     ],
     color: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'
   },
   {
-    icon: '🏆',
+    icon: '<i class="fas fa-trophy"></i>',
     title: 'Ranking y Metas',
     description: 'Mira cómo vas en comparación con otros y alcanza el primer lugar.',
     features: [
-      '📊 Ranking por grado y sección',
-      '🏅 Comparativa global',
-      '✨ Niveles de usuario',
-      '🎁 Recompensas digitales'
+      '<i class="fas fa-chart-bar"></i> Ranking por grado y sección',
+      '<i class="fas fa-medal"></i> Comparativa global',
+      '<i class="fas fa-wand-magic-sparkles"></i> Niveles de usuario',
+      '<i class="fas fa-gift"></i> Recompensas digitales'
     ],
     color: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)'
   },
   {
-    icon: '✨',
+    icon: '<i class="fas fa-wand-magic-sparkles"></i>',
     title: '¡A Innovar!',
     description: 'Estás listo para comenzar tu viaje en ProjectX. ¡El cielo es el límite!',
     cta: true,
@@ -46,37 +46,37 @@ const STUDENT_ONBOARDING_SLIDES = [
 // Slides para Docentes y Admins
 const TEACHER_ONBOARDING_SLIDES = [
   {
-    icon: '👨‍🏫',
+    icon: '<i class="fas fa-chalkboard-user"></i>‍<i class="fas fa-school"></i>',
     title: '¡Bienvenido, Docente!',
     description: 'ProjectX es tu herramienta aliada para la gestión académica y el seguimiento de proyectos.',
     color: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
   },
   {
-    icon: '📋',
+    icon: '<i class="fas fa-clipboard-list"></i>',
     title: 'Gestión y Evaluación',
     description: 'Administra tus grupos y evalúa el desempeño de tus estudiantes de forma sencilla.',
     features: [
-      '✅ Crea y edita grupos de trabajo',
-      '✅ Evalúa proyectos con rúbricas',
-      '✅ Toma asistencia digital',
-      '✅ Gestiona datos de alumnos'
+      '<i class="fas fa-circle-check"></i> Crea y edita grupos de trabajo',
+      '<i class="fas fa-circle-check"></i> Evalúa proyectos con rúbricas',
+      '<i class="fas fa-circle-check"></i> Toma asistencia digital',
+      '<i class="fas fa-circle-check"></i> Gestiona datos de alumnos'
     ],
     color: 'linear-gradient(135deg, #48c6ef 0%, #6f86d6 100%)'
   },
   {
-    icon: '📈',
+    icon: '<i class="fas fa-chart-line"></i>',
     title: 'Analítica en Tiempo Real',
     description: 'Visualiza reportes de asistencia y rendimiento académico de manera instantánea.',
     features: [
-      '📊 Reportes de participación',
-      '📉 Alertas de bajo rendimiento',
-      '📅 Historial de asistencia',
-      '🎓 Dashboard administrativo'
+      '<i class="fas fa-chart-bar"></i> Reportes de participación',
+      '<i class="fas fa-chart-line"></i> Alertas de bajo rendimiento',
+      '<i class="fas fa-calendar-days"></i> Historial de asistencia',
+      '<i class="fas fa-graduation-cap"></i> Dashboard administrativo'
     ],
     color: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'
   },
   {
-    icon: '✨',
+    icon: '<i class="fas fa-wand-magic-sparkles"></i>',
     title: '¡Transformemos la Educación!',
     description: 'Ya puedes empezar a gestionar tus secciones y motivar a tus estudiantes.',
     cta: true,
@@ -299,7 +299,7 @@ function resetOnboarding() {
     localStorage.removeItem(`onboarding_seen_${userId}`);
     window.location.reload();
   } else {
-    if (typeof window.showToast === 'function') window.showToast('⚠️ Error: Usuario no identificado', 'error');
+    if (typeof window.showToast === 'function') window.showToast('<i class="fas fa-triangle-exclamation"></i>️ Error: Usuario no identificado', 'error');
   }
 }
 

@@ -56,7 +56,7 @@ window.viewProjectDetails = async function viewProjectDetails(projectId) {
                     <span class="text-[0.6rem] font-bold uppercase tracking-widest bg-primary/10 text-primary px-2 py-1 rounded-md">
                         ${project.bimestre || 1}º Bimestre
                     </span>
-                    ${project.groups ? `<span class="text-[0.6rem] font-bold uppercase tracking-widest bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-2 py-1 rounded-md">👥 ${sanitizeInput(project.groups.name)}</span>` : ''}
+                    ${project.groups ? `<span class="text-[0.6rem] font-bold uppercase tracking-widest bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-2 py-1 rounded-md"><i class="fas fa-users"></i> ${sanitizeInput(project.groups.name)}</span>` : ''}
                 </div>
             </div>
             <div class="flex items-center gap-4">
@@ -108,11 +108,11 @@ window.viewProjectDetails = async function viewProjectDetails(projectId) {
                 ${(() => {
           const ev = Array.isArray(project.evaluations) ? project.evaluations[0] : project.evaluations;
           return [
-            { l: 'Creatividad', v: ev?.creativity_score, i: '💡' },
-            { l: 'Claridad', v: ev?.clarity_score, i: '🎯' },
-            { l: 'Función', v: ev?.functionality_score, i: '⚙️' },
-            { l: 'Equipo', v: ev?.teamwork_score, i: '👥' },
-            { l: 'Impacto', v: ev?.social_impact_score, i: '🌍' }
+            { l: 'Creatividad', v: ev?.creativity_score, i: '<i class="fas fa-lightbulb"></i>' },
+            { l: 'Claridad', v: ev?.clarity_score, i: '<i class="fas fa-bullseye"></i>' },
+            { l: 'Función', v: ev?.functionality_score, i: '<i class="fas fa-gear"></i>️' },
+            { l: 'Equipo', v: ev?.teamwork_score, i: '<i class="fas fa-users"></i>' },
+            { l: 'Impacto', v: ev?.social_impact_score, i: '<i class="fas fa-earth-americas"></i>' }
           ].map(c => `
                     <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm text-center transform hover:scale-105 transition-all">
                         <div class="text-2xl mb-2">${c.i}</div>
@@ -144,7 +144,7 @@ window.viewProjectDetails = async function viewProjectDetails(projectId) {
     document.body.appendChild(modal);
   } catch (err) {
     console.error(err);
-    if (typeof showToast === 'function') showToast('❌ Error al cargar detalles', 'error');
+    if (typeof showToast === 'function') showToast('<i class="fas fa-circle-xmark"></i> Error al cargar detalles', 'error');
   }
 }
 
@@ -167,7 +167,7 @@ window.openChallengeEvidenceModal = function openChallengeEvidenceModal(challeng
         <div class="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 mb-6">
             <p class="text-sm font-black text-amber-700 dark:text-amber-400 mb-1">${window.sanitizeInput(challenge.name)}</p>
             <p class="text-xs text-slate-500 dark:text-slate-400">${window.sanitizeInput(challenge.description)}</p>
-            <p class="text-[0.65rem] font-bold text-amber-600 mt-2 uppercase tracking-widest">🎁 ${window.sanitizeInput(challenge.reward)}</p>
+            <p class="text-[0.65rem] font-bold text-amber-600 mt-2 uppercase tracking-widest"><i class="fas fa-gift"></i> ${window.sanitizeInput(challenge.reward)}</p>
         </div>` : ''}
 
         <p class="text-slate-600 dark:text-slate-400 text-sm mb-3 leading-relaxed">
@@ -199,13 +199,13 @@ window.uploadProject = async function uploadProject() {
   const nav = window.nav;
 
   if (!title || !description || !videoFile) {
-    if (typeof showToast === 'function') showToast('❌ Completa los campos', 'error');
+    if (typeof showToast === 'function') showToast('<i class="fas fa-circle-xmark"></i> Completa los campos', 'error');
     return;
   }
 
   const MAX_SIZE = 50 * 1024 * 1024;
   if (videoFile.size > MAX_SIZE) {
-    if (typeof showToast === 'function') showToast('❌ Video muy pesado (Máx 50MB)', 'error');
+    if (typeof showToast === 'function') showToast('<i class="fas fa-circle-xmark"></i> Video muy pesado (Máx 50MB)', 'error');
     return;
   }
 
@@ -244,7 +244,7 @@ window.uploadProject = async function uploadProject() {
       await _syncManager.enqueue('upload_project', projectData);
     }
 
-    if (typeof showToast === 'function') showToast('🚀 Proyecto guardado (Pendiente Sync)', 'success');
+    if (typeof showToast === 'function') showToast('<i class="fas fa-rocket"></i> Proyecto guardado (Pendiente Sync)', 'success');
 
     // Limpiar formulario
     document.getElementById('project-title').value = '';
@@ -254,7 +254,7 @@ window.uploadProject = async function uploadProject() {
     if (typeof nav === 'function') nav('feed');
   } catch (err) {
     console.error(err);
-    if (typeof showToast === 'function') showToast('❌ Error al guardar proyecto', 'error');
+    if (typeof showToast === 'function') showToast('<i class="fas fa-circle-xmark"></i> Error al guardar proyecto', 'error');
   } finally {
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-paper-plane text-xl"></i> PUBLICAR PROYECTO AHORA';

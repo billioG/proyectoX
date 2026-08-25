@@ -35,7 +35,7 @@ window.loadRanking = async function loadRanking() {
 
   } catch (err) {
     console.error(err);
-    container.innerHTML = '<div class="glass-card p-10 text-rose-500 font-bold text-center">❌ Error sincronizando el Hall de la Fama</div>';
+    container.innerHTML = '<div class="glass-card p-10 text-rose-500 font-bold text-center"><i class="fas fa-circle-xmark"></i> Error sincronizando el Hall de la Fama</div>';
   }
 }
 
@@ -107,7 +107,7 @@ window.renderRankingRows = function renderRankingRows(projects) {
 
   list.innerHTML = projects.map((p, index) => {
     const isTop3 = index < 3;
-    const medals = ['🥇', '🥈', '🥉'];
+    const medals = ['<i class="fas fa-medal"></i>', '<i class="fas fa-medal"></i>', '<i class="fas fa-medal"></i>'];
     const colors = ['bg-amber-400 text-amber-950', 'bg-slate-300 text-slate-800', 'bg-orange-500 text-orange-50'];
 
     // Privacidad: Solo dueño/equipo/docente ve puntajes reales en ranking ajeno

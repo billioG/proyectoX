@@ -138,11 +138,11 @@ window.saveClassPassword = async function saveClassPassword(school_code, grade, 
     if (!res.ok) throw new Error(result.error || 'Error al guardar');
 
     const pwMsg = result.password ? ` · Contraseña: ${result.password}` : '';
-    window.showToast(`✅ Guardado${result.updated ? ` (${result.updated} alumnos sincronizados)` : ''}${pwMsg}`, 'success');
+    window.showToast(`<i class="fas fa-circle-check"></i> Guardado${result.updated ? ` (${result.updated} alumnos sincronizados)` : ''}${pwMsg}`, 'success');
     document.querySelector('.fixed.z-\\[300\\]')?.remove();
     window.loadClassPasswordsList();
   } catch (err) {
-    window.showToast('❌ ' + err.message, 'error');
+    window.showToast('<i class="fas fa-circle-xmark"></i> ' + err.message, 'error');
     btn.disabled = false;
     btn.innerHTML = 'Guardar';
   }
@@ -154,7 +154,7 @@ window.resetSchoolPasswords = async function resetSchoolPasswords() {
   const requires_password = document.getElementById('reset-requires-password')?.checked;
   const btn = document.getElementById('btn-reset-school');
 
-  if (!school_code) return window.showToast('❌ Elegí un establecimiento', 'error');
+  if (!school_code) return window.showToast('<i class="fas fa-circle-xmark"></i> Elegí un establecimiento', 'error');
   if (!confirm('Esto va a cambiar la contraseña de TODAS las clases de este establecimiento y sincronizar a todos sus alumnos. ¿Continuar?')) return;
 
   btn.disabled = true;
@@ -174,11 +174,11 @@ window.resetSchoolPasswords = async function resetSchoolPasswords() {
     if (!res.ok) throw new Error(result.error || 'Error al aplicar');
 
     const pwMsg = result.password ? ` · Contraseña: ${result.password}` : '';
-    window.showToast(`✅ ${result.classes?.length || 0} clases actualizadas, ${result.updated} alumnos sincronizados${pwMsg}`, 'success');
+    window.showToast(`<i class="fas fa-circle-check"></i> ${result.classes?.length || 0} clases actualizadas, ${result.updated} alumnos sincronizados${pwMsg}`, 'success');
     document.getElementById('reset-password').value = '';
     window.loadClassPasswordsList();
   } catch (err) {
-    window.showToast('❌ ' + err.message, 'error');
+    window.showToast('<i class="fas fa-circle-xmark"></i> ' + err.message, 'error');
   } finally {
     btn.disabled = false;
     btn.innerHTML = 'Aplicar a todo el establecimiento';
@@ -248,7 +248,7 @@ window.loadStudents = async function loadStudents() {
 
   } catch (err) {
     console.error(err);
-    container.innerHTML = '<div class="glass-card p-10 text-rose-500 font-bold text-center">❌ Falló la sincronización de alumnos</div>';
+    container.innerHTML = '<div class="glass-card p-10 text-rose-500 font-bold text-center"><i class="fas fa-circle-xmark"></i> Falló la sincronización de alumnos</div>';
   }
 }
 
@@ -477,11 +477,11 @@ window.submitStudent = async function submitStudent(e) {
     }
 
     if (error) throw error;
-    showToast('✅ Alumno guardado', 'success');
+    showToast('<i class="fas fa-circle-check"></i> Alumno guardado', 'success');
     e.target.closest('.fixed').remove();
     window.loadStudents();
   } catch (err) {
-    showToast('❌ Error al guardar', 'error');
+    showToast('<i class="fas fa-circle-xmark"></i> Error al guardar', 'error');
   }
 }
 
@@ -496,7 +496,7 @@ window.deleteStudent = async function deleteStudent(id) {
   const _supabase = window._supabase;
   const { error } = await _supabase.from('students').delete().eq('id', id);
   if (!error) {
-    window.showToast('🗑️ Alumno eliminado', 'success');
+    window.showToast('<i class="fas fa-trash"></i>️ Alumno eliminado', 'success');
     window.loadStudents();
   }
 }

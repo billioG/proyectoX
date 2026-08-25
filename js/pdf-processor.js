@@ -30,13 +30,13 @@ window.processPDFFile = async function processPDFFile() {
     const file = fileInput?.files[0];
 
     if (!file) {
-        return window.showToast('❌ Selecciona un archivo PDF', 'error');
+        return window.showToast('<i class="fas fa-circle-xmark"></i> Selecciona un archivo PDF', 'error');
     }
 
     window.isProcessingCanceled = false;
 
     if (typeof pdfjsLib === 'undefined') {
-        return window.showToast('❌ Error: Librería PDF.js no cargada', 'error');
+        return window.showToast('<i class="fas fa-circle-xmark"></i> Error: Librería PDF.js no cargada', 'error');
     }
 
     const progressContainer = document.getElementById('pdf-processing-progress');
@@ -88,9 +88,9 @@ window.processPDFFile = async function processPDFFile() {
 
         progressBar.style.width = '100%';
         progressBar.textContent = '100%';
-        statusText.textContent = `✅ ${window.extractedStudents.length} estudiantes extraídos`;
+        statusText.textContent = `<i class="fas fa-circle-check"></i> ${window.extractedStudents.length} estudiantes extraídos`;
 
-        window.showToast(`✅ Establecimiento y ${window.extractedStudents.length} estudiantes encontrados`, 'success');
+        window.showToast(`<i class="fas fa-circle-check"></i> Establecimiento y ${window.extractedStudents.length} estudiantes encontrados`, 'success');
 
         displaySchoolPreview(window.extractedSchool);
         displayStudentsPreview(window.extractedStudents);
@@ -98,9 +98,9 @@ window.processPDFFile = async function processPDFFile() {
 
     } catch (err) {
         console.error('Error procesando PDF:', err);
-        statusText.textContent = '❌ Error procesando PDF';
+        statusText.textContent = '<i class="fas fa-circle-xmark"></i> Error procesando PDF';
         progressBar.style.background = 'var(--danger-color)';
-        window.showToast('❌ Error: ' + err.message, 'error');
+        window.showToast('<i class="fas fa-circle-xmark"></i> Error: ' + err.message, 'error');
     } finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-file-pdf"></i> Procesar PDF';
@@ -174,7 +174,7 @@ async function saveSchool(schoolData) {
         if (error) throw error;
 
         console.log('✓ Establecimiento creado:', schoolData.name);
-        window.showToast('✅ Establecimiento registrado', 'success');
+        window.showToast('<i class="fas fa-circle-check"></i> Establecimiento registrado', 'success');
 
     } catch (err) {
         console.error('Error guardando establecimiento:', err);
@@ -186,7 +186,7 @@ function displaySchoolPreview(school) {
     if (!container || !school) return;
 
     container.innerHTML = `
-        <h3 class="text-xl font-black text-slate-800 dark:text-white mb-6 pl-2 border-l-4 border-primary">🏫 Establecimiento Detectado</h3>
+        <h3 class="text-xl font-black text-slate-800 dark:text-white mb-6 pl-2 border-l-4 border-primary"><i class="fas fa-school"></i> Establecimiento Detectado</h3>
         <div class="glass-card p-6 bg-slate-50 dark:bg-slate-900/50">
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div>
@@ -336,7 +336,7 @@ function generateUsername(primerNombre, segundoNombre, apellido1, apellido2) {
 
 async function ensureUniqueUsernames(students) {
     console.log(`🔍 Iniciando validación de unicidad para ${students.length} estudiantes...`);
-    window.showToast(`🚀 Creando ${students.length} usuarios... Por favor espera.`, 'info');
+    window.showToast(`<i class="fas fa-rocket"></i> Creando ${students.length} usuarios... Por favor espera.`, 'info');
 
     let existingUsernames = new Set();
     try {
@@ -388,7 +388,7 @@ async function ensureUniqueUsernames(students) {
     if (newClassRows.length) {
         const { error: cpErr } = await window._supabase.from('class_passwords').upsert(newClassRows, { onConflict: 'school_code,grade,section' });
         if (cpErr) console.error('Error creando contraseñas de clase:', cpErr);
-        else window.showToast(`🔑 ${newClassRows.length} contraseña(s) de clase generadas. Revisalas en "Contraseñas de Clase".`, 'info');
+        else window.showToast(`<i class="fas fa-key"></i> ${newClassRows.length} contraseña(s) de clase generadas. Revisalas en "Contraseñas de Clase".`, 'info');
     }
 
     return students.map((student, index) => {
@@ -439,7 +439,7 @@ function displayStudentsPreview(students) {
     if (!document.getElementById('pdf-preview-table')) {
         previewContainer.innerHTML = `
             <div class="flex justify-between items-end mb-6">
-                <h3 class="text-xl font-black text-slate-800 dark:text-white pl-2 border-l-4 border-indigo-500">📋 Vista Previa de Estudiantes</h3>
+                <h3 class="text-xl font-black text-slate-800 dark:text-white pl-2 border-l-4 border-indigo-500"><i class="fas fa-clipboard-list"></i> Vista Previa de Estudiantes</h3>
                 <span class="bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full text-xs font-bold ring-1 ring-indigo-500/20">${students.length} Registros Encontrados</span>
             </div>
             
@@ -552,7 +552,7 @@ window.handlePdfFileSelected = function handlePdfFileSelected(file) {
     if (icon) { icon.className = 'fas fa-file-circle-check text-3xl text-emerald-500 mb-2'; }
     if (label) {
         label.className = 'text-xs font-bold text-emerald-600 uppercase tracking-widest text-center px-4';
-        label.textContent = `✓ ${file.name}`;
+        label.textContent = `<i class="fas fa-check"></i> ${file.name}`;
     }
 }
 
@@ -586,7 +586,7 @@ window.cancelPDFImport = function cancelPDFImport() {
         label.textContent = 'Arrastra tu PDF aquí o haz click';
     }
 
-    window.showToast('❌ Importación cancelada', 'warning');
+    window.showToast('<i class="fas fa-circle-xmark"></i> Importación cancelada', 'warning');
 }
 
 window.confirmAndCreateUsers = async function confirmAndCreateUsers() {
@@ -595,7 +595,7 @@ window.confirmAndCreateUsers = async function confirmAndCreateUsers() {
 
 window.createUsersFromExtractedData = async function createUsersFromExtractedData(students) {
     if (students.length === 0) {
-        return window.showToast('❌ No hay estudiantes para crear', 'error');
+        return window.showToast('<i class="fas fa-circle-xmark"></i> No hay estudiantes para crear', 'error');
     }
 
     const actionsContainer = document.getElementById('pdf-actions-container');
@@ -664,7 +664,7 @@ window.createUsersFromExtractedData = async function createUsersFromExtractedDat
 
     } catch (err) {
         console.error('Error en importación masiva:', err);
-        window.showToast('❌ Error: ' + err.message, 'error');
+        window.showToast('<i class="fas fa-circle-xmark"></i> Error: ' + err.message, 'error');
         errorCount = toCreate.length;
     }
 
@@ -684,7 +684,7 @@ window.createUsersFromExtractedData = async function createUsersFromExtractedDat
         ${errorDetails ? `<div class="mt-4 max-h-40 overflow-y-auto">${errorDetails}</div>` : ''}
     `;
 
-    if (successCount > 0) window.showToast(`✅ ${successCount} estudiantes creados`, 'success');
+    if (successCount > 0) window.showToast(`<i class="fas fa-circle-check"></i> ${successCount} estudiantes creados`, 'success');
     if (typeof window.loadStudents === 'function') setTimeout(window.loadStudents, 2000);
 }
 

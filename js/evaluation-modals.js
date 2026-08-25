@@ -29,7 +29,7 @@ window.openEvaluationModal = async function openEvaluationModal(projectId) {
         existingEval = evalData;
     } catch (e) {
         console.error("Error cargando contexto de evaluación:", e);
-        if (typeof showToast === 'function') showToast('❌ No se pudo cargar el proyecto para evaluar', 'error');
+        if (typeof showToast === 'function') showToast('<i class="fas fa-circle-xmark"></i> No se pudo cargar el proyecto para evaluar', 'error');
         return;
     }
 
@@ -38,11 +38,11 @@ window.openEvaluationModal = async function openEvaluationModal(projectId) {
     modal.id = 'evaluation-modal';
 
     const criteria = [
-        { id: 'creativity', label: '💡 Creatividad e Innovación', val: existingEval?.creativity_score || 0 },
-        { id: 'clarity', label: '🎯 Claridad de Presentación', val: existingEval?.clarity_score || 0 },
-        { id: 'functionality', label: '⚙️ Funcionalidad Técnica', val: existingEval?.functionality_score || 0 },
-        { id: 'teamwork', label: '👥 Trabajo en Equipo', val: existingEval?.teamwork_score || 0 },
-        { id: 'social_impact', label: '🌍 Impacto Social', val: existingEval?.social_impact_score || 0 }
+        { id: 'creativity', label: '<i class="fas fa-lightbulb"></i> Creatividad e Innovación', val: existingEval?.creativity_score || 0 },
+        { id: 'clarity', label: '<i class="fas fa-bullseye"></i> Claridad de Presentación', val: existingEval?.clarity_score || 0 },
+        { id: 'functionality', label: '<i class="fas fa-gear"></i>️ Funcionalidad Técnica', val: existingEval?.functionality_score || 0 },
+        { id: 'teamwork', label: '<i class="fas fa-users"></i> Trabajo en Equipo', val: existingEval?.teamwork_score || 0 },
+        { id: 'social_impact', label: '<i class="fas fa-earth-americas"></i> Impacto Social', val: existingEval?.social_impact_score || 0 }
     ];
 
     modal.innerHTML = `
@@ -55,7 +55,7 @@ window.openEvaluationModal = async function openEvaluationModal(projectId) {
                           <h2 class="text-2xl font-black text-slate-800 dark:text-white uppercase tracking-tighter">${sanitizeInput(project.title)}</h2>
                           <div class="flex gap-2 mt-2">
                               <span class="text-[0.6rem] font-bold bg-primary/10 text-primary px-2 py-1 rounded-md uppercase tracking-widest">${project.bimestre || 1}º Bimestre</span>
-                              <span class="text-[0.6rem] font-bold bg-slate-200 dark:bg-slate-800 text-slate-500 px-2 py-1 rounded-md uppercase tracking-widest">👤 ${sanitizeInput(project.students?.full_name)}</span>
+                              <span class="text-[0.6rem] font-bold bg-slate-200 dark:bg-slate-800 text-slate-500 px-2 py-1 rounded-md uppercase tracking-widest"><i class="fas fa-user"></i> ${sanitizeInput(project.students?.full_name)}</span>
                           </div>
                       </div>
                       <button onclick="window.closeEvaluationModal()" class="w-10 h-10 rounded-full flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 transition-all font-bold text-2xl">×</button>

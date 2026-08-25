@@ -53,7 +53,7 @@ window.approveWaiver = async function approveWaiver(waiverId) {
     // 3. Registrar asistencia automática para los estudiantes afectados
     await window.registerAttendanceForWaiver(waiver);
 
-    window.showToast('✅ Exención aprobada y asistencia registrada', 'success');
+    window.showToast('<i class="fas fa-circle-check"></i> Exención aprobada y asistencia registrada', 'success');
 
     // Recargar dashboard
     if (typeof window.loadAdminDashboard === 'function') {
@@ -62,7 +62,7 @@ window.approveWaiver = async function approveWaiver(waiverId) {
 
   } catch (err) {
     console.error('Error aprobando exención:', err);
-    window.showToast('❌ Error: ' + err.message, 'error');
+    window.showToast('<i class="fas fa-circle-xmark"></i> Error: ' + err.message, 'error');
     btn.disabled = false;
     btn.innerHTML = oldText;
   }
@@ -83,7 +83,7 @@ window.rejectWaiver = async function rejectWaiver(waiverId) {
 
     if (error) throw error;
 
-    window.showToast('✅ Exención rechazada', 'success');
+    window.showToast('<i class="fas fa-circle-check"></i> Exención rechazada', 'success');
 
     // Recargar dashboard
     if (typeof window.loadAdminDashboard === 'function') {
@@ -92,7 +92,7 @@ window.rejectWaiver = async function rejectWaiver(waiverId) {
 
   } catch (err) {
     console.error('Error rechazando exención:', err);
-    window.showToast('❌ Error: ' + err.message, 'error');
+    window.showToast('<i class="fas fa-circle-xmark"></i> Error: ' + err.message, 'error');
   }
 }
 
@@ -168,41 +168,41 @@ window.showWaiverDetailsModal = async function showWaiverDetailsModal(waiver) {
   modal.innerHTML = `
     <div class="modal-content" style="max-width: 600px;">
       <div class="modal-header">
-        <h2>📋 Detalles de la Solicitud</h2>
+        <h2><i class="fas fa-clipboard-list"></i> Detalles de la Solicitud</h2>
         <button class="close-modal" onclick="this.closest('.modal').remove()">×</button>
       </div>
       <div class="modal-body">
         <div style="display: grid; gap: 16px;">
           <div>
-            <strong style="color: var(--heading-color);">👨‍🏫 Docente:</strong>
+            <strong style="color: var(--heading-color);"><i class="fas fa-chalkboard-user"></i>‍<i class="fas fa-school"></i> Docente:</strong>
             <p style="margin: 4px 0 0 0;">${window.sanitizeInput(teacherName)}</p>
             <small style="color: var(--text-light);">${teacherEmail}</small>
           </div>
 
           <div>
-            <strong style="color: var(--heading-color);">📅 Fecha Afectada:</strong>
+            <strong style="color: var(--heading-color);"><i class="fas fa-calendar-days"></i> Fecha Afectada:</strong>
             <p style="margin: 4px 0 0 0;">${window.formatDate(waiver.date)}</p>
           </div>
 
           <div>
-            <strong style="color: var(--heading-color);">🏫 Establecimiento:</strong>
+            <strong style="color: var(--heading-color);"><i class="fas fa-school"></i> Establecimiento:</strong>
             <p style="margin: 4px 0 0 0;">${waiver.school_code || 'No especificado'}</p>
           </div>
 
           <div>
-            <strong style="color: var(--heading-color);">📚 Alcance:</strong>
+            <strong style="color: var(--heading-color);"><i class="fas fa-book"></i> Alcance:</strong>
             <p style="margin: 4px 0 0 0;">${scopeText}</p>
           </div>
 
           <div>
-            <strong style="color: var(--heading-color);">📝 Motivo:</strong>
+            <strong style="color: var(--heading-color);"><i class="fas fa-pen-to-square"></i> Motivo:</strong>
             <p style="margin: 4px 0 0 0; padding: 12px; background: var(--light-gray); border-radius: 8px;">
               ${window.sanitizeInput(waiver.reason)}
             </p>
           </div>
 
           <div>
-            <strong style="color: var(--heading-color);">🕐 Solicitado:</strong>
+            <strong style="color: var(--heading-color);"><i class="fas fa-clock"></i> Solicitado:</strong>
             <p style="margin: 4px 0 0 0;">${window.formatDate(waiver.created_at)}</p>
           </div>
         </div>
@@ -241,7 +241,7 @@ window.showWaiverReports = async function showWaiverReports() {
     });
   } catch (e) {
     console.error(e);
-    modal.innerHTML = '<div class="modal-content"><p class="text-rose-500">❌ Error cargando historial</p></div>';
+    modal.innerHTML = '<div class="modal-content"><p class="text-rose-500"><i class="fas fa-circle-xmark"></i> Error cargando historial</p></div>';
   }
 }
 
@@ -249,7 +249,7 @@ window.renderWaiverReportsUI = function renderWaiverReportsUI(modal, waivers) {
   modal.innerHTML = `
         <div class="modal-content" style="max-width: 900px;">
             <div class="modal-header">
-                <h2>📋 Historial de Exenciones</h2>
+                <h2><i class="fas fa-clipboard-list"></i> Historial de Exenciones</h2>
                 <button class="close-modal" onclick="this.closest('.modal').remove()">×</button>
             </div>
             <div class="modal-body">

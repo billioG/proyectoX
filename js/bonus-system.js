@@ -45,7 +45,7 @@ window.openBonusOnboarding = function openBonusOnboarding() {
                     <div>
                         <h3 class="text-sm font-black uppercase tracking-widest text-slate-800 dark:text-white mb-1">3. El Cofre del Tesoro (Bonos)</h3>
                         <p class="text-sm text-slate-500 leading-relaxed italic mb-2">"¿Por qué? Porque en 1bot valoramos tu esfuerzo y queremos que seas el mejor del mundo". </p>
-                        <p class="text-xs text-slate-400 font-bold uppercase tracking-tighter">Entre más logres, ¡más grande será tu tesoro al final del mes! 💰</p>
+                        <p class="text-xs text-slate-400 font-bold uppercase tracking-tighter">Entre más logres, ¡más grande será tu tesoro al final del mes! <i class="fas fa-sack-dollar"></i></p>
                     </div>
                 </div>
             </div>
@@ -198,7 +198,7 @@ window.loadBonusSystem = async function loadBonusSystem() {
 
     } catch (err) {
         console.error(err);
-        container.innerHTML = `<div class="p-10 text-rose-500 font-bold text-center">❌ Error Sinc: ${err.message}</div>`;
+        container.innerHTML = `<div class="p-10 text-rose-500 font-bold text-center"><i class="fas fa-circle-xmark"></i> Error Sinc: ${err.message}</div>`;
     }
 }
 
@@ -642,7 +642,7 @@ window.renderKpiProgressTile = function renderKpiProgressTile(kpi) {
 // ================================================
 
 window.handleTutorCheckIn = async function handleTutorCheckIn(schoolId) {
-    if (!schoolId) return showToast('❌ Selecciona un colegio', 'error');
+    if (!schoolId) return showToast('<i class="fas fa-circle-xmark"></i> Selecciona un colegio', 'error');
     const btn = event.currentTarget;
     const orig = btn.innerHTML;
     btn.disabled = true;
@@ -657,10 +657,10 @@ window.handleTutorCheckIn = async function handleTutorCheckIn(schoolId) {
             if (dist > (sch.geofence_radius || 150)) throw new Error(`Fuera de rango (${Math.round(dist)}m)`);
             const { error } = await _supabase.from('tutor_attendance').insert({ tutor_id: currentUser.id, school_id: schoolId, latitude, longitude, distance_meters: dist, is_valid_entry: true });
             if (error) throw error;
-            showToast('✅ Asistencia confirmada', 'success');
+            showToast('<i class="fas fa-circle-check"></i> Asistencia confirmada', 'success');
             loadBonusSystem();
-        } catch (err) { showToast('❌ ' + err.message, 'error'); btn.disabled = false; btn.innerHTML = orig; }
-    }, (err) => { showToast('❌ GPS Requerido', 'error'); btn.disabled = false; btn.innerHTML = orig; }, { enableHighAccuracy: true });
+        } catch (err) { showToast('<i class="fas fa-circle-xmark"></i> ' + err.message, 'error'); btn.disabled = false; btn.innerHTML = orig; }
+    }, (err) => { showToast('<i class="fas fa-circle-xmark"></i> GPS Requerido', 'error'); btn.disabled = false; btn.innerHTML = orig; }, { enableHighAccuracy: true });
 }
 
 window.calculateDist = function calculateDist(lat1, lon1, lat2, lon2) {
@@ -745,7 +745,7 @@ window.handleDocPhotoSelect = function handleDocPhotoSelect(input) {
         btn.disabled = false;
         btn.onclick = async () => {
             const title = document.getElementById('doc-title').value;
-            if (!title) return showToast('❌ Agrega un título a la actividad', 'error');
+            if (!title) return showToast('<i class="fas fa-circle-xmark"></i> Agrega un título a la actividad', 'error');
 
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
@@ -772,11 +772,11 @@ window.handleDocPhotoSelect = function handleDocPhotoSelect(input) {
                 await _syncManager.enqueue('submit_evidence', evidenceData);
                 await _syncManager.enqueue('asset_audit', auditData);
 
-                showToast('🚀 Evidencia guardada (Pendiente Sync)', 'success');
+                showToast('<i class="fas fa-rocket"></i> Evidencia guardada (Pendiente Sync)', 'success');
                 loadBonusSystem();
                 document.querySelector('.fixed.z-\\[600\\]')?.remove();
             } catch (e) {
-                showToast('❌ Error al guardar: ' + e.message, 'error');
+                showToast('<i class="fas fa-circle-xmark"></i> Error al guardar: ' + e.message, 'error');
                 btn.disabled = false;
                 btn.innerHTML = 'REINTENTAR';
             }
@@ -998,7 +998,7 @@ window.saveTeacherFinance = async function saveTeacherFinance(teacherId) {
     }).eq('id', teacherId);
 
     if (!error) {
-        showToast('🚀 Economía del docente actualizada', 'success');
+        showToast('<i class="fas fa-rocket"></i> Economía del docente actualizada', 'success');
         loadBonusSystem();
     }
 }
@@ -1009,14 +1009,14 @@ window.updateManualKpi = async function updateManualKpi(teacherId, kpiId, val) {
         teacher_id: teacherId, kpi_id: kpiId, period_month: period, progress_value: parseFloat(val)
     }, { onConflict: 'kpi_id, teacher_id, period_month' });
 
-    if (!error) showToast('🎯 Mérito manual actualizado', 'success');
+    if (!error) showToast('<i class="fas fa-bullseye"></i> Mérito manual actualizado', 'success');
 }
 
 window.submitChallengeEvidence = async function submitChallengeEvidence(challengeId) {
     const comment = document.getElementById('challenge-comment')?.value.trim();
     const feedbackEl = document.getElementById('challenge-comment-feedback');
     if (feedbackEl) { feedbackEl.classList.add('hidden'); feedbackEl.textContent = ''; }
-    if (!comment) return showToast('❌ Cuéntanos un poco sobre tu experiencia', 'error');
+    if (!comment) return showToast('<i class="fas fa-circle-xmark"></i> Cuéntanos un poco sobre tu experiencia', 'error');
 
     const btn = event.target;
     const originalText = btn.innerHTML;
@@ -1031,7 +1031,7 @@ window.submitChallengeEvidence = async function submitChallengeEvidence(challeng
             const isGeneric = /^\s*no\b/i.test((verdict || '').trim());
             if (isGeneric) {
                 if (feedbackEl) {
-                    feedbackEl.textContent = '⚠️ Tu reflexión parece muy genérica. Contá algo concreto: qué hiciste, con qué grupo, qué notaste.';
+                    feedbackEl.textContent = '<i class="fas fa-triangle-exclamation"></i>️ Tu reflexión parece muy genérica. Contá algo concreto: qué hiciste, con qué grupo, qué notaste.';
                     feedbackEl.classList.remove('hidden');
                 }
                 btn.disabled = false;
@@ -1050,12 +1050,12 @@ window.submitChallengeEvidence = async function submitChallengeEvidence(challeng
 
         if (error) throw error;
 
-        showToast('🎯 ¡Reto completado! Tu bono comodín se ha activado.', 'success');
+        showToast('<i class="fas fa-bullseye"></i> ¡Reto completado! Tu bono comodín se ha activado.', 'success');
         document.querySelector('.fixed.z-\\[100\\]')?.remove();
         loadBonusSystem();
     } catch (err) {
         console.error(err);
-        showToast('❌ Error: ' + err.message, 'error');
+        showToast('<i class="fas fa-circle-xmark"></i> Error: ' + err.message, 'error');
         btn.disabled = false;
         btn.innerHTML = originalText;
     }
@@ -1117,7 +1117,7 @@ window.saveNewKpi = async function saveNewKpi(e) {
     });
 
     if (!error) {
-        showToast('🚀 Nueva Roca configurada', 'success');
+        showToast('<i class="fas fa-rocket"></i> Nueva Roca configurada', 'success');
         e.target.closest('.fixed').remove();
         renderGlobalKpiManager();
         loadBonusSystem();
@@ -1128,7 +1128,7 @@ window.deleteDynamicKpi = async function deleteDynamicKpi(id) {
     if (!confirm('¿Seguro que deseas eliminar esta meta global?')) return;
     const { error } = await _supabase.from('dynamic_kpis').delete().eq('id', id);
     if (!error) {
-        showToast('🗑️ Meta eliminada', 'default');
+        showToast('<i class="fas fa-trash"></i>️ Meta eliminada', 'default');
         renderGlobalKpiManager();
         loadBonusSystem();
     }
@@ -1145,7 +1145,7 @@ window.toggleTaskCompletion = async function toggleTaskCompletion(taskId, isComp
     }, { onConflict: 'task_id, teacher_id, period_month' });
 
     if (!error) {
-        showToast(isCompleted ? '🚩 Tarea marcada como hecha' : '🔄 Tarea revertida', 'success');
+        showToast(isCompleted ? '<i class="fas fa-flag"></i> Tarea marcada como hecha' : '<i class="fas fa-arrows-rotate"></i> Tarea revertida', 'success');
         loadBonusSystem();
     }
 }
@@ -1250,7 +1250,7 @@ window.saveKpiTask = async function saveKpiTask(kpiId, teacherId = null) {
 
     const { error } = await _supabase.from('kpi_tasks').insert({ kpi_id: kpiId, title, teacher_id: teacherId });
     if (!error) {
-        showToast('✅ Tarea agregada', 'success');
+        showToast('<i class="fas fa-circle-check"></i> Tarea agregada', 'success');
         document.querySelector('.fixed.z-\\[750\\]')?.remove();
         if (teacherId) {
             window.selectTeacherForManager(teacherId); // Refrescar vista de docente
@@ -1347,7 +1347,7 @@ window.bulkVerifyTask = async function bulkVerifyTask(taskId, teacherId) {
     }).eq('task_id', taskId).eq('teacher_id', teacherId).eq('period_month', period);
 
     if (!error) {
-        showToast('💎 Tarea Validada', 'success');
+        showToast('<i class="fas fa-gem"></i> Tarea Validada', 'success');
         refreshAdminBadges();
         renderValidationInbox();
         loadBonusSystem();
@@ -1362,12 +1362,12 @@ window.verifyTaskCompletion = async function verifyTaskCompletion(taskId, teache
     }).eq('task_id', taskId).eq('teacher_id', teacherId).eq('period_month', period);
 
     if (!error) {
-        showToast(isVerified ? '💎 Tarea verificada oficialmente' : '🔄 Verificación removida', 'success');
+        showToast(isVerified ? '<i class="fas fa-gem"></i> Tarea verificada oficialmente' : '<i class="fas fa-arrows-rotate"></i> Verificación removida', 'success');
         refreshAdminBadges();
         selectTeacherForManager(teacherId);
         loadBonusSystem();
     } else {
-        showToast('❌ El tutor aún no ha marcado esta tarea como hecha', 'error');
+        showToast('<i class="fas fa-circle-xmark"></i> El tutor aún no ha marcado esta tarea como hecha', 'error');
     }
 }
 

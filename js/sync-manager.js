@@ -54,14 +54,14 @@ class SyncManager {
             if (this.simulatedOffline) return; // Si estamos simulando offline, ignorar
             this.isOnline = true;
             console.log('🌐 Conexión restaurada');
-            showToast('🌐 Conexión restaurada. Sincronizando datos...', 'success');
+            showToast('<i class="fas fa-globe"></i> Conexión restaurada. Sincronizando datos...', 'success');
             this.processQueue();
         });
 
         window.addEventListener('offline', () => {
             this.isOnline = false;
             console.log('🔌 Sin conexión');
-            if (!this.simulatedOffline) showToast('🔌 Trabajando en modo offline', 'warning');
+            if (!this.simulatedOffline) showToast('<i class="fas fa-plug"></i> Trabajando en modo offline', 'warning');
             this.updateUI();
         });
 
@@ -84,7 +84,7 @@ class SyncManager {
     toggleDevMode() {
         this.isDevMode = !this.isDevMode;
         localStorage.setItem('PX_DEV_MODE', this.isDevMode);
-        showToast(this.isDevMode ? '🛠️ Modo Dev Activado' : '🛠️ Modo Dev Desactivado', 'default');
+        showToast(this.isDevMode ? '<i class="fas fa-screwdriver-wrench"></i>️ Modo Dev Activado' : '<i class="fas fa-screwdriver-wrench"></i>️ Modo Dev Desactivado', 'default');
         location.reload(); // Recargar para aplicar cambios de UI
     }
 
@@ -92,7 +92,7 @@ class SyncManager {
         this.simulatedOffline = !this.simulatedOffline;
         localStorage.setItem('PX_SIM_OFFLINE', this.simulatedOffline);
         this.isOnline = !this.simulatedOffline && navigator.onLine;
-        showToast(this.simulatedOffline ? '🔌 Simulación Offline Activada' : '🌐 Conexión Restaurada', 'info');
+        showToast(this.simulatedOffline ? '<i class="fas fa-plug"></i> Simulación Offline Activada' : '<i class="fas fa-globe"></i> Conexión Restaurada', 'info');
         this.updateUI();
         if (this.isOnline) this.processQueue();
     }
@@ -398,7 +398,7 @@ class SyncManager {
             await this.enqueue(item.action, item.data);
         }
 
-        showToast(`✅ ${finalPayload.items.length} acciones importadas correctamente`, 'success');
+        showToast(`<i class="fas fa-circle-check"></i> ${finalPayload.items.length} acciones importadas correctamente`, 'success');
         return true;
     }
 }

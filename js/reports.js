@@ -119,7 +119,7 @@ window.previewReportPhotos = function previewReportPhotos(input) {
   container.innerHTML = '';
 
   if (input.files.length > 5) {
-    showToast('⚠️ Máximo 5 fotos permitidas', 'warning');
+    showToast('<i class="fas fa-triangle-exclamation"></i>️ Máximo 5 fotos permitidas', 'warning');
     input.value = '';
     return;
   }
@@ -202,8 +202,8 @@ window.openWeeklyEvidenceModal = async function openWeeklyEvidenceModal() {
 
           <div class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-1">
             <div class="text-[0.6rem] font-bold text-slate-500 uppercase tracking-widest flex justify-between">
-              <span>📅 ${new Date().toLocaleDateString()}</span>
-              <span>📍 <span id="loc-display">${locationText}</span></span>
+              <span><i class="fas fa-calendar-days"></i> ${new Date().toLocaleDateString()}</span>
+              <span><i class="fas fa-location-dot"></i> <span id="loc-display">${locationText}</span></span>
             </div>
           </div>
 
@@ -262,12 +262,12 @@ window.submitMonthlyReport = async function submitMonthlyReport(e) {
 
     if (error) throw error;
 
-    showToast('✅ Informe Mensual enviado correctamente', 'success');
+    showToast('<i class="fas fa-circle-check"></i> Informe Mensual enviado correctamente', 'success');
     e.target.closest('.modal').remove();
     initGamification(); // Recargar XP
   } catch (err) {
     console.error('Error enviando informe:', err);
-    showToast('❌ Error al enviar informe: ' + err.message, 'error');
+    showToast('<i class="fas fa-circle-xmark"></i> Error al enviar informe: ' + err.message, 'error');
   } finally {
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar Informe';
@@ -281,7 +281,7 @@ window.submitWeeklyEvidence = async function submitWeeklyEvidence(e) {
   const photos = document.getElementById('evidence-photos').files;
 
   if (photos.length === 0) {
-    return showToast('❌ Adjunta al menos una fotografía', 'error');
+    return showToast('<i class="fas fa-circle-xmark"></i> Adjunta al menos una fotografía', 'error');
   }
 
   btn.disabled = true;
@@ -314,7 +314,7 @@ window.submitWeeklyEvidence = async function submitWeeklyEvidence(e) {
 
     if (error) throw error;
 
-    showToast('✅ Evidencia subida con éxito y +10 XP sumados.', 'success');
+    showToast('<i class="fas fa-circle-check"></i> Evidencia subida con éxito y +10 XP sumados.', 'success');
     const modal = e.target.closest('.fixed') || e.target.closest('.modal');
     if (modal) modal.remove();
 
@@ -324,7 +324,7 @@ window.submitWeeklyEvidence = async function submitWeeklyEvidence(e) {
 
   } catch (err) {
     console.error('Error subiendo evidencia:', err);
-    showToast('❌ Error: ' + err.message, 'error');
+    showToast('<i class="fas fa-circle-xmark"></i> Error: ' + err.message, 'error');
   } finally {
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-camera"></i> Subir Evidencia';

@@ -32,7 +32,7 @@ window.loadSchools = async function loadSchools() {
 
   } catch (err) {
     console.error('Error cargando establecimientos:', err);
-    container.innerHTML = '<div class="glass-card p-10 text-rose-500 font-bold text-center">❌ Falló la sincronización de establecimientos</div>';
+    container.innerHTML = '<div class="glass-card p-10 text-rose-500 font-bold text-center"><i class="fas fa-circle-xmark"></i> Falló la sincronización de establecimientos</div>';
   }
 }
 
@@ -162,7 +162,7 @@ window.createSchool = async function createSchool() {
   const btn = document.getElementById('btn-create-school');
 
   if (!code || !name || !department || !municipality) {
-    return window.showToast('❌ Completa código, nombre, departamento y municipio', 'error');
+    return window.showToast('<i class="fas fa-circle-xmark"></i> Completa código, nombre, departamento y municipio', 'error');
   }
 
   btn.disabled = true;
@@ -175,13 +175,13 @@ window.createSchool = async function createSchool() {
 
     if (error) throw error;
 
-    window.showToast('✅ Establecimiento creado correctamente', 'success');
+    window.showToast('<i class="fas fa-circle-check"></i> Establecimiento creado correctamente', 'success');
     document.querySelector('.fixed.z-\\[200\\]')?.remove();
     if (typeof window.loadSchools === 'function') await window.loadSchools();
 
   } catch (err) {
     console.error('Error creando establecimiento:', err);
-    window.showToast('❌ Error: ' + err.message, 'error');
+    window.showToast('<i class="fas fa-circle-xmark"></i> Error: ' + err.message, 'error');
   } finally {
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-plus"></i> CREAR';
@@ -340,7 +340,7 @@ window.editSchool = async function editSchool(schoolId) {
 
   } catch (err) {
     console.error('Error cargando establecimiento:', err);
-    showToast('❌ Error al cargar establecimiento', 'error');
+    showToast('<i class="fas fa-circle-xmark"></i> Error al cargar establecimiento', 'error');
   }
 }
 
@@ -351,7 +351,7 @@ window.captureSchoolGPS = function captureSchoolGPS() {
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Detectando...';
 
   if (!navigator.geolocation) {
-    showToast('❌ Tu navegador no soporta geolocalización', 'error');
+    showToast('<i class="fas fa-circle-xmark"></i> Tu navegador no soporta geolocalización', 'error');
     btn.disabled = false;
     btn.innerHTML = originalHTML;
     return;
@@ -362,13 +362,13 @@ window.captureSchoolGPS = function captureSchoolGPS() {
       const { latitude, longitude } = pos.coords;
       document.getElementById('edit-school-lat').value = latitude.toFixed(6);
       document.getElementById('edit-school-lng').value = longitude.toFixed(6);
-      showToast('📍 Coordenadas capturadas con éxito', 'success');
+      showToast('<i class="fas fa-location-dot"></i> Coordenadas capturadas con éxito', 'success');
       btn.disabled = false;
       btn.innerHTML = originalHTML;
     },
     (err) => {
       console.error('Error GPS:', err);
-      showToast('❌ No se pudo obtener la ubicación: ' + err.message, 'error');
+      showToast('<i class="fas fa-circle-xmark"></i> No se pudo obtener la ubicación: ' + err.message, 'error');
       btn.disabled = false;
       btn.innerHTML = originalHTML;
     },
@@ -396,7 +396,7 @@ window.saveSchoolChanges = async function saveSchoolChanges(schoolId) {
   const btn = document.getElementById('btn-save-school');
 
   if (!name || !department || !municipality) {
-    return showToast('❌ Completa nombre, departamento y municipio', 'error');
+    return showToast('<i class="fas fa-circle-xmark"></i> Completa nombre, departamento y municipio', 'error');
   }
 
   btn.disabled = true;
@@ -425,7 +425,7 @@ window.saveSchoolChanges = async function saveSchoolChanges(schoolId) {
 
     if (error) throw error;
 
-    showToast('✅ Establecimiento actualizado correctamente', 'success');
+    showToast('<i class="fas fa-circle-check"></i> Establecimiento actualizado correctamente', 'success');
 
     // Remover específicamente el modal de edición
     const editModal = document.querySelector('.fixed.z-\\[200\\]') || document.querySelector('.fixed.inset-0.z-\\[100\\]');
@@ -435,7 +435,7 @@ window.saveSchoolChanges = async function saveSchoolChanges(schoolId) {
 
   } catch (err) {
     console.error('Error actualizando establecimiento:', err);
-    showToast('❌ Error: ' + err.message, 'error');
+    showToast('<i class="fas fa-circle-xmark"></i> Error: ' + err.message, 'error');
   } finally {
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-save"></i> Guardar Cambios';
@@ -455,12 +455,12 @@ window.deleteSchool = async function deleteSchool(schoolId, schoolName) {
 
     if (error) throw error;
 
-    showToast('✅ Establecimiento eliminado', 'success');
+    showToast('<i class="fas fa-circle-check"></i> Establecimiento eliminado', 'success');
     if (typeof window.loadSchools === 'function') await window.loadSchools();
 
   } catch (err) {
     console.error('Error eliminando establecimiento:', err);
-    window.showToast('❌ Error eliminando establecimiento', 'error');
+    window.showToast('<i class="fas fa-circle-xmark"></i> Error eliminando establecimiento', 'error');
   }
 }
 
@@ -472,7 +472,7 @@ window.exportSchoolsCSV = async function exportSchoolsCSV() {
       .order('department, municipality, name');
 
     if (!schools || schools.length === 0) {
-      return showToast('❌ No hay establecimientos para exportar', 'error');
+      return showToast('<i class="fas fa-circle-xmark"></i> No hay establecimientos para exportar', 'error');
     }
 
     let csvContent = 'Codigo,Nombre,Direccion,Telefono,Email,Departamento,Municipio,Sector,Nivel,Jornada,Area\n';
@@ -485,11 +485,11 @@ window.exportSchoolsCSV = async function exportSchoolsCSV() {
     });
 
     window.downloadCSV(csvContent, 'establecimientos_export.csv');
-    window.showToast(`✅ ${schools.length} establecimientos exportados`, 'success');
+    window.showToast(`<i class="fas fa-circle-check"></i> ${schools.length} establecimientos exportados`, 'success');
 
   } catch (err) {
     console.error('Error exportando:', err);
-    window.showToast('❌ Error al exportar', 'error');
+    window.showToast('<i class="fas fa-circle-xmark"></i> Error al exportar', 'error');
   }
 }
 

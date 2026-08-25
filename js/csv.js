@@ -13,7 +13,7 @@ async function exportStudentsCSV() {
       .order('school_code, grade, section, full_name');
 
     if (!students || students.length === 0) {
-      return showToast('❌ No hay estudiantes para exportar', 'error');
+      return showToast('<i class="fas fa-circle-xmark"></i> No hay estudiantes para exportar', 'error');
     }
 
     let csvContent = 'Username,Password,Nombre,Email,CUI,Establecimiento,Codigo,Grado,Seccion\n';
@@ -33,11 +33,11 @@ async function exportStudentsCSV() {
     });
 
     downloadCSV(csvContent, 'estudiantes_export.csv');
-    showToast(`✅ ${students.length} estudiantes exportados`, 'success');
+    showToast(`<i class="fas fa-circle-check"></i> ${students.length} estudiantes exportados`, 'success');
 
   } catch (err) {
     console.error('Error exportando estudiantes:', err);
-    showToast('❌ Error al exportar', 'error');
+    showToast('<i class="fas fa-circle-xmark"></i> Error al exportar', 'error');
   }
 }
 
@@ -58,7 +58,7 @@ async function exportProjectsCSV() {
       .order('created_at', { ascending: false });
 
     if (!projects || projects.length === 0) {
-      return showToast('❌ No hay proyectos para exportar', 'error');
+      return showToast('<i class="fas fa-circle-xmark"></i> No hay proyectos para exportar', 'error');
     }
 
     let csvContent = 'ID,Titulo,Descripcion,Estudiante,Grupo,Codigo_Establecimiento,Grado,Seccion,Puntuacion,Me_Gusta,Fecha\n';
@@ -79,11 +79,11 @@ async function exportProjectsCSV() {
     });
 
     downloadCSV(csvContent, 'proyectos_export.csv');
-    showToast('✅ Proyectos exportados a CSV', 'success');
+    showToast('<i class="fas fa-circle-check"></i> Proyectos exportados a CSV', 'success');
 
   } catch (err) {
     console.error('Error exportando proyectos:', err);
-    showToast('❌ Error al exportar', 'error');
+    showToast('<i class="fas fa-circle-xmark"></i> Error al exportar', 'error');
   }
 }
 
@@ -102,7 +102,7 @@ async function exportGroupsCSV() {
       .order('school_code, grade, section, name');
 
     if (!groups || groups.length === 0) {
-      return showToast('❌ No hay grupos para exportar', 'error');
+      return showToast('<i class="fas fa-circle-xmark"></i> No hay grupos para exportar', 'error');
     }
 
     let csvContent = 'Nombre_Grupo,Codigo_Establecimiento,Grado,Seccion,Integrantes,Planner,Maker,Speaker,Proyecto,Nota\n';
@@ -132,11 +132,11 @@ async function exportGroupsCSV() {
     });
 
     downloadCSV(csvContent, 'proyectos_por_grupo_export.csv');
-    showToast('✅ Reporte detallado exportado', 'success');
+    showToast('<i class="fas fa-circle-check"></i> Reporte detallado exportado', 'success');
 
   } catch (err) {
     console.error('Error exportando grupos:', err);
-    showToast('❌ Error al exportar', 'error');
+    showToast('<i class="fas fa-circle-xmark"></i> Error al exportar', 'error');
   }
 }
 

@@ -560,7 +560,7 @@
                     </div>
                     <div id="user-avatar"
                         class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center text-xl shadow-inner border border-primary/20 group-hover:scale-110 transition-transform">
-                        👤</div>
+                        <i class="fas fa-user"></i></div>
                 </div>
 
                 <button onclick="logout()"
@@ -702,7 +702,7 @@
 
             <!-- FEED DE PROYECTOS (EXPLORAR) -->
             <section id="view-feed" class="view-section active">
-                <h2>Proyectos 🚀</h2>
+                <h2>Proyectos <i class="fas fa-rocket"></i></h2>
                 <div id="feed-container"></div>
             </section>
 
@@ -798,13 +798,13 @@
 
             <!-- ESTABLECIMIENTOS -->
             <section id="view-schools" class="view-section">
-                <h2>🏫 Gestión de Establecimientos</h2>
+                <h2><i class="fas fa-school"></i> Gestión de Establecimientos</h2>
                 <div id="schools-container"></div>
             </section>
 
             <!-- ESTUDIANTES -->
             <section id="view-students" class="view-section">
-                <h2>🎓 Gestión de Estudiantes</h2>
+                <h2><i class="fas fa-graduation-cap"></i> Gestión de Estudiantes</h2>
 
                 <div class="glass-card p-8 mb-8" id="pdf-import-card">
                     <div class="flex items-center gap-4 mb-6">
@@ -874,18 +874,18 @@
 
             <!-- DOCENTES -->
             <section id="view-teachers" class="view-section">
-                <h2>👨‍🏫 Gestión de Docentes</h2>
+                <h2><i class="fas fa-chalkboard-user"></i>‍<i class="fas fa-school"></i> Gestión de Docentes</h2>
                 <div id="teachers-container"></div>
             </section>
 
             <!-- GRUPOS -->
             <section id="view-groups" class="view-section">
-                <h2>👥 Gestión de Equipos</h2>
+                <h2><i class="fas fa-users"></i> Gestión de Equipos</h2>
                 <div id="groups-container"></div>
             </section>
             <!-- ASISTENCIA -->
             <section id="view-attendance" class="view-section">
-                <h2>📋 Gestión de Asistencia</h2>
+                <h2><i class="fas fa-clipboard-list"></i> Gestión de Asistencia</h2>
                 <div id="attendance-container"></div>
             </section>
 
@@ -896,7 +896,7 @@
 
             <!-- EVALUACIÓN -->
             <section id="view-evaluate" class="view-section">
-                <h2>📊 Evaluar Proyectos</h2>
+                <h2><i class="fas fa-chart-bar"></i> Evaluar Proyectos</h2>
                 <div id="eval-projects-container"></div>
             </section>
 
@@ -914,7 +914,7 @@
 
             <!-- RANKING -->
             <section id="view-ranking" class="view-section">
-                <h2>🏆 Ranking de Proyectos</h2>
+                <h2><i class="fas fa-trophy"></i> Ranking de Proyectos</h2>
                 <div id="ranking-container"></div>
             </section>
 
@@ -925,7 +925,7 @@
 
             <!-- PERFIL -->
             <section id="view-profile" class="view-section">
-                <h2>👤 Mi Información Personal</h2>
+                <h2><i class="fas fa-user"></i> Mi Información Personal</h2>
                 <div id="profile-content"></div>
             </section>
         </main>
@@ -949,14 +949,14 @@
         <button onclick="_syncManager.toggleDevMode()"
             style="position: fixed !important; bottom: 160px !important; right: 24px !important; z-index: 99999 !important; width: 48px !important; height: 48px !important; background: #1e293b !important; color: white !important; border: 2px solid #475569 !important; border-radius: 16px !important; box-shadow: 0 10px 25px rgba(0,0,0,0.3) !important; cursor: pointer !important; display: flex !important; align-items: center !important; justify-content: center !important; transition: all 0.2s !important; opacity: 0.4 !important;"
             onmouseover="this.style.opacity='1'; this.style.transform='scale(1.1)'"
-            onmouseout="this.style.opacity='0.4'; this.style.transform='scale(1)'" title="🛠️ Toggle Dev Mode">
+            onmouseout="this.style.opacity='0.4'; this.style.transform='scale(1)'" title="<i class="fas fa-screwdriver-wrench"></i>️ Toggle Dev Mode">
             <i class="fas fa-tools" style="font-size: 18px;"></i>
         </button>
 
         <button onclick="_syncManager.toggleSimulatedOffline()"
             style="position: fixed !important; bottom: 100px !important; right: 24px !important; z-index: 99999 !important; width: 48px !important; height: 48px !important; background: #dc2626 !important; color: white !important; border: 2px solid #ef4444 !important; border-radius: 16px !important; box-shadow: 0 10px 25px rgba(220,38,38,0.4) !important; cursor: pointer !important; display: flex !important; align-items: center !important; justify-content: center !important; transition: all 0.2s !important; opacity: 0.4 !important;"
             onmouseover="this.style.opacity='1'; this.style.transform='scale(1.1)'"
-            onmouseout="this.style.opacity='0.4'; this.style.transform='scale(1)'" title="🔌 Simular Offline">
+            onmouseout="this.style.opacity='0.4'; this.style.transform='scale(1)'" title="<i class="fas fa-plug"></i> Simular Offline">
             <i class="fas fa-plug" style="font-size: 18px;"></i>
         </button>
     </div>
@@ -997,10 +997,10 @@
                 if (devTools) {
                     if (!isDevMode) {
                         devTools.style.display = 'block';
-                        showToast('🛠️ Modo Desarrollador Activado', 'success');
+                        showToast('<i class="fas fa-screwdriver-wrench"></i>️ Modo Desarrollador Activado', 'success');
                     } else {
                         devTools.style.display = 'none';
-                        showToast('🛠️ Modo Desarrollador Desactivado', 'default');
+                        showToast('<i class="fas fa-screwdriver-wrench"></i>️ Modo Desarrollador Desactivado', 'default');
                     }
                 }
             }

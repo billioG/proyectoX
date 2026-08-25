@@ -67,7 +67,7 @@ async function loadAdminTeacherPerformance() {
 
     } catch (err) {
         console.error('Error performance:', err);
-        container.innerHTML = `<div class="error-state">❌ Error cargando desempeño: ${err.message}</div>`;
+        container.innerHTML = `<div class="error-state"><i class="fas fa-circle-xmark"></i> Error cargando desempeño: ${err.message}</div>`;
     }
 }
 
@@ -76,7 +76,7 @@ function renderTeacherPerformanceHTML(container, data, kpis) {
         <!-- Aggregated KPIs Dashboard -->
         <div class="card-header" style="margin-bottom: 20px;">
             <div>
-                <h2 style="margin:0; font-size: 1.5rem;">📊 Desempeño General de Docentes</h2>
+                <h2 style="margin:0; font-size: 1.5rem;"><i class="fas fa-chart-bar"></i> Desempeño General de Docentes</h2>
                 <p style="color: var(--text-light); margin: 2px 0 0 0; font-size: 0.85rem;">Métricas agregadas de todos los docentes activos</p>
             </div>
         </div>
@@ -99,7 +99,7 @@ function renderTeacherPerformanceHTML(container, data, kpis) {
                     <div>
                         <div style="font-size: 0.7rem; text-transform: uppercase; color: #1e40af; font-weight: 700; margin-bottom: 5px;">Total Evaluaciones</div>
                         <div style="font-size: 2rem; font-weight: 900; color: #1e3a8a; line-height: 1;">${kpis.totalRatings}</div>
-                        <div style="margin-top: 5px; color: #1e40af; font-size: 0.7rem;">📝 ${kpis.avgRatingsPerTeacher} por docente</div>
+                        <div style="margin-top: 5px; color: #1e40af; font-size: 0.7rem;"><i class="fas fa-pen-to-square"></i> ${kpis.avgRatingsPerTeacher} por docente</div>
                     </div>
                     <i class="fas fa-clipboard-list" style="font-size: 2rem; color: #3b82f6; opacity: 0.3;"></i>
                 </div>
@@ -110,7 +110,7 @@ function renderTeacherPerformanceHTML(container, data, kpis) {
                     <div>
                         <div style="font-size: 0.7rem; text-transform: uppercase; color: #065f46; font-weight: 700; margin-bottom: 5px;">Proyectos Calificados</div>
                         <div style="font-size: 2rem; font-weight: 900; color: #064e3b; line-height: 1;">${kpis.totalEvaluations}</div>
-                        <div style="margin-top: 5px; color: #065f46; font-size: 0.7rem;">📚 ${kpis.avgEvalsPerTeacher} por docente</div>
+                        <div style="margin-top: 5px; color: #065f46; font-size: 0.7rem;"><i class="fas fa-book"></i> ${kpis.avgEvalsPerTeacher} por docente</div>
                     </div>
                     <i class="fas fa-project-diagram" style="font-size: 2rem; color: #10b981; opacity: 0.3;"></i>
                 </div>
@@ -140,7 +140,7 @@ function renderTeacherPerformanceHTML(container, data, kpis) {
         <!-- Individual Teacher Performance Table -->
         <div class="card-header" style="margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
             <div>
-                <h3 style="margin:0; font-size: 1.1rem;">📈 Desglose Individual por Docente</h3>
+                <h3 style="margin:0; font-size: 1.1rem;"><i class="fas fa-chart-line"></i> Desglose Individual por Docente</h3>
                 <p style="color: var(--text-light); margin: 2px 0 0 0; font-size: 0.8rem;">Análisis detallado de cada docente basado en evaluaciones</p>
             </div>
             <button class="btn-primary" onclick="loadAdminTeacherPerformance()" style="padding: 8px 16px; font-size: 0.8rem;">
@@ -177,7 +177,7 @@ function renderTeacherPerformanceHTML(container, data, kpis) {
                                 <div style="display: flex; align-items: center; gap: 8px;">
                                     <span style="font-size: 1.2rem; font-weight: 700; color: ${getPerfColor(t.avgRating)}">${t.avgRating}</span>
                                     <div style="color: #f59e0b; font-size: 0.8rem;">
-                                        ${'★'.repeat(Math.round(t.avgRating))}${'☆'.repeat(5 - Math.round(t.avgRating))}
+                                        ${'<i class="fas fa-star"></i>'.repeat(Math.round(t.avgRating))}${'<i class="fas fa-star"></i>'.repeat(5 - Math.round(t.avgRating))}
                                     </div>
                                 </div>
                             </td>
@@ -185,7 +185,7 @@ function renderTeacherPerformanceHTML(container, data, kpis) {
                             <td style="text-align: center;">${t.totalEvals}</td>
                             <td>
                                 <span class="status-badge ${t.avgRating >= 4 ? 'status-active' : (t.avgRating >= 3 ? 'status-pending' : 'status-inactive')}">
-                                    ${t.avgRating >= 4.5 ? '🌟 Sobresaliente' : (t.avgRating >= 3.5 ? '✅ Competente' : (t.avgRating > 0 ? '⚠️ Bajo Desempeño' : '❌ Sin Datos'))}
+                                    ${t.avgRating >= 4.5 ? '<i class="fas fa-star"></i> Sobresaliente' : (t.avgRating >= 3.5 ? '<i class="fas fa-circle-check"></i> Competente' : (t.avgRating > 0 ? '<i class="fas fa-triangle-exclamation"></i>️ Bajo Desempeño' : '<i class="fas fa-circle-xmark"></i> Sin Datos'))}
                                 </span>
                             </td>
                         </tr>
@@ -200,7 +200,7 @@ function renderTeacherPerformanceHTML(container, data, kpis) {
                 <div class="section-card" style="padding:15px; border-left: 4px solid ${getPerfColor(r.rating)};">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
                         <strong>${r.students?.full_name || 'Estudiante'}</strong>
-                        <span style="color: #f59e0b;">${'★'.repeat(r.rating)}</span>
+                        <span style="color: #f59e0b;">${'<i class="fas fa-star"></i>'.repeat(r.rating)}</span>
                     </div>
                     <p style="font-size: 0.9rem; font-style: italic; color: var(--text-color);">"${r.message}"</p>
                     <div style="margin-top: 10px; text-align: right;">

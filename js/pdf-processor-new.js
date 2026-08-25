@@ -1,6 +1,6 @@
 async function createUsersFromExtractedData(students) {
     if (students.length === 0) {
-        return showToast('❌ No hay estudiantes para crear', 'error');
+        return showToast('<i class="fas fa-circle-xmark"></i> No hay estudiantes para crear', 'error');
     }
 
     const actionsContainer = document.getElementById('pdf-actions-container');
@@ -51,7 +51,7 @@ async function createUsersFromExtractedData(students) {
 
         statusText.innerHTML = `
             <div style="margin-bottom: 8px;"><strong>Creando estudiantes...</strong> (${i + 1}/${students.length})</div>
-            <div style="font-size: 0.9rem; color: #64748b;">👤 <code>${student.username}</code> - ${student.fullName}</div>
+            <div style="font-size: 0.9rem; color: #64748b;"><i class="fas fa-user"></i> <code>${student.username}</code> - ${student.fullName}</div>
         `;
 
         if (existingUsernames.has(student.username) || existingEmails.has(student.email) || (student.cui && existingCUIs.has(student.cui))) {
@@ -72,7 +72,7 @@ async function createUsersFromExtractedData(students) {
                     continue;
                 }
                 if (authError.status === 429) {
-                    statusText.innerHTML += `<div class="text-rose-500 font-bold mt-2 animate-pulse">⚠️ LÍMITE ALCANZADO. ESPERANDO 60S...</div>`;
+                    statusText.innerHTML += `<div class="text-rose-500 font-bold mt-2 animate-pulse"><i class="fas fa-triangle-exclamation"></i>️ LÍMITE ALCANZADO. ESPERANDO 60S...</div>`;
                     await new Promise(r => setTimeout(r, 60000));
                     i--; continue;
                 }
@@ -118,7 +118,7 @@ async function createUsersFromExtractedData(students) {
         </div>
     `;
 
-    if (successCount > 0) showToast(`✅ ${successCount} estudiantes creados`, 'success');
+    if (successCount > 0) showToast(`<i class="fas fa-circle-check"></i> ${successCount} estudiantes creados`, 'success');
     if (typeof loadStudents === 'function') setTimeout(loadStudents, 2000);
 }
 

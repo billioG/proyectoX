@@ -83,7 +83,7 @@ window.completeRock = async function completeRock(rockId, evidenceUrl = null, no
 
         if (error) throw error;
 
-        if (typeof window.showToast === 'function') window.showToast('✅ Tarea completada exitosamente', 'success');
+        if (typeof window.showToast === 'function') window.showToast('<i class="fas fa-circle-check"></i> Tarea completada exitosamente', 'success');
 
         if (typeof window.loadRocksWidget === 'function') {
             await window.loadRocksWidget();
@@ -91,7 +91,7 @@ window.completeRock = async function completeRock(rockId, evidenceUrl = null, no
         return data;
     } catch (err) {
         console.error('Error completando tarea:', err);
-        if (typeof window.showToast === 'function') window.showToast('❌ Error al completar la tarea', 'error');
+        if (typeof window.showToast === 'function') window.showToast('<i class="fas fa-circle-xmark"></i> Error al completar la tarea', 'error');
         return null;
     }
 }
@@ -133,12 +133,12 @@ window.approveRock = async function approveRock(completionId, approved = true, r
         if (error) throw error;
 
         if (typeof window.showToast === 'function') {
-            window.showToast(approved ? '✅ Tarea aprobada' : '❌ Tarea rechazada', approved ? 'success' : 'warning');
+            window.showToast(approved ? '<i class="fas fa-circle-check"></i> Tarea aprobada' : '<i class="fas fa-circle-xmark"></i> Tarea rechazada', approved ? 'success' : 'warning');
         }
         return data;
     } catch (err) {
         console.error('Error aprobando/rechazando tarea:', err);
-        if (typeof window.showToast === 'function') window.showToast('❌ Error al procesar la tarea', 'error');
+        if (typeof window.showToast === 'function') window.showToast('<i class="fas fa-circle-xmark"></i> Error al procesar la tarea', 'error');
         return null;
     }
 }

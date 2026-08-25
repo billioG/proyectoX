@@ -274,16 +274,16 @@ window.updateLoginStreak = async function updateLoginStreak() {
 
   if (lastLogin === yesterdayStr) {
     newStreak = currentStreak + 1;
-    if (typeof showToast === 'function') showToast(`🔥 ¡Racha de ${newStreak} días! Sigue así.`, 'info');
+    if (typeof showToast === 'function') showToast(`<i class="fas fa-fire"></i> ¡Racha de ${newStreak} días! Sigue así.`, 'info');
   } else if (lastLogin) {
     // Check for streak freeze
     if (userData.streak_freeze) {
       newStreak = currentStreak;
       freezeUsed = true;
-      if (typeof showToast === 'function') showToast('🧊 ¡Tu Racha fue salvada por un Hielo!', 'info');
+      if (typeof showToast === 'function') showToast('<i class="fas fa-cube"></i> ¡Tu Racha fue salvada por un Hielo!', 'info');
     } else {
       newStreak = 1;
-      if (typeof showToast === 'function') showToast('😢 Racha perdida. ¡Empieza de nuevo!', 'warning');
+      if (typeof showToast === 'function') showToast('<i class="fas fa-face-sad-tear"></i> Racha perdida. ¡Empieza de nuevo!', 'warning');
     }
   }
 
@@ -361,7 +361,7 @@ window.openChest = async function openChest(el) {
   }).eq('id', currentUser.id);
 
   if (error) {
-    if (typeof showToast === 'function') showToast('❌ Error al reclamar cofre', 'error');
+    if (typeof showToast === 'function') showToast('<i class="fas fa-circle-xmark"></i> Error al reclamar cofre', 'error');
     return;
   }
 
@@ -383,7 +383,7 @@ window.openChest = async function openChest(el) {
     `;
   el.onclick = null;
 
-  if (typeof showToast === 'function') showToast(`🎁 Ganaste ${reward.xp} XP y ${reward.gems} Gemas`, 'success');
+  if (typeof showToast === 'function') showToast(`<i class="fas fa-gift"></i> Ganaste ${reward.xp} XP y ${reward.gems} Gemas`, 'success');
 }
 
 // ==========================================
@@ -447,7 +447,7 @@ window.renderGamificationHubContent = function renderGamificationHubContent(moda
                 <h2 class="text-lg font-black text-white uppercase tracking-widest">Centro de Juego</h2>
              </div>
              <div class="flex items-center gap-4">
-                 ${activeHappyHour ? '<div class="px-3 py-1 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg text-xs font-bold uppercase animate-pulse">⚡ Happy Hour x2</div>' : ''}
+                 ${activeHappyHour ? '<div class="px-3 py-1 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg text-xs font-bold uppercase animate-pulse"><i class="fas fa-bolt"></i> Happy Hour x2</div>' : ''}
                  <div class="flex items-center gap-2 px-3 py-1.5 bg-slate-800 rounded-lg border border-slate-700">
                     <i class="fas fa-gem text-cyan-400"></i>
                     <span class="text-sm font-bold text-white">${userData?.gems || 0}</span>
@@ -463,10 +463,10 @@ window.renderGamificationHubContent = function renderGamificationHubContent(moda
                 <section>
                     <h3 class="text-2xl font-black text-white italic uppercase mb-6 flex items-center gap-3"><i class="fas fa-store text-indigo-500"></i> Tienda de Mascotas</h3>
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        ${window.renderShopItem('Búho Cibernético', 'Tu compañero de código', 500, '🦉', 'bg-indigo-500')}
-                        ${window.renderShopItem('Racha Congelada', 'Protege tu racha 1 día', 300, '🧊', 'bg-cyan-500', userData?.streak_freeze)}
-                        ${window.renderShopItem('Marco Dorado', 'Brilla en el ranking', 1000, '🖼️', 'bg-amber-500')}
-                        ${window.renderShopItem('Desafío 1v1', 'Reta a un amigo', 100, '⚔️', 'bg-rose-500')}
+                        ${window.renderShopItem('Búho Cibernético', 'Tu compañero de código', 500, '<i class="fas fa-feather"></i>', 'bg-indigo-500')}
+                        ${window.renderShopItem('Racha Congelada', 'Protege tu racha 1 día', 300, '<i class="fas fa-cube"></i>', 'bg-cyan-500', userData?.streak_freeze)}
+                        ${window.renderShopItem('Marco Dorado', 'Brilla en el ranking', 1000, '<i class="fas fa-image"></i>️', 'bg-amber-500')}
+                        ${window.renderShopItem('Desafío 1v1', 'Reta a un amigo', 100, '<i class="fas fa-shield-halved"></i>️', 'bg-rose-500')}
                     </div>
                 </section>
 
@@ -486,7 +486,7 @@ window.renderGamificationHubContent = function renderGamificationHubContent(moda
                                 ${(topStudents || []).map((s, i) => `
                                     <tr class="${s.full_name === userData?.full_name ? 'bg-primary/10 border-l-4 border-l-primary' : ''}">
                                         <td class="p-4 text-center">
-                                            ${i === 0 ? '🥇' : (i === 1 ? '🥈' : (i === 2 ? '🥉' : i + 1))}
+                                            ${i === 0 ? '<i class="fas fa-medal"></i>' : (i === 1 ? '<i class="fas fa-medal"></i>' : (i === 2 ? '<i class="fas fa-medal"></i>' : i + 1))}
                                         </td>
                                         <td class="p-4 text-white flex items-center gap-3">
                                             <div class="w-8 h-8 rounded-full bg-slate-700 overflow-hidden border border-white/10">
@@ -509,7 +509,7 @@ window.renderGamificationHubContent = function renderGamificationHubContent(moda
                  <!-- DUELOS (Prototipo) -->
                 <section>
                      <h3 class="text-2xl font-black text-white italic uppercase mb-6 flex items-center gap-3"><i class="fas fa-swords text-rose-500"></i> Desafíos de Código</h3>
-                     <div class="glass-card p-12 text-center border-dashed border-2 border-white/10 bg-transparent hover:border-white/20 transition-all cursor-pointer group" onclick="window.showToast && window.showToast('⚔️ ¡Próximamente! Estamos preparando las arenas de combate.', 'info')">
+                     <div class="glass-card p-12 text-center border-dashed border-2 border-white/10 bg-transparent hover:border-white/20 transition-all cursor-pointer group" onclick="window.showToast && window.showToast('<i class=\'fas fa-shield-halved\'></i> ¡Próximamente! Estamos preparando las arenas de combate.', 'info')">
                         <div class="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
                             <i class="fas fa-plus text-2xl text-white/20 group-hover:text-white/50 transition-colors"></i>
                         </div>
@@ -547,14 +547,14 @@ window.buyShopItem = async function buyShopItem(name, price) {
   const showToast = window.showToast;
 
   if ((userData.gems || 0) < price) {
-    if (typeof showToast === 'function') showToast('💎 No tienes suficientes gemas', 'error');
+    if (typeof showToast === 'function') showToast('<i class="fas fa-gem"></i> No tienes suficientes gemas', 'error');
     return;
   }
 
   // Logic for specific items
   if (name === 'Racha Congelada') {
     if (userData.streak_freeze) {
-      if (typeof showToast === 'function') showToast('🧊 Ya tienes un hielo activo', 'info');
+      if (typeof showToast === 'function') showToast('<i class="fas fa-cube"></i> Ya tienes un hielo activo', 'info');
       return;
     }
 
@@ -567,13 +567,13 @@ window.buyShopItem = async function buyShopItem(name, price) {
     if (!error) {
       userData.gems -= price;
       userData.streak_freeze = true;
-      if (typeof showToast === 'function') showToast('🧊 ¡Hielo de Racha activado!', 'success');
+      if (typeof showToast === 'function') showToast('<i class="fas fa-cube"></i> ¡Hielo de Racha activado!', 'success');
       // Refresh hub and sidebar
       if (typeof window.openGamificationHub === 'function') window.openGamificationHub();
       if (typeof window.initGamification === 'function') window.initGamification();
     }
   } else {
-    if (typeof showToast === 'function') showToast('🚀 ¡Próximamente más artículos en la tienda!', 'info');
+    if (typeof showToast === 'function') showToast('<i class="fas fa-rocket"></i> ¡Próximamente más artículos en la tienda!', 'info');
   }
 }
 
@@ -638,7 +638,7 @@ window.showBadgeCelebrationModal = function showBadgeCelebrationModal(badge) {
             </div>
             
             <button class="w-full py-4 bg-primary hover:bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-[0.2em] shadow-xl shadow-primary/30 transition-all hover:scale-105 active:scale-95" onclick="this.closest('.fixed').remove(); if (typeof window.startBirthdayConfetti === 'function') window.startBirthdayConfetti();">
-                ¡Genial! 🚀
+                ¡Genial! <i class="fas fa-rocket"></i>
             </button>
         </div>
     </div>

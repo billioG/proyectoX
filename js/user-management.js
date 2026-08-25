@@ -1,7 +1,7 @@
 // Gestión individual de usuarios y exportación CSV - COMPLETO
 
 async function exportAllUsersCSV() {
-  showToast('📥 Generando archivo CSV...', 'default');
+  showToast('<i class="fas fa-download"></i> Generando archivo CSV...', 'default');
 
   try {
     const { data: students } = await _supabase
@@ -10,7 +10,7 @@ async function exportAllUsersCSV() {
       .order('school, grade, section, full_name');
 
     if (!students || students.length === 0) {
-      return showToast('❌ No hay usuarios para exportar', 'error');
+      return showToast('<i class="fas fa-circle-xmark"></i> No hay usuarios para exportar', 'error');
     }
 
     let csvContent = 'username,password,nombre,email,rol,grado,seccion,establecimiento\n';
@@ -38,10 +38,10 @@ async function exportAllUsersCSV() {
     link.download = `usuarios_proyectox_${timestamp}.csv`;
     link.click();
 
-    showToast(`✅ ${students.length} usuarios exportados a CSV`, 'success');
+    showToast(`<i class="fas fa-circle-check"></i> ${students.length} usuarios exportados a CSV`, 'success');
   } catch (err) {
     console.error('Error exportando CSV:', err);
-    showToast('❌ Error al exportar CSV', 'error');
+    showToast('<i class="fas fa-circle-xmark"></i> Error al exportar CSV', 'error');
   }
 }
 

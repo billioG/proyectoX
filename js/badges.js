@@ -122,7 +122,7 @@ async function awardBadge(userId, badgeId) {
       const badgeList = isTeacherBadge ? TEACHER_BADGES : BADGES;
       const badge = badgeList.find(b => b.id === badgeId);
       if (badge) {
-        showToast(`🎉 ¡Nueva insignia desbloqueada: ${badge.icon} ${badge.name}!`, 'success');
+        showToast(`<i class="fas fa-champagne-glasses"></i> ¡Nueva insignia desbloqueada: ${badge.icon} ${badge.name}!`, 'success');
       }
     }
 

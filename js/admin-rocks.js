@@ -43,7 +43,7 @@ window.loadAdminRocksManagement = async function loadAdminRocksManagement() {
         console.error('Error cargando tareas:', err);
         container.innerHTML = `
             <div class="p-10 bg-rose-50 dark:bg-rose-900/20 text-rose-500 rounded-3xl font-bold text-center">
-                ❌ Error al cargar el sistema de tareas
+                <i class="fas fa-circle-xmark"></i> Error al cargar el sistema de tareas
             </div>
         `;
     }
@@ -197,7 +197,7 @@ window.editRock = async function (rockId) {
         window.openCreateRockModal(null, rock);
     } catch (err) {
         console.error('Error cargando tarea para editar:', err);
-        if (typeof window.showToast === 'function') window.showToast('❌ Error al cargar datos', 'error');
+        if (typeof window.showToast === 'function') window.showToast('<i class="fas fa-circle-xmark"></i> Error al cargar datos', 'error');
     }
 };
 
@@ -265,7 +265,7 @@ window.submitCreateRock = async function (event) {
         }
 
         if (error) throw error;
-        if (typeof window.showToast === 'function') window.showToast('✅ Éxito', 'success');
+        if (typeof window.showToast === 'function') window.showToast('<i class="fas fa-circle-check"></i> Éxito', 'success');
         event.target.closest('.fixed').remove();
         await window.loadAdminRocksManagement();
     } catch (err) {

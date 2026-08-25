@@ -60,7 +60,7 @@ window.showAttendanceSummaryView = async function showAttendanceSummaryView() {
 
     } catch (err) {
         console.error('Error loading attendance analytics:', err);
-        container.innerHTML = `<div class="p-8 text-center text-rose-500 font-bold bg-rose-50 rounded-2xl dark:bg-rose-900/20">❌ Error al cargar datos: ${err.message}</div>`;
+        container.innerHTML = `<div class="p-8 text-center text-rose-500 font-bold bg-rose-50 rounded-2xl dark:bg-rose-900/20"><i class="fas fa-circle-xmark"></i> Error al cargar datos: ${err.message}</div>`;
     }
 }
 
@@ -110,7 +110,7 @@ window.renderAnalyticsView = function renderAnalyticsView(container) {
     let html = `
         <div class="flex flex-col md:flex-row justify-between items-center mb-8 animate-slideUp gap-4">
             <div>
-                 <h1 class="text-3xl font-black text-slate-800 dark:text-white tracking-tight leading-none mb-1">📊 Analítica de Asistencia Global</h1>
+                 <h1 class="text-3xl font-black text-slate-800 dark:text-white tracking-tight leading-none mb-1"><i class="fas fa-chart-bar"></i> Analítica de Asistencia Global</h1>
                  <p class="text-slate-500 dark:text-slate-400 font-medium text-sm">Resumen mensual por establecimiento y docente.</p>
             </div>
             

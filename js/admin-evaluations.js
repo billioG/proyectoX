@@ -104,7 +104,7 @@ window.renderEvalDashboard = function renderEvalDashboard(container, stats) {
     container.innerHTML = `
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10 animate-slideUp">
              <div>
-                <h1 class="text-3xl font-black text-slate-800 dark:text-white tracking-tight leading-none mb-2">📈 Resultados Académicos</h1>
+                <h1 class="text-3xl font-black text-slate-800 dark:text-white tracking-tight leading-none mb-2"><i class="fas fa-chart-line"></i> Resultados Académicos</h1>
                 <p class="text-slate-500 dark:text-slate-400 font-medium">Análisis de calidad de proyectos y rendimiento por establecimiento.</p>
              </div>
              <button class="btn-secondary-tw px-5 h-10 text-xs uppercase font-bold tracking-widest" onclick="loadAdminEvalReport()">

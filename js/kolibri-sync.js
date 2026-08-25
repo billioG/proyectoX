@@ -101,14 +101,14 @@ const KolibriSync = {
 
     async generateExportQR() {
         const data = await window._syncManager.exportPendingData();
-        if (!data) return window.showToast('❌ No tienes cambios pendientes', 'warning');
+        if (!data) return window.showToast('<i class="fas fa-circle-xmark"></i> No tienes cambios pendientes', 'warning');
 
         const container = document.getElementById('qr-export-container');
         const qrDiv = document.getElementById('qrcode');
         qrDiv.innerHTML = '';
         container.classList.remove('hidden');
 
-        if (typeof QRCode === 'undefined') return window.showToast('❌ Error: Librería QR no cargada', 'error');
+        if (typeof QRCode === 'undefined') return window.showToast('<i class="fas fa-circle-xmark"></i> Error: Librería QR no cargada', 'error');
 
         try {
             new QRCode(qrDiv, {
@@ -119,9 +119,9 @@ const KolibriSync = {
                 colorLight: "#ffffff",
                 correctLevel: QRCode.CorrectLevel.L
             });
-            window.showToast('🎯 Código generado. Muéstralo a tu tutor.', 'success');
+            window.showToast('<i class="fas fa-bullseye"></i> Código generado. Muéstralo a tu tutor.', 'success');
         } catch (e) {
-            window.showToast('❌ Error generando QR', 'error');
+            window.showToast('<i class="fas fa-circle-xmark"></i> Error generando QR', 'error');
         }
     },
 
@@ -139,7 +139,7 @@ const KolibriSync = {
             video.play();
             requestAnimationFrame(() => this.tickScanner());
         } catch (err) {
-            window.showToast('❌ No se pudo acceder a la cámara', 'error');
+            window.showToast('<i class="fas fa-circle-xmark"></i> No se pudo acceder a la cámara', 'error');
         }
     },
 
@@ -186,7 +186,7 @@ const KolibriSync = {
                 this.updatePendingCount();
             }
         } catch (err) {
-            window.showToast('❌ Código no válido', 'error');
+            window.showToast('<i class="fas fa-circle-xmark"></i> Código no válido', 'error');
         }
     },
 
@@ -210,13 +210,13 @@ const KolibriSync = {
         try {
             const result = await window._syncManager.processQueue();
             if (result && result.processed > 0) {
-                window.showToast(`✅ ${result.processed} sincronizados`, 'success');
+                window.showToast(`<i class="fas fa-circle-check"></i> ${result.processed} sincronizados`, 'success');
                 if (typeof confetti === 'function') confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
             } else {
                 window.showToast('Todo actualizado.', 'info');
             }
         } catch (err) {
-            window.showToast('❌ Error en sincronización', 'error');
+            window.showToast('<i class="fas fa-circle-xmark"></i> Error en sincronización', 'error');
         } finally {
             btn.disabled = false;
             btn.innerHTML = originalContent;

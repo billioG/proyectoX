@@ -52,7 +52,7 @@ window.loadAdminDashboard = async function loadAdminDashboard() {
 
     } catch (err) {
         console.error('Error Dashboard:', err);
-        container.innerHTML = '<div class="p-10 text-rose-500 font-bold bg-rose-50 rounded-3xl border border-rose-100 dark:bg-rose-950/20 dark:border-rose-900/30">❌ Error al cargar el Dashboard Ejecutivo</div>';
+        container.innerHTML = '<div class="p-10 text-rose-500 font-bold bg-rose-50 rounded-3xl border border-rose-100 dark:bg-rose-950/20 dark:border-rose-900/30"><i class="fas fa-circle-xmark"></i> Error al cargar el Dashboard Ejecutivo</div>';
     }
 }
 
@@ -147,7 +147,7 @@ window.renderDashboardUI = function renderDashboardUI(container, stats, teachers
                 <div class="relative z-10">
                     <div class="text-[0.65rem] font-black uppercase tracking-[0.2em] mb-4 text-slate-400">Satisfacción Global</div>
                     <div class="text-5xl font-black text-slate-800 dark:text-white mb-2 flex items-baseline gap-2">
-                        ${stats.globalSatisfaction} <span class="text-2xl text-amber-500">★</span>
+                        ${stats.globalSatisfaction} <span class="text-2xl text-amber-500"><i class="fas fa-star"></i></span>
                     </div>
                     <div class="text-sm font-bold text-emerald-500 mt-6 flex items-center gap-1">
                         <i class="fas fa-external-link-alt"></i> Ver detalle por centro
@@ -468,7 +468,7 @@ window.renderTeacherRow = function renderTeacherRow(t, stats) {
 // ================================================
 window.exportAllData = function () {
     if (!dashboardStats) {
-        showToast('⚠️ No hay datos para exportar. Espera a que termine la carga.', 'warning');
+        showToast('<i class="fas fa-triangle-exclamation"></i>️ No hay datos para exportar. Espera a que termine la carga.', 'warning');
         return;
     }
 
@@ -499,10 +499,10 @@ window.exportAllData = function () {
         link.click();
         document.body.removeChild(link);
 
-        showToast('✅ Datos exportados exitosamente', 'success');
+        showToast('<i class="fas fa-circle-check"></i> Datos exportados exitosamente', 'success');
 
     } catch (err) {
         console.error('Error exportando:', err);
-        showToast('❌ Error al exportar datos', 'error');
+        showToast('<i class="fas fa-circle-xmark"></i> Error al exportar datos', 'error');
     }
 };

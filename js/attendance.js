@@ -27,7 +27,7 @@ window.loadAttendance = async function loadAttendance() {
         }
     } catch (err) {
         console.error(err);
-        container.innerHTML = '<div class="glass-card p-10 text-rose-500 font-bold text-center text-xs uppercase tracking-widest">❌ Falló el enlace con el servidor de asistencia</div>';
+        container.innerHTML = '<div class="glass-card p-10 text-rose-500 font-bold text-center text-xs uppercase tracking-widest"><i class="fas fa-circle-xmark"></i> Falló el enlace con el servidor de asistencia</div>';
     }
 }
 
@@ -193,7 +193,7 @@ window.startQRScanner = async function startQRScanner() {
         tickScanner();
     } catch (err) {
         console.error(err);
-        showToast('❌ Error de cámara', 'error');
+        showToast('<i class="fas fa-circle-xmark"></i> Error de cámara', 'error');
         qrScanning = false;
     }
 }
@@ -257,7 +257,7 @@ window.handleQRCodeDetected = async function handleQRCodeDetected(data) {
         // USAR EL GESTOR DE SINCRONIZACIÓN (MODO KOLIBRI / OFFLINE)
         await _syncManager.enqueue('mark_attendance', attendanceData);
 
-        showToast('✅ Asistencia registrada (Pendiente Sync)', 'success');
+        showToast('<i class="fas fa-circle-check"></i> Asistencia registrada (Pendiente Sync)', 'success');
         loadStudentsForAttendance();
     } catch (e) {
         console.error('Error en escaneo QR:', e);
@@ -385,7 +385,7 @@ window.toggleWaiverType = function toggleWaiverType() {
 window.submitWaiver = async function submitWaiver() {
     const type = document.getElementById('waiver-type').value;
     const reason = document.getElementById('waiver-reason').value.trim();
-    if (!reason) return showToast('❌ Indica el motivo', 'error');
+    if (!reason) return showToast('<i class="fas fa-circle-xmark"></i> Indica el motivo', 'error');
 
     let payload = {
         teacher_id: currentUser.id,
@@ -405,20 +405,20 @@ window.submitWaiver = async function submitWaiver() {
     try {
         const { error } = await _supabase.from('attendance_waivers').insert(payload);
         if (error) throw error;
-        showToast('✅ Solicitud enviada', 'success');
+        showToast('<i class="fas fa-circle-check"></i> Solicitud enviada', 'success');
         const modal = document.getElementById('waiver-modal') || document.querySelector('.fixed.inset-0.z-\\[100\\]');
         if (modal) modal.remove();
         loadAttendanceInterface();
-    } catch (e) { showToast('❌ Error en el proceso', 'error'); }
+    } catch (e) { showToast('<i class="fas fa-circle-xmark"></i> Error en el proceso', 'error'); }
 }
 
 // REAL EXPORT CSV
 window.exportAttendanceCSV = async function exportAttendanceCSV() {
     const select = document.getElementById('attendance-assignment');
     const opt = select?.options[select.selectedIndex];
-    if (!opt || !opt.value) return showToast('❌ Selecciona un equipo primero', 'error');
+    if (!opt || !opt.value) return showToast('<i class="fas fa-circle-xmark"></i> Selecciona un equipo primero', 'error');
 
-    showToast('📊 Generando reporte...', 'info');
+    showToast('<i class="fas fa-chart-bar"></i> Generando reporte...', 'info');
 
     try {
         const { data } = await _supabase.from('attendance')
@@ -438,16 +438,16 @@ window.exportAttendanceCSV = async function exportAttendanceCSV() {
         a.href = url;
         a.download = `asistencia_${opt.dataset.school}_${opt.dataset.grade}_${opt.dataset.section}.csv`;
         a.click();
-        showToast('✅ Reporte descargado', 'success');
-    } catch (e) { showToast('❌ Error al exportar', 'error'); }
+        showToast('<i class="fas fa-circle-check"></i> Reporte descargado', 'success');
+    } catch (e) { showToast('<i class="fas fa-circle-xmark"></i> Error al exportar', 'error'); }
 }
 
 window.printSectionQRs = async function printSectionQRs() {
     const select = document.getElementById('attendance-assignment');
     const opt = select?.options[select.selectedIndex];
-    if (!opt || !opt.value) return showToast('❌ Selecciona un equipo primero', 'error');
+    if (!opt || !opt.value) return showToast('<i class="fas fa-circle-xmark"></i> Selecciona un equipo primero', 'error');
 
-    showToast('🖨️ Generando credenciales...', 'info');
+    showToast('<i class="fas fa-print"></i>️ Generando credenciales...', 'info');
 
     const { data: students } = await _supabase.from('students')
         .select('id, full_name, username')

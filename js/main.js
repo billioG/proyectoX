@@ -62,7 +62,7 @@ export async function loadModule(name) {
         await Promise.all(loaders);
     } catch (err) {
         console.error(err);
-        showToast('❌ Error al cargar componentes necesarios', 'error');
+        showToast('<i class="fas fa-circle-xmark"></i> Error al cargar componentes necesarios', 'error');
     }
 }
 

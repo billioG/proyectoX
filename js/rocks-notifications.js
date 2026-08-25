@@ -44,7 +44,7 @@ async function notifyNewMonthRocks(rocks, month) {
     const monthNames = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
     window.showRocksNotificationModal({
-        title: `🎯 Nuevas Rocas de ${monthNames[month]}`,
+        title: `<i class="fas fa-bullseye"></i> Nuevas Rocas de ${monthNames[month]}`,
         message: `Tienes ${rocks.length} roca(s) asignada(s) este mes. ¡Completa todas para ganar XP adicional!`,
         rocks: rocks,
         type: 'new-month'
@@ -107,8 +107,8 @@ async function notifyRockApprovals() {
             if (typeof window.showToast === 'function') {
                 window.showToast(
                     isApproved
-                        ? `✅ Tarea "${completion.teacher_rocks.name}" aprobada (+${completion.teacher_rocks.xp_value} XP)`
-                        : `❌ Tarea "${completion.teacher_rocks.name}" rechazada${completion.rejection_reason ? ': ' + completion.rejection_reason : ''}`,
+                        ? `<i class="fas fa-circle-check"></i> Tarea "${completion.teacher_rocks.name}" aprobada (+${completion.teacher_rocks.xp_value} XP)`
+                        : `<i class="fas fa-circle-xmark"></i> Tarea "${completion.teacher_rocks.name}" rechazada${completion.rejection_reason ? ': ' + completion.rejection_reason : ''}`,
                     isApproved ? 'success' : 'error'
                 );
             }

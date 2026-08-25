@@ -32,7 +32,7 @@ window.showTeacherDetailedReport = async function showTeacherDetailedReport(teac
 
     } catch (err) {
         console.error(err);
-        if (typeof showToast === 'function') showToast('❌ Error al generar reporte', 'error');
+        if (typeof showToast === 'function') showToast('<i class="fas fa-circle-xmark"></i> Error al generar reporte', 'error');
     }
 }
 
@@ -108,5 +108,5 @@ window.renderTeacherReportModal = function renderTeacherReportModal(data) {
 window.showMonthlyActivityReport = async function showMonthlyActivityReport() {
     const showToast = window.showToast;
     // Implementación simplificada o extendida en el futuro
-    if (typeof showToast === 'function') showToast('📈 Reporte mensual en desarrollo', 'info');
+    if (typeof showToast === 'function') showToast('<i class="fas fa-chart-line"></i> Reporte mensual en desarrollo', 'info');
 }

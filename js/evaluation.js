@@ -45,7 +45,7 @@ window.loadEvaluationProjects = async function loadEvaluationProjects() {
 
   } catch (err) {
     console.error(err);
-    container.innerHTML = '<div class="p-10 text-rose-500 font-bold glass-card">❌ Error al cargar proyectos</div>';
+    container.innerHTML = '<div class="p-10 text-rose-500 font-bold glass-card"><i class="fas fa-circle-xmark"></i> Error al cargar proyectos</div>';
   }
 }
 
@@ -219,12 +219,12 @@ window.submitEvaluation = async function submitEvaluation() {
     // USAR EL GESTOR DE SINCRONIZACIÓN (MODO KOLIBRI / OFFLINE)
     await window._syncManager.enqueue('save_evaluation', evalData);
 
-    window.showToast('✅ Evaluación registrada (Pendiente Sync)', 'success');
+    window.showToast('<i class="fas fa-circle-check"></i> Evaluación registrada (Pendiente Sync)', 'success');
     if (typeof window.closeEvaluationModal === 'function') window.closeEvaluationModal();
     window.loadEvaluationProjects();
   } catch (err) {
     console.error(err);
-    window.showToast('❌ Error al registrar evaluación', 'error');
+    window.showToast('<i class="fas fa-circle-xmark"></i> Error al registrar evaluación', 'error');
   }
 }
 

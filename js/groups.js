@@ -59,7 +59,7 @@ window.loadGroups = async function loadGroups() {
 
   } catch (err) {
     console.error(err);
-    container.innerHTML = '<div class="glass-card p-10 text-rose-500 font-bold text-center text-[0.65rem]">❌ Error cargando el sistema de equipos</div>';
+    container.innerHTML = '<div class="glass-card p-10 text-rose-500 font-bold text-center text-[0.65rem]"><i class="fas fa-circle-xmark"></i> Error cargando el sistema de equipos</div>';
   }
 }
 
@@ -233,7 +233,7 @@ window.handleDrop = async function handleDrop(e, targetGroupId) {
   if (!confirm(`¿Transferir a ${window.lastDraggedData.studentName} a este equipo?`)) return;
 
   try {
-    showToast('🔄 Reubicando integrante...', 'info');
+    showToast('<i class="fas fa-arrows-rotate"></i> Reubicando integrante...', 'info');
 
     // Obtener miembros del destino para verificar disponibilidad
     const { data: targetMembers } = await _supabase.from('group_members').select('role').eq('group_id', targetGroupId);
@@ -256,10 +256,10 @@ window.handleDrop = async function handleDrop(e, targetGroupId) {
       .eq('group_id', lastDraggedData.groupId);
 
     if (error) throw error;
-    showToast('✅ Transferencia exitosa', 'success');
+    showToast('<i class="fas fa-circle-check"></i> Transferencia exitosa', 'success');
     loadGroups();
   } catch (err) {
-    showToast('❌ ' + err.message, 'error');
+    showToast('<i class="fas fa-circle-xmark"></i> ' + err.message, 'error');
   } finally {
     lastDraggedData = null;
   }
@@ -279,11 +279,11 @@ window.swapRolesInTeam = async function swapRolesInTeam(groupId, role1, role2) {
     if (m2) await _supabase.from('group_members').update({ role: role1 }).eq('id', m2.id);
     if (m1) await _supabase.from('group_members').update({ role: role2 }).eq('id', m1.id);
 
-    showToast('🔄 Posiciones actualizadas', 'success');
+    showToast('<i class="fas fa-arrows-rotate"></i> Posiciones actualizadas', 'success');
     loadGroups();
   } catch (e) {
     console.error(e);
-    showToast('❌ Error al cambiar posición', 'error');
+    showToast('<i class="fas fa-circle-xmark"></i> Error al cambiar posición', 'error');
   }
 }
 
@@ -304,7 +304,7 @@ window.openCreateGroupModal = async function openCreateGroupModal(isEdit = false
   });
 
   if (!isEdit && freeStudents.length === 0) {
-    return showToast('⚠️ No hay alumnos libres para nuevos equipos.', 'warning');
+    return showToast('<i class="fas fa-triangle-exclamation"></i>️ No hay alumnos libres para nuevos equipos.', 'warning');
   }
 
   const modal = document.createElement('div');
@@ -397,12 +397,12 @@ window.editGroupNameInline = function editGroupNameInline(id, currentName) {
 window.updateGroup = async function updateGroup(groupId, forcedName = null) {
   const nameInput = document.getElementById('group-name');
   const name = forcedName || (nameInput ? nameInput.value.trim() : '');
-  if (!name) return showToast('❌ Nombre requerido', 'error');
+  if (!name) return showToast('<i class="fas fa-circle-xmark"></i> Nombre requerido', 'error');
 
   try {
     const { error } = await _supabase.from('groups').update({ name }).eq('id', groupId);
     if (error) throw error;
-    showToast('✅ Equipo actualizado', 'success');
+    showToast('<i class="fas fa-circle-check"></i> Equipo actualizado', 'success');
     if (document.querySelector('.fixed.inset-0.z-\\[100\\]')) {
       const title = document.querySelector('h3');
       if (title && (title.innerText === 'Actualizar Datos' || title.innerText === 'Nuevo Equipo 1Bot')) {
@@ -410,7 +410,7 @@ window.updateGroup = async function updateGroup(groupId, forcedName = null) {
       }
     }
     loadGroups();
-  } catch (err) { showToast('❌ Error al actualizar', 'error'); }
+  } catch (err) { showToast('<i class="fas fa-circle-xmark"></i> Error al actualizar', 'error'); }
 }
 
 window.rotateRoles = async function rotateRoles(groupId) {
@@ -431,9 +431,9 @@ window.deleteGroup = async function deleteGroup(id, name) {
   try {
     const { error } = await _supabase.from('groups').delete().eq('id', id);
     if (error) throw error;
-    showToast('✅ Equipo disuelto', 'success');
+    showToast('<i class="fas fa-circle-check"></i> Equipo disuelto', 'success');
     loadGroups();
-  } catch (err) { showToast('❌ Error al eliminar', 'error'); }
+  } catch (err) { showToast('<i class="fas fa-circle-xmark"></i> Error al eliminar', 'error'); }
 }
 
 window.loadGradesForGroup = async function loadGradesForGroup() {
@@ -492,8 +492,8 @@ window.createGroup = async function createGroup() {
   const section = document.getElementById('group-section').value;
   const selected = Array.from(document.querySelectorAll('input[name="members"]:checked')).map(i => i.value);
 
-  if (!name || !school || !grade || !section) return showToast('❌ Completa los campos', 'error');
-  if (selected.length === 0) return showToast('❌ Agrega integrantes', 'error');
+  if (!name || !school || !grade || !section) return showToast('<i class="fas fa-circle-xmark"></i> Completa los campos', 'error');
+  if (selected.length === 0) return showToast('<i class="fas fa-circle-xmark"></i> Agrega integrantes', 'error');
 
   try {
     const { data: group, error } = await _supabase.from('groups').insert({ name, school_code: school, grade, section }).select().single();
@@ -503,13 +503,13 @@ window.createGroup = async function createGroup() {
       role: index === 0 ? 'planner' : (index === 1 ? 'maker' : (index === 2 ? 'speaker' : 'helper'))
     }));
     await _supabase.from('group_members').insert(members);
-    showToast('🚀 Equipo desplegado', 'success');
+    showToast('<i class="fas fa-rocket"></i> Equipo desplegado', 'success');
 
     const modal = document.querySelector('.fixed.inset-0.z-\\[100\\]');
     if (modal) modal.remove();
 
     loadGroups();
-  } catch (err) { showToast('❌ Error al crear', 'error'); }
+  } catch (err) { showToast('<i class="fas fa-circle-xmark"></i> Error al crear', 'error'); }
 }
 
 window.magicCreateAllGroups = async function magicCreateAllGroups() {
@@ -517,10 +517,10 @@ window.magicCreateAllGroups = async function magicCreateAllGroups() {
   const grade = document.getElementById('group-grade').value;
   const section = document.getElementById('group-section').value;
 
-  if (!school || !grade || !section) return showToast('❌ Selecciona establecimiento, grado y sección', 'error');
+  if (!school || !grade || !section) return showToast('<i class="fas fa-circle-xmark"></i> Selecciona establecimiento, grado y sección', 'error');
 
   try {
-    showToast('🪄 Invocando magia... Armando equipos...', 'info');
+    showToast('<i class="fas fa-wand-magic"></i> Invocando magia... Armando equipos...', 'info');
 
     // 1. Obtener alumnos libres
     const { data: students } = await _supabase.from('students').select('id, full_name').eq('school_code', school).eq('grade', grade).eq('section', section);
@@ -528,7 +528,7 @@ window.magicCreateAllGroups = async function magicCreateAllGroups() {
     const occupiedIds = new Set(members.map(m => m.student_id));
     const freeOnes = (students || []).filter(s => !occupiedIds.has(s.id));
 
-    if (freeOnes.length < 1) return showToast('⚠️ No hay alumnos libres', 'warning');
+    if (freeOnes.length < 1) return showToast('<i class="fas fa-triangle-exclamation"></i>️ No hay alumnos libres', 'warning');
 
     // 2. Lógica de tamaños: Preferencia 3, permitido 4
     const N = freeOnes.length;
@@ -582,7 +582,7 @@ window.magicCreateAllGroups = async function magicCreateAllGroups() {
       await _supabase.from('group_members').insert(memberInserts);
     }
 
-    showToast(`✅ ${teams.length} Equipos armados exitosamente`, 'success');
+    showToast(`<i class="fas fa-circle-check"></i> ${teams.length} Equipos armados exitosamente`, 'success');
 
     // Cerrar modal de forma robusta
     const modal = document.querySelector('.fixed.inset-0.z-\\[100\\]');
@@ -591,13 +591,13 @@ window.magicCreateAllGroups = async function magicCreateAllGroups() {
     loadGroups();
   } catch (err) {
     console.error(err);
-    showToast('❌ Error en el proceso mágico', 'error');
+    showToast('<i class="fas fa-circle-xmark"></i> Error en el proceso mágico', 'error');
   }
 }
 
 window.exportGroupsCSV = async function exportGroupsCSV() {
-  showToast('📊 Generando roster...', 'info');
-  setTimeout(() => showToast('✅ Archivo listo', 'success'), 1000);
+  showToast('<i class="fas fa-chart-bar"></i> Generando roster...', 'info');
+  setTimeout(() => showToast('<i class="fas fa-circle-check"></i> Archivo listo', 'success'), 1000);
 }
 
 console.log('✅ js/groups.js reprogramado (1Bot Edition)');

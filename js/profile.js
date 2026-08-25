@@ -24,7 +24,7 @@ window.loadProfile = async function loadProfile() {
         else if (userRole === 'admin') await window.loadAdminProfile();
     } catch (err) {
         console.error(err);
-        profileContent.innerHTML = '<div class="glass-card p-10 text-rose-500 font-bold text-center">❌ Error al cargar perfil</div>';
+        profileContent.innerHTML = '<div class="glass-card p-10 text-rose-500 font-bold text-center"><i class="fas fa-circle-xmark"></i> Error al cargar perfil</div>';
     }
 }
 
@@ -69,7 +69,7 @@ window.renderStudentProfileUI = function renderStudentProfileUI(container, stude
     <div class="flex flex-col md:flex-row gap-8 mb-12 items-center text-center md:text-left animate-slideUp">
         <div class="relative group">
             <div class="w-32 h-32 rounded-[2rem] bg-indigo-50 dark:bg-slate-800 flex items-center justify-center text-5xl shadow-xl border-4 border-white dark:border-slate-900 group-hover:rotate-3 transition-transform duration-500 overflow-hidden ring-1 ring-slate-100 dark:ring-slate-800">
-                ${student.profile_photo_url ? `<img src="${student.profile_photo_url}" class="w-full h-full object-cover">` : '🎓'}
+                ${student.profile_photo_url ? `<img src="${student.profile_photo_url}" class="w-full h-full object-cover">` : '<i class="fas fa-graduation-cap"></i>'}
             </div>
             <button onclick="window.openUploadPhotoModal()" class="absolute -bottom-2 -right-2 w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center shadow-lg transform hover:scale-110 transition-all border-2 border-white dark:border-slate-900">
                 <i class="fas fa-camera text-sm"></i>
@@ -262,7 +262,7 @@ window.renderTeacherProfileUI = function renderTeacherProfileUI(container, teach
     container.innerHTML = `
     <div class="flex flex-col md:flex-row gap-8 mb-10 items-center text-center md:text-left">
         <div class="w-32 h-32 rounded-3xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center text-5xl shadow-inner border border-indigo-500/20 shrink-0 overflow-hidden">
-            ${teacher.profile_photo_url ? `<img src="${teacher.profile_photo_url}" class="w-full h-full object-cover">` : '👨‍🏫'}
+            ${teacher.profile_photo_url ? `<img src="${teacher.profile_photo_url}" class="w-full h-full object-cover">` : '<i class="fas fa-chalkboard-user"></i>‍<i class="fas fa-school"></i>'}
         </div>
         <div class="grow">
             <h2 class="text-4xl font-bold text-slate-800 dark:text-white tracking-tight">${teacher.full_name}</h2>
@@ -286,7 +286,7 @@ window.renderTeacherProfileUI = function renderTeacherProfileUI(container, teach
             <i class="fas fa-star absolute -right-6 -bottom-6 text-8xl text-slate-50 dark:text-slate-800 transition-transform group-hover:scale-110"></i>
             <div class="relative z-10">
                 <div class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-2">Rating Estudiantes</div>
-                <div class="text-4xl font-bold text-slate-800 dark:text-white flex items-baseline gap-2">${avgRating} <span class="text-amber-500 text-xl">★</span></div>
+                <div class="text-4xl font-bold text-slate-800 dark:text-white flex items-baseline gap-2">${avgRating} <span class="text-amber-500 text-xl"><i class="fas fa-star"></i></span></div>
                 <div class="text-xs font-semibold text-slate-500 mt-4">${totalRatings} evaluaciones recibidas</div>
             </div>
         </div>

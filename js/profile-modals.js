@@ -83,7 +83,7 @@ window.showXPInfoModal = function () {
             </div>
 
             <div class="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
-                <div class="text-[0.7rem] font-black text-primary uppercase tracking-[0.2em] mb-1">💎 Cómo ganar Gemas</div>
+                <div class="text-[0.7rem] font-black text-primary uppercase tracking-[0.2em] mb-1"><i class="fas fa-gem"></i> Cómo ganar Gemas</div>
                 <div class="flex items-center gap-3 p-3 bg-cyan-500/5 rounded-xl border border-cyan-500/10">
                     <div class="w-8 h-8 rounded-lg bg-cyan-500 text-white flex items-center justify-center text-sm shadow-sm"><i class="fas fa-gift"></i></div>
                     <div class="text-[0.65rem] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-tight">Cofre Diario (Regalo aleatorio)</div>
@@ -202,11 +202,11 @@ window.uploadProfilePhoto = async function uploadProfilePhoto() {
   const btn = document.getElementById('btn-upload-photo');
 
   if (!file) {
-    return showToast('❌ Selecciona una foto', 'error');
+    return showToast('<i class="fas fa-circle-xmark"></i> Selecciona una foto', 'error');
   }
 
   if (file.size > 5 * 1024 * 1024) {
-    return showToast('❌ La foto no debe superar 5MB', 'error');
+    return showToast('<i class="fas fa-circle-xmark"></i> La foto no debe superar 5MB', 'error');
   }
 
   btn.disabled = true;
@@ -263,7 +263,7 @@ window.uploadProfilePhoto = async function uploadProfilePhoto() {
       if (!rewardError) {
         window.userData.xp = newXP;
         window.userData.gems = newGems;
-        showToast(`✨ ¡Primer foto! Ganaste ${rewardXP} XP y ${rewardGems} Gemas`, 'success');
+        showToast(`<i class="fas fa-wand-magic-sparkles"></i> ¡Primer foto! Ganaste ${rewardXP} XP y ${rewardGems} Gemas`, 'success');
         if (typeof window.initGamification === 'function') window.initGamification();
       }
     }
@@ -271,13 +271,13 @@ window.uploadProfilePhoto = async function uploadProfilePhoto() {
     window.userData.profile_photo_url = urlData.publicUrl;
     if (typeof window.updateHeaderUI === 'function') window.updateHeaderUI();
 
-    showToast('✅ Foto de perfil actualizada', 'success');
+    showToast('<i class="fas fa-circle-check"></i> Foto de perfil actualizada', 'success');
     document.getElementById('upload-photo-modal').remove();
     if (typeof window.loadProfile === 'function') await window.loadProfile();
 
   } catch (err) {
     console.error('Error subiendo foto:', err);
-    showToast('❌ Error: ' + err.message, 'error');
+    showToast('<i class="fas fa-circle-xmark"></i> Error: ' + err.message, 'error');
   } finally {
     if (btn) {
       btn.disabled = false;
@@ -310,7 +310,7 @@ window.openSuggestionModal = function openSuggestionModal() {
         <div class="mb-6">
           <label class="text-[0.7rem] font-black uppercase text-slate-400 mb-2 block tracking-widest leading-none">Tipo de Comunicación</label>
           <select id="suggestion-type" class="input-field-tw h-11 text-sm pt-0 pb-0" onchange="window.toggleRatingSection()">
-            <option value="suggestion">💡 Sugerencia para el Establecimiento</option>
+            <option value="suggestion"><i class="fas fa-lightbulb"></i> Sugerencia para el Establecimiento</option>
             <option value="rating">⭐ Evaluar Clase de la Semana</option>
           </select>
         </div>
@@ -318,7 +318,7 @@ window.openSuggestionModal = function openSuggestionModal() {
         <div id="rating-section" class="hidden mb-8 animate-in slide-in-from-top-4 duration-300">
           <div class="bg-primary/5 border border-primary/10 p-4 rounded-2xl mb-6">
             <p class="text-[0.8rem] text-slate-600 dark:text-slate-400 font-medium leading-relaxed">
-                👉 Selecciona cómo te sentiste en clase respecto a estos puntos:
+                <i class="fas fa-hand-point-right"></i> Selecciona cómo te sentiste en clase respecto a estos puntos:
             </p>
           </div>
           <div id="suggestion-eval-questions" class="space-y-4">
@@ -349,7 +349,7 @@ window.toggleRatingSection = function toggleRatingSection() {
 
   if (type === 'rating') {
     ratingSection?.classList.remove('hidden');
-    if (msgLabel) msgLabel.querySelector('label').textContent = '🌟 ¿Qué fue lo mejor de la semana?';
+    if (msgLabel) msgLabel.querySelector('label').textContent = '<i class="fas fa-star"></i> ¿Qué fue lo mejor de la semana?';
     if (msgArea) msgArea.placeholder = 'Lo mejor fue... (Resume en una línea)';
 
     const container = document.getElementById('suggestion-eval-questions');
@@ -371,7 +371,7 @@ window.toggleRatingSection = function toggleRatingSection() {
           </div>
           <div class="flex justify-between gap-2 mt-3">
             ${[
-          { v: 1, e: '😞' }, { v: 2, e: '😐' }, { v: 3, e: '🙂' }, { v: 4, e: '😃' }, { v: 5, e: '🤩' }
+          { v: 1, e: '<i class="fas fa-face-frown"></i>' }, { v: 2, e: '<i class="fas fa-face-meh"></i>' }, { v: 3, e: '<i class="fas fa-face-smile"></i>' }, { v: 4, e: '<i class="fas fa-face-smile-beam"></i>' }, { v: 5, e: '<i class="fas fa-star"></i>' }
         ].map(opt => `
               <div onclick="window.selectEvalOption('${q.id}', ${opt.v})" class="eval-opt-${q.id} flex-1 h-12 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center cursor-pointer hover:border-primary grayscale opacity-40 transition-all hover:scale-110" data-value="${opt.v}">
                 <div class="text-2xl">${opt.e}</div>
@@ -415,7 +415,7 @@ window.submitSuggestion = async function submitSuggestion() {
   const message = document.getElementById('suggestion-message')?.value.trim();
   const btn = document.getElementById('btn-submit-suggestion');
 
-  if (!message) return showToast('❌ Escribe un mensaje', 'error');
+  if (!message) return showToast('<i class="fas fa-circle-xmark"></i> Escribe un mensaje', 'error');
 
   if (btn) {
     btn.disabled = true;
@@ -457,7 +457,7 @@ window.submitSuggestion = async function submitSuggestion() {
       if (existingRating) {
         // Si ya existe, cambiamos el tipo a sugerencia y notificamos al usuario
         const userConfirmed = confirm(
-          '⚠️ Ya has evaluado a tu docente esta semana.\n\n¿Deseas enviar este mensaje como una SUGERENCIA general en su lugar?'
+          '<i class="fas fa-triangle-exclamation"></i>️ Ya has evaluado a tu docente esta semana.\n\n¿Deseas enviar este mensaje como una SUGERENCIA general en su lugar?'
         );
 
         if (!userConfirmed) {
@@ -471,7 +471,7 @@ window.submitSuggestion = async function submitSuggestion() {
           type: 'suggestion'
         });
         if (error) throw error;
-        showToast('✅ Enviado como sugerencia exitosamente.', 'success');
+        showToast('<i class="fas fa-circle-check"></i> Enviado como sugerencia exitosamente.', 'success');
 
       } else {
         // Si no ha evaluado esta semana, procedemos con la evaluación normal
@@ -490,7 +490,7 @@ window.submitSuggestion = async function submitSuggestion() {
         });
 
         if (error) throw error;
-        showToast('✅ Evaluación enviada con éxito', 'success');
+        showToast('<i class="fas fa-circle-check"></i> Evaluación enviada con éxito', 'success');
       }
 
     } else {
@@ -498,7 +498,7 @@ window.submitSuggestion = async function submitSuggestion() {
         student_id: window.currentUser.id, message: message, type: 'suggestion'
       });
       if (error) throw error;
-      showToast('✅ Sugerencia recibida. ¡Gracias!', 'success');
+      showToast('<i class="fas fa-circle-check"></i> Sugerencia recibida. ¡Gracias!', 'success');
     }
 
     document.getElementById('suggestion-modal')?.remove();
@@ -508,7 +508,7 @@ window.submitSuggestion = async function submitSuggestion() {
     if (err.message.includes('Evaluación cancelada')) {
       showToast('ℹ️ ' + err.message, 'info');
     } else {
-      showToast('⚠️ ' + err.message, 'warning');
+      showToast('<i class="fas fa-triangle-exclamation"></i>️ ' + err.message, 'warning');
     }
   } finally {
     if (btn) {
@@ -531,8 +531,8 @@ window.viewAllTeacherComments = async function viewAllTeacherComments(teacherId 
     modal.className = 'fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-300';
 
     const getScoreIcon = (val) => {
-      const icons = { 1: '😞', 2: '😐', 3: '🙂', 4: '😃', 5: '🤩' };
-      return icons[val] || '➖';
+      const icons = { 1: '<i class="fas fa-face-frown"></i>', 2: '<i class="fas fa-face-meh"></i>', 3: '<i class="fas fa-face-smile"></i>', 4: '<i class="fas fa-face-smile-beam"></i>', 5: '<i class="fas fa-star"></i>' };
+      return icons[val] || '<i class="fas fa-minus"></i>';
     };
 
     modal.innerHTML = `
@@ -580,6 +580,6 @@ window.viewAllTeacherComments = async function viewAllTeacherComments(teacherId 
     document.body.appendChild(modal);
   } catch (err) {
     console.error(err);
-    showToast('❌ Error al cargar comentarios', 'error');
+    showToast('<i class="fas fa-circle-xmark"></i> Error al cargar comentarios', 'error');
   }
 }

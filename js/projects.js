@@ -39,7 +39,7 @@ window.loadFeed = async function loadFeed() {
 
   } catch (err) {
     console.error(err);
-    container.innerHTML = '<div class="col-span-full p-10 text-rose-500 font-bold glass-card">❌ Error al cargar proyectos</div>';
+    container.innerHTML = '<div class="col-span-full p-10 text-rose-500 font-bold glass-card"><i class="fas fa-circle-xmark"></i> Error al cargar proyectos</div>';
   }
 }
 
@@ -153,7 +153,7 @@ window.toggleLike = async function toggleLike(projectId) {
   const showToast = window.showToast;
 
   if (!currentUser) {
-    if (typeof showToast === 'function') showToast('❌ Inicia sesión para dar like', 'error');
+    if (typeof showToast === 'function') showToast('<i class="fas fa-circle-xmark"></i> Inicia sesión para dar like', 'error');
     return;
   }
   const userId = currentUser.id;
@@ -176,12 +176,12 @@ window.toggleLike = async function toggleLike(projectId) {
       // Remover like
       await _supabase.from('project_likes').delete().eq('id', existingLike.id);
       newVotes = Math.max(0, newVotes - 1);
-      if (typeof showToast === 'function') showToast('💔 Voto removido', 'default');
+      if (typeof showToast === 'function') showToast('<i class="fas fa-heart-crack"></i> Voto removido', 'default');
     } else {
       // Agregar like
       await _supabase.from('project_likes').insert({ project_id: projectId, user_id: userId });
       newVotes = newVotes + 1;
-      if (typeof showToast === 'function') showToast('❤️ ¡Te gusta este proyecto!', 'success');
+      if (typeof showToast === 'function') showToast('<i class="fas fa-heart"></i>️ ¡Te gusta este proyecto!', 'success');
     }
 
     // Actualizar conteo en proyecto
@@ -193,7 +193,7 @@ window.toggleLike = async function toggleLike(projectId) {
 
   } catch (err) {
     console.error(err);
-    if (typeof showToast === 'function') showToast('❌ Error al procesar voto', 'error');
+    if (typeof showToast === 'function') showToast('<i class="fas fa-circle-xmark"></i> Error al procesar voto', 'error');
   }
 }
 

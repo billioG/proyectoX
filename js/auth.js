@@ -43,7 +43,7 @@ export async function initAuth() {
       window.initOnboarding();
     }
 
-    showToast('📶 Conectado en modo Offline (solo lectura)', 'info');
+    showToast('<i class="fas fa-wifi"></i> Conectado en modo Offline (solo lectura)', 'info');
   } else {
     showLoginScreen();
   }
@@ -125,7 +125,7 @@ window.openForgotPasswordModal = function openForgotPasswordModal() {
 window.sendPasswordResetEmail = async function sendPasswordResetEmail() {
   const email = document.getElementById('forgot-password-email')?.value.trim();
   const btn = document.getElementById('btn-send-reset');
-  if (!email) return showToast('❌ Ingresá tu correo', 'error');
+  if (!email) return showToast('<i class="fas fa-circle-xmark"></i> Ingresá tu correo', 'error');
 
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
 
@@ -135,9 +135,9 @@ window.sendPasswordResetEmail = async function sendPasswordResetEmail() {
     });
     if (error) throw error;
     document.querySelector('.fixed.z-\\[200\\]')?.remove();
-    showToast('✅ Revisá tu correo para restablecer tu contraseña', 'success');
+    showToast('<i class="fas fa-circle-check"></i> Revisá tu correo para restablecer tu contraseña', 'success');
   } catch (err) {
-    showToast('❌ ' + err.message, 'error');
+    showToast('<i class="fas fa-circle-xmark"></i> ' + err.message, 'error');
     if (btn) { btn.disabled = false; btn.innerHTML = 'Enviar'; }
   }
 }
@@ -162,7 +162,7 @@ function openSetNewPasswordModal() {
 window.submitNewPassword = async function submitNewPassword() {
   const password = document.getElementById('new-password-input')?.value;
   const btn = document.getElementById('btn-set-new-password');
-  if (!password || password.length < 6) return showToast('❌ Mínimo 6 caracteres', 'error');
+  if (!password || password.length < 6) return showToast('<i class="fas fa-circle-xmark"></i> Mínimo 6 caracteres', 'error');
 
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
 
@@ -170,9 +170,9 @@ window.submitNewPassword = async function submitNewPassword() {
     const { error } = await _supabase.auth.updateUser({ password });
     if (error) throw error;
     document.getElementById('set-new-password-modal')?.remove();
-    showToast('✅ Contraseña actualizada', 'success');
+    showToast('<i class="fas fa-circle-check"></i> Contraseña actualizada', 'success');
   } catch (err) {
-    showToast('❌ ' + err.message, 'error');
+    showToast('<i class="fas fa-circle-xmark"></i> ' + err.message, 'error');
     if (btn) { btn.disabled = false; btn.innerHTML = 'Guardar y Continuar'; }
   }
 }
@@ -208,7 +208,7 @@ export async function handleLogin() {
 
   const username = userEl?.value.trim();
   const password = passEl?.value.trim();
-  if (!username) return showToast('❌ Ingresá tu usuario o correo', 'error');
+  if (!username) return showToast('<i class="fas fa-circle-xmark"></i> Ingresá tu usuario o correo', 'error');
 
   btn.disabled = true;
   btn.classList.add('opacity-50', 'cursor-not-allowed');
@@ -246,7 +246,7 @@ export async function handleLogin() {
       await handleSuccessfulLogin(data.user);
     }
   } catch (err) {
-    showToast('❌ ' + err.message, 'error');
+    showToast('<i class="fas fa-circle-xmark"></i> ' + err.message, 'error');
   } finally {
     btn.disabled = false;
     btn.classList.remove('opacity-50', 'cursor-not-allowed');
@@ -326,7 +326,7 @@ export async function handleSuccessfulLogin(user) {
       window.initOnboarding();
     }
 
-    showToast('👋 ¡Hola de nuevo!', 'success');
+    showToast('<i class="fas fa-hand"></i> ¡Hola de nuevo!', 'success');
   } catch (err) {
     console.error(err);
     // Si falla el fetch de userData (ej. offline), intentamos usar el caché
@@ -351,7 +351,7 @@ export async function handleSuccessfulLogin(user) {
 
 function updateHeaderUI() {
   const name = userData?.full_name || currentUser?.email?.split('@')[0] || 'Usuario';
-  const avatar = userRole === 'estudiante' ? '🎓' : (userRole === 'docente' ? '👨‍🏫' : '👑');
+  const avatar = userRole === 'estudiante' ? '<i class="fas fa-graduation-cap"></i>' : (userRole === 'docente' ? '<i class="fas fa-chalkboard-user"></i>‍<i class="fas fa-school"></i>' : '<i class="fas fa-crown"></i>');
 
   const nameEl = document.getElementById('user-name');
   if (nameEl) nameEl.textContent = name;
@@ -432,8 +432,8 @@ async function handleMandatoryPasswordChange() {
   const pass = passEl.value.trim();
   const conf = confEl.value.trim();
 
-  if (pass.length < 6) return showToast('❌ Mínimo 6 caracteres', 'error');
-  if (pass !== conf) return showToast('❌ Las contraseñas no coinciden', 'error');
+  if (pass.length < 6) return showToast('<i class="fas fa-circle-xmark"></i> Mínimo 6 caracteres', 'error');
+  if (pass !== conf) return showToast('<i class="fas fa-circle-xmark"></i> Las contraseñas no coinciden', 'error');
 
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Protegiendo cuenta...';
@@ -446,7 +446,7 @@ async function handleMandatoryPasswordChange() {
 
     if (error) throw error;
 
-    showToast('✨ ¡Contraseña actualizada con éxito!', 'success');
+    showToast('<i class="fas fa-wand-magic-sparkles"></i> ¡Contraseña actualizada con éxito!', 'success');
     document.getElementById('mandatory-password-modal').remove();
 
     // Ahora sí, navegar según el rol
@@ -455,7 +455,7 @@ async function handleMandatoryPasswordChange() {
     if (typeof startBirthdayConfetti === 'function') startBirthdayConfetti();
 
   } catch (err) {
-    showToast('❌ Error: ' + err.message, 'error');
+    showToast('<i class="fas fa-circle-xmark"></i> Error: ' + err.message, 'error');
     btn.disabled = false;
     btn.innerHTML = 'ACTUALIZAR Y COMENZAR';
   }

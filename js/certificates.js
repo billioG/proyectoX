@@ -36,7 +36,7 @@ function showCertificateClaim(type, data) {
             <div class="p-10 text-center bg-white dark:bg-slate-900">
                 <p class="text-slate-600 dark:text-slate-300 font-medium leading-relaxed mb-8">
                     Tu compromiso con el ecosistema **STEEAM 1Bot** te ha hecho acreedor al diploma de:
-                    <br><span class="text-xl font-black text-amber-600 uppercase block mt-2">${type === 'teacher_senior' ? '🎓 Tutor Senior de Impacto' : '🌟 Estudiante STEEAM Certificado'}</span>
+                    <br><span class="text-xl font-black text-amber-600 uppercase block mt-2">${type === 'teacher_senior' ? '<i class="fas fa-graduation-cap"></i> Tutor Senior de Impacto' : '<i class="fas fa-star"></i> Estudiante STEEAM Certificado'}</span>
                 </p>
                 <div class="flex flex-col gap-4">
                     <button class="btn-primary-tw h-14 text-xs font-black uppercase tracking-widest bg-amber-500 hover:bg-amber-600 border-none shadow-xl shadow-amber-500/20" onclick="generateVisualCertificate('${type}', '${data.full_name}')">
@@ -79,7 +79,7 @@ function generateVisualCertificate(type, name) {
                 
                 <p class="text-lg text-slate-600 leading-relaxed max-w-xl mx-auto mb-10">
                     Por su destacado compromiso, liderazgo y resultados excepcionales en el ecosistema de educación tecnológica durante el ciclo 2026, alcanzando el grado de <br>
-                    <span class="font-black text-amber-600 uppercase text-xl mt-2 block">${type === 'teacher_senior' ? '🎓 TUTOR SENIOR DE IMPACTO' : '🌟 ESTUDIANTE STEEAM CERTIFICADO'}</span>
+                    <span class="font-black text-amber-600 uppercase text-xl mt-2 block">${type === 'teacher_senior' ? '<i class="fas fa-graduation-cap"></i> TUTOR SENIOR DE IMPACTO' : '<i class="fas fa-star"></i> ESTUDIANTE STEEAM CERTIFICADO'}</span>
                 </p>
                 
                 <div class="flex justify-between items-end w-full px-12 pt-10">

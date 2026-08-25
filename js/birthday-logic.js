@@ -49,7 +49,7 @@ window.showBirthdayModal = function showBirthdayModal() {
             <div class="absolute -bottom-24 -right-24 w-48 h-48 bg-amber-500/20 blur-[80px] rounded-full"></div>
             
             <div class="relative z-10">
-                <div class="text-8xl mb-8 animate-bounce">🎂</div>
+                <div class="text-8xl mb-8 animate-bounce"><i class="fas fa-cake-candles"></i></div>
                 <h2 class="text-4xl font-black text-white uppercase tracking-tighter italic mb-4 drop-shadow-lg">
                     ¡FELIZ CUMPLEAÑOS!
                 </h2>
@@ -63,7 +63,7 @@ window.showBirthdayModal = function showBirthdayModal() {
                 </p>
                 
                 <button onclick="this.closest('.fixed').remove()" class="btn-primary-tw w-full h-16 text-lg font-black uppercase tracking-[0.2em] shadow-2xl shadow-primary/40 transform hover:scale-105 active:scale-95 transition-all">
-                    ¡GRACIAS EQUIPO! 🚀
+                    ¡GRACIAS EQUIPO! <i class="fas fa-rocket"></i>
                 </button>
             </div>
         </div>
