@@ -275,7 +275,7 @@ window.renderTeacherProfileUI = function renderTeacherProfileUI(container, teach
         </div>
         <div class="flex gap-3">
             <button onclick="window.openUploadPhotoModal()" class="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:text-primary transition-colors"><i class="fas fa-camera text-xl"></i></button>
-            <button onclick="window.openChangePasswordModal()" class="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:text-primary transition-colors" title="Cambiar contraseña"><i class="fas fa-key text-xl"></i></button>
+            <button onclick="window.openChangePasswordModal(true)" class="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:text-primary transition-colors" title="Cambiar contraseña"><i class="fas fa-key text-xl"></i></button>
             <button onclick="window.print()" class="btn-primary-tw flex items-center gap-2">
                 <i class="fas fa-print"></i> EXPORTAR FICHA
             </button>

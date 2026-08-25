@@ -168,18 +168,22 @@ window.sendPasswordResetEmail = async function sendPasswordResetEmail() {
 
 window.openChangePasswordModal = openSetNewPasswordModal;
 
-function openSetNewPasswordModal() {
+function openSetNewPasswordModal(allowCancel) {
   if (document.getElementById('set-new-password-modal')) return;
   const modal = document.createElement('div');
   modal.id = 'set-new-password-modal';
   modal.className = 'fixed inset-0 z-[300] flex items-center justify-center p-6 bg-slate-950/90 backdrop-blur-sm animate-fadeIn';
   modal.innerHTML = `
-    <div class="glass-card w-full max-w-sm p-8 shadow-2xl animate-slideUp">
+    <div class="glass-card w-full max-w-sm p-8 shadow-2xl animate-slideUp relative">
+      ${allowCancel ? `<button onclick="document.getElementById('set-new-password-modal')?.remove()" class="absolute top-4 right-4 w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500 transition-colors flex items-center justify-center"><i class="fas fa-times"></i></button>` : ''}
       <h2 class="text-lg font-bold text-slate-800 dark:text-white uppercase tracking-tighter mb-2"><i class="fas fa-lock text-primary mr-2"></i> Nueva Contraseña</h2>
       <p class="text-xs text-slate-400 mb-6">Ingresá tu nueva contraseña para continuar.</p>
       <input type="password" id="new-password-input" placeholder="Nueva contraseña (mín. 6 caracteres)"
         class="w-full px-4 py-3 bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 mb-4">
-      <button class="btn-primary-tw w-full h-12 text-xs uppercase font-bold" id="btn-set-new-password" onclick="window.submitNewPassword()">Guardar y Continuar</button>
+      <div class="flex gap-3">
+        ${allowCancel ? `<button class="btn-secondary-tw flex-1 h-12 text-xs uppercase font-bold" onclick="document.getElementById('set-new-password-modal')?.remove()">Cancelar</button>` : ''}
+        <button class="btn-primary-tw flex-1 h-12 text-xs uppercase font-bold" id="btn-set-new-password" onclick="window.submitNewPassword()">Guardar y Continuar</button>
+      </div>
     </div>
   `;
   document.body.appendChild(modal);
