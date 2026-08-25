@@ -263,7 +263,7 @@ window.submitMonthlyReport = async function submitMonthlyReport(e) {
     if (error) throw error;
 
     showToast('<i class="fas fa-circle-check"></i> Informe Mensual enviado correctamente', 'success');
-    e.target.closest('.modal').remove();
+    e.target.closest('.fixed')?.remove();
     initGamification(); // Recargar XP
   } catch (err) {
     console.error('Error enviando informe:', err);
