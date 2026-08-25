@@ -12,26 +12,23 @@ window.openClassPasswordsPanel = async function openClassPasswordsPanel() {
         <button class="text-slate-400 hover:text-rose-500 font-bold text-2xl transition-colors" onclick="this.closest('.fixed').remove()">×</button>
       </div>
       <div class="p-8 max-h-[75vh] overflow-y-auto custom-scrollbar">
-        <p class="text-xs text-slate-400 mb-6">Cada clase (establecimiento + grado + sección) tiene UNA contraseña compartida para todos sus alumnos. Podés desactivarla por completo para que entren solo con su usuario (modo Kolibri). Al cambiar la contraseña de una clase, se actualiza al instante la cuenta real de cada alumno ya matriculado ahí.</p>
+        <p class="text-xs text-slate-400 mb-6">Cada clase (establecimiento + grado + sección) tiene UNA contraseña compartida para todos sus alumnos. Podés desactivarla por completo para que entren solo con su usuario (modo Kolibri). Al cambiar una contraseña, se actualiza al instante la cuenta real de cada alumno matriculado ahí.</p>
 
-        <div class="p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 mb-8">
-          <p class="text-[0.65rem] font-black uppercase text-slate-400 tracking-widest mb-4">Configurar / Actualizar Clase</p>
+        <div class="p-6 rounded-2xl bg-rose-50 dark:bg-rose-900/10 border border-rose-200 dark:border-rose-900/30 mb-6">
+          <p class="text-[0.65rem] font-black uppercase text-rose-500 tracking-widest mb-1"><i class="fas fa-triangle-exclamation mr-1"></i> Restablecer establecimiento completo</p>
+          <p class="text-[0.7rem] text-slate-500 mb-4">Aplica UNA contraseña a TODAS las clases (todos los grados y secciones) de un establecimiento a la vez, y sincroniza a todos sus alumnos.</p>
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
-            <input type="text" id="cp-school-code" placeholder="Código de establecimiento" class="input-field-tw h-11 text-sm">
-            <input type="text" id="cp-grade" placeholder="Grado (ej: 1ro Básico)" class="input-field-tw h-11 text-sm">
-            <input type="text" id="cp-section" placeholder="Sección (ej: A)" class="input-field-tw h-11 text-sm">
+            <select id="reset-school-select" class="input-field-tw h-11 text-sm sm:col-span-1"><option value="">Cargando establecimientos...</option></select>
+            <input type="text" id="reset-password" placeholder="Nueva contraseña (vacío = generar una)" class="input-field-tw h-11 text-sm sm:col-span-2">
           </div>
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-center">
-            <input type="text" id="cp-password" placeholder="Contraseña de la clase" class="input-field-tw h-11 text-sm sm:col-span-2">
-            <label class="flex items-center gap-2 text-xs font-bold text-slate-500">
-              <input type="checkbox" id="cp-requires-password" checked class="w-4 h-4"> Requiere contraseña
-            </label>
-          </div>
-          <button class="btn-primary-tw h-11 px-8 text-xs uppercase font-black mt-4" id="btn-save-class-password" onclick="window.saveClassPassword()">Guardar</button>
+          <label class="flex items-center gap-2 text-xs font-bold text-slate-500 mb-4">
+            <input type="checkbox" id="reset-requires-password" checked class="w-4 h-4"> Requiere contraseña (destildar = todo el establecimiento entra solo con usuario)
+          </label>
+          <button class="btn-secondary-tw h-11 px-8 text-xs uppercase font-black border border-rose-300 text-rose-500" id="btn-reset-school" onclick="window.resetSchoolPasswords()">Aplicar a todo el establecimiento</button>
         </div>
 
-        <p class="text-[0.65rem] font-black uppercase text-slate-400 tracking-widest mb-3">Clases configuradas</p>
-        <div id="class-passwords-list" class="space-y-2">
+        <p class="text-[0.65rem] font-black uppercase text-slate-400 tracking-widest mb-3">Clases (por establecimiento, grado y sección)</p>
+        <div id="class-passwords-list" class="space-y-4">
           <div class="text-center text-slate-400 text-xs py-6"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>
         </div>
       </div>
@@ -39,41 +36,93 @@ window.openClassPasswordsPanel = async function openClassPasswordsPanel() {
   `;
   document.body.appendChild(modal);
   window.loadClassPasswordsList();
+  window.loadSchoolSelectForReset();
+}
+
+window.loadSchoolSelectForReset = async function loadSchoolSelectForReset() {
+  const sel = document.getElementById('reset-school-select');
+  if (!sel) return;
+  const { data } = await window._supabase.from('schools').select('code, name').order('name');
+  sel.innerHTML = (data || []).map(s => `<option value="${window.sanitizeAttr(s.code)}">${window.sanitizeInput(s.name)} (${window.sanitizeInput(s.code)})</option>`).join('') || '<option value="">Sin establecimientos</option>';
 }
 
 window.loadClassPasswordsList = async function loadClassPasswordsList() {
   const listEl = document.getElementById('class-passwords-list');
   if (!listEl) return;
-  const { data, error } = await window._supabase.from('class_passwords').select('school_code, grade, section, requires_password, updated_at').order('school_code');
-  if (error) { listEl.innerHTML = `<p class="text-rose-500 text-xs">Error: ${error.message}</p>`; return; }
-  if (!data || !data.length) { listEl.innerHTML = '<p class="text-slate-400 text-xs">Todavía no hay clases configuradas.</p>'; return; }
 
-  listEl.innerHTML = data.map(c => `
-    <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
-      <div class="text-xs">
-        <span class="font-bold text-slate-700 dark:text-slate-200">${window.sanitizeInput(c.school_code)}</span>
-        <span class="text-slate-400"> · ${window.sanitizeInput(c.grade)} ${window.sanitizeInput(c.section)}</span>
+  // Se listan TODAS las clases reales (existan o no en class_passwords todavía),
+  // derivadas directo de los alumnos matriculados -- no solo las ya configuradas.
+  const [{ data: students, error: stErr }, { data: configured, error: cpErr }, { data: schools }] = await Promise.all([
+    window._supabase.from('students').select('school_code, grade, section'),
+    window._supabase.from('class_passwords').select('school_code, grade, section, requires_password'),
+    window._supabase.from('schools').select('code, name'),
+  ]);
+  if (stErr || cpErr) { listEl.innerHTML = `<p class="text-rose-500 text-xs">Error: ${(stErr || cpErr).message}</p>`; return; }
+
+  const schoolNames = new Map((schools || []).map(s => [s.code, s.name]));
+  const configuredMap = new Map((configured || []).map(c => [`${c.school_code}|${c.grade}|${c.section}`, c.requires_password]));
+
+  const bySchool = new Map();
+  (students || []).forEach(s => {
+    if (!s.school_code || !s.grade || !s.section) return;
+    const key = `${s.grade}|${s.section}`;
+    if (!bySchool.has(s.school_code)) bySchool.set(s.school_code, new Set());
+    bySchool.get(s.school_code).add(key);
+  });
+
+  if (!bySchool.size) { listEl.innerHTML = '<p class="text-slate-400 text-xs">Todavía no hay alumnos matriculados.</p>'; return; }
+
+  listEl.innerHTML = Array.from(bySchool.entries()).map(([school_code, combos]) => `
+    <div class="rounded-xl border border-slate-100 dark:border-slate-800 overflow-hidden">
+      <div class="px-4 py-2 bg-slate-100 dark:bg-slate-800/70 text-xs font-black text-slate-600 dark:text-slate-300">${window.sanitizeInput(schoolNames.get(school_code) || school_code)}</div>
+      <div class="divide-y divide-slate-100 dark:divide-slate-800">
+        ${Array.from(combos).sort().map(combo => {
+          const [grade, section] = combo.split('|');
+          const key = `${school_code}|${grade}|${section}`;
+          const requiresPw = configuredMap.has(key) ? configuredMap.get(key) : true;
+          return `
+          <div class="flex items-center justify-between px-4 py-2.5 text-xs">
+            <span class="text-slate-600 dark:text-slate-300">${window.sanitizeInput(grade)} · ${window.sanitizeInput(section)}</span>
+            <div class="flex items-center gap-3">
+              <span class="text-[0.6rem] font-black uppercase px-2 py-1 rounded-lg ${requiresPw ? 'bg-slate-200 dark:bg-slate-700 text-slate-500' : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600'}">
+                ${requiresPw ? 'Con contraseña' : 'Sin contraseña'}
+              </span>
+              <button class="text-primary hover:underline font-bold" onclick="window.editClassPassword('${window.sanitizeAttr(school_code)}','${window.sanitizeAttr(grade)}','${window.sanitizeAttr(section)}',${requiresPw})">Editar</button>
+            </div>
+          </div>`;
+        }).join('')}
       </div>
-      <span class="text-[0.6rem] font-black uppercase px-2 py-1 rounded-lg ${c.requires_password ? 'bg-slate-200 dark:bg-slate-700 text-slate-500' : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600'}">
-        ${c.requires_password ? 'Con contraseña' : 'Sin contraseña (usuario solo)'}
-      </span>
     </div>
   `).join('');
 }
 
-window.saveClassPassword = async function saveClassPassword() {
-  const school_code = document.getElementById('cp-school-code')?.value.trim();
-  const grade = document.getElementById('cp-grade')?.value.trim();
-  const section = document.getElementById('cp-section')?.value.trim();
-  const password = document.getElementById('cp-password')?.value.trim();
-  const requires_password = document.getElementById('cp-requires-password')?.checked;
-  const btn = document.getElementById('btn-save-class-password');
+window.editClassPassword = function editClassPassword(school_code, grade, section, currentlyRequiresPw) {
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 z-[300] flex items-center justify-center p-6 bg-slate-950/90 backdrop-blur-sm animate-fadeIn';
+  modal.innerHTML = `
+    <div class="glass-card w-full max-w-sm p-8 shadow-2xl animate-slideUp">
+      <h3 class="text-sm font-black uppercase text-slate-800 dark:text-white mb-1">${window.sanitizeInput(school_code)}</h3>
+      <p class="text-xs text-slate-400 mb-5">${window.sanitizeInput(grade)} · ${window.sanitizeInput(section)}</p>
+      <input type="text" id="ecp-password" placeholder="Nueva contraseña (vacío = generar una)" class="input-field-tw h-11 text-sm w-full mb-3">
+      <label class="flex items-center gap-2 text-xs font-bold text-slate-500 mb-5">
+        <input type="checkbox" id="ecp-requires-password" ${currentlyRequiresPw ? 'checked' : ''} class="w-4 h-4"> Requiere contraseña
+      </label>
+      <div class="flex gap-3">
+        <button class="btn-secondary-tw flex-1 h-11 text-xs uppercase font-bold" onclick="this.closest('.fixed').remove()">Cancelar</button>
+        <button class="btn-primary-tw flex-1 h-11 text-xs uppercase font-bold" id="btn-save-one-class" onclick="window.saveClassPassword('${window.sanitizeAttr(school_code)}','${window.sanitizeAttr(grade)}','${window.sanitizeAttr(section)}')">Guardar</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
 
-  if (!school_code || !grade || !section) return window.showToast('❌ Completa establecimiento, grado y sección', 'error');
-  if (requires_password && (!password || password.length < 4)) return window.showToast('❌ La contraseña debe tener al menos 4 caracteres', 'error');
+window.saveClassPassword = async function saveClassPassword(school_code, grade, section) {
+  const password = document.getElementById('ecp-password')?.value.trim() || null;
+  const requires_password = document.getElementById('ecp-requires-password')?.checked;
+  const btn = document.getElementById('btn-save-one-class');
 
   btn.disabled = true;
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
 
   try {
     const { data: { session } } = await window._supabase.auth.getSession();
@@ -83,19 +132,56 @@ window.saveClassPassword = async function saveClassPassword() {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${session?.access_token || ''}`,
       },
-      body: JSON.stringify({ school_code, grade, section, password: requires_password ? password : null, requires_password }),
+      body: JSON.stringify({ school_code, grade, section, password, requires_password }),
     });
     const result = await res.json();
     if (!res.ok) throw new Error(result.error || 'Error al guardar');
 
-    window.showToast(`✅ Contraseña de clase guardada${result.updated ? ` (${result.updated} alumnos sincronizados)` : ''}`, 'success');
-    document.getElementById('cp-password').value = '';
+    const pwMsg = result.password ? ` · Contraseña: ${result.password}` : '';
+    window.showToast(`✅ Guardado${result.updated ? ` (${result.updated} alumnos sincronizados)` : ''}${pwMsg}`, 'success');
+    document.querySelector('.fixed.z-\\[300\\]')?.remove();
+    window.loadClassPasswordsList();
+  } catch (err) {
+    window.showToast('❌ ' + err.message, 'error');
+    btn.disabled = false;
+    btn.innerHTML = 'Guardar';
+  }
+}
+
+window.resetSchoolPasswords = async function resetSchoolPasswords() {
+  const school_code = document.getElementById('reset-school-select')?.value;
+  const password = document.getElementById('reset-password')?.value.trim() || null;
+  const requires_password = document.getElementById('reset-requires-password')?.checked;
+  const btn = document.getElementById('btn-reset-school');
+
+  if (!school_code) return window.showToast('❌ Elegí un establecimiento', 'error');
+  if (!confirm('Esto va a cambiar la contraseña de TODAS las clases de este establecimiento y sincronizar a todos sus alumnos. ¿Continuar?')) return;
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Aplicando...';
+
+  try {
+    const { data: { session } } = await window._supabase.auth.getSession();
+    const res = await fetch(`${window.SUPABASE_URL}/functions/v1/admin-set-class-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session?.access_token || ''}`,
+      },
+      body: JSON.stringify({ school_code, password, requires_password, apply_to_whole_school: true }),
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || 'Error al aplicar');
+
+    const pwMsg = result.password ? ` · Contraseña: ${result.password}` : '';
+    window.showToast(`✅ ${result.classes?.length || 0} clases actualizadas, ${result.updated} alumnos sincronizados${pwMsg}`, 'success');
+    document.getElementById('reset-password').value = '';
     window.loadClassPasswordsList();
   } catch (err) {
     window.showToast('❌ ' + err.message, 'error');
   } finally {
     btn.disabled = false;
-    btn.innerHTML = 'Guardar';
+    btn.innerHTML = 'Aplicar a todo el establecimiento';
   }
 }
 
