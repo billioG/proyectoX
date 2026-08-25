@@ -91,7 +91,7 @@ window.renderSchoolsContent = function renderSchoolsContent(container, schools) 
                               <button class="w-9 h-9 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-primary transition-all flex items-center justify-center border border-slate-50 dark:border-slate-800" onclick="window.editSchool(${s.id})" title="Editar">
                                   <i class="fas fa-edit text-sm"></i>
                               </button>
-                              <button class="w-9 h-9 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-rose-500 transition-all flex items-center justify-center border border-slate-50 dark:border-slate-800" onclick="window.deleteSchool(${s.id}, '${sanitizeInput(s.name).replace(/'/g, "\\'")}')" title="Eliminar">
+                              <button class="w-9 h-9 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-rose-500 transition-all flex items-center justify-center border border-slate-50 dark:border-slate-800" onclick="window.deleteSchool(${s.id}, '${sanitizeInput(s.code).replace(/'/g, "\\'")}', '${sanitizeInput(s.name).replace(/'/g, "\\'")}')" title="Eliminar">
                                   <i class="fas fa-trash text-sm"></i>
                               </button>
                           </div>
@@ -442,10 +442,20 @@ window.saveSchoolChanges = async function saveSchoolChanges(schoolId) {
   }
 }
 
-window.deleteSchool = async function deleteSchool(schoolId, schoolName) {
-  if (!confirm(`¿Eliminar "${schoolName}"?\n\nAdvertencia: Esto puede afectar a estudiantes y docentes asignados.`)) {
-    return;
+window.deleteSchool = async function deleteSchool(schoolId, schoolCode, schoolName) {
+  // Chequeo previo: si hay docentes o alumnos asignados, avisar con
+  // detalle y pasos concretos en vez de dejar que el DELETE falle con
+  // un error de base de datos crudo.
+  const [{ count: teacherCount }, { count: studentCount }] = await Promise.all([
+    window._supabase.from('teacher_assignments').select('id', { count: 'exact', head: true }).eq('school_code', schoolCode),
+    window._supabase.from('students').select('id', { count: 'exact', head: true }).eq('school_code', schoolCode),
+  ]);
+
+  if (teacherCount > 0 || studentCount > 0) {
+    return window.showSchoolDeleteBlockedModal(schoolName, teacherCount || 0, studentCount || 0);
   }
+
+  if (!confirm(`¿Eliminar "${schoolName}"? Esta acción no se puede deshacer.`)) return;
 
   try {
     const { error } = await window._supabase
@@ -460,8 +470,38 @@ window.deleteSchool = async function deleteSchool(schoolId, schoolName) {
 
   } catch (err) {
     console.error('Error eliminando establecimiento:', err);
-    window.showToast('<i class="fas fa-circle-xmark"></i> Error eliminando establecimiento', 'error');
+    if (err.code === '23503') {
+      window.showSchoolDeleteBlockedModal(schoolName, 0, 0, true);
+    } else {
+      window.showToast('<i class="fas fa-circle-xmark"></i> Error eliminando establecimiento: ' + err.message, 'error');
+    }
   }
+}
+
+window.showSchoolDeleteBlockedModal = function showSchoolDeleteBlockedModal(schoolName, teacherCount, studentCount, unknownRef = false) {
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 z-[300] flex items-center justify-center p-6 bg-slate-950/90 backdrop-blur-sm animate-fadeIn';
+  modal.innerHTML = `
+    <div class="glass-card w-full max-w-md p-8 shadow-2xl animate-slideUp">
+      <div class="w-14 h-14 rounded-2xl bg-rose-50 dark:bg-rose-900/10 text-rose-500 flex items-center justify-center text-2xl mb-4">
+        <i class="fas fa-triangle-exclamation"></i>
+      </div>
+      <h3 class="text-lg font-bold text-slate-800 dark:text-white mb-2">No se puede eliminar "${window.sanitizeInput(schoolName)}"</h3>
+      <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">
+        ${unknownRef
+          ? 'Este establecimiento todavía tiene datos relacionados (asistencias, evaluaciones u otro registro) que dependen de él.'
+          : `Este establecimiento todavía tiene ${teacherCount > 0 ? `<strong>${teacherCount} docente(s) asignado(s)</strong>` : ''}${teacherCount > 0 && studentCount > 0 ? ' y ' : ''}${studentCount > 0 ? `<strong>${studentCount} alumno(s) matriculado(s)</strong>` : ''} -- no se puede borrar mientras existan.`
+        }
+      </p>
+      <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Antes de eliminarlo, tenés que:</p>
+      <ul class="text-sm text-slate-600 dark:text-slate-300 space-y-1.5 mb-6 list-disc list-inside">
+        ${teacherCount > 0 || unknownRef ? '<li>Reasignar o quitar a los docentes de este establecimiento (Docentes → Asignaciones).</li>' : ''}
+        ${studentCount > 0 || unknownRef ? '<li>Eliminar o transferir a los alumnos de este establecimiento (Estudiantes → "Eliminar todos" en este establecimiento, o editarlos uno por uno para moverlos a otro).</li>' : ''}
+      </ul>
+      <button class="btn-primary-tw w-full h-11 text-xs uppercase font-bold" onclick="this.closest('.fixed').remove()">Entendido</button>
+    </div>
+  `;
+  document.body.appendChild(modal);
 }
 
 window.exportSchoolsCSV = async function exportSchoolsCSV() {
