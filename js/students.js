@@ -300,8 +300,16 @@ window.renderStudentsList = function renderStudentsList(container, students) {
       ` : ''}
 
       <div class="space-y-6">
-        ${Object.entries(groupedBySchool).map(([schoolCode, group]) => `
-          <details class="group/school animate-fadeIn" open>
+        ${Object.entries(groupedBySchool).map(([schoolCode, group]) => {
+          const groupedByClass = group.students.reduce((acc, student) => {
+            const key = `${student.grade || 'Sin grado'}|${student.section || 'Sin sección'}`;
+            if (!acc[key]) acc[key] = { grade: student.grade || 'Sin grado', section: student.section || 'Sin sección', students: [] };
+            acc[key].students.push(student);
+            return acc;
+          }, {});
+          const classGroups = Object.values(groupedByClass).sort((a, b) => `${a.grade}${a.section}`.localeCompare(`${b.grade}${b.section}`));
+          return `
+          <details class="group/school animate-fadeIn">
             <summary class="list-none cursor-pointer mb-4">
                 <div class="glass-card p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors border-none shadow-sm">
                     <div class="flex items-center gap-4">
@@ -323,9 +331,18 @@ window.renderStudentsList = function renderStudentsList(container, students) {
                     </div>
                 </div>
             </summary>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 pl-2 border-l-2 border-slate-100 dark:border-slate-800 ml-4">
-              ${group.students.map(s => `
+
+            <div class="space-y-3 pl-2 border-l-2 border-slate-100 dark:border-slate-800 ml-4">
+              ${classGroups.map(cg => `
+                <details class="group/class">
+                  <summary class="list-none cursor-pointer">
+                    <div class="bg-slate-50 dark:bg-slate-800/50 rounded-lg px-4 py-2.5 flex items-center justify-between hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                      <span class="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">${window.sanitizeInput(cg.grade)} ${window.sanitizeInput(cg.section)} <span class="text-slate-400 font-normal normal-case">· ${cg.students.length} alumnos</span></span>
+                      <i class="fas fa-chevron-down text-[0.6rem] text-slate-400 group-open/class:rotate-180 transition-transform"></i>
+                    </div>
+                  </summary>
+                  <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 mt-3">
+                    ${cg.students.map(s => `
                 <div class="student-card bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 p-3 flex items-center gap-3 group relative overflow-hidden hover:border-primary/30 transition-all shadow-sm"
                      data-name="${window.sanitizeAttr(s.full_name?.toLowerCase() || '')}"
                      data-cui="${window.sanitizeAttr(s.cui || '')}"
@@ -356,9 +373,12 @@ window.renderStudentsList = function renderStudentsList(container, students) {
                   ` : ''}
                 </div>
               `).join('')}
+                  </div>
+                </details>
+              `).join('')}
             </div>
           </details>
-        `).join('')}
+        `;}).join('')}
       </div>
   `;
 }
