@@ -3,7 +3,7 @@
 -- ============================================================
 
 create table if not exists public.ai_evaluations (
-  project_id uuid primary key references public.projects(id) on delete cascade,
+  project_id integer primary key references public.projects(id) on delete cascade,
   creativity_score int,
   clarity_score int,
   functionality_score int,
