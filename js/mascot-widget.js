@@ -16,53 +16,53 @@ const MascotWidget = {
     messages: {
         estudiante: {
             normal: [
-                "¿Qué vamos a construir hoy? <i class="fas fa-robot"></i>",
-                "¡Recuerda subir tus avances! <i class="fas fa-rocket"></i>",
-                "¡El código es tu superpoder! <i class="fas fa-bolt"></i>",
-                "¿Has revisado el ranking hoy? <i class="fas fa-trophy"></i>",
-                "¡Sigue aprendiendo, 1bot está contigo! <i class="fas fa-heart"></i>"
+                '¿Qué vamos a construir hoy? <i class="fas fa-robot"></i>',
+                '¡Recuerda subir tus avances! <i class="fas fa-rocket"></i>',
+                '¡El código es tu superpoder! <i class="fas fa-bolt"></i>',
+                '¿Has revisado el ranking hoy? <i class="fas fa-trophy"></i>',
+                '¡Sigue aprendiendo, 1bot está contigo! <i class="fas fa-heart"></i>'
             ],
             happy: [
-                "¡Increíble progreso! <i class="fas fa-champagne-glasses"></i>",
+                '¡Increíble progreso! <i class="fas fa-champagne-glasses"></i>',
                 "¡Eres una estrella del código! ⭐",
-                "¡Esa racha se ve genial! <i class="fas fa-fire"></i>",
-                "¡Nada te detiene! <i class="fas fa-rocket"></i>"
+                '¡Esa racha se ve genial! <i class="fas fa-fire"></i>',
+                '¡Nada te detiene! <i class="fas fa-rocket"></i>'
             ],
             thinking: [
-                "Mm... ¿cómo optimizaríamos ese algoritmo? <i class="fas fa-circle-question"></i>",
-                "Analizando nuevas posibilidades tecnológicas... <i class="fas fa-chart-bar"></i>",
-                "¿Y si probamos un enfoque diferente? <i class="fas fa-lightbulb"></i>"
+                'Mm... ¿cómo optimizaríamos ese algoritmo? <i class="fas fa-circle-question"></i>',
+                'Analizando nuevas posibilidades tecnológicas... <i class="fas fa-chart-bar"></i>',
+                '¿Y si probamos un enfoque diferente? <i class="fas fa-lightbulb"></i>'
             ],
             sleep: [
-                "Zzz... soñando con circuitos... <i class="fas fa-battery-full"></i>",
-                "Es tarde, ¡mañana seguimos innovando! <i class="fas fa-moon"></i>",
-                "Entrando en modo ahorro de energía... <i class="fas fa-plug"></i>"
+                'Zzz... soñando con circuitos... <i class="fas fa-battery-full"></i>',
+                'Es tarde, ¡mañana seguimos innovando! <i class="fas fa-moon"></i>',
+                'Entrando en modo ahorro de energía... <i class="fas fa-plug"></i>'
             ]
         },
         docente: {
             normal: [
-                "¡Hola, Profe! ¿Listos para inspirar? <i class="fas fa-apple-whole"></i>",
-                "Hay proyectos esperando tu evaluación. <i class="fas fa-chart-bar"></i>",
-                "¡Tus alumnos están logrando grandes cosas! <i class="fas fa-star"></i>",
-                "¿Ya pasaste asistencia hoy? <i class="fas fa-clipboard-list"></i>"
+                '¡Hola, Profe! ¿Listos para inspirar? <i class="fas fa-apple-whole"></i>',
+                'Hay proyectos esperando tu evaluación. <i class="fas fa-chart-bar"></i>',
+                '¡Tus alumnos están logrando grandes cosas! <i class="fas fa-star"></i>',
+                '¿Ya pasaste asistencia hoy? <i class="fas fa-clipboard-list"></i>'
             ],
             happy: [
-                "¡Excelente gestión de grupo! <i class="fas fa-wand-magic-sparkles"></i>",
-                "Tus KPIs están por las nubes hoy. <i class="fas fa-chart-line"></i>",
-                "¡Gracias por guiar a los futuros inventores! <i class="fas fa-robot"></i>"
+                '¡Excelente gestión de grupo! <i class="fas fa-wand-magic-sparkles"></i>',
+                'Tus KPIs están por las nubes hoy. <i class="fas fa-chart-line"></i>',
+                '¡Gracias por guiar a los futuros inventores! <i class="fas fa-robot"></i>'
             ],
             work: [
-                "Evaluando talentos... <i class="fas fa-pen"></i>️",
-                "Sincronizando datos de aprendizaje... <i class="fas fa-arrows-rotate"></i>",
-                "Preparando el próximo gran desafío. <i class="fas fa-bullseye"></i>"
+                'Evaluando talentos... <i class="fas fa-pen"></i>️',
+                'Sincronizando datos de aprendizaje... <i class="fas fa-arrows-rotate"></i>',
+                'Preparando el próximo gran desafío. <i class="fas fa-bullseye"></i>'
             ]
         },
         admin: {
             normal: [
-                "Sistema operativo estable. <i class="fas fa-circle-check"></i>",
-                "Explorando métricas de impacto... <i class="fas fa-chart-line"></i>",
-                "Todo bajo control en ProjectX. <i class="fas fa-shield"></i>️",
-                "¿Revisamos el informe mensual? <i class="fas fa-folder-open"></i>"
+                'Sistema operativo estable. <i class="fas fa-circle-check"></i>',
+                'Explorando métricas de impacto... <i class="fas fa-chart-line"></i>',
+                'Todo bajo control en ProjectX. <i class="fas fa-shield"></i>️',
+                '¿Revisamos el informe mensual? <i class="fas fa-folder-open"></i>'
             ]
         }
     },
