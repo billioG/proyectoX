@@ -421,10 +421,20 @@ window.toggleResourceSourceField = function toggleResourceSourceField() {
   if (singleFileInput) singleFileInput.accept = SINGLEFILE_ACCEPT_BY_TYPE[type] || '';
 }
 
+// Supabase Storage rechaza ciertos caracteres en la key (dos puntos,
+// espacios raros, etc.) -- nombres de archivo generados por el sistema
+// (ej. "Escaneado el 27-07-2026, 6:12:19 p. m..pdf") los tienen.
+function sanitizeStorageFilename(filename) {
+  const lastDot = filename.lastIndexOf('.');
+  const name = lastDot > 0 ? filename.slice(0, lastDot) : filename;
+  const ext = lastDot > 0 ? filename.slice(lastDot) : '';
+  return name.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') + ext;
+}
+
 async function uploadSingleLessonFile(file, lessonId) {
   const contentType = window.getFileMimeType(file.name);
   const blob = new Blob([file], { type: contentType });
-  const path = `lessons/${lessonId}/${file.name}`;
+  const path = `lessons/${lessonId}/${sanitizeStorageFilename(file.name)}`;
   const { error } = await window._supabase.storage.from(LESSON_STORAGE_BUCKET).upload(path, blob, { upsert: true, contentType });
   if (error) throw new Error(`Error subiendo ${file.name}: ${error.message}`);
   const { data: { publicUrl } } = window._supabase.storage.from(LESSON_STORAGE_BUCKET).getPublicUrl(path);
@@ -784,7 +794,11 @@ window.confirmCopyCourse = async function confirmCopyCourse(courseId) {
   }
 
   window.showToast('<i class="fas fa-circle-check"></i> Curso copiado a tu clase', 'success');
-  document.querySelectorAll('.fixed').forEach(m => m.remove());
+  // Solo cerramos los modales de esta pantalla (copiar + biblioteca), NUNCA
+  // un ".fixed" genérico -- el sidebar también usa esa clase y un borrado
+  // amplio lo elimina del DOM entero, no solo lo oculta.
+  document.querySelector('.fixed.z-\\[210\\]')?.remove();
+  document.querySelector('.fixed.z-\\[200\\]')?.remove();
   window.loadLessons();
 }
 

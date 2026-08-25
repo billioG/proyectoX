@@ -465,7 +465,7 @@ function renderMonthlyReportsQuickAccess(reports, allTeachers) {
                         <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0"><i class="fas fa-check text-xs"></i></div>
                         <span class="text-sm font-bold text-slate-700 dark:text-slate-200 truncate">${window.sanitizeInput(r.teachers?.full_name || 'Docente')}</span>
                     </div>
-                    <button onclick="window.viewTeacherMonthlyReport(${r.id})" class="shrink-0 h-8 px-3 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-primary text-[0.6rem] font-black uppercase">Ver</button>
+                    <button onclick="window.viewTeacherMonthlyReport('${r.id}')" class="shrink-0 h-8 px-3 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-primary text-[0.6rem] font-black uppercase">Ver</button>
                 </div>
             `).join('')}
             ${pending.map(t => `
