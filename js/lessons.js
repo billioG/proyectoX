@@ -1127,14 +1127,33 @@ window.teardownScormSession = function teardownScormSession() {
 // ================================================
 // RUNTIME H5P -- captura nota vía eventos xAPI
 // ================================================
-window.initH5PSession = async function initH5PSession(lesson) {
+window.initH5PSession = async function initH5PSession(lesson, attempt = 1) {
   const container = document.getElementById('h5p-container');
-  if (!container || typeof H5PStandalone === 'undefined') {
-    if (container) container.innerHTML = '<p class="text-rose-500 text-sm text-center py-10">No se pudo cargar el reproductor H5P.</p>';
+  if (!container) return;
+
+  // A veces main.bundle.js (que define window.H5PStandalone) todavía no
+  // terminó de ejecutarse cuando el alumno navega rápido entre recursos del
+  // curso, o Supabase Storage devolvió un 429 momentáneo en alguna librería
+  // del paquete H5P -- ambos son transitorios, así que reintentamos un par
+  // de veces antes de rendirnos (esto explicaba el "a veces sí, a veces no").
+  if (typeof H5PStandalone === 'undefined') {
+    if (attempt >= 3) {
+      container.innerHTML = `<div class="text-center py-10"><p class="text-rose-500 text-sm mb-3">No se pudo cargar el reproductor H5P.</p><button class="btn-secondary-tw h-9 px-4 text-xs uppercase font-bold" onclick="window.initH5PSession(window._activeCourse.items[window._activeCourseIndex])"><i class="fas fa-rotate"></i> Reintentar</button></div>`;
+      return;
+    }
+    setTimeout(() => window.initH5PSession(lesson, attempt + 1), 800);
     return;
   }
 
   try {
+    // Un curso puede tener varios recursos H5P -- cada uno necesita su
+    // propio acumulador de puntaje (algunos H5P, como Video Interactivo,
+    // disparan VARIAS interacciones internas -- multi-choice con nota real,
+    // preguntas abiertas sin nota, etc. -- y hay que sumarlas, no quedarnos
+    // solo con la última que llegó, o una interacción sin nota pisa la nota
+    // real de otra que sí tenía).
+    const scoredInteractions = new Map();
+
     const h5p = new H5PStandalone.H5P(container, {
       h5pJsonPath: lesson.content_url.replace(/\/$/, ''),
       frameJs: 'https://cdn.jsdelivr.net/npm/h5p-standalone@3.7.0/dist/frame.bundle.js',
@@ -1148,13 +1167,20 @@ window.initH5PSession = async function initH5PSession(lesson) {
       if (innerH5P?.externalDispatcher) {
         clearInterval(waitForDispatcher);
         innerH5P.externalDispatcher.on('xAPI', (event) => {
-          const result = event?.data?.statement?.result;
-          if (!result || result.score == null) return;
-          const raw = result.score.raw ?? (result.score.scaled != null ? result.score.scaled * 100 : null);
-          const max = result.score.max || 100;
-          const pct = raw !== null ? Math.round((raw / max) * 100) : null;
+          const statement = event?.data?.statement;
+          const result = statement?.result;
+          if (!result || result.score == null || !result.score.max) return;
+
+          // Cada sub-interacción tiene su propio id de objeto xAPI -- se
+          // guarda la última nota de CADA una y se suma el total al final.
+          const objectId = statement.object?.id || crypto.randomUUID();
+          scoredInteractions.set(objectId, { raw: result.score.raw ?? 0, max: result.score.max });
+
+          let totalRaw = 0, totalMax = 0;
+          scoredInteractions.forEach(s => { totalRaw += s.raw; totalMax += s.max; });
+          const pct = totalMax > 0 ? Math.round((totalRaw / totalMax) * 100) : 0;
           const status = result.completion ? 'completed' : 'incomplete';
-          persistLessonScore(lesson.id, pct, status, event.data.statement);
+          persistLessonScore(lesson.id, pct, status, statement);
           updateLiveScoreLabel(pct, status);
         });
       }
