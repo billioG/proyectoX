@@ -357,6 +357,40 @@ async function ensureUniqueUsernames(students) {
 
     const usedInThisBatch = new Set();
 
+    // Contraseña por clase (escuela+grado+sección), no una fija global.
+    // Si la clase todavía no tiene una configurada, se genera una al azar
+    // acá mismo -- el admin puede cambiarla después desde el panel.
+    const classPasswordMap = new Map();
+    try {
+        const { data: existingClassPw } = await window._supabase.from('class_passwords').select('school_code, grade, section, password');
+        (existingClassPw || []).forEach(cp => classPasswordMap.set(`${cp.school_code}|${cp.grade}|${cp.section}`, cp.password));
+    } catch (e) {
+        console.warn('⚠️ No se pudieron leer contraseñas de clase existentes.', e);
+    }
+
+    const genClassPassword = () => {
+        const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+        let pw = '';
+        for (let i = 0; i < 8; i++) pw += chars[Math.floor(Math.random() * chars.length)];
+        return pw;
+    };
+
+    const classCombos = new Set(students.map(s => `${s.school_code}|${s.grade}|${s.section}`));
+    const newClassRows = [];
+    for (const combo of classCombos) {
+        if (!classPasswordMap.has(combo)) {
+            const [school_code, grade, section] = combo.split('|');
+            const pw = genClassPassword();
+            classPasswordMap.set(combo, pw);
+            newClassRows.push({ school_code, grade, section, password: pw, requires_password: true });
+        }
+    }
+    if (newClassRows.length) {
+        const { error: cpErr } = await window._supabase.from('class_passwords').upsert(newClassRows, { onConflict: 'school_code,grade,section' });
+        if (cpErr) console.error('Error creando contraseñas de clase:', cpErr);
+        else window.showToast(`🔑 ${newClassRows.length} contraseña(s) de clase generadas. Revisalas en "Contraseñas de Clase".`, 'info');
+    }
+
     return students.map((student, index) => {
         // Asegurar que tenemos strings válidos
         const p1 = student.primerNombre || 'estudiante';
@@ -393,7 +427,7 @@ async function ensureUniqueUsernames(students) {
             ...student,
             username: finalUsername,
             email: `${finalUsername}@estudiante.edu.gt`,
-            password: '1bot.Org2024'
+            password: classPasswordMap.get(`${student.school_code}|${student.grade}|${student.section}`) || genClassPassword()
         };
     });
 }

@@ -184,29 +184,46 @@ export async function handleLogin() {
 
   const username = userEl?.value.trim();
   const password = passEl?.value.trim();
-  if (!username || !password) return showToast('❌ Completa los campos', 'error');
+  if (!username) return showToast('❌ Ingresá tu usuario o correo', 'error');
 
   btn.disabled = true;
   btn.classList.add('opacity-50', 'cursor-not-allowed');
   btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Verificando...';
 
   try {
-    let email = username;
-    if (!username.includes('@')) {
-      const { data: st } = await _supabase.from('students').select('email').eq('username', username).maybeSingle();
-      if (st) email = st.email;
-      else {
-        const { data: tc } = await _supabase.from('teachers').select('email').eq('username', username).maybeSingle();
-        if (tc) email = tc.email;
-        else throw new Error('Usuario no encontrado');
-      }
-    }
+    if (username.includes('@')) {
+      // Docentes/admin siempre entran con email + contraseña real.
+      if (!password) throw new Error('Ingresá tu contraseña');
+      const { data, error } = await _supabase.auth.signInWithPassword({ email: username, password });
+      if (error) throw error;
+      await handleSuccessfulLogin(data.user);
+    } else {
+      // Login de alumno por usuario -- pasa por la edge function
+      // student-login, que valida la contraseña de CLASE (o permite
+      // entrar sin ella si esa clase la tiene desactivada) sin exponer
+      // nunca la contraseña real al cliente, y emite la sesión vía
+      // magic link.
+      const res = await fetch(`${window.SUPABASE_URL}/functions/v1/student-login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({ username, password }),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || 'Login fallido');
 
-    const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-    await handleSuccessfulLogin(data.user);
+      const { data, error } = await _supabase.auth.verifyOtp({
+        email: result.email,
+        token_hash: result.token_hash,
+        type: 'magiclink',
+      });
+      if (error) throw error;
+      await handleSuccessfulLogin(data.user);
+    }
   } catch (err) {
-    showToast('❌ Login fallido: ' + err.message, 'error');
+    showToast('❌ ' + err.message, 'error');
   } finally {
     btn.disabled = false;
     btn.classList.remove('opacity-50', 'cursor-not-allowed');

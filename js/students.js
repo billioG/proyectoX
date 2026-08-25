@@ -2,6 +2,103 @@
  * STUDENTS - Gestión de Estudiantes (Premium Edition)
  */
 
+window.openClassPasswordsPanel = async function openClassPasswordsPanel() {
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-sm animate-fadeIn';
+  modal.innerHTML = `
+    <div class="glass-card w-full max-w-3xl p-0 overflow-hidden shadow-2xl animate-slideUp">
+      <div class="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-white/50 dark:bg-slate-900/50 backdrop-blur-md sticky top-0 z-10">
+        <h2 class="text-xl font-bold text-slate-800 dark:text-white uppercase tracking-tighter"><i class="fas fa-key text-primary mr-2"></i> Contraseñas de Clase</h2>
+        <button class="text-slate-400 hover:text-rose-500 font-bold text-2xl transition-colors" onclick="this.closest('.fixed').remove()">×</button>
+      </div>
+      <div class="p-8 max-h-[75vh] overflow-y-auto custom-scrollbar">
+        <p class="text-xs text-slate-400 mb-6">Cada clase (establecimiento + grado + sección) tiene UNA contraseña compartida para todos sus alumnos. Podés desactivarla por completo para que entren solo con su usuario (modo Kolibri). Al cambiar la contraseña de una clase, se actualiza al instante la cuenta real de cada alumno ya matriculado ahí.</p>
+
+        <div class="p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 mb-8">
+          <p class="text-[0.65rem] font-black uppercase text-slate-400 tracking-widest mb-4">Configurar / Actualizar Clase</p>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+            <input type="text" id="cp-school-code" placeholder="Código de establecimiento" class="input-field-tw h-11 text-sm">
+            <input type="text" id="cp-grade" placeholder="Grado (ej: 1ro Básico)" class="input-field-tw h-11 text-sm">
+            <input type="text" id="cp-section" placeholder="Sección (ej: A)" class="input-field-tw h-11 text-sm">
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-center">
+            <input type="text" id="cp-password" placeholder="Contraseña de la clase" class="input-field-tw h-11 text-sm sm:col-span-2">
+            <label class="flex items-center gap-2 text-xs font-bold text-slate-500">
+              <input type="checkbox" id="cp-requires-password" checked class="w-4 h-4"> Requiere contraseña
+            </label>
+          </div>
+          <button class="btn-primary-tw h-11 px-8 text-xs uppercase font-black mt-4" id="btn-save-class-password" onclick="window.saveClassPassword()">Guardar</button>
+        </div>
+
+        <p class="text-[0.65rem] font-black uppercase text-slate-400 tracking-widest mb-3">Clases configuradas</p>
+        <div id="class-passwords-list" class="space-y-2">
+          <div class="text-center text-slate-400 text-xs py-6"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  window.loadClassPasswordsList();
+}
+
+window.loadClassPasswordsList = async function loadClassPasswordsList() {
+  const listEl = document.getElementById('class-passwords-list');
+  if (!listEl) return;
+  const { data, error } = await window._supabase.from('class_passwords').select('school_code, grade, section, requires_password, updated_at').order('school_code');
+  if (error) { listEl.innerHTML = `<p class="text-rose-500 text-xs">Error: ${error.message}</p>`; return; }
+  if (!data || !data.length) { listEl.innerHTML = '<p class="text-slate-400 text-xs">Todavía no hay clases configuradas.</p>'; return; }
+
+  listEl.innerHTML = data.map(c => `
+    <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+      <div class="text-xs">
+        <span class="font-bold text-slate-700 dark:text-slate-200">${window.sanitizeInput(c.school_code)}</span>
+        <span class="text-slate-400"> · ${window.sanitizeInput(c.grade)} ${window.sanitizeInput(c.section)}</span>
+      </div>
+      <span class="text-[0.6rem] font-black uppercase px-2 py-1 rounded-lg ${c.requires_password ? 'bg-slate-200 dark:bg-slate-700 text-slate-500' : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600'}">
+        ${c.requires_password ? 'Con contraseña' : 'Sin contraseña (usuario solo)'}
+      </span>
+    </div>
+  `).join('');
+}
+
+window.saveClassPassword = async function saveClassPassword() {
+  const school_code = document.getElementById('cp-school-code')?.value.trim();
+  const grade = document.getElementById('cp-grade')?.value.trim();
+  const section = document.getElementById('cp-section')?.value.trim();
+  const password = document.getElementById('cp-password')?.value.trim();
+  const requires_password = document.getElementById('cp-requires-password')?.checked;
+  const btn = document.getElementById('btn-save-class-password');
+
+  if (!school_code || !grade || !section) return window.showToast('❌ Completa establecimiento, grado y sección', 'error');
+  if (requires_password && (!password || password.length < 4)) return window.showToast('❌ La contraseña debe tener al menos 4 caracteres', 'error');
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+
+  try {
+    const { data: { session } } = await window._supabase.auth.getSession();
+    const res = await fetch(`${window.SUPABASE_URL}/functions/v1/admin-set-class-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session?.access_token || ''}`,
+      },
+      body: JSON.stringify({ school_code, grade, section, password: requires_password ? password : null, requires_password }),
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || 'Error al guardar');
+
+    window.showToast(`✅ Contraseña de clase guardada${result.updated ? ` (${result.updated} alumnos sincronizados)` : ''}`, 'success');
+    document.getElementById('cp-password').value = '';
+    window.loadClassPasswordsList();
+  } catch (err) {
+    window.showToast('❌ ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'Guardar';
+  }
+}
+
 window.loadStudents = async function loadStudents() {
   const container = document.getElementById('students-container');
   if (!container) return;
