@@ -33,6 +33,14 @@ window.openEvaluationModal = async function openEvaluationModal(projectId) {
         return;
     }
 
+    let aiEval = null;
+    try {
+        const { data } = await _supabase.from('ai_evaluations').select('*').eq('project_id', projectId).maybeSingle();
+        aiEval = data;
+    } catch (e) {
+        // Tabla ai_evaluations puede no existir todavía en algunos entornos -- no es bloqueante.
+    }
+
     const modal = document.createElement('div');
     modal.className = 'fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-md animate-fadeIn overflow-y-auto';
     modal.id = 'evaluation-modal';
@@ -81,8 +89,25 @@ window.openEvaluationModal = async function openEvaluationModal(projectId) {
 
               <!-- Bottom Part: Evaluation Form -->
               <div class="w-full p-8 flex flex-col relative">
-                  <div class="flex justify-between items-center mb-8">
+                  <div class="flex justify-between items-center mb-4">
                       <h3 class="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Rúbrica de Evaluación Oficial</h3>
+                  </div>
+
+                  <div id="ai-eval-panel" class="mb-6 p-5 rounded-2xl border ${aiEval ? 'border-indigo-200 dark:border-indigo-900 bg-indigo-50/50 dark:bg-indigo-950/20' : 'border-dashed border-slate-200 dark:border-slate-700'}">
+                    ${aiEval ? `
+                      <div class="flex justify-between items-start gap-4">
+                        <div>
+                          <div class="text-[0.6rem] font-black uppercase text-indigo-500 tracking-widest mb-1"><i class="fas fa-robot"></i> Segunda opinión (IA) -- ${aiEval.total_score}/100</div>
+                          <p class="text-xs text-slate-600 dark:text-slate-300 italic">"${sanitizeInput(aiEval.feedback || '')}"</p>
+                        </div>
+                        <button onclick="window.runAiEvaluation('${projectId}')" class="shrink-0 h-8 px-3 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-indigo-500 text-[0.6rem] font-bold uppercase" id="btn-ai-evaluate"><i class="fas fa-rotate"></i> Volver a evaluar</button>
+                      </div>
+                    ` : `
+                      <div class="flex items-center justify-between gap-4">
+                        <p class="text-xs text-slate-400"><i class="fas fa-robot mr-1"></i> La IA puede dar una segunda opinión basada en el título y la descripción (no ve el video).</p>
+                        <button onclick="window.runAiEvaluation('${projectId}')" class="shrink-0 btn-secondary-tw h-9 px-4 text-[0.65rem] uppercase font-bold" id="btn-ai-evaluate"><i class="fas fa-robot"></i> Evaluar con IA</button>
+                      </div>
+                    `}
                   </div>
 
                   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
@@ -146,6 +171,40 @@ window.updateEvaluationTotal = function updateEvaluationTotal() {
         if (total >= 90) { el.className = 'text-7xl font-black text-emerald-500 leading-none'; if (label) { label.className = 'mt-6 text-[0.6rem] font-black uppercase tracking-widest px-4 py-2 rounded-full inline-block bg-emerald-500/10 text-emerald-500'; label.innerText = 'Excelente Nivel'; } }
         else if (total >= 70) { el.className = 'text-7xl font-black text-amber-500 leading-none'; if (label) { label.className = 'mt-6 text-[0.6rem] font-black uppercase tracking-widest px-4 py-2 rounded-full inline-block bg-amber-500/10 text-amber-500'; label.innerText = 'Nivel Satisfactorio'; } }
         else { el.className = 'text-7xl font-black text-rose-500 leading-none'; if (label) { label.className = 'mt-6 text-[0.6rem] font-black uppercase tracking-widest px-4 py-2 rounded-full inline-block bg-rose-500/10 text-rose-500'; label.innerText = 'Necesita Refuerzo'; } }
+    }
+}
+
+window.runAiEvaluation = async function runAiEvaluation(projectId) {
+    const btn = document.getElementById('btn-ai-evaluate');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+
+    try {
+        const { data: { session } } = await window._supabase.auth.getSession();
+        const res = await fetch(`${window.SUPABASE_URL}/functions/v1/ai-evaluate-project`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
+            body: JSON.stringify({ project_id: projectId }),
+        });
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || 'Error evaluando con IA');
+
+        const panel = document.getElementById('ai-eval-panel');
+        if (panel) {
+            panel.className = 'mb-6 p-5 rounded-2xl border border-indigo-200 dark:border-indigo-900 bg-indigo-50/50 dark:bg-indigo-950/20';
+            panel.innerHTML = `
+              <div class="flex justify-between items-start gap-4">
+                <div>
+                  <div class="text-[0.6rem] font-black uppercase text-indigo-500 tracking-widest mb-1"><i class="fas fa-robot"></i> Segunda opinión (IA) -- ${result.total_score}/100</div>
+                  <p class="text-xs text-slate-600 dark:text-slate-300 italic">"${window.sanitizeInput ? window.sanitizeInput(result.feedback || '') : (result.feedback || '')}"</p>
+                </div>
+                <button onclick="window.runAiEvaluation('${projectId}')" class="shrink-0 h-8 px-3 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-indigo-500 text-[0.6rem] font-bold uppercase" id="btn-ai-evaluate"><i class="fas fa-rotate"></i> Volver a evaluar</button>
+              </div>
+            `;
+        }
+        window.showToast('<i class="fas fa-circle-check"></i> Evaluación de IA lista', 'success');
+    } catch (err) {
+        window.showToast('<i class="fas fa-circle-xmark"></i> ' + err.message, 'error');
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-robot"></i> Evaluar con IA'; }
     }
 }
 
