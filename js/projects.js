@@ -28,7 +28,7 @@ window.loadFeed = async function loadFeed() {
     // Patrón Local-First: Cargar de cache e intentar red
     await fetchWithCache('projects_feed_cache', async () => {
       const { data, error } = await _supabase.from('projects')
-        .select(`*, students(*, schools(*)), groups(name, group_members(student_id))`)
+        .select(`*, students(*, schools(*)), groups(name, group_members(student_id)), evaluations(total_score, feedback)`)
         .order('votes', { ascending: false })
         .order('score', { ascending: false });
       if (error) throw error;

@@ -65,6 +65,7 @@ window.renderProjectCard = function renderProjectCard(p) {
 
   const isEvaluated = p.score > 0 || (p.evaluations && p.evaluations.length > 0);
   const score = p.score || (p.evaluations?.[0]?.total_score || 0);
+  const feedback = p.evaluations?.[0]?.feedback;
 
   // Privacidad: Estudiantes solo ven sus propios puntajes/votos o los de su grupo
   const isOwner = p.user_id === currentUser?.id;
@@ -72,68 +73,75 @@ window.renderProjectCard = function renderProjectCard(p) {
   const canSeeScore = isOwner || isGroupMember || userRole === 'docente' || userRole === 'admin';
 
   return `
-    <div class="project-card group bg-white dark:bg-slate-900 rounded-[2.5rem] overflow-hidden hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 flex flex-col border border-slate-100 dark:border-slate-800" data-title="${(p.title || '').toLowerCase()}" data-school="${p.students?.schools?.name || ''}">
-      
+    <div class="project-card group bg-white dark:bg-slate-900 rounded-2xl overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col border border-slate-100 dark:border-slate-800" data-title="${(p.title || '').toLowerCase()}" data-school="${p.students?.schools?.name || ''}">
+
       <!-- Media Header -->
-      <div class="relative aspect-video bg-slate-950 overflow-hidden m-3 rounded-[2rem] shadow-inner">
+      <div class="relative aspect-video bg-slate-950 overflow-hidden">
         ${p.video_url ? `
-            <video preload="metadata" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-all duration-700">
+            <video preload="metadata" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-all duration-500">
               <source src="${p.video_url}" type="video/mp4">
             </video>
             <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent group-hover:from-black/20 transition-all"></div>
             <div class="absolute inset-0 flex items-center justify-center">
-                <div class="w-14 h-14 bg-white/20 backdrop-blur-2xl rounded-full flex items-center justify-center border border-white/40 text-white text-xl group-hover:scale-125 group-hover:bg-primary transition-all duration-500 shadow-2xl">
-                    <i class="fas fa-play ml-1"></i>
+                <div class="w-10 h-10 bg-white/20 backdrop-blur-2xl rounded-full flex items-center justify-center border border-white/40 text-white text-sm group-hover:scale-110 group-hover:bg-primary transition-all duration-300 shadow-xl">
+                    <i class="fas fa-play ml-0.5"></i>
                 </div>
             </div>
         ` : `
             <div class="w-full h-full flex flex-col items-center justify-center text-slate-700 bg-slate-900/50">
-                <i class="fas fa-cloud-upload-alt text-3xl mb-3 opacity-20"></i>
-                <span class="text-[0.7rem] font-black uppercase tracking-[0.2em] opacity-30">Pendiente de Media</span>
+                <i class="fas fa-cloud-upload-alt text-2xl mb-2 opacity-20"></i>
+                <span class="text-[0.6rem] font-black uppercase tracking-[0.2em] opacity-30">Pendiente de Media</span>
             </div>
         `}
-        
-        <div class="absolute top-4 left-4">
-            <span class="px-3.5 py-1.5 rounded-full bg-black/60 backdrop-blur-md text-white text-[0.65rem] font-black uppercase tracking-widest border border-white/10 shadow-xl">
+
+        <div class="absolute top-2.5 left-2.5">
+            <span class="px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-white text-[0.55rem] font-black uppercase tracking-widest border border-white/10">
                 ${p.bimestre || 1}º Bimestre
             </span>
         </div>
-        
+
         ${canSeeScore ? `
-          <div class="absolute top-4 right-4">
-              <div class="px-4 py-1.5 rounded-full bg-emerald-500 text-white font-black text-xs shadow-xl border border-emerald-400/30 flex items-center gap-1.5">
-                  ${score} <span class="text-[0.6rem] opacity-70 font-bold uppercase tracking-widest">PTS</span>
+          <div class="absolute top-2.5 right-2.5">
+              <div class="px-3 py-1 rounded-full bg-emerald-500 text-white font-black text-[0.7rem] shadow-lg flex items-center gap-1">
+                  ${score} <span class="text-[0.55rem] opacity-70 font-bold uppercase tracking-widest">PTS</span>
               </div>
           </div>
         ` : ''}
       </div>
-    
+
       <!-- Info Content -->
-      <div class="px-7 py-6 grow flex flex-col">
-        <div class="flex items-center justify-between mb-5">
-            <div class="flex items-center gap-3 overflow-hidden shrink min-w-0">
-                <div class="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center text-sm shrink-0 shadow-sm border border-primary/5">
+      <div class="px-4 py-4 grow flex flex-col">
+        <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2 overflow-hidden shrink min-w-0">
+                <div class="w-6 h-6 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-[0.65rem] shrink-0">
                     <i class="fas fa-school"></i>
                 </div>
-                <span class="text-[0.7rem] font-black uppercase tracking-[0.15em] text-slate-400 truncate tracking-tight">${sanitizeInput(p.students?.schools?.name || 'Academia 1Bot')}</span>
+                <span class="text-[0.6rem] font-black uppercase tracking-widest text-slate-400 truncate">${sanitizeInput(p.students?.schools?.name || 'Academia 1Bot')}</span>
             </div>
-            
+
             ${currentUser ? `
-              <button onclick="window.toggleLike && window.toggleLike(${p.id})" class="flex items-center gap-2 px-4 py-2 rounded-full bg-rose-500/5 text-rose-500 hover:bg-rose-500 hover:text-white transition-all shadow-sm border border-rose-500/10 group/like">
-                  <i class="fas fa-heart text-sm group-hover/like:scale-125 transition-transform"></i>
-                  <span class="text-xs font-black" data-votes-id="${p.id}">${p.votes || 0}</span>
+              <button onclick="window.toggleLike && window.toggleLike(${p.id})" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-500/5 text-rose-500 hover:bg-rose-500 hover:text-white transition-all group/like shrink-0">
+                  <i class="fas fa-heart text-xs group-hover/like:scale-125 transition-transform"></i>
+                  <span class="text-[0.7rem] font-black" data-votes-id="${p.id}">${p.votes || 0}</span>
               </button>
             ` : ''}
         </div>
 
-        <h3 class="text-xl font-black text-slate-800 dark:text-white tracking-tight mb-3 group-hover:text-primary transition-colors line-clamp-1 leading-none uppercase">${sanitizeInput(p.title)}</h3>
-        <p class="text-[0.85rem] text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed mb-6 font-medium">
+        <h3 class="text-sm font-black text-slate-800 dark:text-white tracking-tight mb-1.5 group-hover:text-primary transition-colors line-clamp-1 uppercase">${sanitizeInput(p.title)}</h3>
+        <p class="text-[0.75rem] text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed mb-3 font-medium">
           ${sanitizeInput(p.description || 'Este proyecto tecnológico aún no tiene una descripción detallada.')}
         </p>
 
-        <div class="mt-auto pt-6 border-t border-slate-50 dark:border-slate-800/50">
-            <button onclick="window.viewProjectDetails && window.viewProjectDetails(${p.id})" class="w-full h-12 rounded-2xl bg-slate-50 dark:bg-slate-800 hover:bg-primary shadow-sm hover:text-white text-slate-600 dark:text-slate-300 font-black text-[0.75rem] uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 group/btn">
-                VER PROYECTO <i class="fas fa-arrow-right text-[0.7rem] opacity-30 group-hover/btn:translate-x-1 transition-transform"></i>
+        ${canSeeScore && feedback ? `
+          <div class="mb-3 p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/30 border-l-4 border-indigo-400">
+            <div class="text-[0.55rem] font-black uppercase text-indigo-500 tracking-widest mb-1"><i class="fas fa-comment-dots"></i> Feedback del docente</div>
+            <p class="text-[0.75rem] text-slate-600 dark:text-slate-300 italic line-clamp-3">"${sanitizeInput(feedback)}"</p>
+          </div>
+        ` : ''}
+
+        <div class="mt-auto pt-3 border-t border-slate-50 dark:border-slate-800/50">
+            <button onclick="window.viewProjectDetails && window.viewProjectDetails(${p.id})" class="w-full h-9 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-primary shadow-sm hover:text-white text-slate-600 dark:text-slate-300 font-black text-[0.65rem] uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 group/btn">
+                VER PROYECTO <i class="fas fa-arrow-right text-[0.6rem] opacity-30 group-hover/btn:translate-x-1 transition-transform"></i>
             </button>
         </div>
       </div>
