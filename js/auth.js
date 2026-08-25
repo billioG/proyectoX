@@ -296,8 +296,18 @@ export async function handleSuccessfulLogin(user) {
     updateHeaderUI();
     setupNavigationUI();
 
-    // Verificación de cambio de contraseña obligatorio
-    if (user.user_metadata?.needs_password_change) {
+    // Verificación de cambio de contraseña obligatorio -- no aplica si la
+    // clase del alumno está configurada como "sin contraseña" (si no, se le
+    // pediría fijar una contraseña que después ni siquiera va a usar).
+    let mustChangePassword = !!user.user_metadata?.needs_password_change;
+    if (mustChangePassword && role === 'estudiante' && data?.school_code && data?.grade && data?.section) {
+      const { data: classRequiresPassword } = await _supabase.rpc('get_class_login_mode', {
+        p_school_code: data.school_code, p_grade: data.grade, p_section: data.section,
+      });
+      if (classRequiresPassword === false) mustChangePassword = false;
+    }
+
+    if (mustChangePassword) {
       showMandatoryPasswordChangeModal();
     } else {
       nav(window.userRole === 'admin' ? 'admin-dashboard' : 'feed');
