@@ -8,6 +8,37 @@ const LESSON_TYPE_LABEL = { video: 'Video', pdf: 'PDF', image: 'Imagen', scorm: 
 const LESSON_TYPES_WITH_GRADE = new Set(['scorm', 'h5p']);
 const LESSON_STORAGE_BUCKET = 'course-content';
 
+// El navegador puede descargar la pestaña en segundo plano (Chrome Memory
+// Saver) y al volver hace una recarga real -- no hay forma de evitarlo
+// desde la app, pero sí de no perder lo ya escrito: autoguardamos estos
+// formularios en sessionStorage y los restauramos si el modal se reabre.
+function attachFormDraftAutosave(modalEl, storageKey, fieldIds) {
+  const save = () => {
+    const draft = {};
+    fieldIds.forEach(id => {
+      const el = document.getElementById(id);
+      if (el && el.type !== 'file') draft[id] = el.value;
+    });
+    sessionStorage.setItem(storageKey, JSON.stringify(draft));
+  };
+  modalEl.addEventListener('input', save);
+  modalEl.addEventListener('change', save);
+
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(storageKey) || 'null');
+    if (saved) {
+      fieldIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el && el.type !== 'file' && saved[id] !== undefined && !el.value) el.value = saved[id];
+      });
+    }
+  } catch (e) { /* borrador corrupto, se ignora */ }
+}
+
+function clearFormDraft(storageKey) {
+  sessionStorage.removeItem(storageKey);
+}
+
 window.loadLessons = async function loadLessons() {
   const container = document.getElementById('lessons-container');
   if (!container) return;
@@ -167,6 +198,7 @@ window.openCreateCourseModal = async function openCreateCourseModal(editCourseId
   `;
   document.body.appendChild(modal);
   window._courseClassOptions = classOptions;
+  if (!editing) attachFormDraftAutosave(modal, 'px_draft_course', ['course-title', 'course-description', 'course-tags']);
 }
 
 window.saveCourse = async function saveCourse(editingId) {
@@ -213,6 +245,7 @@ window.saveCourse = async function saveCourse(editingId) {
     return;
   }
 
+  clearFormDraft('px_draft_course');
   window.showToast('<i class="fas fa-circle-check"></i> Curso creado -- agregale recursos', 'success');
   document.querySelector('.fixed.z-\\[200\\]')?.remove();
   window._myCoursesCache = [...(window._myCoursesCache || []), data];
@@ -365,6 +398,10 @@ window.openAddResourceModal = function openAddResourceModal(courseId, editLesson
     </div>
   `;
   document.body.appendChild(modal);
+  if (!editing) {
+    attachFormDraftAutosave(modal, `px_draft_resource_${courseId}`, ['resource-title', 'resource-url', 'resource-type', 'resource-source-mode']);
+    window.toggleResourceSourceField();
+  }
 }
 
 window.toggleResourceSourceField = function toggleResourceSourceField() {
@@ -487,6 +524,7 @@ window.saveResource = async function saveResource(courseId, editingId) {
     }).select().single();
     if (error) throw error;
 
+    clearFormDraft(`px_draft_resource_${courseId}`);
     window.showToast('<i class="fas fa-circle-check"></i> Recurso agregado', 'success');
     document.querySelector('.fixed.z-\\[210\\]')?.remove();
     window._managingCourseLessons = [...(window._managingCourseLessons || []), newLesson];
