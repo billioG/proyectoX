@@ -342,6 +342,14 @@ export async function handleSuccessfulLogin(user) {
     updateHeaderUI();
     setupNavigationUI();
 
+    // La mascota no debe aparecer hasta que haya sesión -- app.js solo la
+    // inicializa si YA había currentUser al cargar la página; este es el
+    // caso de login recién hecho en la misma carga (app.js ya pasó por
+    // ese chequeo antes de que esto corriera).
+    if (window.MascotWidget && typeof window.MascotWidget.init === 'function') {
+      window.MascotWidget.init();
+    }
+
     // Verificación de cambio de contraseña obligatorio -- no aplica si la
     // clase del alumno está configurada como "sin contraseña" (si no, se le
     // pediría fijar una contraseña que después ni siquiera va a usar).

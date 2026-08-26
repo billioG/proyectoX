@@ -52,8 +52,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 2. Inicializar Autenticación (Bloqueante para asegurar que el usuario esté listo)
     await initAuth();
 
-    // 3. Inicializar Componentes que dependen del usuario
-    if (window.MascotWidget && typeof window.MascotWidget.init === 'function') {
+    // 3. Inicializar Componentes que dependen del usuario -- solo si ya
+    // hay sesión (initAuth() resuelve igual aunque termine mostrando la
+    // pantalla de login sin loguear a nadie; sin este chequeo la mascota
+    // aparecía flotando ANTES de iniciar sesión). El caso de login recién
+    // hecho se cubre desde handleSuccessfulLogin() en auth.js.
+    if (window.currentUser && window.MascotWidget && typeof window.MascotWidget.init === 'function') {
         window.MascotWidget.init();
     }
 

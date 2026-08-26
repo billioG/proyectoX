@@ -71,7 +71,12 @@ const MascotWidget = {
     containerId: 'mascot-widget-container',
 
     init() {
-        console.log("🤖 Iniciando Mascota 1Bot...");
+        // Se llama tanto desde app.js (si ya había sesión al cargar) como
+        // desde auth.js justo al loguearse -- este guard evita duplicar el
+        // intervalo de startCycle() si ambas rutas llegan a dispararse.
+        if (this._initialized) return;
+        this._initialized = true;
+        console.log("🤖 Iniciando Mascota...");
         this.render();
         this.startCycle();
         this.applyAnimations();
