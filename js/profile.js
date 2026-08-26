@@ -260,6 +260,7 @@ window.loadTeacherProfile = async function loadTeacherProfile() {
         if (!data) return;
         const avgRating = data.ratings.length > 0 ? (data.ratings.reduce((s, r) => s + r.rating, 0) / data.ratings.length).toFixed(1) : 0;
         window.renderTeacherProfileUI(container, data.teacher, data.assignments, data.kpis, avgRating, data.ratings.length, data.earnedBadgeIds);
+        if (typeof window.renderEventNotificationToggle === 'function') window.renderEventNotificationToggle();
     });
 }
 
@@ -286,6 +287,8 @@ window.renderTeacherProfileUI = function renderTeacherProfileUI(container, teach
             </button>
         </div>
     </div>
+
+    <div class="flex justify-center md:justify-start mb-8" id="event-notif-toggle-slot"></div>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
         <div class="glass-card p-8 overflow-hidden relative group">

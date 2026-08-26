@@ -24,6 +24,7 @@ import './project-modals.js';
 import './ai-service.js';
 import './mascot-widget.js';
 import './random-events.js';
+import './announcements.js';
 import './activity-tracker.js';
 import './admin-dashboard.js';
 import './teachers.js';

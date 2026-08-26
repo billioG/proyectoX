@@ -82,7 +82,9 @@ adicional, con esta forma exacta:
     return json({ error: String(e?.message || e) }, 500);
   }
 
-  const { data: subs } = await admin.from('push_subscriptions').select('*');
+  // Eventos totalmente separados por rol -- un evento de docentes nunca
+  // manda push a estudiantes y viceversa.
+  const { data: subs } = await admin.from('push_subscriptions').select('*').eq('role', event.target_role);
   const payload = JSON.stringify({
     title: '⚡ Evento Sorpresa Activo',
     body: `¡${event.gem_pool} gemas en juego! Entrá ahora al quiz relámpago de "${event.topic}".`,

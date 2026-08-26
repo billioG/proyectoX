@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
       .from('event_participants')
       .select('*')
       .eq('event_id', event_id)
-      .eq('student_id', user.id)
+      .eq('user_id', user.id)
       .single();
     if (partErr || !participant) return json({ error: 'No te uniste a este evento' }, 403);
     if (participant.submitted_at) return json({ error: 'Ya respondiste este evento' }, 400);

@@ -550,6 +550,13 @@
                     <i class="fas fa-moon text-lg"></i>
                 </button>
 
+                <button id="announcements-bell" onclick="window.openAnnouncementsInbox && window.openAnnouncementsInbox()"
+                    class="relative w-10 h-10 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    title="Avisos">
+                    <i class="fas fa-bell text-lg"></i>
+                    <span id="announcements-unread-badge" style="display:none" class="absolute top-1 right-1 min-w-[16px] h-[16px] px-1 rounded-full bg-rose-500 text-white text-[0.55rem] font-black items-center justify-center">0</span>
+                </button>
+
                 <div id="sync-indicator" onclick="KolibriSync.openSyncCenter()"
                     class="flex items-center gap-2 text-emerald-500 font-bold text-xs bg-emerald-500/10 px-3 py-1.5 rounded-full dark:bg-emerald-500/5 cursor-pointer hover:bg-emerald-500/20 transition-all">
                     <i id="sync-icon" class="fas fa-check-circle"></i>

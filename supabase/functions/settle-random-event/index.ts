@@ -43,13 +43,15 @@ Deno.serve(async (req) => {
       .slice()
       .sort((a, b) => (b.score - a.score) || (a.time_taken_ms - b.time_taken_ms));
 
+    const targetTable = event.target_role === 'docente' ? 'teachers' : 'students';
+
     for (let i = 0; i < ranked.length; i++) {
       const p = ranked[i];
       const share = PRIZE_SPLIT[i] || 0;
       const gems = Math.round(event.gem_pool * share);
       if (gems > 0) {
-        const { data: student } = await admin.from('students').select('gems').eq('id', p.student_id).single();
-        await admin.from('students').update({ gems: (student?.gems || 0) + gems }).eq('id', p.student_id);
+        const { data: user } = await admin.from(targetTable).select('gems').eq('id', p.user_id).single();
+        await admin.from(targetTable).update({ gems: (user?.gems || 0) + gems }).eq('id', p.user_id);
       }
       await admin.from('event_participants').update({ rank: i + 1, gems_awarded: gems }).eq('id', p.id);
     }

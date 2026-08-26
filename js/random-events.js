@@ -39,7 +39,8 @@ window.enableEventNotifications = async function enableEventNotifications() {
 
     const raw = subscription.toJSON();
     const { error } = await window._supabase.from('push_subscriptions').upsert({
-      student_id: window.currentUser.id,
+      user_id: window.currentUser.id,
+      role: window.userRole === 'docente' ? 'docente' : 'estudiante',
       endpoint: raw.endpoint,
       p256dh: raw.keys.p256dh,
       auth: raw.keys.auth,
@@ -72,13 +73,16 @@ window.renderEventNotificationToggle = async function renderEventNotificationTog
 // EVENTO ACTIVO -- banner, unirse, quiz, resultado
 // ================================================
 window.checkActiveRandomEvent = async function checkActiveRandomEvent() {
-  if (window.userRole !== 'estudiante') return;
+  // Totalmente separados por rol -- un docente solo ve/participa en
+  // eventos target_role='docente', un estudiante solo en los suyos.
+  if (window.userRole !== 'estudiante' && window.userRole !== 'docente') return;
   const _supabase = window._supabase;
   const currentUser = window.currentUser;
 
   const { data: events } = await _supabase.from('random_events')
-    .select('id, topic, question_count, gem_pool, duration_minutes, scheduled_for, status')
+    .select('id, topic, question_count, gem_pool, duration_minutes, scheduled_for, status, target_role')
     .eq('status', 'active')
+    .eq('target_role', window.userRole)
     .order('scheduled_for', { ascending: false })
     .limit(1);
 
@@ -87,7 +91,7 @@ window.checkActiveRandomEvent = async function checkActiveRandomEvent() {
   if (!event) { if (banner) banner.remove(); return; }
 
   const { data: myEntry } = await _supabase.from('event_participants')
-    .select('id, submitted_at').eq('event_id', event.id).eq('student_id', currentUser.id).maybeSingle();
+    .select('id, submitted_at').eq('event_id', event.id).eq('user_id', currentUser.id).maybeSingle();
 
   window._activeRandomEvent = event;
 
@@ -127,12 +131,12 @@ window.joinRandomEvent = async function joinRandomEvent(eventId) {
   const currentUser = window.currentUser;
 
   const { data: existing } = await _supabase.from('event_participants')
-    .select('id, submitted_at').eq('event_id', eventId).eq('student_id', currentUser.id).maybeSingle();
+    .select('id, submitted_at').eq('event_id', eventId).eq('user_id', currentUser.id).maybeSingle();
 
   if (existing?.submitted_at) return window.showToast('<i class="fas fa-circle-info"></i> Ya respondiste este evento', 'info');
 
   if (!existing) {
-    const { error } = await _supabase.from('event_participants').insert({ event_id: eventId, student_id: currentUser.id });
+    const { error } = await _supabase.from('event_participants').insert({ event_id: eventId, user_id: currentUser.id });
     if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
   }
 
@@ -241,6 +245,13 @@ window.openRandomEventsAdminModal = function openRandomEventsAdminModal() {
           <p class="text-[0.65rem] font-black uppercase text-fuchsia-600 dark:text-fuchsia-400 tracking-widest mb-3">Lanzar un evento ahora</p>
           <div class="grid grid-cols-2 gap-3 mb-3">
             <div class="col-span-2">
+              <label class="text-[0.6rem] font-bold uppercase text-slate-400 mb-1 block">Para quién</label>
+              <select id="re-admin-role" class="input-field-tw h-10 text-sm">
+                <option value="estudiante">Estudiantes</option>
+                <option value="docente">Docentes</option>
+              </select>
+            </div>
+            <div class="col-span-2">
               <label class="text-[0.6rem] font-bold uppercase text-slate-400 mb-1 block">Tema (vacío = al azar)</label>
               <input type="text" id="re-admin-topic" class="input-field-tw h-10 text-sm" placeholder="Ej: robótica, cultura maya...">
             </div>
@@ -281,6 +292,7 @@ window.launchRandomEventNow = async function launchRandomEventNow() {
   const gemPool = parseInt(document.getElementById('re-admin-gems')?.value) || 100;
   const questionCount = Math.max(3, Math.min(15, parseInt(document.getElementById('re-admin-questions')?.value) || 8));
   const duration = parseInt(document.getElementById('re-admin-duration')?.value) || 15;
+  const targetRole = document.getElementById('re-admin-role')?.value || 'estudiante';
   const topic = topicInput || RANDOM_EVENT_TOPICS[Math.floor(Math.random() * RANDOM_EVENT_TOPICS.length)];
   const btn = document.getElementById('btn-launch-random-event');
 
@@ -293,6 +305,7 @@ window.launchRandomEventNow = async function launchRandomEventNow() {
     topic,
     question_count: questionCount,
     gem_pool: gemPool,
+    target_role: targetRole,
     status: 'scheduled',
   });
 
@@ -317,7 +330,7 @@ window.loadRandomEventsAdminList = async function loadRandomEventsAdminList() {
   const sanitizeInput = window.sanitizeInput || ((v) => v);
 
   const { data: events, error } = await window._supabase.from('random_events')
-    .select('id, topic, gem_pool, question_count, duration_minutes, scheduled_for, status')
+    .select('id, topic, gem_pool, question_count, duration_minutes, scheduled_for, status, target_role')
     .order('scheduled_for', { ascending: false })
     .limit(10);
 
@@ -326,11 +339,26 @@ window.loadRandomEventsAdminList = async function loadRandomEventsAdminList() {
 
   const eventIds = events.map(e => e.id);
   const { data: participants } = await window._supabase.from('event_participants')
-    .select('event_id, student_id, score, rank, students(full_name)')
+    .select('event_id, user_id, score, rank')
     .in('event_id', eventIds);
+
+  // event_participants.user_id ya no tiene una sola FK (puede ser
+  // estudiante o docente) -- se resuelven los nombres de los ganadores
+  // aparte, contra la tabla que corresponda según target_role.
+  const winnerIds = { estudiante: new Set(), docente: new Set() };
+  events.forEach(e => {
+    const w = (participants || []).find(p => p.event_id === e.id && p.rank === 1);
+    if (w) winnerIds[e.target_role]?.add(w.user_id);
+  });
+  const [{ data: winnerStudents }, { data: winnerTeachers }] = await Promise.all([
+    winnerIds.estudiante.size ? window._supabase.from('students').select('id, full_name').in('id', [...winnerIds.estudiante]) : Promise.resolve({ data: [] }),
+    winnerIds.docente.size ? window._supabase.from('teachers').select('id, full_name').in('id', [...winnerIds.docente]) : Promise.resolve({ data: [] }),
+  ]);
+  const nameMap = new Map([...(winnerStudents || []), ...(winnerTeachers || [])].map(u => [u.id, u.full_name]));
 
   const statusLabel = { scheduled: 'Programado', active: 'Activo ahora', completed: 'Completado' };
   const statusColor = { scheduled: 'bg-amber-500/10 text-amber-500', active: 'bg-emerald-500/10 text-emerald-500 animate-pulse', completed: 'bg-slate-200 dark:bg-slate-700 text-slate-500' };
+  const roleLabel = { estudiante: 'Estudiantes', docente: 'Docentes' };
 
   listEl.innerHTML = events.map(e => {
     const winner = (participants || []).find(p => p.event_id === e.id && p.rank === 1);
@@ -338,8 +366,8 @@ window.loadRandomEventsAdminList = async function loadRandomEventsAdminList() {
     return `
       <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
         <div class="min-w-0">
-          <div class="text-xs font-bold text-slate-800 dark:text-white truncate">${sanitizeInput(e.topic)} -- ${e.gem_pool} gemas</div>
-          <div class="text-[0.6rem] text-slate-400">${new Date(e.scheduled_for).toLocaleString('es-GT')} · ${count} participante(s)${winner ? ` · 🏆 ${sanitizeInput(winner.students?.full_name || '')}` : ''}</div>
+          <div class="text-xs font-bold text-slate-800 dark:text-white truncate">${sanitizeInput(e.topic)} -- ${e.gem_pool} gemas <span class="text-[0.55rem] text-slate-400 uppercase">(${roleLabel[e.target_role] || e.target_role})</span></div>
+          <div class="text-[0.6rem] text-slate-400">${new Date(e.scheduled_for).toLocaleString('es-GT')} · ${count} participante(s)${winner ? ` · 🏆 ${sanitizeInput(nameMap.get(winner.user_id) || '')}` : ''}</div>
         </div>
         <div class="shrink-0 flex items-center gap-2">
           <span class="px-2.5 py-1 rounded-lg text-[0.6rem] font-black uppercase ${statusColor[e.status]}">${statusLabel[e.status]}</span>
@@ -353,7 +381,7 @@ window.loadRandomEventsAdminList = async function loadRandomEventsAdminList() {
 if (typeof window !== 'undefined') {
   window.addEventListener('load', () => {
     setTimeout(() => {
-      if (window.currentUser && window.userRole === 'estudiante') {
+      if (window.currentUser && (window.userRole === 'estudiante' || window.userRole === 'docente')) {
         window.checkActiveRandomEvent();
         setInterval(window.checkActiveRandomEvent, 60_000);
       }
