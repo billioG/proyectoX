@@ -591,22 +591,27 @@ window.loadTeacherCommentsForGroup = async function loadTeacherCommentsForGroup(
   const groupId = document.getElementById('teacher-comment-group')?.value;
   const list = document.getElementById('teacher-comments-list');
   if (!list || !groupId) return;
-  const sanitizeInput = window.sanitizeInput || ((v) => v);
 
   const { data: comments } = await window._supabase.from('resource_comments').select('*')
     .eq('lesson_id', lessonId).eq('group_id', groupId).order('created_at', { ascending: true });
 
-  list.innerHTML = (comments || []).length ? comments.map(c => `
-    <div class="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 text-xs">
-      <span class="font-bold ${c.author_role === 'docente' ? 'text-primary' : 'text-slate-600 dark:text-slate-300'}">${sanitizeInput(c.author_name)}${c.author_role === 'docente' ? ' <i class="fas fa-chalkboard-user"></i>' : ''}</span>
-      <p class="text-slate-500 dark:text-slate-400 mt-0.5">${sanitizeInput(c.content)}</p>
-    </div>
-  `).join('') : '<p class="text-xs text-slate-400">Todavía no hay comentarios.</p>';
+  const ids = (comments || []).map(c => c.id);
+  let likes = [];
+  if (ids.length) {
+    const { data } = await window._supabase.from('resource_comment_likes').select('comment_id, user_id').in('comment_id', ids);
+    likes = data || [];
+  }
+
+  list.innerHTML = window.buildResourceCommentsHtml(comments || [], likes, {
+    likeFn: (id, liked) => `window.toggleTeacherCommentLike('${lessonId}', '${id}', ${liked})`,
+    replyFn: (id) => `window.postTeacherResourceComment('${lessonId}', '${id}')`,
+  });
 };
 
-window.postTeacherResourceComment = async function postTeacherResourceComment(lessonId) {
+window.postTeacherResourceComment = async function postTeacherResourceComment(lessonId, parentId) {
   const groupId = document.getElementById('teacher-comment-group')?.value;
-  const input = document.getElementById('teacher-comment-input');
+  const inputId = parentId ? `reply-input-${parentId}` : 'teacher-comment-input';
+  const input = document.getElementById(inputId);
   if (!input || !groupId) return;
   const content = input.value.trim();
   if (!content) return;
@@ -615,6 +620,7 @@ window.postTeacherResourceComment = async function postTeacherResourceComment(le
   const { error } = await window._supabase.from('resource_comments').insert({
     lesson_id: lessonId,
     group_id: groupId,
+    parent_id: parentId || null,
     author_id: window.currentUser.id,
     author_name: userData.full_name || 'Docente',
     author_role: window.userRole,
@@ -625,7 +631,17 @@ window.postTeacherResourceComment = async function postTeacherResourceComment(le
     const msg = error.message.includes('CONTENIDO_INAPROPIADO') ? 'Ese comentario tiene lenguaje no permitido' : error.message;
     return window.showToast('<i class="fas fa-circle-xmark"></i> ' + msg, 'error');
   }
-  input.value = '';
+  window.loadTeacherCommentsForGroup(lessonId);
+};
+
+window.toggleTeacherCommentLike = async function toggleTeacherCommentLike(lessonId, commentId, likedByMe) {
+  const userId = window.currentUser.id;
+  if (likedByMe) {
+    await window._supabase.from('resource_comment_likes').delete().eq('comment_id', commentId).eq('user_id', userId);
+  } else {
+    const { error } = await window._supabase.from('resource_comment_likes').insert({ comment_id: commentId, user_id: userId });
+    if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
+  }
   window.loadTeacherCommentsForGroup(lessonId);
 };
 
@@ -1524,6 +1540,59 @@ window.selectCourseResource = function selectCourseResource(index) {
   window.renderCourseSidebar();
 }
 
+// Construye el árbol de comentarios (top-level + respuestas anidadas) con
+// like por comentario -- lo usan tanto el panel del estudiante como el del
+// docente, cada uno pasando sus propios likeFn/replyFn.
+window.buildResourceCommentsHtml = function buildResourceCommentsHtml(comments, likeRows, fns) {
+  const sanitizeInput = window.sanitizeInput || ((v) => v);
+  const currentUserId = window.currentUser?.id;
+
+  const likesByComment = new Map();
+  (likeRows || []).forEach(l => {
+    if (!likesByComment.has(l.comment_id)) likesByComment.set(l.comment_id, []);
+    likesByComment.get(l.comment_id).push(l.user_id);
+  });
+
+  const childrenByParent = new Map();
+  const roots = [];
+  const byId = new Map(comments.map(c => [c.id, c]));
+  comments.forEach(c => {
+    if (c.parent_id && byId.has(c.parent_id)) {
+      if (!childrenByParent.has(c.parent_id)) childrenByParent.set(c.parent_id, []);
+      childrenByParent.get(c.parent_id).push(c);
+    } else {
+      roots.push(c);
+    }
+  });
+
+  const renderNode = (c) => {
+    const likes = likesByComment.get(c.id) || [];
+    const likedByMe = likes.includes(currentUserId);
+    const kids = childrenByParent.get(c.id) || [];
+    return `
+      <div class="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 text-xs">
+        <span class="font-bold ${c.author_role === 'docente' ? 'text-primary' : 'text-slate-600 dark:text-slate-300'}">${sanitizeInput(c.author_name)}${c.author_role === 'docente' ? ' <i class="fas fa-chalkboard-user"></i>' : ''}</span>
+        <p class="text-slate-500 dark:text-slate-400 mt-0.5">${sanitizeInput(c.content)}</p>
+        <div class="flex items-center gap-3 mt-1.5">
+          <button class="text-[0.65rem] font-bold ${likedByMe ? 'text-rose-500' : 'text-slate-400 hover:text-rose-400'}" onclick="${fns.likeFn(c.id, likedByMe)}"><i class="fa${likedByMe ? 's' : 'r'} fa-heart"></i>${likes.length ? ' ' + likes.length : ''}</button>
+          <button class="text-[0.65rem] font-bold text-slate-400 hover:text-primary" onclick="window.toggleCommentReplyBox('${c.id}')"><i class="fas fa-reply"></i> Responder</button>
+        </div>
+        <div id="reply-box-${c.id}" class="hidden mt-2 flex gap-2 pl-3 border-l-2 border-slate-200 dark:border-slate-700">
+          <input id="reply-input-${c.id}" class="input-field-tw h-8 text-xs flex-1" placeholder="Responder...">
+          <button class="btn-primary-tw h-8 px-3 text-[0.65rem] uppercase font-bold shrink-0" onclick="${fns.replyFn(c.id)}"><i class="fas fa-paper-plane"></i></button>
+        </div>
+        ${kids.length ? `<div class="mt-2 pl-3 border-l-2 border-slate-100 dark:border-slate-800 space-y-2">${kids.map(renderNode).join('')}</div>` : ''}
+      </div>
+    `;
+  };
+
+  return roots.length ? roots.map(renderNode).join('') : '<p class="text-xs text-slate-400">Todavía no hay comentarios.</p>';
+};
+
+window.toggleCommentReplyBox = function toggleCommentReplyBox(commentId) {
+  document.getElementById(`reply-box-${commentId}`)?.classList.toggle('hidden');
+};
+
 // Nota personal privada + comentarios de equipo por recurso (estudiante).
 window.loadResourceSocialPanel = async function loadResourceSocialPanel(lessonId) {
   const panel = document.getElementById('resource-social-panel');
@@ -1540,40 +1609,45 @@ window.loadResourceSocialPanel = async function loadResourceSocialPanel(lessonId
 
   const groupId = memberships?.[0]?.group_id || null;
   let comments = [];
+  let likes = [];
   if (groupId) {
     const { data } = await _supabase.from('resource_comments').select('*').eq('lesson_id', lessonId).eq('group_id', groupId).order('created_at', { ascending: true });
     comments = data || [];
+    const ids = comments.map(c => c.id);
+    if (ids.length) {
+      const { data: likeData } = await _supabase.from('resource_comment_likes').select('comment_id, user_id').in('comment_id', ids);
+      likes = likeData || [];
+    }
   }
 
-  window.renderResourceSocialPanel(lessonId, noteRow?.content || '', comments, groupId);
+  window.renderResourceSocialPanel(lessonId, noteRow?.content || '', comments, groupId, likes);
 };
 
-window.renderResourceSocialPanel = function renderResourceSocialPanel(lessonId, noteContent, comments, groupId) {
+window.renderResourceSocialPanel = function renderResourceSocialPanel(lessonId, noteContent, comments, groupId, likes) {
   const panel = document.getElementById('resource-social-panel');
   if (!panel) return;
   const sanitizeInput = window.sanitizeInput || ((v) => v);
+
+  const commentsHtml = groupId ? window.buildResourceCommentsHtml(comments, likes, {
+    likeFn: (id, liked) => `window.toggleResourceCommentLike('${lessonId}', '${id}', ${liked})`,
+    replyFn: (id) => `window.postResourceComment('${lessonId}', '${groupId}', '${id}')`,
+  }) : '';
 
   panel.innerHTML = `
     <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
       <div>
         <h4 class="text-xs font-black uppercase text-slate-400 tracking-widest mb-2"><i class="fas fa-note-sticky"></i> Mi nota personal</h4>
         <textarea id="resource-note-input" class="input-field-tw text-sm" rows="4" placeholder="Escribí una nota privada solo para vos...">${sanitizeInput(noteContent)}</textarea>
+        <p class="text-[0.6rem] text-slate-400 mt-1"><i class="fas fa-lock"></i> Privada -- solo vos la ves, nadie puede responderla ni darle like.</p>
         <button class="btn-secondary-tw h-9 px-4 text-xs uppercase font-bold mt-2" onclick="window.saveResourceNote('${lessonId}')"><i class="fas fa-save"></i> Guardar nota</button>
       </div>
       <div>
         <h4 class="text-xs font-black uppercase text-slate-400 tracking-widest mb-2"><i class="fas fa-comments"></i> Comentarios del equipo</h4>
         ${!groupId ? `<p class="text-xs text-slate-400">Formá parte de un equipo para comentar acá.</p>` : `
-          <div id="resource-comments-list" class="space-y-2 max-h-52 overflow-y-auto custom-scrollbar mb-2 pr-1">
-            ${comments.length ? comments.map(c => `
-              <div class="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 text-xs">
-                <span class="font-bold ${c.author_role === 'docente' ? 'text-primary' : 'text-slate-600 dark:text-slate-300'}">${sanitizeInput(c.author_name)}${c.author_role === 'docente' ? ' <i class="fas fa-chalkboard-user"></i>' : ''}</span>
-                <p class="text-slate-500 dark:text-slate-400 mt-0.5">${sanitizeInput(c.content)}</p>
-              </div>
-            `).join('') : '<p class="text-xs text-slate-400">Todavía no hay comentarios.</p>'}
-          </div>
+          <div id="resource-comments-list" class="space-y-2 max-h-52 overflow-y-auto custom-scrollbar mb-2 pr-1">${commentsHtml}</div>
           <div class="flex gap-2">
             <input id="resource-comment-input" class="input-field-tw h-9 text-sm flex-1" placeholder="Escribí un comentario...">
-            <button class="btn-primary-tw h-9 px-4 text-xs uppercase font-bold shrink-0" onclick="window.postResourceComment('${lessonId}', '${groupId}')"><i class="fas fa-paper-plane"></i></button>
+            <button class="btn-primary-tw h-9 px-4 text-xs uppercase font-bold shrink-0" onclick="window.postResourceComment('${lessonId}', '${groupId}', null)"><i class="fas fa-paper-plane"></i></button>
           </div>
         `}
       </div>
@@ -1601,8 +1675,9 @@ window.saveResourceNote = async function saveResourceNote(lessonId) {
   window.showToast('<i class="fas fa-circle-check"></i> Nota guardada', 'success');
 };
 
-window.postResourceComment = async function postResourceComment(lessonId, groupId) {
-  const input = document.getElementById('resource-comment-input');
+window.postResourceComment = async function postResourceComment(lessonId, groupId, parentId) {
+  const inputId = parentId ? `reply-input-${parentId}` : 'resource-comment-input';
+  const input = document.getElementById(inputId);
   if (!input) return;
   const content = input.value.trim();
   if (!content) return;
@@ -1611,6 +1686,7 @@ window.postResourceComment = async function postResourceComment(lessonId, groupI
   const { error } = await window._supabase.from('resource_comments').insert({
     lesson_id: lessonId,
     group_id: groupId,
+    parent_id: parentId || null,
     author_id: window.currentUser.id,
     author_name: userData.full_name || 'Estudiante',
     author_role: window.userRole,
@@ -1621,7 +1697,17 @@ window.postResourceComment = async function postResourceComment(lessonId, groupI
     const msg = error.message.includes('CONTENIDO_INAPROPIADO') ? 'Ese comentario tiene lenguaje no permitido' : error.message;
     return window.showToast('<i class="fas fa-circle-xmark"></i> ' + msg, 'error');
   }
-  input.value = '';
+  window.loadResourceSocialPanel(lessonId);
+};
+
+window.toggleResourceCommentLike = async function toggleResourceCommentLike(lessonId, commentId, likedByMe) {
+  const userId = window.currentUser.id;
+  if (likedByMe) {
+    await window._supabase.from('resource_comment_likes').delete().eq('comment_id', commentId).eq('user_id', userId);
+  } else {
+    const { error } = await window._supabase.from('resource_comment_likes').insert({ comment_id: commentId, user_id: userId });
+    if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
+  }
   window.loadResourceSocialPanel(lessonId);
 };
 
