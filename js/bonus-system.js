@@ -367,7 +367,7 @@ window.renderTutorView = function renderTutorView(container, teacher, kpis, assi
                     </div>
                     ` : `
                     <div class="relative z-10 p-6 bg-white/5 rounded-2xl border border-white/10">
-                        <p class="text-sm italic text-indigo-200">"Tu desempeño construye la marca ProjectX. Enfócate en la calidad y el impacto de tus estudiantes."</p>
+                        <p class="text-sm italic text-indigo-200">"Tu desempeño construye la marca Quetzal LMS. Enfócate en la calidad y el impacto de tus estudiantes."</p>
                     </div>
                     `}
                 </div>

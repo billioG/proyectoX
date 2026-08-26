@@ -82,6 +82,7 @@ window.processAndRenderDashboard = function processAndRenderDashboard(container,
             M: students?.filter(s => s.gender?.toLowerCase().startsWith('m')).length || 0
         },
         rawStudents: students || [],
+        rawRatings: ratings || [],
         activeTime: {
             totalSeconds: totalActiveSeconds,
             byRole: activeTimeByRole,
@@ -407,6 +408,77 @@ window.showActiveTimeModal = function () {
                         `).join('')}
                     </tbody>
                  </table>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+};
+
+window.showSchoolSatisfactionModal = function () {
+    if (!dashboardStats) return;
+
+    const schools = dashboardStats.schools || [];
+    const ratings = dashboardStats.rawRatings || [];
+
+    const schoolMap = schools.reduce((acc, s) => {
+        acc[s.code] = s.name;
+        return acc;
+    }, {});
+
+    const breakdown = {};
+    ratings.forEach(r => {
+        const student = Array.isArray(r.students) ? r.students[0] : r.students;
+        const code = student?.school_code || 'SIN_CENTRO';
+        if (!breakdown[code]) {
+            breakdown[code] = { name: schoolMap[code] || 'Sin Establecimiento', sum: 0, count: 0 };
+        }
+        breakdown[code].sum += (r.rating || 0);
+        breakdown[code].count++;
+    });
+
+    const rows = Object.values(breakdown)
+        .map(row => ({ ...row, avg: row.count > 0 ? row.sum / row.count : 0 }))
+        .sort((a, b) => b.avg - a.avg);
+
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn';
+    modal.innerHTML = `
+        <div class="glass-card w-full max-w-2xl max-h-[85vh] flex flex-col p-0 overflow-hidden shadow-2xl animate-slideUp bg-white dark:bg-slate-900 border border-amber-500/30">
+            <div class="p-6 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center shrink-0">
+                <h2 class="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight flex items-center gap-2">
+                    <i class="fas fa-heart text-amber-500"></i> Satisfacción por Centro
+                </h2>
+                <button class="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500 transition-all flex items-center justify-center font-bold" onclick="this.closest('.fixed').remove()">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto custom-scrollbar p-6">
+                ${rows.length === 0 ? `
+                    <div class="text-center py-16 text-slate-400">
+                        <i class="fas fa-star text-4xl mb-4 opacity-20"></i>
+                        <p class="font-bold text-xs uppercase tracking-widest">Aún no hay calificaciones registradas</p>
+                    </div>
+                ` : `
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="text-[0.6rem] uppercase tracking-wider text-slate-400 font-bold border-b border-slate-200 dark:border-slate-700">
+                            <th class="pb-3 text-left">Establecimiento</th>
+                            <th class="pb-3 text-center">Promedio</th>
+                            <th class="pb-3 text-center">Calificaciones</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-sm">
+                        ${rows.map(row => `
+                            <tr class="border-b border-slate-50 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                                <td class="py-4 pr-4 font-bold text-slate-800 dark:text-white">${row.name}</td>
+                                <td class="py-4 text-center font-black text-amber-500">${row.avg.toFixed(1)} <i class="fas fa-star text-xs"></i></td>
+                                <td class="py-4 text-center text-slate-500 font-medium">${row.count}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+                `}
             </div>
         </div>
     `;

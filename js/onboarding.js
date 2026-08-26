@@ -1,5 +1,5 @@
 // ================================================
-// SISTEMA DE ONBOARDING - ProjectX
+// SISTEMA DE ONBOARDING - Quetzal LMS
 // ================================================
 
 // Slides para Estudiantes
@@ -7,7 +7,7 @@ const STUDENT_ONBOARDING_SLIDES = [
   {
     icon: '<i class="fas fa-rocket"></i>',
     title: '¡Bienvenido Estudiante!',
-    description: 'ProjectX es tu espacio para mostrar tus talentos, aprender haciendo y competir sanamente.',
+    description: 'Quetzal LMS es tu espacio para mostrar tus talentos, aprender haciendo y competir sanamente.',
     color: 'linear-gradient(135deg, #00bcd4 0%, #00acc1 100%)'
   },
   {
@@ -37,7 +37,7 @@ const STUDENT_ONBOARDING_SLIDES = [
   {
     icon: '<i class="fas fa-wand-magic-sparkles"></i>',
     title: '¡A Innovar!',
-    description: 'Estás listo para comenzar tu viaje en ProjectX. ¡El cielo es el límite!',
+    description: 'Estás listo para comenzar tu viaje en Quetzal LMS. ¡El cielo es el límite!',
     cta: true,
     color: 'linear-gradient(135deg, #30cfd0 0%, #330867 100%)'
   }
@@ -48,7 +48,7 @@ const TEACHER_ONBOARDING_SLIDES = [
   {
     icon: '<i class="fas fa-chalkboard-user"></i>‍<i class="fas fa-school"></i>',
     title: '¡Bienvenido, Docente!',
-    description: 'ProjectX es tu herramienta aliada para la gestión académica y el seguimiento de proyectos.',
+    description: 'Quetzal LMS es tu herramienta aliada para la gestión académica y el seguimiento de proyectos.',
     color: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
   },
   {

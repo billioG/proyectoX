@@ -1,6 +1,6 @@
 {
-  "name": "ProjectX - Sistema de Gestión de Proyectos Estudiantiles",
-  "short_name": "ProjectX",
+  "name": "Quetzal LMS - Sistema de Gestión de Proyectos Estudiantiles",
+  "short_name": "Quetzal LMS",
   "description": "Plataforma educativa para gestión y evaluación de proyectos estudiantiles",
   "start_url": "./",
   "display": "standalone",

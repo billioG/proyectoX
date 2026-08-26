@@ -61,7 +61,7 @@ const MascotWidget = {
             normal: [
                 'Sistema operativo estable. <i class="fas fa-circle-check"></i>',
                 'Explorando métricas de impacto... <i class="fas fa-chart-line"></i>',
-                'Todo bajo control en ProjectX. <i class="fas fa-shield"></i>️',
+                'Todo bajo control en Quetzal LMS. <i class="fas fa-shield"></i>️',
                 '¿Revisamos el informe mensual? <i class="fas fa-folder-open"></i>'
             ]
         }
@@ -168,33 +168,46 @@ const MascotWidget = {
             </div>
             
             <div class="mascot-robot mascot-animate-float" onclick="MascotWidget.openAIChat()">
-                <svg viewBox="0 0 100 100" id="mascot-svg">
-                    <!-- Penacho de plumas de quetzal -->
-                    <path d="M50 26 Q33 -6 17 12" stroke="#0D9488" stroke-width="5" fill="none" stroke-linecap="round" />
-                    <path d="M50 26 Q67 -6 83 12" stroke="#0D9488" stroke-width="5" fill="none" stroke-linecap="round" />
-                    <path d="M50 23 Q40 -9 27 2" stroke="#10B981" stroke-width="4" fill="none" stroke-linecap="round" />
-                    <path d="M50 23 Q60 -9 73 2" stroke="#10B981" stroke-width="4" fill="none" stroke-linecap="round" />
-                    <path d="M50 20 L50 -8" stroke="#059669" stroke-width="4" fill="none" stroke-linecap="round" />
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500" id="mascot-svg">
+                    <!-- Plumas largas de la cola (atrás) -->
+                    <path d="M 185 300 C 160 380 90 410 80 480 C 105 480 180 400 195 300 Z" fill="#009624" />
+                    <path d="M 215 300 C 240 380 310 410 320 480 C 295 480 220 400 205 300 Z" fill="#00C853" />
 
-                    <!-- Hombros / capa -->
-                    <path d="M26 80 Q50 70 74 80 L78 96 L22 96 Z" fill="#B45309" />
-                    <path d="M33 80 Q50 90 67 80 L65 94 L35 94 Z" fill="#CE1126" />
+                    <!-- Patas -->
+                    <ellipse cx="160" cy="335" rx="16" ry="8" fill="#FF9100" />
+                    <ellipse cx="240" cy="335" rx="16" ry="8" fill="#FF9100" />
 
-                    <!-- Cabeza -->
-                    <circle cx="50" cy="48" r="18" fill="#C68642" />
+                    <!-- Cuerpo (redondeado) -->
+                    <rect x="110" y="100" width="180" height="230" rx="90" fill="#00C853" />
 
-                    <!-- Diadema -->
-                    <path d="M31 42 Q50 31 69 42" stroke="#D4AF37" stroke-width="5" fill="none" stroke-linecap="round" />
-                    <circle cx="50" cy="35" r="3" fill="#0D9488" />
+                    <!-- Copete/Cresta de plumas en la cabeza -->
+                    <path d="M 170 105 C 170 70 190 65 200 65 C 210 65 230 70 230 105 Z" fill="#5CF29D" />
+                    <path d="M 182 100 C 182 78 193 72 200 72 C 207 72 218 78 218 100 Z" fill="#00C853" />
 
-                    <!-- Ojos -->
-                    <g class="eyes-container">
-                        <circle cx="43" cy="49" r="3.5" fill="#1E293B" class="mascot-eye" id="eye-l" />
-                        <circle cx="57" cy="49" r="3.5" fill="#1E293B" class="mascot-eye" id="eye-r" />
-                    </g>
+                    <!-- Alas -->
+                    <path d="M 110 180 C 65 200 60 265 115 275 C 108 240 115 200 110 180 Z" fill="#009624" />
+                    <path d="M 290 180 C 335 200 340 265 285 275 C 292 240 285 200 290 180 Z" fill="#009624" />
 
-                    <!-- Boca -->
-                    <path d="M40 58 Q50 62 60 58" stroke="#7C2D12" stroke-width="3" fill="transparent" stroke-linecap="round" id="mascot-mouth" />
+                    <!-- Pecho Rojo Característico -->
+                    <path d="M 135 195 C 135 295 265 295 265 195 C 265 180 135 180 135 195 Z" fill="#FF3D00" />
+                    <path d="M 148 205 C 148 285 252 285 252 205 C 252 193 148 193 148 205 Z" fill="#FF5252" />
+
+                    <!-- Mejillas sonrosadas -->
+                    <circle cx="138" cy="182" r="12" fill="#FF2D55" opacity="0.2" />
+                    <circle cx="262" cy="182" r="12" fill="#FF2D55" opacity="0.2" />
+
+                    <!-- Ojos grandes de caricatura -->
+                    <circle cx="160" cy="158" r="28" fill="#FFFFFF" />
+                    <circle cx="166" cy="158" r="15" fill="#1E293B" class="mascot-eye" id="eye-l" />
+                    <circle cx="171" cy="152" r="5" fill="#FFFFFF" />
+
+                    <circle cx="240" cy="158" r="28" fill="#FFFFFF" />
+                    <circle cx="234" cy="158" r="15" fill="#1E293B" class="mascot-eye" id="eye-r" />
+                    <circle cx="229" cy="152" r="5" fill="#FFFFFF" />
+
+                    <!-- Pico Amarillo -->
+                    <path d="M 182 168 Q 200 162 218 168 C 218 195 200 218 200 218 C 200 218 182 195 182 168 Z" fill="#FFC107" />
+                    <path d="M 188 170 Q 200 166 212 170 C 210 185 200 202 200 202 C 200 202 190 185 188 170 Z" fill="#FFA000" opacity="0.5" />
                 </svg>
             </div>
         `;
