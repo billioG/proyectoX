@@ -143,9 +143,9 @@ window.renderStudentProfileUI = function renderStudentProfileUI(container, stude
             ${BADGES.map(b => {
         const isEarned = earnedBadgeIds.includes(b.id);
         return `
-                <div class="glass-card p-4 text-center group relative ${isEarned ? 'border-primary/20 bg-primary/5' : 'grayscale opacity-30 hover:opacity-50'} transition-all cursor-help" 
+                <div class="glass-card p-4 text-center group relative ${isEarned ? 'border-primary/20 bg-primary/5' : 'opacity-30 hover:opacity-50'} transition-all cursor-help"
                      onclick="showBadgeDetailsModal(${JSON.stringify(b).replace(/"/g, '&quot;')}, ${isEarned})">
-                    <div class="text-3xl mb-2 transform group-hover:scale-125 group-hover:rotate-12 transition-transform duration-500">${b.icon}</div>
+                    <div class="text-3xl mb-2 transform group-hover:scale-125 group-hover:rotate-12 transition-transform duration-500 ${isEarned ? 'text-amber-500' : 'text-slate-400 grayscale'}">${b.icon}</div>
                     <div class="text-[0.55rem] font-bold uppercase text-slate-600 dark:text-slate-300 tracking-tighter leading-tight">${b.name}</div>
                     ${isEarned ? `<div class="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 text-white rounded-full flex items-center justify-center text-[0.5rem] shadow-lg"><i class="fas fa-check"></i></div>` : ''}
                 </div>

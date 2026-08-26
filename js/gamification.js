@@ -508,7 +508,7 @@ window.renderGamificationHubContent = function renderGamificationHubContent(moda
                             </tbody>
                         </table>
                         <div class="p-3 text-center text-[0.6rem] font-bold uppercase text-slate-500 tracking-widest bg-white/5">
-                            Temporada de Enero • Actualizado en vivo
+                            Temporada de ${new Date().toLocaleDateString('es-GT', { month: 'long' })} • Actualizado en vivo
                         </div>
                     </div>
                 </section>
