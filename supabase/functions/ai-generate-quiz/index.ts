@@ -38,13 +38,17 @@ Deno.serve(async (req) => {
     const { duel_id } = await req.json();
     if (!duel_id) return json({ error: 'duel_id requerido' }, 400);
 
-    // RLS ya garantiza que solo challenger/opponent puedan leer este duelo.
-    const { data: duel, error: duelErr } = await userClient
+    // La columna "questions" ya no es legible por el cliente (RLS/columnas
+    // -- ver migrations/duel-harden.sql), así que acá se lee con service
+    // role y se valida el permiso a mano en vez de confiar en RLS.
+    const serviceClientRead = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
+    const { data: duel, error: duelErr } = await serviceClientRead
       .from('student_duels')
       .select('id, topic, question_count, questions, challenger_id, opponent_id')
       .eq('id', duel_id)
       .single();
     if (duelErr || !duel) return json({ error: 'No se pudo leer el duelo (¿permisos?)' }, 403);
+    if (user.id !== duel.challenger_id && user.id !== duel.opponent_id) return json({ error: 'No autorizado' }, 403);
     if (duel.questions) return json({ ok: true }); // ya generado, no regenerar
 
     const n = Math.min(15, Math.max(1, duel.question_count || 5));

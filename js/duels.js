@@ -58,8 +58,11 @@ window.renderDuelsSection = function renderDuelsSection() {
           `;
         } else if (d.status === 'pending' && isChallenger) {
           statusHtml = `<span class="text-[0.6rem] font-black uppercase text-slate-400">Esperando respuesta...</span>`;
+          actionHtml = `<button class="h-8 px-3 rounded-lg bg-slate-700 text-white text-[0.6rem] font-black uppercase" onclick="window.cancelDuel('${d.id}')">Cancelar</button>`;
         } else if (d.status === 'rejected') {
           statusHtml = `<span class="text-[0.6rem] font-black uppercase text-slate-500">Rechazado</span>`;
+        } else if (d.status === 'cancelled') {
+          statusHtml = `<span class="text-[0.6rem] font-black uppercase text-slate-500">${isChallenger ? 'Cancelaste el desafío' : 'Cancelado'}</span>`;
         } else if (d.status === 'active') {
           statusHtml = `<span class="text-[0.6rem] font-black uppercase text-primary">En curso -- ${d.wager_gems} gemas</span>`;
           actionHtml = `<button class="h-8 px-4 rounded-lg bg-primary text-white text-[0.6rem] font-black uppercase" onclick="window.openDuelQuiz('${d.id}')">Jugar</button>`;
@@ -173,6 +176,13 @@ window.sendDuelChallenge = async function sendDuelChallenge() {
 
   window.showToast('<i class="fas fa-circle-check"></i> ¡Reto enviado!', 'success');
   document.querySelector('.fixed.z-\\[210\\]')?.remove();
+  window.loadDuelsSection();
+}
+
+window.cancelDuel = async function cancelDuel(duelId) {
+  const { error } = await window._supabase.from('student_duels').update({ status: 'cancelled' }).eq('id', duelId).eq('status', 'pending');
+  if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
+  window.showToast('<i class="fas fa-circle-check"></i> Desafío cancelado', 'success');
   window.loadDuelsSection();
 }
 
