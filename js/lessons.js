@@ -1021,7 +1021,16 @@ window.selectCourseResource = function selectCourseResource(index) {
   } else if (lesson.content_type === 'scorm') {
     mediaHtml = `<iframe id="scorm-frame" class="w-full h-[60vh] rounded-xl border border-slate-200 dark:border-slate-700" src="${lesson.content_url}"></iframe>`;
   } else if (lesson.content_type === 'h5p') {
-    mediaHtml = `<div id="h5p-container" class="w-full min-h-[50vh]"></div>`;
+    // El spinner vive DENTRO del contenedor -- h5p-standalone limpia
+    // container.innerHTML cuando termina de inicializar, así que desaparece
+    // solo en cuanto el contenido real está listo (evita que el alumno
+    // crea que la app se trabó mientras carga las librerías H5P).
+    mediaHtml = `<div id="h5p-container" class="w-full min-h-[50vh] relative">
+      <div class="absolute inset-0 flex flex-col items-center justify-center text-slate-400">
+        <i class="fas fa-circle-notch fa-spin text-3xl mb-3 text-primary"></i>
+        <span class="text-xs font-bold uppercase tracking-widest">Cargando actividad H5P...</span>
+      </div>
+    </div>`;
   }
 
   const viewerEl = document.getElementById('course-player-viewer');
