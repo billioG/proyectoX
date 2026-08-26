@@ -287,6 +287,19 @@ window.submitWeeklyEvidence = async function submitWeeklyEvidence(e) {
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Subiendo...';
 
   try {
+    // Solo 1 evidencia por semana (misma ventana de 7 días que usa el
+    // indicador "EVIDENCIA PENDIENTE"/"LISTA" del panel docente) -- si no
+    // se valida, se podían subir las 4 evidencias del mes de una sola vez.
+    const sevenDaysAgo = new Date(new Date().setDate(new Date().getDate() - 7)).toISOString();
+    const { count: recentCount } = await _supabase.from('weekly_evidence')
+      .select('id', { count: 'exact', head: true })
+      .eq('teacher_id', currentUser.id)
+      .gte('created_at', sevenDaysAgo);
+    if (recentCount > 0) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-camera"></i> Subir Evidencia';
+      return showToast('<i class="fas fa-circle-xmark"></i> Ya subiste tu evidencia de esta semana. La próxima la podés subir en unos días.', 'error');
+    }
     // 1. Subir fotos (solo la primera como representativa para simplificar en esta tabla)
     // Opcionalmente se podrían subir todas y guardar URLs en un array.
     let photoUrl = '';
