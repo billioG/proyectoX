@@ -11,13 +11,14 @@ window.loadAnnouncementsUnreadCount = async function loadAnnouncementsUnreadCoun
 
   const { data: announcements } = await _supabase.from('announcements')
     .select('id').order('created_at', { ascending: false }).limit(50);
-  if (!announcements?.length) { badge.style.display = 'none'; return; }
-
   const { data: reads } = await _supabase.from('announcement_reads')
     .select('announcement_id').eq('user_id', window.currentUser.id);
   const readIds = new Set((reads || []).map(r => r.announcement_id));
+  const unreadAnnouncements = (announcements || []).filter(a => !readIds.has(a.id)).length;
 
-  const unread = announcements.filter(a => !readIds.has(a.id)).length;
+  const pendingSurveys = typeof window.getPendingSurveys === 'function' ? await window.getPendingSurveys() : [];
+  const unread = unreadAnnouncements + pendingSurveys.length;
+
   if (unread > 0) {
     badge.textContent = unread;
     badge.style.display = 'flex';
@@ -43,7 +44,8 @@ window.openAnnouncementsInbox = async function openAnnouncementsInbox() {
           <i class="fas fa-bell text-primary"></i> Avisos
         </h2>
         <div class="flex items-center gap-2">
-          ${isStaffSender ? `<button onclick="window.openSendAnnouncementModal()" class="h-9 px-3 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white text-[0.65rem] font-black uppercase transition-all"><i class="fas fa-paper-plane"></i> Enviar</button>` : ''}
+          ${isStaffSender ? `<button onclick="window.openSendAnnouncementModal()" class="h-9 px-3 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white text-[0.65rem] font-black uppercase transition-all"><i class="fas fa-paper-plane"></i> Aviso</button>` : ''}
+          ${window.userRole === 'admin' ? `<button onclick="window.openCreateSurveyModal()" class="h-9 px-3 rounded-lg bg-fuchsia-500/10 text-fuchsia-500 hover:bg-fuchsia-500 hover:text-white text-[0.65rem] font-black uppercase transition-all"><i class="fas fa-clipboard-list"></i> Encuesta</button>` : ''}
           <button class="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500 flex items-center justify-center" onclick="this.closest('.fixed').remove()"><i class="fas fa-times"></i></button>
         </div>
       </div>
@@ -54,18 +56,37 @@ window.openAnnouncementsInbox = async function openAnnouncementsInbox() {
   `;
   document.body.appendChild(modal);
 
-  const { data: announcements, error } = await _supabase.from('announcements')
-    .select('id, title, message, sender_role, created_at').order('created_at', { ascending: false }).limit(50);
+  const [{ data: announcements, error }, pendingSurveys, adminSurveys] = await Promise.all([
+    _supabase.from('announcements').select('id, title, message, sender_role, created_at').order('created_at', { ascending: false }).limit(50),
+    typeof window.getPendingSurveys === 'function' ? window.getPendingSurveys() : Promise.resolve([]),
+    window.userRole === 'admin' ? _supabase.from('surveys').select('id, title, created_at').order('created_at', { ascending: false }).limit(10) : Promise.resolve({ data: [] }),
+  ]);
 
   const listEl = document.getElementById('announcements-list');
   if (error) { listEl.innerHTML = `<p class="text-rose-500 text-xs">${error.message}</p>`; return; }
-  if (!announcements?.length) { listEl.innerHTML = '<p class="text-slate-400 text-sm text-center py-10">Todavía no tenés avisos.</p>'; return; }
 
   const { data: reads } = await _supabase.from('announcement_reads')
     .select('announcement_id').eq('user_id', currentUser.id);
   const readIds = new Set((reads || []).map(r => r.announcement_id));
 
-  listEl.innerHTML = announcements.map(a => `
+  const surveyCards = (pendingSurveys || []).map(s => `
+    <div class="p-4 rounded-xl border-2 border-fuchsia-400/40 bg-fuchsia-500/5">
+      <div class="flex items-center justify-between gap-2 mb-1">
+        <h4 class="text-sm font-bold text-slate-800 dark:text-white"><i class="fas fa-clipboard-list text-fuchsia-500 mr-1"></i> ${sanitizeInput(s.title)}</h4>
+      </div>
+      <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">${sanitizeInput(s.description || 'Nueva encuesta -- tu opinión ayuda a mejorar la plataforma.')}</p>
+      <button class="mt-2 h-8 px-3 rounded-lg bg-fuchsia-500 text-white text-[0.6rem] font-black uppercase" onclick="window.openAnswerSurveyModal('${s.id}')">Responder</button>
+    </div>
+  `).join('');
+
+  const adminSurveyCards = window.userRole === 'admin' ? (adminSurveys?.data || adminSurveys || []).map(s => `
+    <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
+      <span class="text-xs font-bold text-slate-600 dark:text-slate-300 truncate">${sanitizeInput(s.title)}</span>
+      <button class="text-primary hover:underline text-[0.6rem] font-bold uppercase shrink-0" onclick="window.openSurveyResultsModal('${s.id}')">Ver Resultados</button>
+    </div>
+  `).join('') : '';
+
+  const announcementCards = (announcements || []).map(a => `
     <div class="p-4 rounded-xl border ${readIds.has(a.id) ? 'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-800' : 'bg-primary/5 border-primary/20'}">
       <div class="flex items-center justify-between gap-2 mb-1">
         <h4 class="text-sm font-bold text-slate-800 dark:text-white">${sanitizeInput(a.title)}</h4>
@@ -75,6 +96,13 @@ window.openAnnouncementsInbox = async function openAnnouncementsInbox() {
       <p class="text-[0.6rem] text-slate-400 uppercase font-bold mt-2">${a.sender_role === 'admin' ? 'Administración' : 'Docente'} · ${new Date(a.created_at).toLocaleDateString('es-GT')}</p>
     </div>
   `).join('');
+
+  const adminSurveysBlock = window.userRole === 'admin' && adminSurveyCards
+    ? `<p class="text-[0.6rem] font-black uppercase text-slate-400 tracking-widest mt-4 mb-1">Mis Encuestas</p>${adminSurveyCards}`
+    : '';
+
+  listEl.innerHTML = surveyCards + announcementCards + adminSurveysBlock
+    || '<p class="text-slate-400 text-sm text-center py-10">Todavía no tenés avisos.</p>';
 
   // Marcar todos como leídos al abrir la bandeja.
   const unreadIds = announcements.filter(a => !readIds.has(a.id)).map(a => a.id);
