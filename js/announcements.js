@@ -7,6 +7,17 @@
 window.loadAnnouncementsUnreadCount = async function loadAnnouncementsUnreadCount() {
   const badge = document.getElementById('announcements-unread-badge');
   if (!badge || !window.currentUser) return;
+
+  // El admin ve TODO (is_staff() en las RLS, para poder auditar/borrar
+  // cualquier aviso), pero eso hacía que le llegaran como "no leídos"
+  // avisos de cada docente a sus alumnos y cada encuesta -- ruido que no
+  // le corresponde como destinatario. El admin gestiona avisos/encuestas
+  // desde su propio panel en el dashboard, no desde la campana.
+  if (window.userRole === 'admin') {
+    document.getElementById('announcements-bell')?.remove();
+    return;
+  }
+
   const _supabase = window._supabase;
 
   const { data: announcements } = await _supabase.from('announcements')

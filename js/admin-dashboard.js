@@ -125,23 +125,28 @@ window.renderDashboardUI = function renderDashboardUI(container, stats, teachers
                 </p>
             </div>
             
-            <div class="flex gap-3 w-full xl:w-auto">
-                <button class="flex-1 xl:flex-none bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold py-2.5 px-5 rounded-xl shadow-lg shadow-amber-500/10 transition-all active:scale-95 flex items-center justify-center gap-2 text-xs uppercase tracking-wider group" onclick="nav('admin-rocks')">
+            <div class="grid grid-cols-2 sm:flex sm:flex-wrap gap-3 w-full xl:w-auto">
+                <button class="sm:flex-1 xl:flex-none bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold py-2.5 px-4 sm:px-5 rounded-xl shadow-lg shadow-amber-500/10 transition-all active:scale-95 flex items-center justify-center gap-2 text-[0.65rem] sm:text-xs uppercase tracking-wider group" onclick="nav('admin-rocks')">
                     <i class="fas fa-flag-checkered text-sm group-hover:scale-110 transition-transform"></i>
                     <span>Gestión Tareas</span>
                 </button>
 
-                <button class="flex-1 xl:flex-none bg-gradient-to-r from-fuchsia-500 to-purple-600 hover:from-fuchsia-600 hover:to-purple-700 text-white font-bold py-2.5 px-5 rounded-xl shadow-lg shadow-fuchsia-500/10 transition-all active:scale-95 flex items-center justify-center gap-2 text-xs uppercase tracking-wider group" onclick="window.openRandomEventsAdminModal()">
+                <button class="sm:flex-1 xl:flex-none bg-gradient-to-r from-fuchsia-500 to-purple-600 hover:from-fuchsia-600 hover:to-purple-700 text-white font-bold py-2.5 px-4 sm:px-5 rounded-xl shadow-lg shadow-fuchsia-500/10 transition-all active:scale-95 flex items-center justify-center gap-2 text-[0.65rem] sm:text-xs uppercase tracking-wider group" onclick="window.openRandomEventsAdminModal()">
                     <i class="fas fa-bolt text-sm group-hover:scale-110 transition-transform"></i>
                     <span>Eventos Sorpresa</span>
                 </button>
 
-                <button class="flex-1 xl:flex-none bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold py-2.5 px-5 rounded-xl shadow-lg shadow-emerald-500/10 transition-all active:scale-95 flex items-center justify-center gap-2 text-xs uppercase tracking-wider group" onclick="typeof window.openTournamentSeasonsAdminModal === 'function' ? window.openTournamentSeasonsAdminModal() : window.loadModule('profile').then(() => window.openTournamentSeasonsAdminModal())">
+                <button class="sm:flex-1 xl:flex-none bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold py-2.5 px-4 sm:px-5 rounded-xl shadow-lg shadow-emerald-500/10 transition-all active:scale-95 flex items-center justify-center gap-2 text-[0.65rem] sm:text-xs uppercase tracking-wider group" onclick="typeof window.openTournamentSeasonsAdminModal === 'function' ? window.openTournamentSeasonsAdminModal() : window.loadModule('profile').then(() => window.openTournamentSeasonsAdminModal())">
                     <i class="fas fa-earth-americas text-sm group-hover:scale-110 transition-transform"></i>
                     <span>Torneos</span>
                 </button>
 
-                <button class="flex-1 xl:flex-none bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/50 hover:border-indigo-500 font-bold py-2.5 px-5 rounded-xl shadow-md hover:shadow-indigo-500/10 transition-all active:scale-95 flex items-center justify-center gap-2 text-xs uppercase tracking-wider" onclick="exportAllData()">
+                <button class="sm:flex-1 xl:flex-none bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white font-bold py-2.5 px-4 sm:px-5 rounded-xl shadow-lg shadow-sky-500/10 transition-all active:scale-95 flex items-center justify-center gap-2 text-[0.65rem] sm:text-xs uppercase tracking-wider group" onclick="typeof window.openAnnouncementsInbox === 'function' ? window.openAnnouncementsInbox() : window.loadModule('profile').then(() => window.openAnnouncementsInbox())">
+                    <i class="fas fa-bell text-sm group-hover:scale-110 transition-transform"></i>
+                    <span>Avisos</span>
+                </button>
+
+                <button class="sm:flex-1 xl:flex-none bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/50 hover:border-indigo-500 font-bold py-2.5 px-4 sm:px-5 rounded-xl shadow-md hover:shadow-indigo-500/10 transition-all active:scale-95 flex items-center justify-center gap-2 text-[0.65rem] sm:text-xs uppercase tracking-wider" onclick="exportAllData()">
                     <i class="fas fa-database text-sm"></i>
                     <span>Exportar</span>
                 </button>
@@ -190,7 +195,7 @@ window.renderDashboardUI = function renderDashboardUI(container, stats, teachers
             </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10 items-start">
             <div class="flex flex-col gap-8">
                 <div id="team-performance-widget"></div>
 
