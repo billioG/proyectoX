@@ -239,6 +239,15 @@ async function checkFullYearChallenge(teacherId) {
   } catch (e) { }
 }
 
+// Este archivo se carga como módulo ES dinámico (import()), así que sus
+// funciones quedan en el scope del módulo -- nunca llegaban a `window`,
+// por lo que ningún otro archivo (auth.js, gamification.js, sync-manager.js)
+// podía llamarlas realmente. Por eso nunca se otorgó ninguna insignia.
+window.checkAndAwardBadges = checkAndAwardBadges;
+window.checkAllBadges = checkAllBadges;
+window.checkTeacherBadges = checkTeacherBadges;
+window.awardBadge = awardBadge;
+
 // Verificar insignias al cargar perfil
 if (typeof window !== 'undefined') {
   window.addEventListener('load', () => {

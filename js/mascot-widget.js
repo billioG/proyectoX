@@ -140,6 +140,12 @@ const MascotWidget = {
                     width: 100%;
                     height: 100%;
                 }
+                /* En pantallas chicas ocupa menos espacio -- tapaba botones
+                   de tarjetas (editar/borrar/etc.) que caen en esa misma
+                   esquina inferior derecha. */
+                @media (max-width: 640px) {
+                    .mascot-robot { width: 52px; height: 52px; }
+                }
                 
                 /* Animations */
                 @keyframes mascot-float {

@@ -6,6 +6,12 @@ import { _syncManager } from './sync-manager.js';
 import { initTheme } from './main.js';
 
 import './data/badges.js';
+// js/badges.js (la LÓGICA de insignias, checkAllBadges/checkAndAwardBadges)
+// solo se cargaba de forma perezosa al entrar a "Perfil". Pero se llama
+// justo al hacer login (auth.js) -- si el alumno nunca había visitado su
+// perfil antes, la función no existía todavía y el chequeo se saltaba en
+// silencio siempre. Por eso nadie tenía insignias desbloqueadas.
+import './badges.js';
 import './data/quotes.js';
 import './data/challenges.js';
 import './kolibri-sync.js';
