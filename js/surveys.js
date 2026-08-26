@@ -5,6 +5,7 @@
  */
 
 const SURVEY_QUESTION_TYPE_LABEL = { multiple_choice: 'Opción múltiple', text: 'Respuesta abierta', scale: 'Escala 1-5' };
+const SCALE_FACE_EMOJI = { 1: '😞', 2: '🙁', 3: '😐', 4: '🙂', 5: '😄' };
 
 window.getPendingSurveys = async function getPendingSurveys() {
   const _supabase = window._supabase;
@@ -57,9 +58,10 @@ window.openAnswerSurveyModal = async function openAnswerSurveyModal(surveyId) {
             ${q.type === 'scale' ? `
               <div class="flex items-center justify-between gap-2">
                 ${Array.from({ length: (q.scale_max || 5) - (q.scale_min || 1) + 1 }, (_, k) => (q.scale_min || 1) + k).map(n => `
-                  <label class="flex flex-col items-center gap-1 cursor-pointer">
-                    <input type="radio" name="survey-q-${q.id}" value="${n}">
-                    <span class="text-[0.65rem] text-slate-400">${n}</span>
+                  <label class="flex flex-col items-center gap-1 cursor-pointer p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors">
+                    <input type="radio" name="survey-q-${q.id}" value="${n}" class="hidden peer">
+                    <span class="text-3xl grayscale peer-checked:grayscale-0 opacity-40 peer-checked:opacity-100 transition-all">${SCALE_FACE_EMOJI[n] || '😐'}</span>
+                    <span class="text-[0.55rem] text-slate-400">${n}</span>
                   </label>
                 `).join('')}
               </div>
@@ -314,8 +316,9 @@ window.openSurveyResultsModal = async function openSurveyResultsModal(surveyId) 
             `).join('');
     } else if (q.type === 'scale') {
       const vals = qAnswers.map(a => a.answer_scale).filter(v => v != null);
-      const avg = vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1) : '--';
-      body = `<div class="text-2xl font-black text-primary">${avg} <span class="text-xs text-slate-400 font-bold">/ 5 promedio (${vals.length} resp.)</span></div>`;
+      const avg = vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length) : null;
+      const face = avg != null ? SCALE_FACE_EMOJI[Math.round(avg)] || '😐' : '';
+      body = `<div class="flex items-center gap-2"><span class="text-3xl">${face}</span><div class="text-2xl font-black text-primary">${avg != null ? avg.toFixed(1) : '--'} <span class="text-xs text-slate-400 font-bold">/ 5 promedio (${vals.length} resp.)</span></div></div>`;
     } else {
       const texts = qAnswers.map(a => a.answer_text).filter(Boolean);
       body = texts.length
