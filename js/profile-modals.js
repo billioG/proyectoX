@@ -288,6 +288,7 @@ window.uploadProfilePhoto = async function uploadProfilePhoto() {
 
 
 window.openSuggestionModal = function openSuggestionModal() {
+  if (document.getElementById('suggestion-modal')) return; // evita apilar modales al hacer varios clics
   const modal = document.createElement('div');
   // Ajustamos el z-index a 40 para que quede por debajo del sidebar (50) y header (60)
   // Y añadimos márgenes en desktop para que se centre solo en el área de contenido
