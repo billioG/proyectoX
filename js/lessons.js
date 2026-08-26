@@ -1602,8 +1602,8 @@ window.loadResourceSocialPanel = async function loadResourceSocialPanel(lessonId
   const _supabase = window._supabase;
   const currentUser = window.currentUser;
 
-  const [{ data: noteRow }, { data: memberships }] = await Promise.all([
-    _supabase.from('resource_notes').select('content').eq('lesson_id', lessonId).eq('student_id', currentUser.id).maybeSingle(),
+  const [{ data: notes }, { data: memberships }] = await Promise.all([
+    _supabase.from('resource_notes').select('id, content').eq('lesson_id', lessonId).eq('student_id', currentUser.id).order('created_at', { ascending: true }),
     _supabase.from('group_members').select('group_id').eq('student_id', currentUser.id),
   ]);
 
@@ -1620,10 +1620,10 @@ window.loadResourceSocialPanel = async function loadResourceSocialPanel(lessonId
     }
   }
 
-  window.renderResourceSocialPanel(lessonId, noteRow?.content || '', comments, groupId, likes);
+  window.renderResourceSocialPanel(lessonId, notes || [], comments, groupId, likes);
 };
 
-window.renderResourceSocialPanel = function renderResourceSocialPanel(lessonId, noteContent, comments, groupId, likes) {
+window.renderResourceSocialPanel = function renderResourceSocialPanel(lessonId, notes, comments, groupId, likes) {
   const panel = document.getElementById('resource-social-panel');
   if (!panel) return;
   const sanitizeInput = window.sanitizeInput || ((v) => v);
@@ -1633,13 +1633,22 @@ window.renderResourceSocialPanel = function renderResourceSocialPanel(lessonId, 
     replyFn: (id) => `window.postResourceComment('${lessonId}', '${groupId}', '${id}')`,
   }) : '';
 
+  const notesHtml = notes.length ? notes.map(n => `
+    <div class="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 text-xs">
+      <p class="text-slate-600 dark:text-slate-300">${sanitizeInput(n.content)}</p>
+    </div>
+  `).join('') : '<p class="text-xs text-slate-400">Todavía no escribiste notas.</p>';
+
   panel.innerHTML = `
     <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
       <div>
-        <h4 class="text-xs font-black uppercase text-slate-400 tracking-widest mb-2"><i class="fas fa-note-sticky"></i> Mi nota personal</h4>
-        <textarea id="resource-note-input" class="input-field-tw text-sm" rows="4" placeholder="Escribí una nota privada solo para vos...">${sanitizeInput(noteContent)}</textarea>
-        <p class="text-[0.6rem] text-slate-400 mt-1"><i class="fas fa-lock"></i> Privada -- solo vos la ves, nadie puede responderla ni darle like.</p>
-        <button class="btn-secondary-tw h-9 px-4 text-xs uppercase font-bold mt-2" onclick="window.saveResourceNote('${lessonId}')"><i class="fas fa-save"></i> Guardar nota</button>
+        <h4 class="text-xs font-black uppercase text-slate-400 tracking-widest mb-2"><i class="fas fa-note-sticky"></i> Mis notas personales</h4>
+        <p class="text-[0.6rem] text-slate-400 mb-2"><i class="fas fa-lock"></i> Privadas -- solo vos las ves, nadie puede responderlas ni darles like.</p>
+        <div id="resource-notes-list" class="space-y-2 max-h-52 overflow-y-auto custom-scrollbar mb-2 pr-1">${notesHtml}</div>
+        <div class="flex gap-2">
+          <input id="resource-note-input" class="input-field-tw h-9 text-sm flex-1" placeholder="Escribí una nota nueva...">
+          <button class="btn-primary-tw h-9 px-4 text-xs uppercase font-bold shrink-0" onclick="window.postResourceNote('${lessonId}')"><i class="fas fa-paper-plane"></i></button>
+        </div>
       </div>
       <div>
         <h4 class="text-xs font-black uppercase text-slate-400 tracking-widest mb-2"><i class="fas fa-comments"></i> Comentarios del equipo</h4>
@@ -1655,24 +1664,23 @@ window.renderResourceSocialPanel = function renderResourceSocialPanel(lessonId, 
   `;
 };
 
-window.saveResourceNote = async function saveResourceNote(lessonId) {
+window.postResourceNote = async function postResourceNote(lessonId) {
   const input = document.getElementById('resource-note-input');
   if (!input) return;
   const content = input.value.trim();
   if (!content) return;
 
-  const { error } = await window._supabase.from('resource_notes').upsert({
+  const { error } = await window._supabase.from('resource_notes').insert({
     lesson_id: lessonId,
     student_id: window.currentUser.id,
     content,
-    updated_at: new Date().toISOString(),
-  }, { onConflict: 'lesson_id,student_id' });
+  });
 
   if (error) {
     const msg = error.message.includes('CONTENIDO_INAPROPIADO') ? 'Esa nota tiene lenguaje no permitido' : error.message;
     return window.showToast('<i class="fas fa-circle-xmark"></i> ' + msg, 'error');
   }
-  window.showToast('<i class="fas fa-circle-check"></i> Nota guardada', 'success');
+  window.loadResourceSocialPanel(lessonId);
 };
 
 window.postResourceComment = async function postResourceComment(lessonId, groupId, parentId) {
