@@ -19,6 +19,7 @@ window.initGamification = async function initGamification() {
         if (typeof window.renderGamificationSidebar === 'function') window.renderGamificationSidebar(xpData.level, xpData.totalXP, xpData.levelProgress, xpData.xpInLevel);
         if (typeof window.checkBadgeCelebrations === 'function') window.checkBadgeCelebrations(xpData.earnedBadges);
         if (typeof window.checkDailyChest === 'function') window.checkDailyChest();
+        if (typeof window.updateDuelPendingBadge === 'function') window.updateDuelPendingBadge();
       });
 
     } else if (userRole === 'docente') {
@@ -44,8 +45,11 @@ window.initGamification = async function initGamification() {
       }, (snapshot) => {
         if (snapshot.xpData) {
           if (typeof window.renderTeacherSidebar === 'function') window.renderTeacherSidebar(snapshot.xpData);
-          if (snapshot.totalChallenges >= 12) {
-            if (typeof window.checkBadgeCelebrations === 'function') window.checkBadgeCelebrations([{ badge_id: 200 }]);
+          if (snapshot.totalChallenges >= 12 && typeof window.awardBadge === 'function') {
+            window.awardBadge(currentUser.id, 200).then(async () => {
+              const { data: badge200 } = await _supabase.from('teacher_badges').select('id, badge_id, celebrated').eq('teacher_id', currentUser.id).eq('badge_id', 200).maybeSingle();
+              if (badge200 && typeof window.checkBadgeCelebrations === 'function') window.checkBadgeCelebrations([badge200], 'teacher_badges');
+            });
           }
         }
       });
@@ -108,7 +112,7 @@ window.calculateStudentXP = async function calculateStudentXP(studentId) {
 
     const { data: earnedBadges } = await _supabase
       .from('student_badges')
-      .select('badge_id')
+      .select('id, badge_id, celebrated')
       .eq('student_id', studentId);
 
     const totalProjects = projects?.length || 0;
@@ -186,6 +190,7 @@ window.renderGamificationSidebar = function renderGamificationSidebar(level, tot
       <!-- GAME CENTER BUTTON (NEW) -->
       <button onclick="window.openGamificationHub && window.openGamificationHub()" class="w-full py-3 mt-4 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-black uppercase tracking-widest shadow-lg shadow-indigo-500/25 hover:scale-[1.02] active:scale-95 transition-all text-[0.65rem] flex items-center justify-center gap-2 relative z-10">
         <i class="fas fa-gamepad animate-bounce"></i> Abrir Centro de Juego
+        <span id="duel-pending-badge" style="display:none" class="ml-1 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[0.6rem] font-black items-center justify-center animate-pulse">0</span>
       </button>
     </div>
   `;
@@ -582,29 +587,50 @@ window.buyShopItem = async function buyShopItem(name, price) {
   }
 }
 
-window.checkBadgeCelebrations = function checkBadgeCelebrations(earnedBadges) {
+window.updateDuelPendingBadge = async function updateDuelPendingBadge() {
+  const badge = document.getElementById('duel-pending-badge');
+  if (!badge) return;
+  const _supabase = window._supabase;
   const currentUser = window.currentUser;
+  if (!currentUser) return;
+
+  const { count } = await _supabase.from('student_duels')
+    .select('id', { count: 'exact', head: true })
+    .eq('opponent_id', currentUser.id)
+    .eq('status', 'pending');
+
+  if (count > 0) {
+    badge.textContent = count;
+    badge.style.display = 'flex';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+window.checkBadgeCelebrations = async function checkBadgeCelebrations(earnedBadges, table = 'student_badges') {
+  const _supabase = window._supabase;
   const BADGES = window.BADGES || [];
   const TEACHER_BADGES = window.TEACHER_BADGES || [];
 
   if (!earnedBadges || earnedBadges.length === 0) return;
 
-  const seenKey = `seen_badges_${currentUser.id}`;
-  const seenBadges = JSON.parse(localStorage.getItem(seenKey) || '[]');
+  // "Ya la vi" se guarda en la base (columna celebrated), no en
+  // localStorage -- si no, cada dispositivo/navegador nuevo repetía la
+  // animación de desbloqueo para insignias ganadas hace tiempo.
+  const newBadges = earnedBadges.filter(b => !b.celebrated);
+  if (!newBadges.length) return;
 
-  const newBadges = earnedBadges.filter(b => !seenBadges.includes(b.badge_id));
+  const badgeId = newBadges[0].badge_id;
+  const badgeInfo = [...BADGES, ...TEACHER_BADGES].find(b => b.id === badgeId);
+  if (badgeInfo) {
+    setTimeout(() => {
+      if (typeof window.showBadgeCelebrationModal === 'function') window.showBadgeCelebrationModal(badgeInfo);
+    }, 1500);
+  }
 
-  if (newBadges.length > 0) {
-    const badgeId = newBadges[0].badge_id;
-    const badgeInfo = [...BADGES, ...TEACHER_BADGES].find(b => b.id === badgeId);
-
-    if (badgeInfo) {
-      setTimeout(() => {
-        if (typeof window.showBadgeCelebrationModal === 'function') window.showBadgeCelebrationModal(badgeInfo);
-      }, 1500);
-    }
-    const updatedSeen = [...seenBadges, ...newBadges.map(b => b.badge_id)];
-    localStorage.setItem(seenKey, JSON.stringify(updatedSeen));
+  const ids = newBadges.map(b => b.id).filter(Boolean);
+  if (ids.length) {
+    await _supabase.from(table).update({ celebrated: true }).in('id', ids);
   }
 }
 

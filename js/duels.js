@@ -17,6 +17,7 @@ window.loadDuelsSection = async function loadDuelsSection() {
 
   window._duelsCache = duels || [];
   window.renderDuelsSection();
+  if (typeof window.updateDuelPendingBadge === 'function') window.updateDuelPendingBadge();
 }
 
 window.renderDuelsSection = function renderDuelsSection() {
