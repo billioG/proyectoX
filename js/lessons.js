@@ -1018,8 +1018,16 @@ window.extractAndUploadPackage = async function extractAndUploadPackage(file, ba
       const resource = doc.querySelector('resources > resource[href]') || doc.querySelector('resource[href]');
       const href = resource?.getAttribute('href');
       if (href) {
-        const { data: { publicUrl } } = _supabase.storage.from(LESSON_STORAGE_BUCKET).getPublicUrl(`${basePath}/${href}`);
-        entryUrl = publicUrl;
+        // Supabase Storage fuerza text/plain + CSP sandbox en cualquier
+        // .html público (anti-XSS de la plataforma, no configurable) --
+        // el .js/.css del paquete sí cargan bien, pero el .html de entrada
+        // nunca ejecuta su propio script así. Se sirve vía un proxy que
+        // re-envía ESE archivo con headers normales (ver
+        // serve-scorm-entry); el resto de los assets del paquete siguen
+        // resolviendo directo a Storage gracias al <base href> que inyecta.
+        const [hrefPath, hrefQuery] = href.split('?');
+        const objectPath = `${basePath}/${hrefPath}`;
+        entryUrl = `${window.SUPABASE_URL}/functions/v1/serve-scorm-entry?path=${encodeURIComponent(objectPath)}${hrefQuery ? `&${hrefQuery}` : ''}`;
       }
     } catch (e) {
       console.warn('No se pudo leer imsmanifest.xml:', e);
