@@ -15,7 +15,7 @@ create table if not exists public.resource_notes (
 create table if not exists public.resource_comments (
   id uuid primary key default gen_random_uuid(),
   lesson_id uuid not null references public.lessons(id) on delete cascade,
-  group_id uuid not null references public.groups(id) on delete cascade,
+  group_id integer not null references public.groups(id) on delete cascade,
   author_id uuid not null,
   author_name text not null,
   author_role text not null,
