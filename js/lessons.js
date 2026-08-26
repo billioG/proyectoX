@@ -571,22 +571,39 @@ window.extractAndUploadPackage = async function extractAndUploadPackage(file, ba
   const entries = Object.values(zip.files).filter(f => !f.dir);
   const _supabase = window._supabase;
 
-  // Un .h5p "standalone" válido trae adentro TODAS las librerías que declara
-  // (H5P.InteractiveVideo-x.y/, H5P.Video-x.y/, etc.) -- algunos exportadores
-  // (ej. ciertos modos de Genially/Lumi) generan un .h5p que asume que esas
+  // Un .h5p "standalone" válido trae adentro TODAS las librerías que declara,
+  // Y las que ESAS librerías a su vez necesitan (dependencias anidadas --
+  // ej. H5P.DragText depende de H5P.JoubelUI, que depende de FontAwesome).
+  // Algunos exportadores (ciertos modos de Genially/Lumi) asumen que esas
   // librerías ya viven en un servidor H5P con Hub, cosa que nuestro
-  // reproductor standalone no tiene. Si falta alguna, mejor avisar ANTES de
-  // subir nada (si no, el alumno ve "no se pudo cargar el reproductor").
+  // reproductor standalone no tiene. Si falta alguna en cualquier nivel,
+  // mejor avisar ANTES de subir nada (si no, el alumno ve "no se pudo
+  // cargar el reproductor" sin explicación).
   const h5pJsonEntry = entries.find(e => /(^|\/)h5p\.json$/i.test(e.name) && !e.name.includes('/content/'));
   if (h5pJsonEntry) {
     try {
       const h5pJson = JSON.parse(await h5pJsonEntry.async('text'));
-      const entryNames = new Set(entries.map(e => e.name));
-      const missing = (h5pJson.preloadedDependencies || [])
-        .map(dep => `${dep.machineName}-${dep.majorVersion}.${dep.minorVersion}`)
-        .filter(folder => ![...entryNames].some(n => n.startsWith(folder + '/')));
-      if (missing.length) {
-        throw new Error(`El archivo .h5p no trae las librerías que necesita (${missing.join(', ')}). Volvé a exportarlo asegurándote de incluir "todas las librerías" / "standalone" -- si no, el contenido no va a reproducirse.`);
+      const entryByName = new Map(entries.map(e => [e.name, e]));
+      const folderNames = new Set([...entryByName.keys()].map(n => n.split('/')[0]));
+
+      const visited = new Set();
+      const missing = new Set();
+      async function visitLib(dep) {
+        const folder = `${dep.machineName}-${dep.majorVersion}.${dep.minorVersion}`;
+        if (visited.has(folder)) return;
+        visited.add(folder);
+        if (!folderNames.has(folder)) { missing.add(folder); return; }
+        const libJsonEntry = entryByName.get(`${folder}/library.json`);
+        if (!libJsonEntry) { missing.add(`${folder}/library.json`); return; }
+        let libJson;
+        try { libJson = JSON.parse(await libJsonEntry.async('text')); } catch { return; }
+        const subDeps = [...(libJson.preloadedDependencies || []), ...(libJson.dynamicDependencies || [])];
+        for (const d of subDeps) await visitLib(d);
+      }
+      for (const dep of (h5pJson.preloadedDependencies || [])) await visitLib(dep);
+
+      if (missing.size) {
+        throw new Error(`El archivo .h5p no trae las librerías que necesita (${[...missing].join(', ')}). Volvé a exportarlo asegurándote de incluir "todas las librerías" / "standalone" -- si no, el contenido no va a reproducirse.`);
       }
     } catch (e) {
       if (e.message.includes('librerías')) throw e;
