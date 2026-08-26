@@ -77,7 +77,7 @@ window.renderStudentProfileUI = function renderStudentProfileUI(container, stude
         </div>
         <div class="grow">
             <div class="flex flex-wrap justify-center md:justify-start gap-2 mb-3">
-                <span class="px-3 py-1 bg-primary/10 text-primary font-bold rounded-lg text-[0.65rem] uppercase tracking-[0.2em] shadow-sm">${sanitizeInput(student.schools?.name || 'Academia 1Bot')}</span>
+                <span class="px-3 py-1 bg-primary/10 text-primary font-bold rounded-lg text-[0.65rem] uppercase tracking-[0.2em] shadow-sm">${sanitizeInput(student.schools?.name || 'Academia Quetzal LMS')}</span>
                 <span class="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 font-semibold rounded-lg text-[0.65rem] uppercase tracking-widest leading-none flex items-center">${sanitizeInput(student.grade || 'Grado')} ${sanitizeInput(student.section || 'Sección')}</span>
             </div>
             <h2 class="text-4xl font-bold text-slate-800 dark:text-white tracking-tight leading-none mb-2">${sanitizeInput(student.full_name || 'Nombre Estudiante')}</h2>
@@ -222,7 +222,7 @@ window.getBadgeAwardLogic = function getBadgeAwardLogic(badgeId) {
         14: "Destaquémonos como buen 'Speaker' presentando tus proyectos con éxito 3 veces.",
         15: "¡No te rindas al final! Sube al menos un proyecto durante el mes de Noviembre."
     };
-    return logic[badgeId] || "Criterio de evaluación académica establecido por 1Bot.";
+    return logic[badgeId] || "Criterio de evaluación académica establecido por la plataforma.";
 }
 
 window.loadTeacherProfile = async function loadTeacherProfile() {
@@ -266,7 +266,7 @@ window.renderTeacherProfileUI = function renderTeacherProfileUI(container, teach
         </div>
         <div class="grow">
             <h2 class="text-4xl font-bold text-slate-800 dark:text-white tracking-tight">${teacher.full_name}</h2>
-            <p class="text-lg font-semibold text-indigo-500 mb-2">Docente Autorizado 1Bot</p>
+            <p class="text-lg font-semibold text-indigo-500 mb-2">Docente Autorizado</p>
             <div class="flex justify-center md:justify-start gap-4 text-xs font-semibold text-slate-400 uppercase tracking-widest">
                 <span>${assignments.length} Centros Educativos</span>
                 <span>•</span>

@@ -11,7 +11,7 @@ window.renderTeacherPanel = function renderTeacherPanel(hasWeeklyEvidence, showR
         </div>
         <div>
           <h3 class="text-base font-bold tracking-tight leading-none mb-1.5 uppercase">Gestión Académica</h3>
-          <p class="text-[0.7rem] text-primary font-black uppercase tracking-[0.2em] leading-none opacity-80">Control Docente 1Bot</p>
+          <p class="text-[0.7rem] text-primary font-black uppercase tracking-[0.2em] leading-none opacity-80">Control Docente</p>
         </div>
       </div>
       <div class="flex flex-wrap items-center gap-4 w-full md:w-auto">
@@ -126,7 +126,7 @@ window.renderProjectCard = function renderProjectCard(p) {
                 <div class="w-6 h-6 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-[0.65rem] shrink-0">
                     <i class="fas fa-school"></i>
                 </div>
-                <span class="text-[0.6rem] font-black uppercase tracking-widest text-slate-400 truncate">${sanitizeInput(p.students?.schools?.name || 'Academia 1Bot')}</span>
+                <span class="text-[0.6rem] font-black uppercase tracking-widest text-slate-400 truncate">${sanitizeInput(p.students?.schools?.name || 'Academia Quetzal LMS')}</span>
             </div>
 
             ${currentUser ? `

@@ -1,7 +1,7 @@
-# 🚀 Manual Maestro: Ecosistema 1Bot Guatemala
+# 🚀 Manual Maestro: Quetzal LMS
 **Versión 2.0 - Sistema Diamante y Gestión de Impacto STEEAM**
 
-Bienvenido al manual oficial de la plataforma 1Bot. Este documento es tu guía definitiva para dominar todas las herramientas del ecosistema, desde el aprendizaje gamificado hasta la gestión financiera de alto rendimiento.
+Bienvenido al manual oficial de la plataforma Quetzal LMS. Este documento es tu guía definitiva para dominar todas las herramientas del ecosistema, desde el aprendizaje gamificado hasta la gestión financiera de alto rendimiento.
 
 ---
 
@@ -62,7 +62,7 @@ No necesitas revisar perfil por perfil.
 
 *   **¿Qué pasa si un usuario olvida marcar su asistencia GPS?** El Admin puede realizar un ajuste manual en el panel de desempeño para corregir la asistencia si hay una justificación válida.
 *   **¿Cómo se distribuyen los porcentajes de las metas?** El sistema es inteligente: si pones 5 tareas, cada una vale 20%. Si borras una y quedan 4, cada una vale 25% automáticamente.
-*   **¿Los diplomas tienen validez?** Son reconocimientos internos oficiales de 1Bot Guatemala que validan la competencia técnica y el compromiso del integrante.
+*   **¿Los diplomas tienen validez?** Son reconocimientos internos oficiales de Quetzal LMS que validan la competencia técnica y el compromiso del integrante.
 
 ---
 **Recuerda:** "Lo que no se mide, no se puede mejorar". Usa esta plataforma para visibilizar tu gran trabajo en la educación tecnológica de Guatemala. 🚀💪

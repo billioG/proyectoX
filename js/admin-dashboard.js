@@ -695,7 +695,7 @@ window.exportAllData = function () {
         // Preparar Datos CSV
         // Header
         let csvContent = "data:text/csv;charset=utf-8,";
-        csvContent += "Reporte Ejecutivo 1Bot\n";
+        csvContent += "Reporte Ejecutivo Quetzal LMS\n";
         csvContent += `Fecha Exportacion,${new Date().toLocaleString()}\n`;
         csvContent += `Promedio General,${dashboardStats.avgScore}\n`;
         csvContent += `Satisfaccion Global,${dashboardStats.globalSatisfaction}\n`;
@@ -713,7 +713,7 @@ window.exportAllData = function () {
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
         link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `reporte_ejecutivo_1bot_${new Date().toISOString().split('T')[0]}.csv`);
+        link.setAttribute("download", `reporte_ejecutivo_quetzal_lms_${new Date().toISOString().split('T')[0]}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);

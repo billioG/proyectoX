@@ -19,7 +19,7 @@ const KolibriSync = {
             <div class="glass-card w-full max-w-2xl p-0 overflow-hidden shadow-2xl animate-slideUp border-primary/30 flex flex-col max-h-[90vh]">
                 <div class="bg-gradient-to-br from-primary to-indigo-700 p-8 text-center shrink-0">
                     <h2 class="text-2xl font-black text-white uppercase tracking-tighter">Centro de Sincronización</h2>
-                    <p class="text-indigo-100 text-[0.6rem] font-bold uppercase tracking-[0.2em] mt-1 italic">Tecnología Kolibri-1Bot (Offline-P2P)</p>
+                    <p class="text-indigo-100 text-[0.6rem] font-bold uppercase tracking-[0.2em] mt-1 italic">Tecnología Kolibri (Offline-P2P)</p>
                 </div>
 
                 <div class="p-8 overflow-y-auto space-y-8">

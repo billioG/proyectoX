@@ -228,12 +228,8 @@ function renderMotivationalQuote() {
   if (!container || typeof MOTIVATIONAL_QUOTES === 'undefined') return;
   const quote = MOTIVATIONAL_QUOTES[Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length)];
   container.innerHTML = `
-    <div class="glass-card p-8 border-l-8 border-primary dark:bg-slate-900/40 mt-12 max-w-lg mx-auto transform hover:-translate-y-1 transition-all duration-300">
-      <p class="text-xl italic font-medium text-slate-700 dark:text-slate-300 mb-4 leading-relaxed tracking-tight">"${quote}"</p>
-      <div class="flex items-center gap-3">
-        <div class="h-1 w-12 bg-primary rounded-full"></div>
-        <div class="text-sm font-black uppercase text-primary tracking-widest">Inspiración Diaria</div>
-      </div>
+    <div class="text-center max-w-sm mx-auto px-4">
+      <p class="text-xs italic text-slate-400 dark:text-slate-500 leading-relaxed">"${quote}"</p>
     </div>
   `;
 }

@@ -172,12 +172,12 @@ window.openAddTeacherModal = function openAddTeacherModal() {
 
         <div>
           <label class="text-[0.7rem] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Contraseña Temporal</label>
-          <input type="password" id="teacher-password" class="input-field-tw" placeholder="Mínimo 6 caracteres" value="1bot.org">
+          <input type="password" id="teacher-password" class="input-field-tw" placeholder="Mínimo 6 caracteres" value="Quetzal.2026">
         </div>
 
         <label class="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors">
           <input type="checkbox" id="teacher-is-1bot" class="w-5 h-5 rounded text-primary focus:ring-primary border-slate-300">
-          <span class="text-sm font-bold text-slate-700 dark:text-slate-300">Es equipo de 1bot (Habilitar Bonos)</span>
+          <span class="text-sm font-bold text-slate-700 dark:text-slate-300">Es equipo interno (Habilitar Bonos)</span>
         </label>
 
         <button class="btn-primary-tw w-full mt-4" onclick="window.addTeacher()" id="btn-add-teacher">
@@ -701,7 +701,7 @@ window.editTeacher = async function editTeacher(teacherId) {
 
           <label class="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors mb-4">
             <input type="checkbox" id="edit-teacher-is-1bot" class="w-5 h-5 rounded text-primary focus:ring-primary border-slate-300" ${teacher.is_1bot_team ? 'checked' : ''}>
-            <span class="text-sm font-bold text-slate-700 dark:text-slate-300">Es equipo de 1bot (Habilitar Bonos)</span>
+            <span class="text-sm font-bold text-slate-700 dark:text-slate-300">Es equipo interno (Habilitar Bonos)</span>
           </label>
 
           <button class="btn-primary-tw w-full mt-4" onclick="window.updateTeacher('${teacherId}')" id="btn-update-teacher">

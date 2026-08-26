@@ -59,7 +59,7 @@ window.showBirthdayModal = function showBirthdayModal() {
                 <div class="h-1 w-20 bg-primary mx-auto mb-8 rounded-full"></div>
                 
                 <p class="text-slate-300 font-medium text-lg leading-relaxed mb-10">
-                    En <b class="text-white">1Bot Guatemala</b> celebramos tu vida y tu talento. ¡Que hoy sea un día lleno de innovación y alegría!
+                    En <b class="text-white">Quetzal LMS</b> celebramos tu vida y tu talento. ¡Que hoy sea un día lleno de innovación y alegría!
                 </p>
                 
                 <button onclick="this.closest('.fixed').remove()" class="btn-primary-tw w-full h-16 text-lg font-black uppercase tracking-[0.2em] shadow-2xl shadow-primary/40 transform hover:scale-105 active:scale-95 transition-all">
@@ -77,7 +77,7 @@ window.showBirthdayModal = function showBirthdayModal() {
             particleCount: 150,
             spread: 70,
             origin: { y: 0.6 },
-            colors: ['#00ADEF', '#F59E0B', '#10B981']
+            colors: ['#00C853', '#F59E0B', '#FF3D00']
         });
     }
 }

@@ -312,7 +312,7 @@ window.openCreateGroupModal = async function openCreateGroupModal(isEdit = false
   modal.innerHTML = `
       <div class="glass-card w-full max-w-xl p-8 animate-slideUp">
           <div class="flex justify-between items-center mb-8 border-b border-slate-50 dark:border-slate-800 pb-4">
-              <h3 class="text-xl font-bold text-slate-800 dark:text-white uppercase tracking-tighter">Nuevo Equipo 1Bot</h3>
+              <h3 class="text-xl font-bold text-slate-800 dark:text-white uppercase tracking-tighter">Nuevo Equipo</h3>
               <button onclick="this.closest('.fixed').remove()" class="text-slate-400 hover:text-rose-500 font-bold text-2xl group flex items-center gap-2">
                   <span class="text-[0.55rem] uppercase font-bold opacity-0 group-hover:opacity-100 tracking-widest transition-opacity">Volver</span> ×
               </button>
@@ -405,7 +405,7 @@ window.updateGroup = async function updateGroup(groupId, forcedName = null) {
     showToast('<i class="fas fa-circle-check"></i> Equipo actualizado', 'success');
     if (document.querySelector('.fixed.inset-0.z-\\[100\\]')) {
       const title = document.querySelector('h3');
-      if (title && (title.innerText === 'Actualizar Datos' || title.innerText === 'Nuevo Equipo 1Bot')) {
+      if (title && (title.innerText === 'Actualizar Datos' || title.innerText === 'Nuevo Equipo')) {
         document.querySelector('.fixed.inset-0.z-\\[100\\]').remove();
       }
     }

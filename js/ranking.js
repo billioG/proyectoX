@@ -46,7 +46,7 @@ window.renderRankingInterface = function renderRankingInterface(container) {
     <div class="glass-card p-6 md:p-8 mb-8 overflow-hidden relative border-none bg-slate-900 text-white shadow-xl">
         <div class="absolute -right-10 -top-10 text-[10rem] opacity-[0.05] rotate-12 text-blue-400 pointer-events-none transition-transform group-hover:rotate-45"><i class="fas fa-award"></i></div>
         <div class="relative z-10">
-            <h3 class="text-2xl font-bold mb-1 tracking-tight uppercase">HALL DE LA FAMA 1BOT</h3>
+            <h3 class="text-2xl font-bold mb-1 tracking-tight uppercase">HALL DE LA FAMA</h3>
             <p class="text-white/60 font-medium max-w-2xl leading-relaxed text-[0.7rem] uppercase tracking-widest">Excelencia técnica y validación de la comunidad.</p>
         </div>
     </div>

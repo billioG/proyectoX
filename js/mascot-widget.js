@@ -20,7 +20,7 @@ const MascotWidget = {
                 '¡Recuerda subir tus avances! <i class="fas fa-rocket"></i>',
                 '¡El código es tu superpoder! <i class="fas fa-bolt"></i>',
                 '¿Has revisado el ranking hoy? <i class="fas fa-trophy"></i>',
-                '¡Sigue aprendiendo, 1bot está contigo! <i class="fas fa-heart"></i>'
+                '¡Sigue aprendiendo, el quetzal está contigo! <i class="fas fa-heart"></i>'
             ],
             happy: [
                 '¡Increíble progreso! <i class="fas fa-champagne-glasses"></i>',
@@ -109,7 +109,7 @@ const MascotWidget = {
                     font-size: 0.85rem;
                     font-weight: 700;
                     color: #1e293b;
-                    border: 2px solid #00ADEF;
+                    border: 2px solid #00C853;
                     opacity: 0;
                     transform: translateY(10px) scale(0.9);
                     transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -118,7 +118,7 @@ const MascotWidget = {
                 .dark .mascot-bubble {
                     background: #1e293b;
                     color: white;
-                    border-color: #00ADEF;
+                    border-color: #00C853;
                     box-shadow: 0 10px 25px rgba(0,0,0,0.3);
                 }
                 .mascot-bubble::after {
@@ -127,7 +127,7 @@ const MascotWidget = {
                     top: 100%;
                     right: 24px;
                     border: 10px solid transparent;
-                    border-top-color: #00ADEF;
+                    border-top-color: #00C853;
                 }
                 .mascot-bubble.show {
                     opacity: 1;
@@ -137,7 +137,7 @@ const MascotWidget = {
                     width: 80px;
                     height: 80px;
                     cursor: pointer;
-                    filter: drop-shadow(0 5px 15px rgba(0,173,239,0.2));
+                    filter: drop-shadow(0 5px 15px rgba(0,200,83,0.25));
                 }
                 .mascot-robot svg {
                     width: 100%;
@@ -264,7 +264,7 @@ const MascotWidget = {
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center"><i class="fas fa-robot"></i></div>
                         <div>
-                            <h3 class="font-black uppercase tracking-widest text-sm leading-none">Consultar a 1Bot AI</h3>
+                            <h3 class="font-black uppercase tracking-widest text-sm leading-none">Preguntarle al Asistente IA</h3>
                             <p class="text-[0.6rem] font-bold opacity-70 mt-1 uppercase">Impulsado por OpenAI GPT-4o</p>
                         </div>
                     </div>

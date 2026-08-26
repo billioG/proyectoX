@@ -35,7 +35,7 @@ function showCertificateClaim(type, data) {
             </div>
             <div class="p-10 text-center bg-white dark:bg-slate-900">
                 <p class="text-slate-600 dark:text-slate-300 font-medium leading-relaxed mb-8">
-                    Tu compromiso con el ecosistema **STEEAM 1Bot** te ha hecho acreedor al diploma de:
+                    Tu compromiso con el ecosistema **STEEAM Quetzal LMS** te ha hecho acreedor al diploma de:
                     <br><span class="text-xl font-black text-amber-600 uppercase block mt-2">${type === 'teacher_senior' ? '<i class="fas fa-graduation-cap"></i> Tutor Senior de Impacto' : '<i class="fas fa-star"></i> Estudiante STEEAM Certificado'}</span>
                 </p>
                 <div class="flex flex-col gap-4">
@@ -72,7 +72,7 @@ function generateVisualCertificate(type, name) {
                     <div class="w-16 h-1 bg-amber-600"></div>
                 </div>
                 <h3 class="text-xl font-bold tracking-[0.3em] uppercase mb-4 text-slate-500">Certificado de Excelencia</h3>
-                <h1 class="text-5xl font-black text-slate-900 mb-8 tracking-tighter uppercase">STEEAM 1BOT Guatemala</h1>
+                <h1 class="text-5xl font-black text-slate-900 mb-8 tracking-tighter uppercase">STEEAM Quetzal LMS</h1>
                 
                 <p class="text-lg text-slate-600 mb-6 italic">Se otorga con honor el presente reconocimiento a:</p>
                 <h2 class="text-4xl font-black border-b-4 border-slate-900 pb-2 inline-block px-10 mb-8 uppercase tracking-tighter">${name}</h2>

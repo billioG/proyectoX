@@ -44,7 +44,7 @@ window.openBonusOnboarding = function openBonusOnboarding() {
                     <div class="w-14 h-14 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0"><i class="fas fa-trophy text-2xl"></i></div>
                     <div>
                         <h3 class="text-sm font-black uppercase tracking-widest text-slate-800 dark:text-white mb-1">3. El Cofre del Tesoro (Bonos)</h3>
-                        <p class="text-sm text-slate-500 leading-relaxed italic mb-2">"¿Por qué? Porque en 1bot valoramos tu esfuerzo y queremos que seas el mejor del mundo". </p>
+                        <p class="text-sm text-slate-500 leading-relaxed italic mb-2">"¿Por qué? Porque valoramos tu esfuerzo y queremos que seas el mejor del mundo". </p>
                         <p class="text-xs text-slate-400 font-bold uppercase tracking-tighter">Entre más logres, ¡más grande será tu tesoro al final del mes! <i class="fas fa-sack-dollar"></i></p>
                     </div>
                 </div>
@@ -341,7 +341,7 @@ window.renderTutorView = function renderTutorView(container, teacher, kpis, assi
                                 ${teacher.is_1bot_team ? `
                                     <div class="text-6xl font-black tracking-tighter">Q${currentTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
                                 ` : `
-                                    <div class="text-4xl font-black tracking-tighter uppercase">Equipo 1bot</div>
+                                    <div class="text-4xl font-black tracking-tighter uppercase">Sin Bono</div>
                                 `}
                             </div>
                             <button onclick="openBonusOnboarding()" class="w-14 h-14 rounded-2xl bg-white/10 hover:bg-white/20 transition-all flex items-center justify-center text-2xl" title="Ayuda y Onboarding">
