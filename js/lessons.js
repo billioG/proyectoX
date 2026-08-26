@@ -60,6 +60,7 @@ window.loadTeacherCourses = async function loadTeacherCourses(container) {
     <div class="flex flex-col md:flex-row gap-4 mb-6 items-center">
       <p class="text-xs text-slate-400 grow">Creá cursos con lecciones en orden (video, PDF, imágenes, SCORM/H5P). Los alumnos avanzan paso a paso.</p>
       <button class="btn-secondary-tw h-11 px-6 text-xs uppercase font-bold shrink-0" onclick="window.openSharedCoursesLibrary()"><i class="fas fa-book-bookmark"></i> Biblioteca Compartida</button>
+      <button class="btn-secondary-tw h-11 px-6 text-xs uppercase font-bold shrink-0" onclick="window.openExportSireModal()"><i class="fas fa-file-export"></i> Exportar Notas (SIRE)</button>
       <button class="btn-primary-tw h-11 px-6 text-xs uppercase font-bold shrink-0" onclick="window.openCreateCourseModal()"><i class="fas fa-plus"></i> Nuevo Curso</button>
     </div>
     <div id="courses-list" class="space-y-3">
@@ -84,9 +85,10 @@ window.loadTeacherCourses = async function loadTeacherCourses(container) {
       <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0"><i class="fas fa-book-open"></i></div>
       <div class="min-w-0 flex-1 cursor-pointer" onclick="window.openCourseManager('${c.id}')">
         <h4 class="text-sm font-bold text-slate-800 dark:text-white truncate">${window.sanitizeInput(c.title)}</h4>
-        <p class="text-[0.7rem] text-slate-400">${window.sanitizeInput(c.schools?.name || c.school_code)} · ${window.sanitizeInput(c.grade)} ${window.sanitizeInput(c.section)} · ${c.lessons?.length || 0} recurso(s)${window.userRole === 'admin' ? ` · ${window.sanitizeInput(c.teachers?.full_name || '')}` : ''}</p>
+        <p class="text-[0.7rem] text-slate-400">${window.sanitizeInput(c.schools?.name || c.school_code)} · ${window.sanitizeInput(c.grade)} ${window.sanitizeInput(c.section)} · ${c.lessons?.length || 0} recurso(s) · ${c.bimestre || 1}º Bim. · ${c.weight ?? 100}pts${window.userRole === 'admin' ? ` · ${window.sanitizeInput(c.teachers?.full_name || '')}` : ''}</p>
       </div>
       ${c.is_shared ? '<span class="text-[0.6rem] font-black uppercase px-2 py-1 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 shrink-0"><i class="fas fa-share-nodes"></i> Compartido</span>' : ''}
+      <button class="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-primary transition-colors flex items-center justify-center shrink-0" title="Ver notas" onclick="window.openCourseGradesModal('${c.id}')"><i class="fas fa-chart-simple text-xs"></i></button>
       <button class="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-primary transition-colors flex items-center justify-center shrink-0" title="${c.is_shared ? 'Dejar de compartir' : 'Compartir en biblioteca'}" onclick="window.toggleCourseShare('${c.id}', ${!c.is_shared})"><i class="fas fa-share-nodes text-xs"></i></button>
       <button class="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-primary transition-colors flex items-center justify-center shrink-0" onclick="window.openCreateCourseModal('${c.id}')"><i class="fas fa-pen text-xs"></i></button>
       <button class="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-rose-500 transition-colors flex items-center justify-center shrink-0" onclick="window.deleteCourse('${c.id}')"><i class="fas fa-trash-alt text-xs"></i></button>
@@ -189,6 +191,19 @@ window.openCreateCourseModal = async function openCreateCourseModal(editCourseId
           <input type="text" id="course-tags" placeholder="matemática, tercero básico, repaso..." class="input-field-tw h-11 text-sm" value="${editing ? window.sanitizeAttr((editing.tags || []).join(', ')) : ''}">
           <p class="text-[0.65rem] text-slate-400 mt-1">Separadas por coma. Sirven para filtrar en la Biblioteca Compartida.</p>
         </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Unidad / Bimestre</label>
+            <select id="course-bimestre" class="input-field-tw h-11 text-sm">
+              ${[1, 2, 3, 4].map(b => `<option value="${b}" ${(editing?.bimestre || 1) === b ? 'selected' : ''}>${b}º Bimestre</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Ponderación (puntos)</label>
+            <input type="number" id="course-weight" min="0" max="100" value="${editing?.weight ?? 100}" class="input-field-tw h-11 text-sm">
+          </div>
+        </div>
+        <p class="text-[0.65rem] text-slate-400 -mt-2"><i class="fas fa-circle-info"></i> Cuánto vale este curso dentro de la nota del bimestre. La plataforma reparte el peso entre sus recursos automáticamente (los que tienen nota real pesan más que los de solo lectura).</p>
       </div>
       <div class="flex gap-3 mt-8">
         <button class="btn-secondary-tw flex-1 h-11 text-xs uppercase font-bold" onclick="this.closest('.fixed').remove()">Cancelar</button>
@@ -206,6 +221,8 @@ window.saveCourse = async function saveCourse(editingId) {
   const title = document.getElementById('course-title')?.value.trim();
   const description = document.getElementById('course-description')?.value.trim();
   const tags = (document.getElementById('course-tags')?.value || '').split(',').map(t => t.trim().toLowerCase()).filter(Boolean);
+  const bimestre = parseInt(document.getElementById('course-bimestre')?.value) || 1;
+  const weight = Math.min(100, Math.max(0, parseInt(document.getElementById('course-weight')?.value) || 0));
   const classOption = window._courseClassOptions?.[classIndex];
   const btn = document.getElementById('btn-save-course');
 
@@ -217,7 +234,7 @@ window.saveCourse = async function saveCourse(editingId) {
 
   if (editingId) {
     const { error } = await window._supabase.from('courses').update({
-      title, description: description || null, tags,
+      title, description: description || null, tags, bimestre, weight,
       school_code: classOption.school_code, grade: classOption.grade, section: classOption.section,
     }).eq('id', editingId);
     if (error) {
@@ -233,7 +250,7 @@ window.saveCourse = async function saveCourse(editingId) {
   }
 
   const { data, error } = await window._supabase.from('courses').insert({
-    title, description: description || null, tags,
+    title, description: description || null, tags, bimestre, weight,
     school_code: classOption.school_code, grade: classOption.grade, section: classOption.section,
     created_by: window.currentUser.id,
   }).select().single();
@@ -250,6 +267,109 @@ window.saveCourse = async function saveCourse(editingId) {
   document.querySelector('.fixed.z-\\[200\\]')?.remove();
   window._myCoursesCache = [...(window._myCoursesCache || []), data];
   window.openCourseManager(data.id);
+}
+
+// ================================================
+// CÁLCULO DE NOTA DEL CURSO -- reparto automático de peso
+// ================================================
+// Los recursos con nota real (H5P/SCORM) pesan más que los de solo lectura
+// (video/PDF/imagen, que solo aportan "visto"/"no visto") -- el docente no
+// asigna peso por recurso, la plataforma lo reparte sola.
+const GRADED_WEIGHT_RATIO = 3;
+
+function computeResourceWeights(items) {
+  const weights = new Map();
+  if (!items.length) return weights;
+  const graded = items.filter(l => LESSON_TYPES_WITH_GRADE.has(l.content_type));
+  const ungraded = items.filter(l => !LESSON_TYPES_WITH_GRADE.has(l.content_type));
+  const totalUnits = graded.length * GRADED_WEIGHT_RATIO + ungraded.length;
+  if (totalUnits === 0) return weights;
+  const unit = 100 / totalUnits;
+  graded.forEach(l => weights.set(l.id, unit * GRADED_WEIGHT_RATIO));
+  ungraded.forEach(l => weights.set(l.id, unit));
+  return weights;
+}
+
+function resourceScorePct(lesson, completion) {
+  if (LESSON_TYPES_WITH_GRADE.has(lesson.content_type)) {
+    return completion?.score != null ? completion.score : 0;
+  }
+  return completion ? 100 : 0;
+}
+
+// completionsMap: Map(lessonId -> {score, status}) para UN alumno.
+function computeCourseGradeForStudent(course, items, completionsMap) {
+  const weights = computeResourceWeights(items);
+  let pct = 0;
+  const breakdown = items.map(l => {
+    const completion = completionsMap.get(l.id);
+    const score = resourceScorePct(l, completion);
+    const weight = weights.get(l.id) || 0;
+    pct += (score * weight) / 100;
+    return { lesson: l, score, weight, done: !!completion };
+  });
+  const points = Math.round(((pct / 100) * (course.weight ?? 100)) * 100) / 100;
+  return { pct: Math.round(pct), points, breakdown };
+}
+
+window.openCourseGradesModal = async function openCourseGradesModal(courseId) {
+  const { data: course, error: courseErr } = await window._supabase.from('courses').select('*, schools(name)').eq('id', courseId).single();
+  if (courseErr || !course) return window.showToast('<i class="fas fa-circle-xmark"></i> No se pudo cargar el curso', 'error');
+
+  const [{ data: items }, { data: students }] = await Promise.all([
+    window._supabase.from('lessons').select('*').eq('course_id', courseId).order('order_index', { ascending: true }),
+    window._supabase.from('students').select('id, full_name, username').eq('school_code', course.school_code).eq('grade', course.grade).eq('section', course.section).order('full_name'),
+  ]);
+
+  const lessonIds = (items || []).map(l => l.id);
+  const { data: completions } = lessonIds.length
+    ? await window._supabase.from('lesson_completions').select('lesson_id, student_id, score, status').in('lesson_id', lessonIds)
+    : { data: [] };
+
+  const completionsByStudent = new Map();
+  (completions || []).forEach(c => {
+    if (!completionsByStudent.has(c.student_id)) completionsByStudent.set(c.student_id, new Map());
+    completionsByStudent.get(c.student_id).set(c.lesson_id, c);
+  });
+
+  const sanitizeInput = window.sanitizeInput;
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-sm animate-fadeIn';
+  modal.innerHTML = `
+    <div class="glass-card w-full max-w-3xl max-h-[85vh] flex flex-col p-8 shadow-2xl animate-slideUp">
+      <div class="flex justify-between items-start mb-2">
+        <div>
+          <h2 class="text-lg font-bold text-slate-800 dark:text-white uppercase tracking-tighter">${sanitizeInput(course.title)}</h2>
+          <p class="text-xs text-slate-400 mt-1">${course.bimestre || 1}º Bimestre · vale ${course.weight ?? 100} puntos · ${(items || []).length} recurso(s)</p>
+        </div>
+        <button class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500 transition-colors flex items-center justify-center shrink-0" onclick="this.closest('.fixed').remove()"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="overflow-y-auto custom-scrollbar mt-4 -mx-2 px-2">
+        <table class="w-full text-left border-collapse text-sm">
+          <thead>
+            <tr class="text-[0.6rem] font-black uppercase text-slate-400 tracking-widest border-b border-slate-100 dark:border-slate-800">
+              <th class="py-2 pr-4">Alumno</th>
+              <th class="py-2 pr-4">Progreso</th>
+              <th class="py-2 text-right">Puntos (de ${course.weight ?? 100})</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${(students || []).map(s => {
+              const grade = computeCourseGradeForStudent(course, items || [], completionsByStudent.get(s.id) || new Map());
+              return `
+                <tr class="border-b border-slate-50 dark:border-slate-800/50">
+                  <td class="py-3 pr-4 font-bold text-slate-700 dark:text-slate-200">${sanitizeInput(s.full_name)}</td>
+                  <td class="py-3 pr-4 text-slate-500">${grade.pct}%</td>
+                  <td class="py-3 text-right font-black text-primary">${grade.points}</td>
+                </tr>
+              `;
+            }).join('') || `<tr><td colspan="3" class="py-10 text-center text-slate-400">No hay alumnos en esta clase todavía.</td></tr>`}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
 }
 
 // ================================================
@@ -1239,5 +1359,130 @@ window.initH5PSession = async function initH5PSession(lesson, attempt = 1) {
   } catch (e) {
     console.error('Error cargando H5P:', e);
     container.innerHTML = '<p class="text-rose-500 text-sm text-center py-10">Error cargando el contenido H5P.</p>';
+  }
+}
+
+// ================================================
+// EXPORTAR NOTAS ESTILO SIRE/SIREEDUCA
+// ================================================
+// El SIRE no acepta subir archivos -- las notas se ingresan a mano, una por
+// una, en su propia web. Esto genera una hoja de cálculo con el mismo orden
+// (Código Personal, nombre, notas por unidad, nota final, resultado) para
+// que el docente la tenga al lado mientras teclea en el SIRE, en vez de
+// tener que calcular todo de memoria.
+window.openExportSireModal = async function openExportSireModal() {
+  const classOptions = await getClassOptionsForCurrentUser();
+  if (!classOptions.length) return window.showToast('<i class="fas fa-circle-xmark"></i> No tenés clases asignadas todavía', 'error');
+
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-sm animate-fadeIn';
+  modal.innerHTML = `
+    <div class="glass-card w-full max-w-md p-8 shadow-2xl animate-slideUp">
+      <h2 class="text-lg font-bold text-slate-800 dark:text-white uppercase tracking-tighter mb-2"><i class="fas fa-file-export text-primary mr-2"></i> Exportar Notas (SIRE)</h2>
+      <p class="text-xs text-slate-400 mb-6">Genera una hoja con Código Personal, nombre y notas por unidad (bimestre) de todos los cursos de la clase, lista para copiar mientras cargás las notas en el SIRE -- el sistema del MINEDUC no acepta subir archivos.</p>
+      <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Clase</label>
+      <select id="sire-export-class" class="input-field-tw h-11 text-sm mb-6">
+        ${classOptions.map((c, i) => `<option value="${i}">${window.sanitizeInput(c.schoolName)} · ${window.sanitizeInput(c.grade)} ${window.sanitizeInput(c.section)}</option>`).join('')}
+      </select>
+      <div class="flex gap-3">
+        <button class="btn-secondary-tw flex-1 h-11 text-xs uppercase font-bold" onclick="this.closest('.fixed').remove()">Cancelar</button>
+        <button class="btn-primary-tw flex-1 h-11 text-xs uppercase font-bold" id="btn-confirm-sire-export" onclick="window.confirmExportSire()"><i class="fas fa-download"></i> Descargar CSV</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  window._sireExportClassOptions = classOptions;
+}
+
+window.confirmExportSire = async function confirmExportSire() {
+  const classIndex = document.getElementById('sire-export-class')?.value;
+  const classOption = window._sireExportClassOptions?.[classIndex];
+  if (!classOption) return;
+
+  const btn = document.getElementById('btn-confirm-sire-export');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+  try {
+    const { school_code, grade, section } = classOption;
+    const _supabase = window._supabase;
+
+    const [{ data: students }, { data: courses }] = await Promise.all([
+      _supabase.from('students').select('id, full_name, cui, codigo_personal').eq('school_code', school_code).eq('grade', grade).eq('section', section).order('full_name'),
+      _supabase.from('courses').select('*').eq('school_code', school_code).eq('grade', grade).eq('section', section),
+    ]);
+
+    if (!students?.length) throw new Error('No hay alumnos en esa clase');
+
+    const courseIds = (courses || []).map(c => c.id);
+    const { data: allLessons } = courseIds.length
+      ? await _supabase.from('lessons').select('*').in('course_id', courseIds)
+      : { data: [] };
+    const lessonIds = (allLessons || []).map(l => l.id);
+    const { data: allCompletions } = lessonIds.length
+      ? await _supabase.from('lesson_completions').select('lesson_id, student_id, score, status').in('lesson_id', lessonIds)
+      : { data: [] };
+
+    const lessonsByCourse = new Map();
+    (allLessons || []).forEach(l => {
+      if (!lessonsByCourse.has(l.course_id)) lessonsByCourse.set(l.course_id, []);
+      lessonsByCourse.get(l.course_id).push(l);
+    });
+
+    const completionsByStudentLesson = new Map();
+    (allCompletions || []).forEach(c => {
+      completionsByStudentLesson.set(`${c.student_id}|${c.lesson_id}`, c);
+    });
+
+    // Puntos de cada estudiante por bimestre = suma de los puntos de todos
+    // los cursos de ese bimestre asignados a su clase.
+    const rows = students.map((s, idx) => {
+      const unidadPoints = [0, 0, 0, 0];
+      const unidadHasCourses = [false, false, false, false];
+
+      (courses || []).forEach(course => {
+        const items = lessonsByCourse.get(course.id) || [];
+        const completionsMap = new Map(items.map(l => [l.id, completionsByStudentLesson.get(`${s.id}|${l.id}`)]).filter(([, v]) => v));
+        const courseGrade = computeCourseGradeForStudent(course, items, completionsMap);
+        const bIdx = Math.min(4, Math.max(1, course.bimestre || 1)) - 1;
+        unidadPoints[bIdx] += courseGrade.points;
+        unidadHasCourses[bIdx] = true;
+      });
+
+      const unidadesConDatos = unidadPoints.filter((_, i) => unidadHasCourses[i]);
+      const notaFinal = unidadesConDatos.length ? Math.round(unidadesConDatos.reduce((a, b) => a + b, 0) / unidadesConDatos.length) : 0;
+
+      return {
+        clave: idx + 1,
+        codigoPersonal: s.codigo_personal || s.cui || '',
+        nombre: s.full_name,
+        unidades: unidadPoints.map((v, i) => unidadHasCourses[i] ? Math.round(v) : ''),
+        notaFinal,
+        resultado: notaFinal >= 60 ? 'Promovido' : 'No Promovido',
+      };
+    });
+
+    let csv = 'Clave,Codigo Personal,Nombre del Estudiante,Unidad 1,Unidad 2,Unidad 3,Unidad 4,Nota Final,Resultado\n';
+    rows.forEach(r => {
+      const nombre = (r.nombre || '').replace(/"/g, '""');
+      csv += `${r.clave},"${r.codigoPersonal}","${nombre}",${r.unidades.join(',')},${r.notaFinal},${r.resultado}\n`;
+    });
+
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `notas-sire-${grade}-${section}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+
+    window.showToast('<i class="fas fa-circle-check"></i> Notas exportadas', 'success');
+    document.querySelector('.fixed.z-\\[200\\]')?.remove();
+  } catch (err) {
+    window.showToast('<i class="fas fa-circle-xmark"></i> ' + err.message, 'error');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-download"></i> Descargar CSV';
   }
 }
