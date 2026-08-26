@@ -18,6 +18,74 @@ window.loadDuelsSection = async function loadDuelsSection() {
   window._duelsCache = duels || [];
   window.renderDuelsSection();
   if (typeof window.updateDuelPendingBadge === 'function') window.updateDuelPendingBadge();
+  window.checkDuelResults();
+}
+
+// Muestra la animación de resultado (como la de insignias) una sola vez
+// por CUENTA (no por dispositivo) cuando un duelo ya se completó.
+window.checkDuelResults = async function checkDuelResults() {
+  const _supabase = window._supabase;
+  const currentUser = window.currentUser;
+  const completed = (window._duelsCache || []).filter(d => d.status === 'completed');
+  if (!completed.length) return;
+
+  for (const duel of completed) {
+    const { data: myAnswer } = await _supabase.from('student_duel_answers')
+      .select('id, score, result_seen')
+      .eq('duel_id', duel.id).eq('student_id', currentUser.id).maybeSingle();
+    if (!myAnswer || myAnswer.result_seen) continue;
+
+    window.showDuelResultModal(duel, myAnswer.score);
+    await _supabase.from('student_duel_answers').update({ result_seen: true }).eq('id', myAnswer.id);
+    break; // uno a la vez, evita apilar modales si hay varios sin ver
+  }
+}
+
+window.showDuelResultModal = function showDuelResultModal(duel, myScore) {
+  const currentUser = window.currentUser;
+  const isChallenger = duel.challenger_id === currentUser.id;
+  const opponentName = isChallenger ? (duel.opponent?.full_name || 'Rival') : (duel.challenger?.full_name || 'Rival');
+  const won = duel.winner_id === currentUser.id;
+  const tie = !duel.winner_id;
+  const sanitizeInput = window.sanitizeInput || ((v) => v);
+
+  const icon = tie ? '<i class="fas fa-handshake"></i>' : won ? '<i class="fas fa-trophy"></i>' : '<i class="fas fa-shield-heart"></i>';
+  const title = tie ? '¡Empate!' : won ? '¡Ganaste el Duelo!' : 'Duelo Perdido';
+  const gemsLine = tie
+    ? 'Nadie ganó ni perdió gemas.'
+    : won ? `+${duel.wager_gems} gemas` : `-${duel.wager_gems} gemas`;
+  const gemsColor = tie ? 'text-slate-300' : won ? 'text-emerald-400' : 'text-rose-400';
+
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 z-[230] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md animate-fadeIn';
+  modal.innerHTML = `
+    <div class="relative w-full max-w-sm p-8 text-center">
+      <div class="mb-6 relative">
+        <div class="absolute inset-0 ${won ? 'bg-emerald-500' : tie ? 'bg-slate-400' : 'bg-rose-500'} blur-[60px] opacity-40 animate-pulse"></div>
+        <div class="relative text-[6rem] animate-bounce-in drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)] ${won ? 'text-emerald-400' : tie ? 'text-slate-300' : 'text-rose-400'}">
+          ${icon}
+        </div>
+      </div>
+      <div class="relative z-10 space-y-2 mb-6 animate-slideUp">
+        <h2 class="text-3xl font-black text-white uppercase tracking-tighter italic drop-shadow-lg leading-none">${title}</h2>
+        <p class="text-slate-300 font-medium text-sm mt-2">vs ${sanitizeInput(opponentName)} -- ${sanitizeInput(duel.topic)}</p>
+      </div>
+      <div class="flex flex-col gap-3 relative z-10 animate-slideUp" style="animation-delay: 0.1s">
+        <div class="p-3 bg-white/10 rounded-xl border border-white/10 flex items-center justify-center gap-2">
+          <span class="text-white font-black text-lg">${myScore}/${duel.question_count}</span>
+          <span class="text-xs font-bold text-white uppercase tracking-widest">Correctas</span>
+        </div>
+        <div class="p-3 bg-white/10 rounded-xl border border-white/10 flex items-center justify-center gap-2">
+          <span class="${gemsColor} font-black text-lg">${gemsLine}</span>
+        </div>
+        <button class="w-full py-4 bg-primary hover:bg-primary-dark text-white rounded-2xl font-black uppercase tracking-[0.2em] shadow-xl shadow-primary/30 transition-all hover:scale-105 active:scale-95" onclick="this.closest('.fixed').remove()">
+          ¡Genial! <i class="fas fa-rocket"></i>
+        </button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  if (won && typeof window.startBirthdayConfetti === 'function') window.startBirthdayConfetti();
 }
 
 window.renderDuelsSection = function renderDuelsSection() {
@@ -91,6 +159,29 @@ window.renderDuelsSection = function renderDuelsSection() {
   `;
 }
 
+// El tema y la cantidad de preguntas ya no los elige el alumno -- el tema
+// sale al azar de este pool (STEAM/tecnología + cultura general de
+// Guatemala e internacional) y la cantidad de preguntas escala con lo
+// que apuesta (más gemas en juego, más preguntas).
+const DUEL_TOPIC_POOL = [
+  'Robótica educativa', 'Programación por bloques', 'Ciencias de la computación',
+  'Electrónica básica', 'Inteligencia artificial', 'Matemática aplicada',
+  'Física básica', 'Historia de Guatemala', 'Geografía de Guatemala',
+  'Cultura maya', 'Tradiciones y fiestas de Guatemala', 'Biodiversidad de Guatemala',
+  'Cultura general internacional', 'Historia mundial', 'Geografía mundial',
+  'Ciencia y descubrimientos', 'Arte y cultura general',
+];
+
+function computeDuelQuestionCount(wager) {
+  return Math.max(5, Math.min(15, 5 + Math.floor((wager || 0) / 10)));
+}
+
+window.updateDuelWagerPreview = function updateDuelWagerPreview() {
+  const wager = parseInt(document.getElementById('duel-wager')?.value) || 0;
+  const el = document.getElementById('duel-wager-preview');
+  if (el) el.textContent = computeDuelQuestionCount(wager);
+}
+
 window.openCreateDuelModal = async function openCreateDuelModal() {
   const _supabase = window._supabase;
   const currentUser = window.currentUser;
@@ -117,22 +208,14 @@ window.openCreateDuelModal = async function openCreateDuelModal() {
           </select>
         </div>
         <div>
-          <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Tema del quiz</label>
-          <input type="text" id="duel-topic" placeholder="Ej: robótica, cultura STEAM, matemática..." class="input-field-tw h-11 text-sm">
+          <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Gemas a apostar</label>
+          <input type="number" id="duel-wager" min="0" value="10" class="input-field-tw h-11 text-sm" oninput="window.updateDuelWagerPreview()">
+          <p class="text-[0.6rem] text-slate-500 mt-1">Tenés ${userData?.gems ?? 0} gemas.</p>
         </div>
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Preguntas</label>
-            <select id="duel-question-count" class="input-field-tw h-11 text-sm">
-              <option value="5">5</option>
-              <option value="10">10</option>
-            </select>
-          </div>
-          <div>
-            <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Gemas a apostar</label>
-            <input type="number" id="duel-wager" min="0" value="10" class="input-field-tw h-11 text-sm">
-            <p class="text-[0.6rem] text-slate-500 mt-1">Tenés ${userData?.gems ?? 0} gemas.</p>
-          </div>
+        <div class="p-4 rounded-xl bg-white/5 border border-white/10 text-center">
+          <p class="text-[0.6rem] font-black uppercase text-slate-400 tracking-widest mb-1">Preguntas de este duelo</p>
+          <p id="duel-wager-preview" class="text-2xl font-black text-primary">${computeDuelQuestionCount(10)}</p>
+          <p class="text-[0.6rem] text-slate-500 mt-1">La plataforma elige el tema al azar (STEAM, robótica y cultura general de Guatemala e internacional) y ajusta la cantidad de preguntas según lo que apuestes -- más gemas, más preguntas.</p>
         </div>
       </div>
       <div class="flex gap-3 mt-8">
@@ -146,13 +229,12 @@ window.openCreateDuelModal = async function openCreateDuelModal() {
 
 window.sendDuelChallenge = async function sendDuelChallenge() {
   const opponentId = document.getElementById('duel-opponent')?.value;
-  const topic = document.getElementById('duel-topic')?.value.trim();
-  const questionCount = parseInt(document.getElementById('duel-question-count')?.value) || 5;
   const wager = parseInt(document.getElementById('duel-wager')?.value) || 0;
+  const topic = DUEL_TOPIC_POOL[Math.floor(Math.random() * DUEL_TOPIC_POOL.length)];
+  const questionCount = computeDuelQuestionCount(wager);
   const btn = document.getElementById('btn-send-duel');
   const userData = window.userData;
 
-  if (!topic) return window.showToast('<i class="fas fa-circle-xmark"></i> Ponele un tema', 'error');
   if (wager < 0) return window.showToast('<i class="fas fa-circle-xmark"></i> La apuesta no puede ser negativa', 'error');
   if (wager > (userData?.gems ?? 0)) return window.showToast('<i class="fas fa-circle-xmark"></i> No tenés suficientes gemas', 'error');
 
