@@ -57,6 +57,7 @@ window.loadStudentProfile = async function loadStudentProfile() {
     }, (data) => {
         if (data) {
             window.renderStudentProfileUI(container, data.student, data.projects, data.earnedBadgeIds, data.myTeacher, data.xpData);
+            if (typeof window.renderEventNotificationToggle === 'function') window.renderEventNotificationToggle();
         }
     });
 }
@@ -111,6 +112,8 @@ window.renderStudentProfileUI = function renderStudentProfileUI(container, stude
             <div class="text-4xl font-bold text-slate-800 dark:text-white flex items-baseline gap-1">${avgScore} <span class="text-xs text-emerald-500 opacity-60">AVG</span></div>
         </div>
     </div>
+
+    <div class="flex justify-center md:justify-start mb-8" id="event-notif-toggle-slot"></div>
 
     ${myTeacher ? `
         <div class="glass-card p-8 bg-gradient-to-br from-primary/5 to-transparent border border-primary/10 flex flex-col md:flex-row justify-between items-center gap-6 mb-12 relative overflow-hidden">

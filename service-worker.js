@@ -2,7 +2,7 @@
 // SERVICE WORKER - PROJECTX PWA
 // ================================================
 
-const CACHE_NAME = 'projectx-v1.0.5';
+const CACHE_NAME = 'projectx-v1.0.6';
 // Rutas RELATIVAS (sin "/" inicial) -- con "/" apuntaban siempre a la raíz
 // del dominio, lo cual rompe el sitio cuando se sirve desde un subpath
 // (ej. billiog.github.io/proyectoX/) porque pedía billiog.github.io/js/...
@@ -116,6 +116,38 @@ self.addEventListener('message', event => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
+});
+
+// ================================================
+// PUSH NOTIFICATIONS -- eventos sorpresa nocturnos
+// ================================================
+self.addEventListener('push', event => {
+  let data = { title: 'Quetzal LMS', body: 'Tenés novedades.', url: './' };
+  try { if (event.data) data = { ...data, ...event.data.json() }; } catch (e) { }
+
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: './icon-192.png',
+      badge: './icon-192.png',
+      data: { url: data.url || './', eventId: data.eventId || null },
+      vibrate: [200, 100, 200],
+    })
+  );
+});
+
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const targetUrl = event.notification.data?.url || './';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
+      for (const client of clientList) {
+        if ('focus' in client) return client.focus();
+      }
+      if (clients.openWindow) return clients.openWindow(targetUrl);
+    })
+  );
 });
 
 console.log('✅ Service Worker cargado');
