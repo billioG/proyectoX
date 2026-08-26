@@ -762,8 +762,11 @@ window.handleDocPhotoSelect = function handleDocPhotoSelect(input) {
                 };
 
                 // Preparar datos de auditoría de activos
+                const schoolIdForAudit = parseInt(document.getElementById('bonus-school-picker')?.value, 10);
+                if (!schoolIdForAudit) throw new Error('Selecciona un establecimiento en "Check-in" antes de subir evidencia.');
                 const auditData = {
                     tutor_id: currentUser.id,
+                    school_id: schoolIdForAudit,
                     status: 'valid',
                     _fileBlob: file
                 };

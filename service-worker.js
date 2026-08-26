@@ -2,7 +2,7 @@
 // SERVICE WORKER - PROJECTX PWA
 // ================================================
 
-const CACHE_NAME = 'projectx-v1.0.4';
+const CACHE_NAME = 'projectx-v1.0.5';
 // Rutas RELATIVAS (sin "/" inicial) -- con "/" apuntaban siempre a la raíz
 // del dominio, lo cual rompe el sitio cuando se sirve desde un subpath
 // (ej. billiog.github.io/proyectoX/) porque pedía billiog.github.io/js/...
@@ -66,6 +66,24 @@ self.addEventListener('fetch', event => {
     return;
   }
 
+  const fallbackToCache = () => caches.match(request).then(cachedResponse => {
+    if (cachedResponse) {
+      console.log('📂 Sirviendo desde caché:', request.url);
+      return cachedResponse;
+    }
+
+    // Si no está en caché, mostrar página offline para documentos o un error para otros
+    if (request.destination === 'document') {
+      return caches.match('./index.html');
+    }
+
+    // MUY IMPORTANTE: Retornar una respuesta de error válida en lugar de undefined
+    return new Response('Network error and no cache available', {
+      status: 404,
+      statusText: 'Not Found'
+    });
+  });
+
   event.respondWith(
     fetch(request)
       .then(response => {
@@ -75,29 +93,21 @@ self.addEventListener('fetch', event => {
           caches.open(CACHE_NAME).then(cache => {
             cache.put(request, responseClone);
           });
+          return response;
         }
+
+        // Respuesta de error (ej. 503 temporal del hosting): un archivo
+        // .js roto así tumba TODO el grafo de módulos ES (un solo import
+        // estático que falla aborta la carga de app.js completo, aunque
+        // no tenga nada que ver con ese archivo). Mejor usar la última
+        // copia buena en caché que devolver el error tal cual.
+        if (request.destination === 'script' || request.destination === 'document') {
+          return fallbackToCache().then(cached => (cached && cached.status !== 404) ? cached : response);
+        }
+
         return response;
       })
-      .catch(() => {
-        // Si falla la red, buscar en caché
-        return caches.match(request).then(cachedResponse => {
-          if (cachedResponse) {
-            console.log('📂 Sirviendo desde caché:', request.url);
-            return cachedResponse;
-          }
-
-          // Si no está en caché, mostrar página offline para documentos o un error para otros
-          if (request.destination === 'document') {
-            return caches.match('./index.html');
-          }
-
-          // MUY IMPORTANTE: Retornar una respuesta de error válida en lugar de undefined
-          return new Response('Network error and no cache available', {
-            status: 404,
-            statusText: 'Not Found'
-          });
-        });
-      })
+      .catch(fallbackToCache)
   );
 });
 

@@ -130,7 +130,7 @@ window.renderAttendanceUI = window.renderAttendanceUI = function renderAttendanc
     </div>
 
     <!-- UTILITIES -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pb-28 md:pb-6">
         <div class="glass-card p-5 flex items-center justify-between border-none bg-white dark:bg-slate-900 shadow-lg">
             <div class="flex items-center gap-4">
                 <div class="w-10 h-10 bg-amber-500/10 text-amber-600 rounded-xl flex items-center justify-center text-lg"><i class="fas fa-calendar-times"></i></div>
@@ -153,7 +153,7 @@ window.renderAttendanceUI = window.renderAttendanceUI = function renderAttendanc
             <button onclick="exportAttendanceCSV()" ${!hasWaivers ? 'disabled' : ''} class="w-9 h-9 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-primary transition-all flex items-center justify-center border border-slate-100 dark:border-slate-800 ${!hasWaivers ? 'opacity-30 cursor-not-allowed' : ''}"><i class="fas fa-download text-xs"></i></button>
         </div>
 
-        <div class="glass-card p-5 flex items-center justify-between border-none bg-white dark:bg-slate-900 shadow-lg">
+        <div onclick="printSectionQRs()" class="glass-card p-5 flex items-center justify-between border-none bg-white dark:bg-slate-900 shadow-lg cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
             <div class="flex items-center gap-4">
                 <div class="w-10 h-10 bg-emerald-500/10 text-emerald-600 rounded-xl flex items-center justify-center text-lg"><i class="fas fa-id-card"></i></div>
                 <div>
@@ -161,7 +161,7 @@ window.renderAttendanceUI = window.renderAttendanceUI = function renderAttendanc
                     <p class="text-[0.5rem] font-bold text-slate-400 uppercase tracking-widest mt-1">Credenciales QR</p>
                 </div>
             </div>
-            <button onclick="printSectionQRs()" class="w-9 h-9 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-emerald-500 transition-all flex items-center justify-center border border-slate-100 dark:border-slate-800"><i class="fas fa-print text-xs"></i></button>
+            <span class="w-9 h-9 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-400 flex items-center justify-center border border-slate-100 dark:border-slate-800 pointer-events-none"><i class="fas fa-print text-xs"></i></span>
         </div>
     </div>
   `;

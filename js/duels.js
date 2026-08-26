@@ -10,7 +10,7 @@ window.loadDuelsSection = async function loadDuelsSection() {
   const currentUser = window.currentUser;
 
   const { data: duels } = await _supabase.from('student_duels')
-    .select('*, challenger:students!challenger_id(full_name), opponent:students!opponent_id(full_name)')
+    .select('id, challenger_id, opponent_id, wager_gems, topic, question_count, status, winner_id, created_at, resolved_at, challenger:students!challenger_id(full_name), opponent:students!opponent_id(full_name)')
     .or(`challenger_id.eq.${currentUser.id},opponent_id.eq.${currentUser.id}`)
     .order('created_at', { ascending: false })
     .limit(10);
@@ -206,12 +206,19 @@ window.respondDuel = async function respondDuel(duelId, accept) {
 }
 
 window.openDuelQuiz = async function openDuelQuiz(duelId) {
-  const { data: duel, error } = await window._supabase.from('student_duels').select('*').eq('id', duelId).single();
-  if (error || !duel?.questions?.length) return window.showToast('<i class="fas fa-circle-xmark"></i> No se pudo cargar el quiz', 'error');
+  const { data: duel, error: duelErr } = await window._supabase.from('student_duels')
+    .select('id, topic, question_count, status').eq('id', duelId).single();
+  if (duelErr || !duel) return window.showToast('<i class="fas fa-circle-xmark"></i> No se pudo cargar el duelo', 'error');
 
   const { data: myAnswer } = await window._supabase.from('student_duel_answers').select('id').eq('duel_id', duelId).eq('student_id', window.currentUser.id).maybeSingle();
   if (myAnswer) return window.showToast('<i class="fas fa-circle-info"></i> Ya respondiste este duelo -- esperá a tu rival', 'info');
 
+  // Las preguntas se piden vía RPC porque el correctIndex nunca viaja al
+  // cliente hasta después de responder (ver migración duel-harden.sql).
+  const { data: questions, error: qErr } = await window._supabase.rpc('get_duel_questions', { p_duel_id: duelId });
+  if (qErr || !questions?.length) return window.showToast('<i class="fas fa-circle-xmark"></i> No se pudo cargar el quiz', 'error');
+
+  duel.questions = questions;
   window._activeDuel = { duel, index: 0, selections: [] };
   window.renderDuelQuizQuestion();
 }
@@ -264,15 +271,13 @@ window.submitDuelAnswers = async function submitDuelAnswers() {
   if (!state) return;
   const { duel, selections } = state;
 
-  const score = selections.reduce((total, sel, i) => total + (sel === duel.questions[i].correctIndex ? 1 : 0), 0);
-
   document.getElementById('duel-quiz-modal')?.remove();
 
-  const { error } = await window._supabase.from('student_duel_answers').insert({
-    duel_id: duel.id,
-    student_id: window.currentUser.id,
-    answers: selections,
-    score,
+  // El score se calcula EN SERVIDOR (RPC) comparando contra el correctIndex
+  // real -- el cliente nunca lo tuvo, así que no puede falsificar el score.
+  const { data: score, error } = await window._supabase.rpc('submit_duel_answers', {
+    p_duel_id: duel.id,
+    p_answers: selections,
   });
 
   window._activeDuel = null;
