@@ -57,7 +57,7 @@ window.openAnnouncementsInbox = async function openAnnouncementsInbox() {
   document.body.appendChild(modal);
 
   const [{ data: announcements, error }, pendingSurveys, adminSurveys] = await Promise.all([
-    _supabase.from('announcements').select('id, title, message, sender_role, created_at').order('created_at', { ascending: false }).limit(50),
+    _supabase.from('announcements').select('id, title, message, sender_id, sender_role, created_at').order('created_at', { ascending: false }).limit(50),
     typeof window.getPendingSurveys === 'function' ? window.getPendingSurveys() : Promise.resolve([]),
     window.userRole === 'admin' ? _supabase.from('surveys').select('id, title, created_at').order('created_at', { ascending: false }).limit(10) : Promise.resolve({ data: [] }),
   ]);
@@ -86,16 +86,23 @@ window.openAnnouncementsInbox = async function openAnnouncementsInbox() {
     </div>
   `).join('') : '';
 
-  const announcementCards = (announcements || []).map(a => `
+  const canDeleteAny = window.userRole === 'admin';
+  const announcementCards = (announcements || []).map(a => {
+    const canDelete = canDeleteAny || a.sender_id === currentUser.id;
+    return `
     <div class="p-4 rounded-xl border ${readIds.has(a.id) ? 'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-800' : 'bg-primary/5 border-primary/20'}">
       <div class="flex items-center justify-between gap-2 mb-1">
         <h4 class="text-sm font-bold text-slate-800 dark:text-white">${sanitizeInput(a.title)}</h4>
-        ${!readIds.has(a.id) ? '<span class="w-2 h-2 rounded-full bg-primary shrink-0"></span>' : ''}
+        <div class="flex items-center gap-2 shrink-0">
+          ${!readIds.has(a.id) ? '<span class="w-2 h-2 rounded-full bg-primary"></span>' : ''}
+          ${canDelete ? `<button class="text-slate-300 hover:text-rose-500 transition-colors" onclick="window.deleteAnnouncement('${a.id}')" title="Eliminar aviso"><i class="fas fa-trash-alt text-xs"></i></button>` : ''}
+        </div>
       </div>
       <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">${sanitizeInput(a.message)}</p>
       <p class="text-[0.6rem] text-slate-400 uppercase font-bold mt-2">${a.sender_role === 'admin' ? 'Administración' : 'Docente'} · ${new Date(a.created_at).toLocaleDateString('es-GT')}</p>
     </div>
-  `).join('');
+  `;
+  }).join('');
 
   const adminSurveysBlock = window.userRole === 'admin' && adminSurveyCards
     ? `<p class="text-[0.6rem] font-black uppercase text-slate-400 tracking-widest mt-4 mb-1">Mis Encuestas</p>${adminSurveyCards}`
@@ -113,6 +120,15 @@ window.openAnnouncementsInbox = async function openAnnouncementsInbox() {
     );
     window.loadAnnouncementsUnreadCount();
   }
+}
+
+window.deleteAnnouncement = async function deleteAnnouncement(id) {
+  if (!confirm('¿Eliminar este aviso? Desaparece para todos los que lo recibieron.')) return;
+  const { error } = await window._supabase.from('announcements').delete().eq('id', id);
+  if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
+  window.showToast('<i class="fas fa-circle-check"></i> Aviso eliminado', 'success');
+  window.openAnnouncementsInbox();
+  window.loadAnnouncementsUnreadCount();
 }
 
 window.openSendAnnouncementModal = async function openSendAnnouncementModal() {
