@@ -380,8 +380,16 @@ const MascotWidget = {
         history.scrollTop = history.scrollHeight;
 
         try {
+            // Antes se mandaba SOLO el mensaje actual, sin nada de lo dicho
+            // antes -- por eso "continuá" no continuaba nada, la IA no tenía
+            // memoria real de la conversación (cada request era independiente).
+            const { data: priorMessages } = await window._supabase.from('mascot_chat_messages')
+                .select('role, content').eq('user_id', window.currentUser.id)
+                .order('created_at', { ascending: false }).limit(11);
+            const history = (priorMessages || []).reverse().slice(0, -1).slice(-10);
+
             const context = `Usuario: ${window.userData?.full_name || ''}, Rol: ${window.userRole}, Racha: ${window.userData?.streak || 0}`;
-            const response = await AIService.ask(text, context);
+            const response = await AIService.ask(text, context, false, history);
             document.getElementById(loadingId).remove();
 
             history.innerHTML += this.assistantBubbleHtml(response);

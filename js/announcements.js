@@ -28,7 +28,8 @@ window.loadAnnouncementsUnreadCount = async function loadAnnouncementsUnreadCoun
   const unreadAnnouncements = (announcements || []).filter(a => !readIds.has(a.id)).length;
 
   const pendingSurveys = typeof window.getPendingSurveys === 'function' ? await window.getPendingSurveys() : [];
-  const unread = unreadAnnouncements + pendingSurveys.length;
+  const { data: unreadCommentNotifs } = await _supabase.from('comment_notifications').select('id').eq('read', false);
+  const unread = unreadAnnouncements + pendingSurveys.length + (unreadCommentNotifs?.length || 0);
 
   if (unread > 0) {
     badge.textContent = unread;
@@ -67,11 +68,29 @@ window.openAnnouncementsInbox = async function openAnnouncementsInbox() {
   `;
   document.body.appendChild(modal);
 
-  const [{ data: announcements, error }, pendingSurveys, adminSurveys] = await Promise.all([
+  const [{ data: announcements, error }, pendingSurveys, adminSurveys, { data: commentNotifs }] = await Promise.all([
     _supabase.from('announcements').select('id, title, message, sender_id, sender_role, created_at').order('created_at', { ascending: false }).limit(50),
     typeof window.getPendingSurveys === 'function' ? window.getPendingSurveys() : Promise.resolve([]),
     window.userRole === 'admin' ? _supabase.from('surveys').select('id, title, created_at').order('created_at', { ascending: false }).limit(10) : Promise.resolve({ data: [] }),
+    _supabase.from('comment_notifications').select('id, type, actor_name, content_preview, lesson_id, read, created_at').order('created_at', { ascending: false }).limit(30),
   ]);
+
+  const unreadCommentIds = (commentNotifs || []).filter(n => !n.read).map(n => n.id);
+  if (unreadCommentIds.length) {
+    await _supabase.from('comment_notifications').update({ read: true }).in('id', unreadCommentIds);
+    window.loadAnnouncementsUnreadCount();
+  }
+
+  const commentNotifCards = (commentNotifs || []).map(n => `
+    <div class="p-4 rounded-xl border cursor-pointer hover:border-primary/30 transition-colors ${n.read ? 'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-800' : 'bg-rose-500/5 border-rose-400/30'}" onclick="window.openCommentNotification('${n.lesson_id}')">
+      <div class="flex items-center gap-2">
+        <i class="fas ${n.type === 'like' ? 'fa-heart text-rose-500' : 'fa-reply text-primary'}"></i>
+        <p class="text-xs text-slate-600 dark:text-slate-300 font-bold">${n.type === 'like' ? 'Le dieron like a tu comentario' : `${sanitizeInput(n.actor_name || 'Alguien')} respondió tu comentario`}</p>
+        ${!n.read ? '<span class="w-2 h-2 rounded-full bg-rose-500 ml-auto shrink-0"></span>' : ''}
+      </div>
+      ${n.content_preview ? `<p class="text-[0.7rem] text-slate-400 mt-1 pl-6">"${sanitizeInput(n.content_preview)}"</p>` : ''}
+    </div>
+  `).join('');
 
   const listEl = document.getElementById('announcements-list');
   if (error) { listEl.innerHTML = `<p class="text-rose-500 text-xs">${error.message}</p>`; return; }
@@ -119,7 +138,7 @@ window.openAnnouncementsInbox = async function openAnnouncementsInbox() {
     ? `<p class="text-[0.6rem] font-black uppercase text-slate-400 tracking-widest mt-4 mb-1">Mis Encuestas</p>${adminSurveyCards}`
     : '';
 
-  listEl.innerHTML = surveyCards + announcementCards + adminSurveysBlock
+  listEl.innerHTML = commentNotifCards + surveyCards + announcementCards + adminSurveysBlock
     || '<p class="text-slate-400 text-sm text-center py-10">Todavía no tenés avisos.</p>';
 
   // Marcar todos como leídos al abrir la bandeja.
@@ -130,6 +149,22 @@ window.openAnnouncementsInbox = async function openAnnouncementsInbox() {
       { onConflict: 'announcement_id,user_id' }
     );
     window.loadAnnouncementsUnreadCount();
+  }
+}
+
+window.openCommentNotification = async function openCommentNotification(lessonId) {
+  document.getElementById('announcements-inbox-modal')?.remove();
+  const { data: lesson } = await window._supabase.from('lessons').select('course_id').eq('id', lessonId).maybeSingle();
+  if (!lesson) return;
+
+  if (window.userRole === 'estudiante') {
+    if (!window._coursesCache) await window.loadLessons();
+    window.openCoursePlayer(lesson.course_id);
+    const idx = window._activeCourse?.items?.findIndex(i => i.id === lessonId);
+    if (idx > -1 && idx !== window._activeCourseIndex) window.selectCourseResource(idx);
+  } else {
+    await window.openCourseManager(lesson.course_id);
+    window.previewCourseResource(lessonId);
   }
 }
 

@@ -5,7 +5,7 @@
  */
 
 const AIService = {
-    async ask(prompt, context = '', short = false) {
+    async ask(prompt, context = '', short = false, history = []) {
         try {
             const { data: { session } } = await window._supabase.auth.getSession();
             if (!session?.access_token) {
@@ -23,7 +23,7 @@ const AIService = {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${session.access_token}`
                 },
-                body: JSON.stringify({ prompt, context, short, role: window.userRole || '' })
+                body: JSON.stringify({ prompt, context, short, role: window.userRole || '', history })
             });
 
             const data = await response.json();

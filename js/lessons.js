@@ -1978,6 +1978,10 @@ window.initH5PSession = async function initH5PSession(lesson, attempt = 1) {
       // reintentar salvo salir y volver a entrar al recurso.
       const overlay = document.getElementById('h5p-loading-overlay');
       if (overlay) {
+        // El overlay nace con pointer-events-none (para no tapar clicks
+        // mientras es solo un spinner decorativo) -- sin sacarlo acá el
+        // botón Reintentar se ve pero los clicks lo atraviesan.
+        overlay.classList.remove('pointer-events-none');
         overlay.innerHTML = `<p class="text-rose-500 text-sm mb-3 px-4 text-center">El contenido tardó demasiado en cargar.</p><button class="btn-secondary-tw h-9 px-4 text-xs uppercase font-bold" onclick="window.selectCourseResource(window._activeCourseIndex)"><i class="fas fa-rotate"></i> Reintentar</button>`;
       }
     }, 15000);
