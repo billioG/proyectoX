@@ -3,6 +3,7 @@
  */
 
 window.openClassPasswordsPanel = async function openClassPasswordsPanel() {
+  const isAdmin = window.userRole === 'admin';
   const modal = document.createElement('div');
   modal.className = 'fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-sm animate-fadeIn';
   modal.innerHTML = `
@@ -14,6 +15,7 @@ window.openClassPasswordsPanel = async function openClassPasswordsPanel() {
       <div class="p-8 max-h-[75vh] overflow-y-auto custom-scrollbar">
         <p class="text-xs text-slate-400 mb-6">Cada clase (establecimiento + grado + sección) tiene UNA contraseña compartida para todos sus alumnos. Podés desactivarla por completo para que entren solo con su usuario (modo Kolibri). Al cambiar una contraseña, se actualiza al instante la cuenta real de cada alumno matriculado ahí.</p>
 
+        ${isAdmin ? `
         <div class="p-6 rounded-2xl bg-rose-50 dark:bg-rose-900/10 border border-rose-200 dark:border-rose-900/30 mb-6">
           <p class="text-[0.65rem] font-black uppercase text-rose-500 tracking-widest mb-1"><i class="fas fa-triangle-exclamation mr-1"></i> Restablecer establecimiento completo</p>
           <p class="text-[0.7rem] text-slate-500 mb-4">Aplica UNA contraseña a TODAS las clases (todos los grados y secciones) de un establecimiento a la vez, y sincroniza a todos sus alumnos.</p>
@@ -26,8 +28,9 @@ window.openClassPasswordsPanel = async function openClassPasswordsPanel() {
           </label>
           <button class="btn-secondary-tw h-11 px-8 text-xs uppercase font-black border border-rose-300 text-rose-500" id="btn-reset-school" onclick="window.resetSchoolPasswords()">Aplicar a todo el establecimiento</button>
         </div>
+        ` : ''}
 
-        <p class="text-[0.65rem] font-black uppercase text-slate-400 tracking-widest mb-3">Clases (por establecimiento, grado y sección)</p>
+        <p class="text-[0.65rem] font-black uppercase text-slate-400 tracking-widest mb-3">Clases ${isAdmin ? '(por establecimiento, grado y sección)' : 'asignadas a vos'}</p>
         <div id="class-passwords-list" class="space-y-4">
           <div class="text-center text-slate-400 text-xs py-6"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>
         </div>
@@ -36,7 +39,7 @@ window.openClassPasswordsPanel = async function openClassPasswordsPanel() {
   `;
   document.body.appendChild(modal);
   window.loadClassPasswordsList();
-  window.loadSchoolSelectForReset();
+  if (isAdmin) window.loadSchoolSelectForReset();
 }
 
 window.loadSchoolSelectForReset = async function loadSchoolSelectForReset() {
@@ -50,14 +53,35 @@ window.loadClassPasswordsList = async function loadClassPasswordsList() {
   const listEl = document.getElementById('class-passwords-list');
   if (!listEl) return;
 
+  const isAdmin = window.userRole === 'admin';
+  let myAssignments = [];
+  if (!isAdmin) {
+    const { data } = await window._supabase.from('teacher_assignments').select('school_code, grade, section').eq('teacher_id', window.currentUser.id);
+    myAssignments = data || [];
+  }
+
   // Se listan TODAS las clases reales (existan o no en class_passwords todavía),
   // derivadas directo de los alumnos matriculados -- no solo las ya configuradas.
-  const [{ data: students, error: stErr }, { data: configured, error: cpErr }, { data: schools }] = await Promise.all([
-    window._supabase.from('students').select('school_code, grade, section'),
+  // Para docentes, solo las clases donde tienen asignación (teacher_assignments) --
+  // ver TODOS los establecimientos/secciones era una fuga de datos de otras clases.
+  let studentsQuery = window._supabase.from('students').select('school_code, grade, section');
+  if (!isAdmin) {
+    if (!myAssignments.length) { listEl.innerHTML = '<p class="text-slate-400 text-xs">No tenés clases asignadas todavía.</p>'; return; }
+    studentsQuery = studentsQuery.in('school_code', [...new Set(myAssignments.map(a => a.school_code))]);
+  }
+
+  const [{ data: rawStudents, error: stErr }, { data: configured, error: cpErr }, { data: schools }] = await Promise.all([
+    studentsQuery,
     window._supabase.from('class_passwords').select('school_code, grade, section, requires_password'),
     window._supabase.from('schools').select('code, name'),
   ]);
   if (stErr || cpErr) { listEl.innerHTML = `<p class="text-rose-500 text-xs">Error: ${(stErr || cpErr).message}</p>`; return; }
+
+  const students = isAdmin ? rawStudents : (rawStudents || []).filter(s => myAssignments.some(a =>
+    String(a.school_code) === String(s.school_code) &&
+    String(a.grade) === String(s.grade) &&
+    String(a.section) === String(s.section)
+  ));
 
   const schoolNames = new Map((schools || []).map(s => [s.code, s.name]));
   const configuredMap = new Map((configured || []).map(c => [`${c.school_code}|${c.grade}|${c.section}`, c.requires_password]));

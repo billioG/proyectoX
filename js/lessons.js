@@ -630,14 +630,27 @@ window.renderQuizBuilder = function renderQuizBuilder() {
       ` : ''}
       ${q.type === 'number' ? `
         <div class="grid grid-cols-2 gap-2">
-          <input type="number" class="input-field-tw h-9 text-xs" placeholder="Respuesta correcta" value="${q.correctNumber}" onchange="window.updateQuizQuestionField('${q._id}', 'correctNumber', parseFloat(this.value) || 0)">
-          <input type="number" class="input-field-tw h-9 text-xs" placeholder="Tolerancia (+/-)" value="${q.tolerance}" onchange="window.updateQuizQuestionField('${q._id}', 'tolerance', parseFloat(this.value) || 0)">
+          <div>
+            <label class="text-[0.55rem] font-bold uppercase text-slate-400 tracking-wide mb-1 block">Respuesta correcta</label>
+            <input type="number" class="input-field-tw h-9 text-xs" value="${q.correctNumber}" onchange="window.updateQuizQuestionField('${q._id}', 'correctNumber', parseFloat(this.value) || 0)">
+          </div>
+          <div>
+            <label class="text-[0.55rem] font-bold uppercase text-slate-400 tracking-wide mb-1 block">Tolerancia (+/-)</label>
+            <input type="number" class="input-field-tw h-9 text-xs" value="${q.tolerance}" onchange="window.updateQuizQuestionField('${q._id}', 'tolerance', parseFloat(this.value) || 0)">
+          </div>
         </div>
+        <p class="text-[0.6rem] text-slate-400 mt-1"><i class="fas fa-circle-info"></i> Dejá tolerancia en 0 si solo aceptás la respuesta exacta.</p>
       ` : ''}
       ${q.type === 'range' ? `
         <div class="grid grid-cols-2 gap-2">
-          <input type="number" class="input-field-tw h-9 text-xs" placeholder="Mínimo válido" value="${q.min}" onchange="window.updateQuizQuestionField('${q._id}', 'min', parseFloat(this.value) || 0)">
-          <input type="number" class="input-field-tw h-9 text-xs" placeholder="Máximo válido" value="${q.max}" onchange="window.updateQuizQuestionField('${q._id}', 'max', parseFloat(this.value) || 0)">
+          <div>
+            <label class="text-[0.55rem] font-bold uppercase text-slate-400 tracking-wide mb-1 block">Mínimo válido</label>
+            <input type="number" class="input-field-tw h-9 text-xs" value="${q.min}" onchange="window.updateQuizQuestionField('${q._id}', 'min', parseFloat(this.value) || 0)">
+          </div>
+          <div>
+            <label class="text-[0.55rem] font-bold uppercase text-slate-400 tracking-wide mb-1 block">Máximo válido</label>
+            <input type="number" class="input-field-tw h-9 text-xs" value="${q.max}" onchange="window.updateQuizQuestionField('${q._id}', 'max', parseFloat(this.value) || 0)">
+          </div>
         </div>
       ` : ''}
       ${q.type === 'text' ? `<p class="text-[0.6rem] text-slate-400"><i class="fas fa-circle-info"></i> Se califica manualmente -- no suma a la nota automática.</p>` : ''}
@@ -1070,6 +1083,7 @@ window.confirmCopyCourse = async function confirmCopyCourse(courseId) {
       content_type: l.content_type,
       content_url: l.content_url,
       content_path: l.content_path,
+      quiz_data: l.quiz_data,
       course_id: newCourse.id,
       order_index: l.order_index,
       school_code: classOption.school_code,
