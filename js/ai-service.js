@@ -8,11 +8,20 @@ const AIService = {
     async ask(prompt, context = '', short = false) {
         try {
             const { data: { session } } = await window._supabase.auth.getSession();
+            if (!session?.access_token) {
+                // Sesión vencida/no disponible en este momento (ej. la
+                // pestaña quedó abierta mucho tiempo) -- sin esto se mandaba
+                // "Bearer undefined" y el proxy respondía 401 en bucle cada
+                // vez que la mascota intentaba hablar sola.
+                if (short) return '';
+                throw new Error('Sesión no disponible');
+            }
+
             const response = await fetch(`${window.SUPABASE_URL}/functions/v1/ai-proxy`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${session?.access_token || ''}`
+                    'Authorization': `Bearer ${session.access_token}`
                 },
                 body: JSON.stringify({ prompt, context, short })
             });
@@ -22,6 +31,10 @@ const AIService = {
             return data.content;
         } catch (err) {
             console.error('AI Error:', err);
+            // El mensaje corto de la mascota flotante no debe mostrar una
+            // disculpa de error como si fuera un mensaje motivacional --
+            // mejor que talk() caiga a la lista de mensajes fijos.
+            if (short) return '';
             return 'Lo siento, mis circuitos están ocupados procesando datos. ¡Vuelve a intentarlo en un momento! <i class="fas fa-robot"></i><i class="fas fa-bolt"></i>';
         }
     },
