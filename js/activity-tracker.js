@@ -84,7 +84,13 @@ const ActivityTracker = {
                 }, { onConflict: 'user_id, school_code, activity_date' });
 
         } catch (err) {
-            console.error('❌ ActivityTracker Error:', err);
+            // El heartbeat es "best effort" -- corre cada 30s solo, así que
+            // un fallo de red transitorio (conexión cerrada, timeout) no
+            // necesita loguearse como error real, el próximo ciclo reintenta
+            // solo. Sí se loguean errores reales (permisos, columna
+            // inexistente, etc.) para no esconder un bug de verdad.
+            const isNetworkBlip = err?.message?.includes('Failed to fetch') || err?.message?.includes('NetworkError') || err?.name === 'TypeError';
+            if (!isNetworkBlip) console.error('❌ ActivityTracker Error:', err);
         }
     }
 };

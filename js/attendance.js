@@ -185,7 +185,11 @@ window.startQRScanner = async function startQRScanner() {
         qrScanning = true;
         qrStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
         video.srcObject = qrStream;
-        video.play();
+        // El cámara-scanner se abre/cierra rápido (usuario reintenta, cierra
+        // el modal, etc.) -- si un pause() interrumpe este play() antes de
+        // resolver, tira un AbortError sin capturar en consola. Es un
+        // race normal del navegador, no un error real.
+        video.play().catch(() => {});
         container.classList.remove('hidden');
         btnStart.classList.add('hidden');
         btnStop.classList.remove('hidden');

@@ -136,7 +136,10 @@ const KolibriSync = {
             this.scannerStream = stream;
             video.srcObject = stream;
             video.setAttribute("playsinline", true);
-            video.play();
+            // Mismo caso que el scanner QR de asistencia: si se cierra el
+            // modal rápido, un pause() puede interrumpir este play() --
+            // AbortError esperable del navegador, no un error real.
+            video.play().catch(() => {});
             requestAnimationFrame(() => this.tickScanner());
         } catch (err) {
             window.showToast('<i class="fas fa-circle-xmark"></i> No se pudo acceder a la cámara', 'error');
