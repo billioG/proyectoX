@@ -256,7 +256,7 @@ const MascotWidget = {
         }, 8000);
     },
 
-    openAIChat() {
+    async openAIChat() {
         if (typeof AIService === 'undefined') return showToast('IA no disponible', 'warning');
 
         const modalId = 'mascot-ai-modal';
@@ -276,18 +276,18 @@ const MascotWidget = {
                             <p class="text-[0.6rem] font-bold opacity-70 mt-1 uppercase">Impulsado por OpenAI GPT-4o</p>
                         </div>
                     </div>
-                    <button class="w-8 h-8 rounded-lg bg-black/10 hover:bg-black/20 flex items-center justify-center transition-all" onclick="this.closest('.fixed').remove()">
-                        <i class="fas fa-times"></i>
-                    </button>
+                    <div class="flex items-center gap-2">
+                        <button onclick="MascotWidget.clearChatHistory()" class="w-8 h-8 rounded-lg bg-black/10 hover:bg-black/20 flex items-center justify-center transition-all" title="Borrar historial">
+                            <i class="fas fa-trash-alt text-xs"></i>
+                        </button>
+                        <button class="w-8 h-8 rounded-lg bg-black/10 hover:bg-black/20 flex items-center justify-center transition-all" onclick="this.closest('.fixed').remove()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <div id="ai-chat-history" class="p-6 space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-950/20">
-                    <div class="flex gap-3">
-                        <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-xs shrink-0"><i class="fas fa-feather"></i></div>
-                        <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl rounded-tl-none shadow-sm text-sm font-medium text-slate-700 dark:text-slate-200 border border-slate-100 dark:border-slate-800">
-                            ¡Hola! Soy tu asistente de IA. ¿En qué puedo ayudarte hoy con tus proyectos de tecnología?
-                        </div>
-                    </div>
+                    <div class="text-center text-slate-400 text-xs py-4"><i class="fas fa-spinner fa-spin"></i></div>
                 </div>
 
                 <div class="p-6 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800">
@@ -302,9 +302,47 @@ const MascotWidget = {
         `;
         document.body.appendChild(modal);
 
+        await this.renderChatHistory();
+
         const input = document.getElementById('ai-chat-input');
         input.focus();
         input.onkeypress = (e) => { if (e.key === 'Enter') this.sendAIMessage(); };
+    },
+
+    userBubbleHtml(text) {
+        return `<div class="flex gap-3 justify-end"><div class="bg-primary text-white p-4 rounded-2xl rounded-tr-none shadow-md text-sm font-bold max-w-[80%]">${text}</div></div>`;
+    },
+
+    assistantBubbleHtml(text) {
+        return `<div class="flex gap-3"><div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-xs shrink-0"><i class="fas fa-feather"></i></div><div class="bg-white dark:bg-slate-800 p-4 rounded-2xl rounded-tl-none shadow-sm text-sm font-medium text-slate-700 dark:text-slate-200 border border-slate-100 dark:border-slate-800">${text}</div></div>`;
+    },
+
+    async renderChatHistory() {
+        const history = document.getElementById('ai-chat-history');
+        if (!history || !window._supabase || !window.currentUser) return;
+
+        const { data: messages } = await window._supabase.from('mascot_chat_messages')
+            .select('role, content').eq('user_id', window.currentUser.id)
+            .order('created_at', { ascending: true }).limit(40);
+
+        if (!messages?.length) {
+            history.innerHTML = this.assistantBubbleHtml('¡Hola! Soy tu asistente de IA. ¿En qué puedo ayudarte hoy con tus proyectos de tecnología?');
+            return;
+        }
+
+        history.innerHTML = messages.map(m => m.role === 'user' ? this.userBubbleHtml(m.content) : this.assistantBubbleHtml(m.content)).join('');
+        history.scrollTop = history.scrollHeight;
+    },
+
+    async saveChatMessage(role, content) {
+        if (!window._supabase || !window.currentUser) return;
+        await window._supabase.from('mascot_chat_messages').insert({ user_id: window.currentUser.id, role, content });
+    },
+
+    async clearChatHistory() {
+        if (!confirm('¿Borrar todo el historial de esta conversación?')) return;
+        await window._supabase.from('mascot_chat_messages').delete().eq('user_id', window.currentUser.id);
+        await this.renderChatHistory();
     },
 
     async sendAIMessage() {
@@ -314,22 +352,14 @@ const MascotWidget = {
         if (!text) return;
 
         input.value = '';
-
-        // User Message
-        history.innerHTML += `
-            <div class="flex gap-3 justify-end">
-                <div class="bg-primary text-white p-4 rounded-2xl rounded-tr-none shadow-md text-sm font-bold max-w-[80%]">
-                    ${text}
-                </div>
-            </div>
-        `;
+        history.innerHTML += this.userBubbleHtml(text);
         history.scrollTop = history.scrollHeight;
+        this.saveChatMessage('user', text);
 
-        // Loading
         const loadingId = 'ai-loading-' + Date.now();
         history.innerHTML += `
             <div id="${loadingId}" class="flex gap-3">
-                <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-xs shrink-0">1B</div>
+                <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-xs shrink-0"><i class="fas fa-feather"></i></div>
                 <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl rounded-tl-none shadow-sm text-sm font-medium text-slate-400 border border-slate-100 dark:border-slate-800 flex items-center gap-2">
                     <i class="fas fa-circle-notch fa-spin"></i> Procesando...
                 </div>
@@ -342,15 +372,9 @@ const MascotWidget = {
             const response = await AIService.ask(text, context);
             document.getElementById(loadingId).remove();
 
-            history.innerHTML += `
-                <div class="flex gap-3">
-                    <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-xs shrink-0">1B</div>
-                    <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl rounded-tl-none shadow-sm text-sm font-medium text-slate-700 dark:text-slate-200 border border-slate-100 dark:border-slate-800 animate-slideUp">
-                        ${response}
-                    </div>
-                </div>
-            `;
+            history.innerHTML += this.assistantBubbleHtml(response);
             history.scrollTop = history.scrollHeight;
+            this.saveChatMessage('assistant', response);
         } catch (err) {
             console.error('Mascot chat error:', err);
             const loadingEl = document.getElementById(loadingId);
