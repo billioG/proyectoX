@@ -209,6 +209,147 @@ window.submitRandomEventAnswers = async function submitRandomEventAnswers() {
   window._activeEventQuiz = null;
 }
 
+// ================================================
+// PANEL ADMIN -- lanzar/cancelar eventos manualmente
+// ================================================
+const RANDOM_EVENT_TOPICS = [
+  'Robótica educativa', 'Programación por bloques', 'Ciencias de la computación',
+  'Electrónica básica', 'Inteligencia artificial', 'Matemática aplicada',
+  'Historia de Guatemala', 'Geografía de Guatemala', 'Cultura maya',
+  'Tradiciones de Guatemala', 'Biodiversidad de Guatemala',
+  'Cultura general internacional', 'Historia mundial', 'Ciencia y descubrimientos',
+];
+
+window.openRandomEventsAdminModal = function openRandomEventsAdminModal() {
+  document.getElementById('random-events-admin-modal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'random-events-admin-modal';
+  modal.className = 'fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-sm animate-fadeIn';
+  modal.innerHTML = `
+    <div class="glass-card w-full max-w-2xl max-h-[85vh] flex flex-col p-0 overflow-hidden shadow-2xl animate-slideUp bg-white dark:bg-slate-900 border border-fuchsia-500/30">
+      <div class="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center shrink-0">
+        <h2 class="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight flex items-center gap-2">
+          <i class="fas fa-bolt text-fuchsia-500"></i> Eventos Sorpresa
+        </h2>
+        <button class="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500 transition-all flex items-center justify-center font-bold" onclick="this.closest('.fixed').remove()">
+          <i class="fas fa-times text-lg"></i>
+        </button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
+        <div class="p-5 rounded-2xl bg-fuchsia-50 dark:bg-fuchsia-950/20 border border-fuchsia-100 dark:border-fuchsia-900/30">
+          <p class="text-[0.65rem] font-black uppercase text-fuchsia-600 dark:text-fuchsia-400 tracking-widest mb-3">Lanzar un evento ahora</p>
+          <div class="grid grid-cols-2 gap-3 mb-3">
+            <div class="col-span-2">
+              <label class="text-[0.6rem] font-bold uppercase text-slate-400 mb-1 block">Tema (vacío = al azar)</label>
+              <input type="text" id="re-admin-topic" class="input-field-tw h-10 text-sm" placeholder="Ej: robótica, cultura maya...">
+            </div>
+            <div>
+              <label class="text-[0.6rem] font-bold uppercase text-slate-400 mb-1 block">Gemas en el pozo</label>
+              <input type="number" id="re-admin-gems" class="input-field-tw h-10 text-sm" value="100" min="10">
+            </div>
+            <div>
+              <label class="text-[0.6rem] font-bold uppercase text-slate-400 mb-1 block">Preguntas</label>
+              <input type="number" id="re-admin-questions" class="input-field-tw h-10 text-sm" value="8" min="3" max="15">
+            </div>
+            <div class="col-span-2">
+              <label class="text-[0.6rem] font-bold uppercase text-slate-400 mb-1 block">Duración (minutos)</label>
+              <input type="number" id="re-admin-duration" class="input-field-tw h-10 text-sm" value="15" min="5" max="60">
+            </div>
+          </div>
+          <button id="btn-launch-random-event" class="btn-primary-tw w-full h-11 text-xs uppercase font-black" onclick="window.launchRandomEventNow()">
+            <i class="fas fa-rocket"></i> Lanzar Evento Ahora
+          </button>
+          <p class="text-[0.6rem] text-slate-400 mt-2"><i class="fas fa-circle-info"></i> Tarda hasta 1 minuto en dispararse (lo recoge el cron que corre cada minuto) y manda push real a todos los estudiantes suscritos.</p>
+        </div>
+
+        <div>
+          <p class="text-[0.65rem] font-black uppercase text-slate-400 tracking-widest mb-3">Últimos eventos</p>
+          <div id="random-events-admin-list" class="space-y-2">
+            <div class="text-center text-slate-400 text-xs py-6"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  window.loadRandomEventsAdminList();
+}
+
+window.launchRandomEventNow = async function launchRandomEventNow() {
+  const topicInput = document.getElementById('re-admin-topic')?.value.trim();
+  const gemPool = parseInt(document.getElementById('re-admin-gems')?.value) || 100;
+  const questionCount = Math.max(3, Math.min(15, parseInt(document.getElementById('re-admin-questions')?.value) || 8));
+  const duration = parseInt(document.getElementById('re-admin-duration')?.value) || 15;
+  const topic = topicInput || RANDOM_EVENT_TOPICS[Math.floor(Math.random() * RANDOM_EVENT_TOPICS.length)];
+  const btn = document.getElementById('btn-launch-random-event');
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Lanzando...';
+
+  const { error } = await window._supabase.from('random_events').insert({
+    scheduled_for: new Date().toISOString(),
+    duration_minutes: duration,
+    topic,
+    question_count: questionCount,
+    gem_pool: gemPool,
+    status: 'scheduled',
+  });
+
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fas fa-rocket"></i> Lanzar Evento Ahora';
+
+  if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
+  window.showToast('<i class="fas fa-circle-check"></i> Evento programado -- se dispara en menos de 1 minuto', 'success');
+  window.loadRandomEventsAdminList();
+}
+
+window.cancelScheduledEvent = async function cancelScheduledEvent(eventId) {
+  const { error } = await window._supabase.from('random_events').update({ status: 'completed' }).eq('id', eventId).eq('status', 'scheduled');
+  if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
+  window.showToast('<i class="fas fa-circle-check"></i> Evento cancelado', 'success');
+  window.loadRandomEventsAdminList();
+}
+
+window.loadRandomEventsAdminList = async function loadRandomEventsAdminList() {
+  const listEl = document.getElementById('random-events-admin-list');
+  if (!listEl) return;
+  const sanitizeInput = window.sanitizeInput || ((v) => v);
+
+  const { data: events, error } = await window._supabase.from('random_events')
+    .select('id, topic, gem_pool, question_count, duration_minutes, scheduled_for, status')
+    .order('scheduled_for', { ascending: false })
+    .limit(10);
+
+  if (error) { listEl.innerHTML = `<p class="text-rose-500 text-xs">${error.message}</p>`; return; }
+  if (!events?.length) { listEl.innerHTML = '<p class="text-slate-400 text-xs text-center py-4">Todavía no hubo eventos.</p>'; return; }
+
+  const eventIds = events.map(e => e.id);
+  const { data: participants } = await window._supabase.from('event_participants')
+    .select('event_id, student_id, score, rank, students(full_name)')
+    .in('event_id', eventIds);
+
+  const statusLabel = { scheduled: 'Programado', active: 'Activo ahora', completed: 'Completado' };
+  const statusColor = { scheduled: 'bg-amber-500/10 text-amber-500', active: 'bg-emerald-500/10 text-emerald-500 animate-pulse', completed: 'bg-slate-200 dark:bg-slate-700 text-slate-500' };
+
+  listEl.innerHTML = events.map(e => {
+    const winner = (participants || []).find(p => p.event_id === e.id && p.rank === 1);
+    const count = (participants || []).filter(p => p.event_id === e.id).length;
+    return `
+      <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
+        <div class="min-w-0">
+          <div class="text-xs font-bold text-slate-800 dark:text-white truncate">${sanitizeInput(e.topic)} -- ${e.gem_pool} gemas</div>
+          <div class="text-[0.6rem] text-slate-400">${new Date(e.scheduled_for).toLocaleString('es-GT')} · ${count} participante(s)${winner ? ` · 🏆 ${sanitizeInput(winner.students?.full_name || '')}` : ''}</div>
+        </div>
+        <div class="shrink-0 flex items-center gap-2">
+          <span class="px-2.5 py-1 rounded-lg text-[0.6rem] font-black uppercase ${statusColor[e.status]}">${statusLabel[e.status]}</span>
+          ${e.status === 'scheduled' ? `<button class="text-rose-500 hover:underline text-[0.6rem] font-bold uppercase" onclick="window.cancelScheduledEvent('${e.id}')">Cancelar</button>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
 if (typeof window !== 'undefined') {
   window.addEventListener('load', () => {
     setTimeout(() => {

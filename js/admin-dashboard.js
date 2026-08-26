@@ -130,9 +130,14 @@ window.renderDashboardUI = function renderDashboardUI(container, stats, teachers
                     <i class="fas fa-flag-checkered text-sm group-hover:scale-110 transition-transform"></i>
                     <span>Gestión Tareas</span>
                 </button>
-                
+
+                <button class="flex-1 xl:flex-none bg-gradient-to-r from-fuchsia-500 to-purple-600 hover:from-fuchsia-600 hover:to-purple-700 text-white font-bold py-2.5 px-5 rounded-xl shadow-lg shadow-fuchsia-500/10 transition-all active:scale-95 flex items-center justify-center gap-2 text-xs uppercase tracking-wider group" onclick="window.openRandomEventsAdminModal()">
+                    <i class="fas fa-bolt text-sm group-hover:scale-110 transition-transform"></i>
+                    <span>Eventos Sorpresa</span>
+                </button>
+
                 <button class="flex-1 xl:flex-none bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/50 hover:border-indigo-500 font-bold py-2.5 px-5 rounded-xl shadow-md hover:shadow-indigo-500/10 transition-all active:scale-95 flex items-center justify-center gap-2 text-xs uppercase tracking-wider" onclick="exportAllData()">
-                    <i class="fas fa-database text-sm"></i> 
+                    <i class="fas fa-database text-sm"></i>
                     <span>Exportar</span>
                 </button>
             </div>
