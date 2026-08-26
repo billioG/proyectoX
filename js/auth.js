@@ -356,7 +356,7 @@ export async function handleSuccessfulLogin(user) {
     if (mustChangePassword) {
       showMandatoryPasswordChangeModal();
     } else {
-      const defaultView = window.userRole === 'admin' ? 'admin-dashboard' : 'feed';
+      const defaultView = window.userRole === 'admin' ? 'admin-dashboard' : window.userRole === 'estudiante' ? 'lessons' : 'feed';
       const lastView = sessionStorage.getItem('PX_LAST_VIEW');
       // Además de existir en el DOM, la vista guardada tiene que ser válida
       // para el rol de ESTE usuario -- si no, un estudiante podría heredar

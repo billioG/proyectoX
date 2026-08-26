@@ -240,9 +240,10 @@ window.loadTeacherProfile = async function loadTeacherProfile() {
         const { data: teacher } = await _supabase.from('teachers').select('*').eq('id', currentUser.id).single();
         if (!teacher) return null;
 
-        const [assignRes, ratingRes] = await Promise.all([
+        const [assignRes, ratingRes, badgesRes] = await Promise.all([
             _supabase.from('teacher_assignments').select('*').eq('teacher_id', currentUser.id),
-            _supabase.from('teacher_ratings').select('rating').eq('teacher_id', currentUser.id)
+            _supabase.from('teacher_ratings').select('rating').eq('teacher_id', currentUser.id),
+            _supabase.from('teacher_badges').select('badge_id').eq('teacher_id', currentUser.id),
         ]);
 
         const assignments = assignRes.data || [];
@@ -252,16 +253,17 @@ window.loadTeacherProfile = async function loadTeacherProfile() {
             teacher,
             assignments,
             kpis,
-            ratings: ratingRes.data || []
+            ratings: ratingRes.data || [],
+            earnedBadgeIds: (badgesRes.data || []).map(b => b.badge_id),
         };
     }, (data) => {
         if (!data) return;
         const avgRating = data.ratings.length > 0 ? (data.ratings.reduce((s, r) => s + r.rating, 0) / data.ratings.length).toFixed(1) : 0;
-        window.renderTeacherProfileUI(container, data.teacher, data.assignments, data.kpis, avgRating, data.ratings.length);
+        window.renderTeacherProfileUI(container, data.teacher, data.assignments, data.kpis, avgRating, data.ratings.length, data.earnedBadgeIds);
     });
 }
 
-window.renderTeacherProfileUI = function renderTeacherProfileUI(container, teacher, assignments, kpis, avgRating, totalRatings) {
+window.renderTeacherProfileUI = function renderTeacherProfileUI(container, teacher, assignments, kpis, avgRating, totalRatings, earnedBadgeIds = []) {
     container.innerHTML = `
     <div class="flex flex-col md:flex-row gap-8 mb-10 items-center text-center md:text-left">
         <div class="w-32 h-32 rounded-3xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center text-5xl shadow-inner border border-indigo-500/20 shrink-0 overflow-hidden">
@@ -335,6 +337,28 @@ window.renderTeacherProfileUI = function renderTeacherProfileUI(container, teach
         <button onclick="window.viewAllTeacherComments && window.viewAllTeacherComments()" class="w-full mt-10 py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold rounded-2xl transition-all uppercase tracking-widest text-xs">
             VER FEEDBACK DETALLADO DE ESTUDIANTES
         </button>
+    </div>
+
+    <div class="mt-12">
+        <div class="flex items-center justify-between mb-8">
+            <h3 class="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-3">
+                <i class="fas fa-medal text-amber-500 text-2xl"></i> Vitrina de Logros
+            </h3>
+            <span class="text-[0.7rem] font-semibold text-slate-400 uppercase tracking-widest">${earnedBadgeIds.length} / ${(window.TEACHER_BADGES || []).length} Desbloqueados</span>
+        </div>
+        <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4">
+            ${(window.TEACHER_BADGES || []).map(b => {
+        const isEarned = earnedBadgeIds.includes(b.id);
+        return `
+                <div class="glass-card p-4 text-center group relative ${isEarned ? 'border-primary/20 bg-primary/5' : 'opacity-30 hover:opacity-50'} transition-all cursor-help"
+                     onclick="showBadgeDetailsModal(${JSON.stringify(b).replace(/"/g, '&quot;')}, ${isEarned})">
+                    <div class="text-3xl mb-2 transform group-hover:scale-125 group-hover:rotate-12 transition-transform duration-500 ${isEarned ? 'text-amber-500' : 'text-slate-400 grayscale'}">${b.icon}</div>
+                    <div class="text-[0.55rem] font-bold uppercase text-slate-600 dark:text-slate-300 tracking-tighter leading-tight">${b.name}</div>
+                    ${isEarned ? `<div class="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 text-white rounded-full flex items-center justify-center text-[0.5rem] shadow-lg"><i class="fas fa-check"></i></div>` : ''}
+                </div>
+              `;
+    }).join('')}
+        </div>
     </div>
   `;
 }

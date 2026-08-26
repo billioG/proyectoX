@@ -422,7 +422,48 @@ window.renderGamificationHubBtn = function renderGamificationHubBtn() {
   container.appendChild(btn);
 }
 
+window.showGameCenterOnboarding = function showGameCenterOnboarding() {
+  const userId = window.currentUser?.id;
+  const key = `gamecenter_onboarding_seen_${userId}`;
+  if (!userId || localStorage.getItem(key)) return false;
+  localStorage.setItem(key, 'true');
+
+  const items = [
+    { icon: 'fa-trophy', color: 'text-amber-400', title: 'Ranking', desc: 'Compará tu XP con el top 10 de toda la plataforma.' },
+    { icon: 'fa-medal', color: 'text-indigo-400', title: 'Insignias', desc: 'Se desbloquean solas al lograr hitos -- subí proyectos, sumá likes, mantené tu racha.' },
+    { icon: 'fa-swords', color: 'text-rose-400', title: 'Desafío 1v1', desc: 'Retá a un compañero de tu clase a un quiz relámpago, apostando gemas.' },
+    { icon: 'fa-bolt', color: 'text-fuchsia-400', title: 'Eventos Sorpresa', desc: 'A veces, de noche, llega un quiz relámpago para todos -- los primeros lugares se reparten un pozo de gemas.' },
+    { icon: 'fa-gift', color: 'text-emerald-400', title: 'Cofre Diario', desc: 'Entrá todos los días para reclamar tu recompensa y no perder la racha.' },
+  ];
+
+  const modal = document.createElement('div');
+  modal.id = 'gamecenter-onboarding-modal';
+  modal.className = 'fixed inset-0 z-[160] flex items-center justify-center p-6 bg-slate-950/90 backdrop-blur-md animate-fadeIn';
+  modal.innerHTML = `
+    <div class="glass-card w-full max-w-md p-8 shadow-2xl animate-slideUp bg-slate-900 border border-white/10 text-center">
+      <div class="text-5xl mb-4">🎮</div>
+      <h2 class="text-xl font-black text-white uppercase tracking-tighter mb-2">¡Bienvenido al Centro de Juego!</h2>
+      <p class="text-slate-400 text-sm mb-6">Acá está todo lo divertido de Quetzal LMS:</p>
+      <div class="space-y-3 text-left mb-6">
+        ${items.map(it => `
+          <div class="flex items-start gap-3 p-3 rounded-xl bg-white/5">
+            <div class="w-9 h-9 rounded-lg bg-white/10 ${it.color} flex items-center justify-center shrink-0"><i class="fas ${it.icon}"></i></div>
+            <div>
+              <div class="text-xs font-black text-white uppercase tracking-wide">${it.title}</div>
+              <div class="text-[0.7rem] text-slate-400">${it.desc}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+      <button class="btn-primary-tw w-full h-12 text-xs uppercase font-black" onclick="this.closest('.fixed').remove(); window.openGamificationHub();">¡Entendido! <i class="fas fa-rocket"></i></button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  return true;
+}
+
 window.openGamificationHub = async function openGamificationHub() {
+  if (window.showGameCenterOnboarding()) return; // primera vez -- se abre el hub real cuando cierre el tutorial
   const _supabase = window._supabase;
   const fetchWithCache = window.fetchWithCache;
 

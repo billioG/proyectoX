@@ -78,6 +78,9 @@ window.showDuelResultModal = function showDuelResultModal(duel, myScore) {
         <div class="p-3 bg-white/10 rounded-xl border border-white/10 flex items-center justify-center gap-2">
           <span class="${gemsColor} font-black text-lg">${gemsLine}</span>
         </div>
+        <button class="w-full py-3 bg-white/10 hover:bg-white/20 text-white rounded-2xl font-black uppercase tracking-widest text-[0.65rem] transition-all" onclick="window.showDuelReview('${duel.id}')">
+          <i class="fas fa-list-check"></i> Ver Retroalimentación
+        </button>
         <button class="w-full py-4 bg-primary hover:bg-primary-dark text-white rounded-2xl font-black uppercase tracking-[0.2em] shadow-xl shadow-primary/30 transition-all hover:scale-105 active:scale-95" onclick="this.closest('.fixed').remove()">
           ¡Genial! <i class="fas fa-rocket"></i>
         </button>
@@ -86,6 +89,48 @@ window.showDuelResultModal = function showDuelResultModal(duel, myScore) {
   `;
   document.body.appendChild(modal);
   if (won && typeof window.startBirthdayConfetti === 'function') window.startBirthdayConfetti();
+}
+
+window.showDuelReview = async function showDuelReview(duelId) {
+  const _supabase = window._supabase;
+  const currentUser = window.currentUser;
+  const sanitizeInput = window.sanitizeInput || ((v) => v);
+
+  const [{ data: questions, error: qErr }, { data: myAnswer }] = await Promise.all([
+    _supabase.rpc('get_duel_review', { p_duel_id: duelId }),
+    _supabase.from('student_duel_answers').select('answers').eq('duel_id', duelId).eq('student_id', currentUser.id).maybeSingle(),
+  ]);
+  if (qErr || !questions?.length) return window.showToast('<i class="fas fa-circle-xmark"></i> No se pudo cargar la retroalimentación', 'error');
+
+  const myAnswers = myAnswer?.answers || [];
+
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 z-[235] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md animate-fadeIn';
+  modal.innerHTML = `
+    <div class="glass-card w-full max-w-lg max-h-[85vh] flex flex-col p-0 overflow-hidden shadow-2xl animate-slideUp bg-slate-900 border border-white/10">
+      <div class="p-5 border-b border-white/10 flex justify-between items-center shrink-0">
+        <h3 class="text-sm font-black text-white uppercase tracking-widest"><i class="fas fa-list-check text-primary mr-1"></i> Retroalimentación</h3>
+        <button class="w-9 h-9 rounded-xl bg-white/5 text-slate-400 hover:text-rose-500 flex items-center justify-center" onclick="this.closest('.fixed').remove()"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-3">
+        ${questions.map((q, i) => {
+    const mine = myAnswers[i];
+    const correct = mine === q.correctIndex;
+    return `
+          <div class="p-4 rounded-xl bg-white/5 border ${correct ? 'border-emerald-500/30' : 'border-rose-500/30'}">
+            <p class="text-sm font-bold text-white mb-2">${i + 1}. ${sanitizeInput(q.question)} ${correct ? '<i class="fas fa-circle-check text-emerald-400"></i>' : '<i class="fas fa-circle-xmark text-rose-400"></i>'}</p>
+            ${q.options.map((opt, oi) => `
+              <p class="text-xs pl-3 py-0.5 ${oi === q.correctIndex ? 'text-emerald-400 font-bold' : oi === mine ? 'text-rose-400 font-bold' : 'text-slate-500'}">
+                ${oi === q.correctIndex ? '✓' : oi === mine ? '✗' : '·'} ${sanitizeInput(opt)}
+              </p>
+            `).join('')}
+          </div>
+        `;
+  }).join('')}
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
 }
 
 window.renderDuelsSection = function renderDuelsSection() {
