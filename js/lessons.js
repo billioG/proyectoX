@@ -4,8 +4,13 @@
  */
 
 const LESSON_TYPE_ICON = { video: 'fa-video', pdf: 'fa-file-pdf', image: 'fa-image', scorm: 'fa-cube', h5p: 'fa-puzzle-piece' };
-const LESSON_TYPE_LABEL = { video: 'Video', pdf: 'PDF', image: 'Imagen', scorm: 'SCORM', h5p: 'H5P' };
-const LESSON_TYPES_WITH_GRADE = new Set(['scorm', 'h5p']);
+const LESSON_TYPE_LABEL = { video: 'Video', pdf: 'PDF', image: 'Imagen', scorm: 'SCORM', h5p: 'H5P', quiz: 'Quiz' };
+const LESSON_TYPES_WITH_GRADE = new Set(['scorm', 'h5p', 'quiz']);
+// Subconjunto de LESSON_TYPES_WITH_GRADE que sube un .zip (H5P/SCORM) -- el
+// quiz también tiene nota automática pero su UI de carga es un formulario de
+// preguntas, no un archivo, así que necesita su propio chequeo separado.
+const ZIP_RESOURCE_TYPES = new Set(['scorm', 'h5p']);
+const QUIZ_QUESTION_TYPE_LABEL = { mc: 'Opción múltiple', tf: 'Verdadero/Falso', number: 'Número exacto', range: 'Rango (min-max)', text: 'Respuesta abierta (manual)' };
 const LESSON_STORAGE_BUCKET = 'course-content';
 
 // El navegador puede descargar la pestaña en segundo plano (Chrome Memory
@@ -468,12 +473,16 @@ const SINGLEFILE_ACCEPT_BY_TYPE = { video: 'video/*', pdf: 'application/pdf', im
 
 window.openAddResourceModal = function openAddResourceModal(courseId, editLessonId) {
   const editing = editLessonId ? (window._managingCourseLessons || []).find(l => l.id === editLessonId) : null;
-  const isFileType = editing ? LESSON_TYPES_WITH_GRADE.has(editing.content_type) : false;
+  const isZip = editing ? ZIP_RESOURCE_TYPES.has(editing.content_type) : false;
+  const isQuiz = editing ? editing.content_type === 'quiz' : false;
+  const isFileType = isZip; // el quiz no usa URL/archivo, tiene su propio builder
+
+  window._quizBuilderQuestions = isQuiz ? (editing.quiz_data || []).map(q => ({ ...q, _id: crypto.randomUUID() })) : [];
 
   const modal = document.createElement('div');
-  modal.className = 'fixed inset-0 z-[210] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-sm animate-fadeIn';
+  modal.className = 'fixed inset-0 z-[210] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-sm animate-fadeIn overflow-y-auto';
   modal.innerHTML = `
-    <div class="glass-card w-full max-w-lg p-8 shadow-2xl animate-slideUp">
+    <div class="glass-card w-full max-w-lg p-8 shadow-2xl animate-slideUp my-6">
       <h2 class="text-lg font-bold text-slate-800 dark:text-white uppercase tracking-tighter mb-6"><i class="fas fa-file-circle-plus text-primary mr-2"></i> ${editing ? 'Editar Recurso' : 'Nuevo Recurso'}</h2>
       <div class="space-y-4">
         <div>
@@ -489,6 +498,7 @@ window.openAddResourceModal = function openAddResourceModal(courseId, editLesson
             <option value="image">Imagen</option>
             <option value="scorm">SCORM (.zip -- con nota automática)</option>
             <option value="h5p">H5P (.zip -- con nota automática)</option>
+            <option value="quiz">Quiz (preguntas -- con nota automática)</option>
           </select>
         </div>
         <div id="resource-source-mode-wrap">
@@ -498,11 +508,11 @@ window.openAddResourceModal = function openAddResourceModal(courseId, editLesson
             <option value="file">Subir archivo (funciona offline, no depende de un link externo)</option>
           </select>
         </div>`}
-        <div id="resource-source-url-wrap" class="${isFileType ? 'hidden' : ''}">
+        <div id="resource-source-url-wrap" class="${isFileType || isQuiz ? 'hidden' : ''}">
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">URL *</label>
-          <input type="text" id="resource-url" placeholder="https://..." class="input-field-tw h-11 text-sm" value="${editing && !isFileType ? window.sanitizeAttr(editing.content_url) : ''}">
+          <input type="text" id="resource-url" placeholder="https://..." class="input-field-tw h-11 text-sm" value="${editing && !isFileType && !isQuiz ? window.sanitizeAttr(editing.content_url || '') : ''}">
         </div>
-        ${editing && isFileType ? '<p class="text-[0.65rem] text-slate-400"><i class="fas fa-circle-info"></i> El archivo del paquete no se puede reemplazar acá -- borrá el recurso y creá uno nuevo si necesitás subir otro paquete.</p>' : `
+        ${editing && isZip ? '<p class="text-[0.65rem] text-slate-400"><i class="fas fa-circle-info"></i> El archivo del paquete no se puede reemplazar acá -- borrá el recurso y creá uno nuevo si necesitás subir otro paquete.</p>' : !isQuiz ? `
         <div id="resource-source-singlefile-wrap" class="hidden">
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Archivo *</label>
           <input type="file" id="resource-single-file" class="input-field-tw text-sm py-2.5">
@@ -513,7 +523,15 @@ window.openAddResourceModal = function openAddResourceModal(courseId, editLesson
           <input type="file" id="resource-file" class="input-field-tw text-sm py-2.5">
           <p class="text-[0.65rem] text-slate-400 mt-1">Aceptamos .zip y .h5p (es el mismo formato).</p>
           <p id="resource-upload-progress" class="text-[0.65rem] text-slate-400 mt-2 hidden"></p>
-        </div>`}
+        </div>` : ''}
+        <div id="resource-quiz-builder-wrap" class="${isQuiz ? '' : 'hidden'} space-y-3">
+          <div id="quiz-builder-list" class="space-y-3"></div>
+          <div class="grid grid-cols-2 gap-2">
+            ${Object.entries(QUIZ_QUESTION_TYPE_LABEL).map(([type, label]) => `
+              <button type="button" class="btn-secondary-tw h-10 text-[0.65rem] uppercase font-bold" onclick="window.addQuizQuestion('${type}')"><i class="fas fa-plus"></i> ${label}</button>
+            `).join('')}
+          </div>
+        </div>
       </div>
       <div class="flex gap-3 mt-8">
         <button class="btn-secondary-tw flex-1 h-11 text-xs uppercase font-bold" onclick="this.closest('.fixed').remove()">Cancelar</button>
@@ -522,6 +540,7 @@ window.openAddResourceModal = function openAddResourceModal(courseId, editLesson
     </div>
   `;
   document.body.appendChild(modal);
+  if (isQuiz) window.renderQuizBuilder();
   if (!editing) {
     attachFormDraftAutosave(modal, `px_draft_resource_${courseId}`, ['resource-title', 'resource-url', 'resource-type', 'resource-source-mode']);
     window.toggleResourceSourceField();
@@ -530,19 +549,100 @@ window.openAddResourceModal = function openAddResourceModal(courseId, editLesson
 
 window.toggleResourceSourceField = function toggleResourceSourceField() {
   const type = document.getElementById('resource-type')?.value;
-  const isZipType = LESSON_TYPES_WITH_GRADE.has(type);
+  const isZipType = ZIP_RESOURCE_TYPES.has(type);
+  const isQuiz = type === 'quiz';
   const sourceMode = document.getElementById('resource-source-mode')?.value || 'url';
 
-  document.getElementById('resource-source-mode-wrap')?.classList.toggle('hidden', isZipType);
+  document.getElementById('resource-source-mode-wrap')?.classList.toggle('hidden', isZipType || isQuiz);
   document.getElementById('resource-source-file-wrap')?.classList.toggle('hidden', !isZipType);
+  document.getElementById('resource-quiz-builder-wrap')?.classList.toggle('hidden', !isQuiz);
+  if (isQuiz) window.renderQuizBuilder();
 
-  const showUrl = !isZipType && sourceMode === 'url';
-  const showSingleFile = !isZipType && sourceMode === 'file';
+  const showUrl = !isZipType && !isQuiz && sourceMode === 'url';
+  const showSingleFile = !isZipType && !isQuiz && sourceMode === 'file';
   document.getElementById('resource-source-url-wrap')?.classList.toggle('hidden', !showUrl);
   document.getElementById('resource-source-singlefile-wrap')?.classList.toggle('hidden', !showSingleFile);
 
   const singleFileInput = document.getElementById('resource-single-file');
   if (singleFileInput) singleFileInput.accept = SINGLEFILE_ACCEPT_BY_TYPE[type] || '';
+}
+
+// ================================================
+// QUIZ BUILDER -- preguntas de opción múltiple, V/F, número, rango y texto
+// ================================================
+window.addQuizQuestion = function addQuizQuestion(type) {
+  const q = { _id: crypto.randomUUID(), type, question: '' };
+  if (type === 'mc') { q.options = ['', '']; q.correctIndex = 0; }
+  if (type === 'tf') { q.correctBool = true; }
+  if (type === 'number') { q.correctNumber = 0; q.tolerance = 0; }
+  if (type === 'range') { q.min = 0; q.max = 10; }
+  window._quizBuilderQuestions.push(q);
+  window.renderQuizBuilder();
+}
+
+window.removeQuizQuestion = function removeQuizQuestion(id) {
+  window._quizBuilderQuestions = window._quizBuilderQuestions.filter(q => q._id !== id);
+  window.renderQuizBuilder();
+}
+
+window.updateQuizQuestionField = function updateQuizQuestionField(id, field, value) {
+  const q = window._quizBuilderQuestions.find(q => q._id === id);
+  if (q) q[field] = value;
+}
+
+window.updateQuizOption = function updateQuizOption(id, optIndex, value) {
+  const q = window._quizBuilderQuestions.find(q => q._id === id);
+  if (q) q.options[optIndex] = value;
+}
+
+window.addQuizOption = function addQuizOption(id) {
+  const q = window._quizBuilderQuestions.find(q => q._id === id);
+  if (q) { q.options.push(''); window.renderQuizBuilder(); }
+}
+
+window.renderQuizBuilder = function renderQuizBuilder() {
+  const list = document.getElementById('quiz-builder-list');
+  if (!list) return;
+  const sanitizeAttr = window.sanitizeAttr || ((v) => v);
+  list.innerHTML = (window._quizBuilderQuestions || []).map((q, i) => `
+    <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 space-y-2">
+      <div class="flex justify-between items-center">
+        <span class="text-[0.6rem] font-black uppercase text-slate-400 tracking-widest">${i + 1}. ${QUIZ_QUESTION_TYPE_LABEL[q.type]}</span>
+        <button type="button" class="text-rose-500 hover:text-rose-600" onclick="window.removeQuizQuestion('${q._id}')"><i class="fas fa-trash-alt text-xs"></i></button>
+      </div>
+      <input type="text" class="input-field-tw h-10 text-sm" placeholder="Pregunta" value="${sanitizeAttr(q.question || '')}" onchange="window.updateQuizQuestionField('${q._id}', 'question', this.value)">
+      ${q.type === 'mc' ? `
+        <div class="space-y-1.5">
+          ${q.options.map((opt, oi) => `
+            <div class="flex items-center gap-2">
+              <input type="radio" name="mc-correct-${q._id}" ${q.correctIndex === oi ? 'checked' : ''} onchange="window.updateQuizQuestionField('${q._id}', 'correctIndex', ${oi})">
+              <input type="text" class="input-field-tw h-9 text-xs flex-1" placeholder="Opción ${oi + 1}" value="${sanitizeAttr(opt)}" onchange="window.updateQuizOption('${q._id}', ${oi}, this.value)">
+            </div>
+          `).join('')}
+          <button type="button" class="text-[0.6rem] font-bold text-primary uppercase" onclick="window.addQuizOption('${q._id}')"><i class="fas fa-plus"></i> Agregar opción</button>
+        </div>
+      ` : ''}
+      ${q.type === 'tf' ? `
+        <select class="input-field-tw h-9 text-xs" onchange="window.updateQuizQuestionField('${q._id}', 'correctBool', this.value === 'true')">
+          <option value="true" ${q.correctBool ? 'selected' : ''}>Verdadero</option>
+          <option value="false" ${!q.correctBool ? 'selected' : ''}>Falso</option>
+        </select>
+      ` : ''}
+      ${q.type === 'number' ? `
+        <div class="grid grid-cols-2 gap-2">
+          <input type="number" class="input-field-tw h-9 text-xs" placeholder="Respuesta correcta" value="${q.correctNumber}" onchange="window.updateQuizQuestionField('${q._id}', 'correctNumber', parseFloat(this.value) || 0)">
+          <input type="number" class="input-field-tw h-9 text-xs" placeholder="Tolerancia (+/-)" value="${q.tolerance}" onchange="window.updateQuizQuestionField('${q._id}', 'tolerance', parseFloat(this.value) || 0)">
+        </div>
+      ` : ''}
+      ${q.type === 'range' ? `
+        <div class="grid grid-cols-2 gap-2">
+          <input type="number" class="input-field-tw h-9 text-xs" placeholder="Mínimo válido" value="${q.min}" onchange="window.updateQuizQuestionField('${q._id}', 'min', parseFloat(this.value) || 0)">
+          <input type="number" class="input-field-tw h-9 text-xs" placeholder="Máximo válido" value="${q.max}" onchange="window.updateQuizQuestionField('${q._id}', 'max', parseFloat(this.value) || 0)">
+        </div>
+      ` : ''}
+      ${q.type === 'text' ? `<p class="text-[0.6rem] text-slate-400"><i class="fas fa-circle-info"></i> Se califica manualmente -- no suma a la nota automática.</p>` : ''}
+    </div>
+  `).join('') || '<p class="text-[0.65rem] text-slate-400 text-center py-4">Agregá al menos una pregunta.</p>';
 }
 
 // Supabase Storage rechaza ciertos caracteres en la key (dos puntos,
@@ -565,10 +665,21 @@ async function uploadSingleLessonFile(file, lessonId) {
   return { publicUrl, contentPath: `lessons/${lessonId}` };
 }
 
+function validateQuizQuestions(questions) {
+  if (!questions?.length) return 'Agregá al menos una pregunta';
+  for (const q of questions) {
+    if (!q.question?.trim()) return 'Todas las preguntas necesitan un enunciado';
+    if (q.type === 'mc' && (!q.options || q.options.filter(o => o.trim()).length < 2)) return 'Las preguntas de opción múltiple necesitan al menos 2 opciones';
+  }
+  return null;
+}
+
 window.saveResource = async function saveResource(courseId, editingId) {
   const title = document.getElementById('resource-title')?.value.trim();
   let content_type = document.getElementById('resource-type')?.value;
-  const isFileType = LESSON_TYPES_WITH_GRADE.has(content_type);
+  const isZip = ZIP_RESOURCE_TYPES.has(content_type);
+  const isQuiz = content_type === 'quiz';
+  const isFileType = isZip || isQuiz;
   const sourceMode = document.getElementById('resource-source-mode')?.value || 'url';
   const isSingleFileUpload = !isFileType && sourceMode === 'file';
   const content_url = document.getElementById('resource-url')?.value.trim();
@@ -580,6 +691,10 @@ window.saveResource = async function saveResource(courseId, editingId) {
   if (!title) return window.showToast('<i class="fas fa-circle-xmark"></i> Ponele un título', 'error');
   if (!isFileType && !isSingleFileUpload && !content_url) return window.showToast('<i class="fas fa-circle-xmark"></i> Completa la URL', 'error');
   if (isSingleFileUpload && !singleFile) return window.showToast('<i class="fas fa-circle-xmark"></i> Elegí un archivo', 'error');
+  if (isQuiz) {
+    const quizErr = validateQuizQuestions(window._quizBuilderQuestions);
+    if (quizErr) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + quizErr, 'error');
+  }
 
   btn.disabled = true;
 
@@ -588,7 +703,11 @@ window.saveResource = async function saveResource(courseId, editingId) {
   if (editingId) {
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
     const update = { title };
-    if (!isFileType) update.content_url = content_url;
+    if (isQuiz) {
+      update.quiz_data = window._quizBuilderQuestions.map(({ _id, ...q }) => q);
+    } else if (!isZip) {
+      update.content_url = content_url;
+    }
     const { error } = await window._supabase.from('lessons').update(update).eq('id', editingId);
     if (error) {
       window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
@@ -604,7 +723,7 @@ window.saveResource = async function saveResource(courseId, editingId) {
     return;
   }
 
-  if (isFileType && !file) return window.showToast('<i class="fas fa-circle-xmark"></i> Elegí un archivo .zip', 'error');
+  if (isZip && !file) return window.showToast('<i class="fas fa-circle-xmark"></i> Elegí un archivo .zip', 'error');
 
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publicando...';
 
@@ -618,7 +737,7 @@ window.saveResource = async function saveResource(courseId, editingId) {
       const uploaded = await uploadSingleLessonFile(singleFile, lessonId);
       finalUrl = uploaded.publicUrl;
       contentPath = uploaded.contentPath;
-    } else if (isFileType) {
+    } else if (isZip) {
       if (progressEl) progressEl.classList.remove('hidden');
       contentPath = `lessons/${lessonId}`;
       const uploaded = await window.extractAndUploadPackage(file, contentPath, (msg) => {
@@ -647,8 +766,9 @@ window.saveResource = async function saveResource(courseId, editingId) {
       id: lessonId,
       title,
       content_type,
-      content_url: finalUrl,
+      content_url: isQuiz ? null : finalUrl,
       content_path: contentPath,
+      quiz_data: isQuiz ? window._quizBuilderQuestions.map(({ _id, ...q }) => q) : null,
       course_id: courseId,
       order_index: nextOrder,
       school_code: course.school_code,
@@ -1157,6 +1277,8 @@ window.selectCourseResource = function selectCourseResource(index) {
         <span class="text-xs font-bold uppercase tracking-widest">Cargando actividad H5P...</span>
       </div>
     </div>`;
+  } else if (lesson.content_type === 'quiz') {
+    mediaHtml = renderQuizPlayerHtml(lesson);
   }
 
   const viewerEl = document.getElementById('course-player-viewer');
@@ -1164,11 +1286,13 @@ window.selectCourseResource = function selectCourseResource(index) {
 
   const footerEl = document.getElementById('course-player-footer');
   if (footerEl) {
-    footerEl.innerHTML = hasAutoGrade
-      ? `<p id="lesson-live-score" class="text-center text-sm font-bold text-slate-500">La nota se guarda automáticamente mientras completás la actividad.</p>`
-      : window._completionsCache.has(lesson.id)
-        ? `<div class="text-center text-sm font-bold text-emerald-500"><i class="fas fa-circle-check"></i> Ya completaste este recurso</div>`
-        : `<button class="btn-primary-tw w-full h-12 text-xs uppercase font-bold" id="btn-mark-lesson-seen" onclick="window.markLessonSeen('${lesson.id}')"><i class="fas fa-circle-check"></i> Marcar como visto</button>`;
+    footerEl.innerHTML = lesson.content_type === 'quiz'
+      ? ''
+      : hasAutoGrade
+        ? `<p id="lesson-live-score" class="text-center text-sm font-bold text-slate-500">La nota se guarda automáticamente mientras completás la actividad.</p>`
+        : window._completionsCache.has(lesson.id)
+          ? `<div class="text-center text-sm font-bold text-emerald-500"><i class="fas fa-circle-check"></i> Ya completaste este recurso</div>`
+          : `<button class="btn-primary-tw w-full h-12 text-xs uppercase font-bold" id="btn-mark-lesson-seen" onclick="window.markLessonSeen('${lesson.id}')"><i class="fas fa-circle-check"></i> Marcar como visto</button>`;
   }
 
   if (lesson.content_type === 'scorm') {
@@ -1178,6 +1302,93 @@ window.selectCourseResource = function selectCourseResource(index) {
   }
 
   window.renderCourseSidebar();
+}
+
+function renderQuizPlayerHtml(lesson) {
+  const sanitizeInput = window.sanitizeInput || ((v) => v);
+  const completion = window._completionsCache?.get(lesson.id);
+  const questions = lesson.quiz_data || [];
+
+  if (completion?.score != null) {
+    return `<div class="text-center py-16">
+      <i class="fas fa-circle-check text-5xl text-emerald-500 mb-4"></i>
+      <p class="text-2xl font-black text-slate-800 dark:text-white">${Math.round(completion.score)}%</p>
+      <p class="text-sm text-slate-400 mt-2">Ya respondiste este quiz.</p>
+    </div>`;
+  }
+
+  return `
+    <div class="space-y-5" id="quiz-player-form">
+      ${questions.map((q, i) => `
+        <div class="p-5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+          <p class="font-bold text-sm text-slate-800 dark:text-white mb-3">${i + 1}. ${sanitizeInput(q.question)}</p>
+          ${q.type === 'mc' ? q.options.map((opt, oi) => `
+            <label class="flex items-center gap-2 py-1.5 text-sm text-slate-600 dark:text-slate-300 cursor-pointer">
+              <input type="radio" name="quiz-q-${i}" value="${oi}"> ${sanitizeInput(opt)}
+            </label>
+          `).join('') : ''}
+          ${q.type === 'tf' ? `
+            <label class="flex items-center gap-2 py-1.5 text-sm text-slate-600 dark:text-slate-300 cursor-pointer">
+              <input type="radio" name="quiz-q-${i}" value="true"> Verdadero
+            </label>
+            <label class="flex items-center gap-2 py-1.5 text-sm text-slate-600 dark:text-slate-300 cursor-pointer">
+              <input type="radio" name="quiz-q-${i}" value="false"> Falso
+            </label>
+          ` : ''}
+          ${q.type === 'number' || q.type === 'range' ? `
+            <input type="number" class="input-field-tw h-10 text-sm" id="quiz-q-${i}" placeholder="Tu respuesta">
+          ` : ''}
+          ${q.type === 'text' ? `
+            <textarea class="input-field-tw text-sm" id="quiz-q-${i}" rows="3" placeholder="Tu respuesta"></textarea>
+          ` : ''}
+        </div>
+      `).join('')}
+      <button class="btn-primary-tw w-full h-12 text-xs uppercase font-bold" onclick="window.submitQuizAnswers('${lesson.id}')"><i class="fas fa-paper-plane"></i> Enviar Respuestas</button>
+    </div>
+  `;
+}
+
+window.submitQuizAnswers = async function submitQuizAnswers(lessonId) {
+  const { items } = window._activeCourse || {};
+  const lesson = (items || []).find(l => l.id === lessonId);
+  if (!lesson) return;
+  const questions = lesson.quiz_data || [];
+
+  const answers = [];
+  let correct = 0;
+  let graded = 0;
+
+  questions.forEach((q, i) => {
+    let raw = null;
+    if (q.type === 'mc' || q.type === 'tf') {
+      raw = document.querySelector(`input[name="quiz-q-${i}"]:checked`)?.value ?? null;
+    } else {
+      raw = document.getElementById(`quiz-q-${i}`)?.value?.trim() || null;
+    }
+    answers.push(raw);
+
+    if (q.type === 'text') return; // se califica manual, no entra al puntaje automático
+
+    graded++;
+    if (q.type === 'mc' && raw !== null && parseInt(raw, 10) === q.correctIndex) correct++;
+    if (q.type === 'tf' && raw !== null && (raw === 'true') === q.correctBool) correct++;
+    if (q.type === 'number' && raw !== null && !isNaN(parseFloat(raw)) && Math.abs(parseFloat(raw) - q.correctNumber) <= (q.tolerance || 0)) correct++;
+    if (q.type === 'range' && raw !== null && !isNaN(parseFloat(raw)) && parseFloat(raw) >= q.min && parseFloat(raw) <= q.max) correct++;
+  });
+
+  const score = graded > 0 ? (correct / graded) * 100 : 0;
+
+  await persistLessonScore(lessonId, score, 'completed', { answers });
+  window.showToast(`<i class="fas fa-circle-check"></i> ¡Quiz enviado! Nota: ${Math.round(score)}%`, 'success');
+
+  const nextIndex = window._activeCourseIndex + 1;
+  if (nextIndex < items.length) {
+    window.selectCourseResource(nextIndex);
+  } else {
+    window.renderCourseSidebar();
+    const footerEl = document.getElementById('course-player-footer');
+    if (footerEl) footerEl.innerHTML = `<div class="text-center text-sm font-bold text-emerald-500"><i class="fas fa-circle-check"></i> ¡Completaste todo el curso!</div>`;
+  }
 }
 
 window.markLessonSeen = async function markLessonSeen(lessonId) {

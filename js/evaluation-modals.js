@@ -111,6 +111,13 @@ window.openEvaluationModal = async function openEvaluationModal(projectId) {
                     `}
                   </div>
 
+                  <div id="ai-code-eval-panel" class="mb-6 p-5 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
+                    <div class="flex items-center justify-between gap-4">
+                      <p class="text-xs text-slate-400"><i class="fas fa-code mr-1"></i> Si el equipo compartió capturas o un archivo .mblock de su código en bloques, la IA puede darte una nota y feedback según tu rúbrica.</p>
+                      <button onclick="window.openAiCodeEvalModal('${projectId}')" class="shrink-0 btn-secondary-tw h-9 px-4 text-[0.65rem] uppercase font-bold"><i class="fas fa-laptop-code"></i> Evaluar Código IA</button>
+                    </div>
+                  </div>
+
                   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
                       ${criteria.map(c => `
                           <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 cursor-help" title="${window.sanitizeAttr ? window.sanitizeAttr(c.desc) : c.desc}">
@@ -212,6 +219,109 @@ window.runAiEvaluation = async function runAiEvaluation(projectId) {
 window.closeEvaluationModal = function closeEvaluationModal() {
     const modal = document.getElementById('evaluation-modal');
     if (modal) modal.remove();
+}
+
+// ================================================
+// EVALUACIÓN IA DE CÓDIGO EN BLOQUES (mBlock) -- capturas o archivo .mblock
+// ================================================
+window.openAiCodeEvalModal = function openAiCodeEvalModal(projectId) {
+    const modal = document.createElement('div');
+    modal.id = 'ai-code-eval-modal';
+    modal.className = 'fixed inset-0 z-[220] flex items-center justify-center p-6 bg-slate-950/90 backdrop-blur-md animate-fadeIn';
+    modal.innerHTML = `
+      <div class="glass-card w-full max-w-lg p-8 shadow-2xl animate-slideUp bg-white dark:bg-slate-900">
+        <h3 class="text-lg font-black text-slate-800 dark:text-white uppercase tracking-tight mb-4"><i class="fas fa-laptop-code text-primary mr-2"></i> Evaluar Código con IA</h3>
+        <div class="space-y-4">
+          <div>
+            <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Rúbrica (un criterio por línea)</label>
+            <textarea id="ai-code-rubric" class="input-field-tw text-sm" rows="4" placeholder="Ej:&#10;Usa bloques de repetición (loops)&#10;Usa variables&#10;Lógica correcta y sin bloques sueltos"></textarea>
+          </div>
+          <div>
+            <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Captura o archivo .mblock *</label>
+            <input type="file" id="ai-code-file" accept="image/*,.mblock" class="input-field-tw text-sm py-2.5">
+          </div>
+          <div id="ai-code-eval-result" class="hidden"></div>
+        </div>
+        <div class="flex gap-3 mt-6">
+          <button class="btn-secondary-tw flex-1 h-11 text-xs uppercase font-bold" onclick="this.closest('.fixed').remove()">Cerrar</button>
+          <button class="btn-primary-tw flex-1 h-11 text-xs uppercase font-bold" id="btn-ai-code-eval" onclick="window.submitAiCodeEval('${projectId}')"><i class="fas fa-robot"></i> Evaluar</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+window.submitAiCodeEval = async function submitAiCodeEval(projectId) {
+    const file = document.getElementById('ai-code-file')?.files?.[0];
+    const rubricRaw = document.getElementById('ai-code-rubric')?.value.trim() || '';
+    const rubric = rubricRaw.split('\n').map(l => l.trim()).filter(Boolean);
+    if (!file) return window.showToast('<i class="fas fa-circle-xmark"></i> Elegí una captura o archivo .mblock', 'error');
+
+    const btn = document.getElementById('btn-ai-code-eval');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analizando...';
+
+    try {
+        const isMblock = file.name.toLowerCase().endsWith('.mblock');
+        const base64 = await fileToBase64(file);
+        const { data: { session } } = await window._supabase.auth.getSession();
+
+        const res = await fetch(`${window.SUPABASE_URL}/functions/v1/ai-evaluate-mblock`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
+            body: JSON.stringify({
+                rubric,
+                input_type: isMblock ? 'mblock_file' : 'screenshot',
+                image_base64: isMblock ? null : base64,
+                mblock_base64: isMblock ? base64 : null,
+            }),
+        });
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || 'Error evaluando el código');
+
+        await window._supabase.from('ai_code_evaluations').insert({
+            project_id: parseInt(projectId, 10),
+            teacher_id: window.currentUser.id,
+            input_type: isMblock ? 'mblock_file' : 'screenshot',
+            rubric,
+            score: result.score,
+            feedback: result.feedback,
+            criteria_feedback: result.criteria_feedback,
+        });
+
+        const sanitizeInput = window.sanitizeInput || ((v) => v);
+        const resultEl = document.getElementById('ai-code-eval-result');
+        if (resultEl) {
+            resultEl.classList.remove('hidden');
+            resultEl.innerHTML = `
+              <div class="p-4 rounded-xl bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900">
+                <div class="text-[0.6rem] font-black uppercase text-indigo-500 tracking-widest mb-1">Nota IA: ${result.score}/100</div>
+                <p class="text-xs text-slate-600 dark:text-slate-300 italic mb-2">"${sanitizeInput(result.feedback || '')}"</p>
+                ${(result.criteria_feedback || []).map(c => `
+                  <div class="text-[0.65rem] flex items-start gap-2 py-1">
+                    <i class="fas ${c.met ? 'fa-circle-check text-emerald-500' : 'fa-circle-xmark text-rose-500'} mt-0.5"></i>
+                    <span><strong>${sanitizeInput(c.criterion)}:</strong> ${sanitizeInput(c.comment || '')}</span>
+                  </div>
+                `).join('')}
+              </div>
+            `;
+        }
+        window.showToast('<i class="fas fa-circle-check"></i> Evaluación de código lista', 'success');
+    } catch (err) {
+        window.showToast('<i class="fas fa-circle-xmark"></i> ' + err.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-robot"></i> Evaluar';
+    }
 }
 
 // RESTO DE FUNCIONES (Detail view) se mantienen con lógica pero UI mejorada
