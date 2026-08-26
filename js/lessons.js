@@ -994,7 +994,13 @@ window.extractAndUploadPackage = async function extractAndUploadPackage(file, ba
     const contentType = window.getFileMimeType(entry.name);
     const blob = new Blob([rawBlob], { type: contentType });
     const { error } = await _supabase.storage.from(LESSON_STORAGE_BUCKET).upload(path, blob, { upsert: true, contentType });
-    if (error) throw new Error(`Error subiendo ${entry.name}: ${error.message}`);
+    if (error) {
+      if (/maximum allowed size/i.test(error.message)) {
+        const sizeMb = (blob.size / (1024 * 1024)).toFixed(1);
+        throw new Error(`"${entry.name}" pesa ${sizeMb}MB y supera el límite de tamaño de archivo del proyecto. Comprimí ese archivo (usualmente un video) antes de volver a exportar el paquete, o pedile al admin que suba el límite en el panel de Supabase (Project Settings > Storage).`);
+      }
+      throw new Error(`Error subiendo ${entry.name}: ${error.message}`);
+    }
     uploaded++;
     if (onProgress) onProgress(`Subiendo archivos... (${uploaded}/${entries.length})`);
 
