@@ -464,6 +464,15 @@ window.showGameCenterOnboarding = function showGameCenterOnboarding() {
 
 window.openGamificationHub = async function openGamificationHub() {
   if (window.showGameCenterOnboarding()) return; // primera vez -- se abre el hub real cuando cierre el tutorial
+
+  // El Centro de Juego se puede abrir desde el sidebar sin haber visitado
+  // nunca "feed"/"perfil" (ej. el estudiante aterriza en Cursos por
+  // default) -- duels.js/tournaments.js son lazy y si no están cargados
+  // sus secciones se quedan pegadas en el spinner para siempre.
+  if ((typeof window.loadDuelsSection !== 'function' || typeof window.loadTournamentsSection !== 'function') && typeof window.loadModule === 'function') {
+    await window.loadModule('profile');
+  }
+
   const _supabase = window._supabase;
   const fetchWithCache = window.fetchWithCache;
 
@@ -566,11 +575,20 @@ window.renderGamificationHubContent = function renderGamificationHubContent(moda
                         <div class="text-center text-slate-500 text-xs py-6"><i class="fas fa-spinner fa-spin"></i></div>
                      </div>
                 </section>
+
+                 <!-- TORNEOS ENTRE ESTABLECIMIENTOS -->
+                <section>
+                     <h3 class="text-2xl font-black text-white italic uppercase mb-6 flex items-center gap-3"><i class="fas fa-earth-americas text-emerald-500"></i> Torneos Entre Establecimientos</h3>
+                     <div id="tournaments-section">
+                        <div class="text-center text-slate-500 text-xs py-6"><i class="fas fa-spinner fa-spin"></i></div>
+                     </div>
+                </section>
             </div>
         </div>
     `;
 
   if (typeof window.loadDuelsSection === 'function') window.loadDuelsSection();
+  if (typeof window.loadTournamentsSection === 'function') window.loadTournamentsSection();
 }
 
 window.renderShopItem = function renderShopItem(name, desc, price, icon, colorClass, owned = false) {

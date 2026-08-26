@@ -136,6 +136,11 @@ window.renderDashboardUI = function renderDashboardUI(container, stats, teachers
                     <span>Eventos Sorpresa</span>
                 </button>
 
+                <button class="flex-1 xl:flex-none bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold py-2.5 px-5 rounded-xl shadow-lg shadow-emerald-500/10 transition-all active:scale-95 flex items-center justify-center gap-2 text-xs uppercase tracking-wider group" onclick="typeof window.openTournamentSeasonsAdminModal === 'function' ? window.openTournamentSeasonsAdminModal() : window.loadModule('profile').then(() => window.openTournamentSeasonsAdminModal())">
+                    <i class="fas fa-earth-americas text-sm group-hover:scale-110 transition-transform"></i>
+                    <span>Torneos</span>
+                </button>
+
                 <button class="flex-1 xl:flex-none bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/50 hover:border-indigo-500 font-bold py-2.5 px-5 rounded-xl shadow-md hover:shadow-indigo-500/10 transition-all active:scale-95 flex items-center justify-center gap-2 text-xs uppercase tracking-wider" onclick="exportAllData()">
                     <i class="fas fa-database text-sm"></i>
                     <span>Exportar</span>
