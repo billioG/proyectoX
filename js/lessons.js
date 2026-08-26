@@ -366,7 +366,30 @@ window.openCourseGradesModal = async function openCourseGradesModal(courseId) {
         </div>
         <button class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500 transition-colors flex items-center justify-center shrink-0" onclick="this.closest('.fixed').remove()"><i class="fas fa-times"></i></button>
       </div>
-      <div class="overflow-y-auto custom-scrollbar mt-4 -mx-2 px-2">
+      <details class="mt-3 mb-1 group">
+        <summary class="text-[0.65rem] font-bold text-primary uppercase tracking-widest cursor-pointer select-none"><i class="fas fa-circle-info mr-1"></i> ¿Cómo se pondera cada recurso?</summary>
+        <div class="mt-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 text-xs space-y-2">
+          <p class="text-slate-500 dark:text-slate-400">Los recursos con nota real (H5P/SCORM/Quiz) pesan <strong>3 veces más</strong> que los de solo lectura (video/PDF/imagen, que solo cuentan "visto"/"no visto"). El peso se reparte automáticamente entre todos los recursos del curso para sumar el ${course.weight ?? 100}% de este curso -- vos no asignás peso por recurso.</p>
+          <table class="w-full text-left mt-2">
+            <thead><tr class="text-[0.55rem] uppercase text-slate-400 border-b border-slate-200 dark:border-slate-700">
+              <th class="py-1 pr-2">Recurso</th><th class="py-1 pr-2">Tipo</th><th class="py-1 text-right">Peso</th>
+            </tr></thead>
+            <tbody>
+              ${(() => {
+      const weights = computeResourceWeights(items || []);
+      return (items || []).map(l => `
+                  <tr class="border-b border-slate-100 dark:border-slate-800/50">
+                    <td class="py-1.5 pr-2 font-bold text-slate-600 dark:text-slate-300 truncate max-w-[160px]">${sanitizeInput(l.title)}</td>
+                    <td class="py-1.5 pr-2 text-slate-400">${LESSON_TYPE_LABEL[l.content_type]}${LESSON_TYPES_WITH_GRADE.has(l.content_type) ? ' <span class="text-emerald-500">(nota real)</span>' : ' <span class="text-slate-400">(visto)</span>'}</td>
+                    <td class="py-1.5 text-right font-black text-primary">${(weights.get(l.id) || 0).toFixed(1)}%</td>
+                  </tr>
+                `).join('') || '<tr><td colspan="3" class="py-2 text-slate-400">Sin recursos todavía.</td></tr>';
+    })()}
+            </tbody>
+          </table>
+        </div>
+      </details>
+      <div class="overflow-y-auto custom-scrollbar mt-2 -mx-2 px-2">
         <table class="w-full text-left border-collapse text-sm">
           <thead>
             <tr class="text-[0.6rem] font-black uppercase text-slate-400 tracking-widest border-b border-slate-100 dark:border-slate-800">
