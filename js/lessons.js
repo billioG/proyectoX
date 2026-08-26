@@ -1281,12 +1281,13 @@ window.selectCourseResource = function selectCourseResource(index) {
   } else if (lesson.content_type === 'scorm') {
     mediaHtml = `<iframe id="scorm-frame" class="w-full h-[60vh] rounded-xl border border-slate-200 dark:border-slate-700" src="${lesson.content_url}"></iframe>`;
   } else if (lesson.content_type === 'h5p') {
-    // El spinner vive DENTRO del contenedor -- h5p-standalone limpia
-    // container.innerHTML cuando termina de inicializar, así que desaparece
-    // solo en cuanto el contenido real está listo (evita que el alumno
-    // crea que la app se trabó mientras carga las librerías H5P).
-    mediaHtml = `<div id="h5p-container" class="w-full min-h-[50vh] relative">
-      <div class="absolute inset-0 flex flex-col items-center justify-center text-slate-400">
+    // El spinner va AFUERA de #h5p-container (h5p-standalone no siempre
+    // limpia el innerHTML previo, así que si el spinner vivía adentro a
+    // veces quedaba pegado tapando el video ya cargado). Se saca a mano
+    // en cuanto aparece el iframe real (ver más abajo).
+    mediaHtml = `<div class="relative w-full min-h-[50vh]">
+      <div id="h5p-container" class="w-full min-h-[50vh]"></div>
+      <div id="h5p-loading-overlay" class="absolute inset-0 flex flex-col items-center justify-center text-slate-400 bg-white dark:bg-slate-900 pointer-events-none">
         <i class="fas fa-circle-notch fa-spin text-3xl mb-3 text-primary"></i>
         <span class="text-xs font-bold uppercase tracking-widest">Cargando actividad H5P...</span>
       </div>
@@ -1559,6 +1560,17 @@ window.initH5PSession = async function initH5PSession(lesson, attempt = 1) {
       frameJs: 'https://cdn.jsdelivr.net/npm/h5p-standalone@3.7.0/dist/frame.bundle.js',
       frameCss: 'https://cdn.jsdelivr.net/npm/h5p-standalone@3.7.0/dist/styles/h5p.css',
     });
+
+    // No confiar en que h5p-standalone limpie el contenedor solo -- se
+    // saca el spinner a mano en cuanto aparece el iframe real (a veces
+    // quedaba pegado tapando el contenido ya cargado).
+    const waitForIframe = setInterval(() => {
+      if (document.querySelector('#h5p-container iframe')) {
+        clearInterval(waitForIframe);
+        document.getElementById('h5p-loading-overlay')?.remove();
+      }
+    }, 200);
+    setTimeout(() => clearInterval(waitForIframe), 15000);
 
     // El propio H5PStandalone despacha xAPI a través de H5P.externalDispatcher
     // una vez que termina de inicializar el iframe interno.
