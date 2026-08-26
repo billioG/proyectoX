@@ -23,6 +23,13 @@ window.initGamification = async function initGamification() {
 
     } else if (userRole === 'docente') {
       const cacheKey = `teacher_kpi_snapshot_${currentUser.id}`;
+      // kpi-engine.js se carga perezosamente (solo al entrar a "feed"/"perfil"),
+      // pero esto corre justo al hacer login -- si todavía no cargó,
+      // calculateMonthlyKPIs no existe y el widget mostraba "0/undefined"
+      // en vez de las metas reales. Se fuerza su carga acá si hace falta.
+      if (typeof window.calculateMonthlyKPIs !== 'function' && typeof window.loadModule === 'function') {
+        await window.loadModule('profile');
+      }
       await fetchWithCache(cacheKey, async () => {
         const { data: assignments } = await _supabase.from('teacher_assignments').select('*').eq('teacher_id', currentUser.id);
         const xpData = typeof window.calculateMonthlyKPIs === 'function' ? await window.calculateMonthlyKPIs(currentUser.id, assignments || []) : { totalXP: 0 };
@@ -227,7 +234,7 @@ window.renderTeacherSidebar = function renderTeacherSidebar(stats) {
     ].map(o => `
             <div class="p-3 bg-white/5 rounded-2xl border border-white/[0.03] text-center hover:bg-white/10 transition-colors cursor-help group/kpi" title="${o.d}">
                 <div class="text-[0.55rem] font-bold uppercase text-white/40 tracking-widest mb-1">${o.l}</div>
-                <div class="text-xs font-bold text-white">${o.c || 0}<span class="opacity-30 mx-0.5">/</span>${o.m}</div>
+                <div class="text-xs font-bold text-white">${o.c || 0}<span class="opacity-30 mx-0.5">/</span>${o.m ?? '--'}</div>
             </div>
         `).join('')}
       </div>
