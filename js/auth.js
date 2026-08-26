@@ -350,6 +350,15 @@ export async function handleSuccessfulLogin(user) {
       window.MascotWidget.init();
     }
 
+    // Mismo problema de timing que la mascota: el listener 'load' de
+    // announcements.js corre 3s después de cargar la página, pero en un
+    // login recién hecho (SPA, sin recargar) ese timer ya venció con
+    // currentUser todavía undefined -- la campanita se quedaba sin badge
+    // hasta el próximo refresh manual.
+    if (typeof window.loadAnnouncementsUnreadCount === 'function') {
+      window.loadAnnouncementsUnreadCount();
+    }
+
     // Verificación de cambio de contraseña obligatorio -- no aplica si la
     // clase del alumno está configurada como "sin contraseña" (si no, se le
     // pediría fijar una contraseña que después ni siquiera va a usar).

@@ -143,8 +143,8 @@ window.renderRankingRows = function renderRankingRows(projects) {
           
           <div class="text-center min-w-[50px]">
               <div class="text-[0.5rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5">Votos</div>
-              <div class="text-2xl font-bold ${canSeeScore ? 'text-rose-500' : 'text-slate-200 dark:text-slate-700'} leading-none flex items-center justify-center gap-1.5">
-                  ${canSeeScore ? `<i class="fas fa-heart text-xs opacity-50"></i> ${p.votes || 0}` : '—'}
+              <div class="text-2xl font-bold text-rose-500 leading-none flex items-center justify-center gap-1.5">
+                  <i class="fas fa-heart text-xs opacity-50"></i> ${p.votes || 0}
               </div>
           </div>
 
