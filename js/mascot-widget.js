@@ -246,10 +246,14 @@ const MascotWidget = {
             const role = typeof window.userRole !== 'undefined' ? window.userRole : 'estudiante';
             const stateMessages = this.messages[role] ? this.messages[role][this.currentState] || this.messages[role].normal : this.messages.estudiante.normal;
             message = stateMessages[Math.floor(Math.random() * stateMessages.length)];
-        } else if (message.length > 90) {
-            // Los mensajes generados por IA no tienen tope de largo -- la
-            // burbuja es chica (200px), un mensaje largo se ve horrible.
-            message = message.slice(0, 87).replace(/\s+\S*$/, '') + '...';
+        } else if (message.length > 140) {
+            // Red de seguridad -- el prompt ya le pide a la IA una sola
+            // frase corta (ver ai-proxy short:true), pero por si igual
+            // se pasa, se corta en el último punto/final de oración
+            // completo en vez de a la mitad de una palabra/frase.
+            const cut = message.slice(0, 140);
+            const lastSentenceEnd = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? '));
+            message = lastSentenceEnd > 40 ? cut.slice(0, lastSentenceEnd + 1) : cut.replace(/\s+\S*$/, '') + '...';
         }
 
         bubble.innerHTML = message;

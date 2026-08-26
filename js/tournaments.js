@@ -140,10 +140,13 @@ window.renderTournamentStandings = async function renderTournamentStandings(seas
   const el = document.getElementById('tournament-standings');
   if (!el) return;
   const _supabase = window._supabase;
-  const season = window._tournamentSeason;
+  const season = window._tournamentSeason?.id === seasonId
+    ? window._tournamentSeason
+    : (await _supabase.from('tournament_seasons').select('*').eq('id', seasonId).single()).data;
+  if (!season) { el.innerHTML = ''; return; }
 
   const { data: teams } = await _supabase.from('tournament_teams').select('id, name, school_code, schools(name)').eq('season_id', seasonId);
-  if (!teams?.length) { el.innerHTML = ''; return; }
+  if (!teams?.length) { el.innerHTML = '<p class="text-slate-400 text-xs text-center py-6">Todavía no hay equipos inscritos en esta temporada.</p>'; return; }
 
   const { data: matches } = await _supabase.from('tournament_matches')
     .select('team_a_id, team_b_id, team_a_score, team_b_score, winner_team_id, status').eq('season_id', seasonId).eq('status', 'completed');
@@ -190,6 +193,26 @@ window.renderTournamentStandings = async function renderTournamentStandings(seas
       </table>
     </div>
   `;
+}
+
+window.openTournamentStandingsModal = function openTournamentStandingsModal(seasonId, seasonName) {
+  document.getElementById('tournament-standings-modal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'tournament-standings-modal';
+  modal.className = 'fixed inset-0 z-[230] flex items-center justify-center p-6 bg-slate-950/90 backdrop-blur-sm animate-fadeIn';
+  modal.innerHTML = `
+    <div class="glass-card w-full max-w-lg max-h-[85vh] flex flex-col p-0 overflow-hidden shadow-2xl animate-slideUp bg-slate-900 border border-emerald-500/30">
+      <div class="p-6 border-b border-white/10 flex justify-between items-center shrink-0">
+        <h3 class="text-sm font-black text-white uppercase tracking-widest"><i class="fas fa-earth-americas text-emerald-500 mr-1"></i> ${window.sanitizeInput(seasonName || '')}</h3>
+        <button class="w-9 h-9 rounded-xl bg-white/5 text-slate-400 hover:text-rose-500 flex items-center justify-center" onclick="this.closest('.fixed').remove()"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="flex-1 overflow-y-auto custom-scrollbar p-6">
+        <div id="tournament-standings"><div class="text-center text-slate-400 text-xs py-6"><i class="fas fa-spinner fa-spin"></i></div></div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  window.renderTournamentStandings(seasonId);
 }
 
 // ================================================
@@ -575,6 +598,7 @@ window.loadTournamentSeasonsAdminList = async function loadTournamentSeasonsAdmi
       </div>
       <div class="shrink-0 flex items-center gap-2">
         <span class="px-2.5 py-1 rounded-lg text-[0.6rem] font-black uppercase ${statusColor[s.status]}">${statusLabel[s.status]}</span>
+        <button class="text-primary hover:underline text-[0.6rem] font-bold uppercase" onclick="window.openTournamentStandingsModal('${s.id}', '${window.sanitizeAttr(s.name)}')">Tabla</button>
         ${s.status !== 'closed' ? `<button class="text-rose-500 hover:underline text-[0.6rem] font-bold uppercase" onclick="window.toggleTournamentSeasonStatus('${s.id}', 'closed')">Cerrar</button>` : ''}
       </div>
     </div>

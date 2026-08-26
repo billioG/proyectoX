@@ -372,10 +372,64 @@ window.loadRandomEventsAdminList = async function loadRandomEventsAdminList() {
         <div class="shrink-0 flex items-center gap-2">
           <span class="px-2.5 py-1 rounded-lg text-[0.6rem] font-black uppercase ${statusColor[e.status]}">${statusLabel[e.status]}</span>
           ${e.status === 'scheduled' ? `<button class="text-rose-500 hover:underline text-[0.6rem] font-bold uppercase" onclick="window.cancelScheduledEvent('${e.id}')">Cancelar</button>` : ''}
+          ${e.status === 'completed' ? `<button class="text-primary hover:underline text-[0.6rem] font-bold uppercase" onclick="window.openEventResultsModal('${e.id}', '${e.target_role}')">Ver Resultados</button>` : ''}
         </div>
       </div>
     `;
   }).join('');
+}
+
+window.openEventResultsModal = async function openEventResultsModal(eventId, targetRole) {
+  const _supabase = window._supabase;
+  const sanitizeInput = window.sanitizeInput || ((v) => v);
+  const table = targetRole === 'docente' ? 'teachers' : 'students';
+
+  const [{ data: event }, { data: participants }] = await Promise.all([
+    _supabase.from('random_events').select('topic, gem_pool, question_count').eq('id', eventId).single(),
+    _supabase.from('event_participants').select('user_id, score, rank, gems_awarded, time_taken_ms')
+      .eq('event_id', eventId).not('submitted_at', 'is', null).order('rank', { ascending: true, nullsFirst: false }),
+  ]);
+
+  const userIds = (participants || []).map(p => p.user_id);
+  const { data: users } = userIds.length ? await _supabase.from(table).select('id, full_name').in('id', userIds) : { data: [] };
+  const nameMap = new Map((users || []).map(u => [u.id, u.full_name]));
+
+  document.getElementById('event-results-modal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'event-results-modal';
+  modal.className = 'fixed inset-0 z-[220] flex items-center justify-center p-6 bg-slate-950/90 backdrop-blur-sm animate-fadeIn';
+  modal.innerHTML = `
+    <div class="glass-card w-full max-w-lg max-h-[85vh] flex flex-col p-0 overflow-hidden shadow-2xl animate-slideUp bg-white dark:bg-slate-900">
+      <div class="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center shrink-0">
+        <div>
+          <h3 class="text-sm font-black text-slate-800 dark:text-white">${sanitizeInput(event?.topic || '')}</h3>
+          <p class="text-[0.6rem] text-slate-400 uppercase">${event?.gem_pool} gemas en juego · ${participants?.length || 0} respuesta(s)</p>
+        </div>
+        <button class="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500 flex items-center justify-center" onclick="this.closest('.fixed').remove()"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="flex-1 overflow-y-auto custom-scrollbar p-6">
+        ${!participants?.length ? '<p class="text-slate-400 text-sm text-center py-10">Nadie respondió este evento.</p>' : `
+        <table class="w-full text-left text-xs">
+          <thead><tr class="text-[0.55rem] uppercase text-slate-400 border-b border-slate-100 dark:border-slate-800">
+            <th class="pb-2">#</th><th class="pb-2">Nombre</th><th class="pb-2 text-center">Aciertos</th><th class="pb-2 text-center">Tiempo</th><th class="pb-2 text-right">Gemas</th>
+          </tr></thead>
+          <tbody>
+            ${participants.map((p, i) => `
+              <tr class="border-b border-slate-50 dark:border-slate-800/50">
+                <td class="py-2 font-black ${p.rank === 1 ? 'text-amber-500' : 'text-slate-400'}">${p.rank || i + 1}</td>
+                <td class="py-2 font-bold text-slate-800 dark:text-white">${sanitizeInput(nameMap.get(p.user_id) || 'Desconocido')}</td>
+                <td class="py-2 text-center text-slate-500">${p.score}/${event?.question_count || '?'}</td>
+                <td class="py-2 text-center text-slate-500">${p.time_taken_ms != null ? (p.time_taken_ms / 1000).toFixed(1) + 's' : '--'}</td>
+                <td class="py-2 text-right font-black ${p.gems_awarded > 0 ? 'text-emerald-500' : 'text-slate-400'}">${p.gems_awarded > 0 ? '+' + p.gems_awarded : '--'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        `}
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
 }
 
 if (typeof window !== 'undefined') {

@@ -35,11 +35,20 @@ Deno.serve(async (req) => {
   if (authErr || !user) return json({ error: 'Invalid token' }, 401);
 
   try {
-    const { prompt, context = '' } = await req.json();
+    const { prompt, context = '', short = false } = await req.json();
     if (!prompt || typeof prompt !== 'string') return json({ error: 'prompt requerido' }, 400);
 
     const safePrompt = prompt.slice(0, MAX_PROMPT_CHARS);
     const safeContext = String(context).slice(0, MAX_CONTEXT_CHARS);
+
+    // El mensaje flotante de la mascota (burbuja chica) usa short=true --
+    // antes se generaba un texto normal y se CORTABA a 90 caracteres del
+    // lado del cliente, dejando frases a la mitad ("Gracias por..."). Es
+    // mejor pedirle a la IA una frase corta y completa desde el inicio
+    // que truncar una respuesta larga después.
+    const systemPrompt = short
+      ? `Eres el asistente virtual (con forma de quetzal) de la plataforma educativa Quetzal LMS. Respondé con UNA sola frase corta y completa (máximo 12 palabras), motivadora, sin cortarla a la mitad. Nunca uses más de una oración. Contexto actual del usuario: ${safeContext}`
+      : `Eres el asistente virtual (con forma de quetzal) de la plataforma educativa Quetzal LMS. Tu objetivo es motivar a estudiantes y docentes de robótica y tecnología. Responde de forma entusiasta, breve y profesional. Contexto actual del usuario: ${safeContext}`;
 
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -50,13 +59,10 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         model: GROQ_MODEL,
         messages: [
-          {
-            role: 'system',
-            content: `Eres el asistente virtual (con forma de quetzal) de la plataforma educativa Quetzal LMS. Tu objetivo es motivar a estudiantes y docentes de robótica y tecnología. Responde de forma entusiasta, breve y profesional. Contexto actual del usuario: ${safeContext}`,
-          },
+          { role: 'system', content: systemPrompt },
           { role: 'user', content: safePrompt },
         ],
-        max_tokens: MAX_TOKENS_CAP,
+        max_tokens: short ? 40 : MAX_TOKENS_CAP,
         temperature: 0.7,
       }),
     });

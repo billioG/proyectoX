@@ -5,7 +5,7 @@
  */
 
 const AIService = {
-    async ask(prompt, context = '') {
+    async ask(prompt, context = '', short = false) {
         try {
             const { data: { session } } = await window._supabase.auth.getSession();
             const response = await fetch(`${window.SUPABASE_URL}/functions/v1/ai-proxy`, {
@@ -14,7 +14,7 @@ const AIService = {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${session?.access_token || ''}`
                 },
-                body: JSON.stringify({ prompt, context })
+                body: JSON.stringify({ prompt, context, short })
             });
 
             const data = await response.json();
@@ -34,7 +34,7 @@ const AIService = {
             ? `Genera un mensaje corto de bienvenida o motivación para un estudiante llamado ${userData.full_name}. Tiene una racha de ${userData.streak || 0} días y está en el nivel ${Math.floor((userData.xp || 0) / 500) + 1}.`
             : `Genera un mensaje corto de apoyo para un docente llamado ${userData.full_name}. Ayúdale a sentirse valorado por su labor enseñando tecnología.`;
 
-        return this.ask(prompt, `Rol: ${userRole}, Nombre: ${userData.full_name}`);
+        return this.ask(prompt, `Rol: ${userRole}, Nombre: ${userData.full_name}`, true);
     }
 };
 
