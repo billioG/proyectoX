@@ -237,6 +237,24 @@ export function loadViewContent(view) {
 window.loadViewContent = loadViewContent;
 window.loadModule = loadModule;
 
+// Vistas restringidas por rol (mismo criterio que loadViewContent de
+// arriba) -- usado para validar que restaurar la "última vista" al hacer
+// login no le muestre a un usuario una pantalla que no le corresponde a su
+// rol (ver auth.js: dispositivo compartido, un estudiante no debe heredar
+// la última vista de un docente/admin).
+const ADMIN_ONLY_VIEWS = new Set([
+    'admin-dashboard', 'admin-teacher-performance', 'admin-success', 'admin-rocks',
+    'schools', 'teachers', 'admin-attendance-report', 'admin-eval-report'
+]);
+const STAFF_ONLY_VIEWS = new Set(['students']);
+
+function isViewAllowedForRole(view, role) {
+    if (ADMIN_ONLY_VIEWS.has(view)) return role === 'admin';
+    if (STAFF_ONLY_VIEWS.has(view)) return role === 'admin' || role === 'docente';
+    return true;
+}
+window.isViewAllowedForRole = isViewAllowedForRole;
+
 // Exportar showToast para que otros módulos lo usen
 export { showToast };
 window.showToast = showToast;

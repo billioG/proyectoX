@@ -1,5 +1,5 @@
 /**
- * AI SERVICE - Integración con OpenAI para ProjectX
+ * AI SERVICE - Integración con OpenAI para Quetzal LMS
  * La llamada real pasa por la edge function `ai-proxy` -- la API key de
  * OpenAI vive solo como secret server-side, nunca en el bundle del cliente.
  */

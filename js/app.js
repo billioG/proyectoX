@@ -1,5 +1,5 @@
 /**
- * app.js - Punto de entrada ES Modules del sistema ProjectX
+ * app.js - Punto de entrada ES Modules del sistema Quetzal LMS
  */
 import { initAuth } from './auth.js';
 import { _syncManager } from './sync-manager.js';
@@ -42,7 +42,7 @@ import './utils.js';
 
 // Inicialización global
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🚀 ProjectX: Iniciando sistema de módulos...');
+    console.log('🚀 Quetzal LMS: Iniciando sistema de módulos...');
 
     // 1. Inicializar Tema (Inmediato)
     if (typeof initTheme === 'function') initTheme();
@@ -72,5 +72,5 @@ document.addEventListener('DOMContentLoaded', async () => {
             .catch(e => console.error('❌ Service Worker:', e));
     }
 
-    console.log('✨ Sistema ProjectX listo.');
+    console.log('✨ Sistema Quetzal LMS listo.');
 });

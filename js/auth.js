@@ -22,6 +22,12 @@ export async function initAuth() {
       localStorage.removeItem('PX_CACHED_USER');
       localStorage.removeItem('PX_CACHED_USER_DATA');
       localStorage.removeItem('PX_CACHED_ROLE');
+      // En un dispositivo compartido (tablet de aula), sin esto el próximo
+      // usuario que entra hereda la última vista del anterior -- si era un
+      // docente/admin viendo "students" (Gestión de Estudiantes con import
+      // de nómina), un estudiante que entra después aterriza ahí en vez de
+      // en su feed.
+      sessionStorage.removeItem('PX_LAST_VIEW');
       showLoginScreen();
     }
     if (event === 'PASSWORD_RECOVERY') {
@@ -345,7 +351,11 @@ export async function handleSuccessfulLogin(user) {
     } else {
       const defaultView = window.userRole === 'admin' ? 'admin-dashboard' : 'feed';
       const lastView = sessionStorage.getItem('PX_LAST_VIEW');
-      const hasLastView = lastView && document.getElementById(`view-${lastView}`);
+      // Además de existir en el DOM, la vista guardada tiene que ser válida
+      // para el rol de ESTE usuario -- si no, un estudiante podría heredar
+      // la última vista de un docente/admin que usó el mismo dispositivo
+      // antes (ej. "students", con el import de nómina MINEDUC).
+      const hasLastView = lastView && document.getElementById(`view-${lastView}`) && isViewAllowedForRole(lastView, window.userRole);
       nav(hasLastView ? lastView : defaultView);
     }
 
