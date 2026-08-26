@@ -20,7 +20,10 @@ const MascotWidget = {
                 '¡Subí tus avances! <i class="fas fa-rocket"></i>',
                 'El código es tu superpoder <i class="fas fa-bolt"></i>',
                 '¿Viste el ranking hoy? <i class="fas fa-trophy"></i>',
-                '¡Seguí aprendiendo! <i class="fas fa-heart"></i>'
+                '¡Seguí aprendiendo! <i class="fas fa-heart"></i>',
+                '¿Cómo te sentís hoy? <i class="fas fa-heart"></i>',
+                'Equivocarse también es aprender <i class="fas fa-seedling"></i>',
+                'Un paso a la vez, vas bien <i class="fas fa-shoe-prints"></i>'
             ],
             happy: [
                 '¡Increíble progreso! <i class="fas fa-champagne-glasses"></i>',

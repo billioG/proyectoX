@@ -23,7 +23,7 @@ const AIService = {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${session.access_token}`
                 },
-                body: JSON.stringify({ prompt, context, short })
+                body: JSON.stringify({ prompt, context, short, role: window.userRole || '' })
             });
 
             const data = await response.json();
@@ -44,7 +44,7 @@ const AIService = {
      */
     async getProactiveMessage(userData, userRole) {
         const prompt = userRole === 'estudiante'
-            ? `Genera un mensaje corto de bienvenida o motivación para un estudiante llamado ${userData.full_name}. Tiene una racha de ${userData.streak || 0} días y está en el nivel ${Math.floor((userData.xp || 0) / 500) + 1}.`
+            ? `Genera un mensaje corto para un estudiante llamado ${userData.full_name}. Tiene una racha de ${userData.streak || 0} días y está en el nivel ${Math.floor((userData.xp || 0) / 500) + 1}. Alterná entre motivarlo académicamente y preguntarle/validar cómo se siente, como haría un coach educativo y emocional.`
             : `Genera un mensaje corto de apoyo para un docente llamado ${userData.full_name}. Ayúdale a sentirse valorado por su labor enseñando tecnología.`;
 
         return this.ask(prompt, `Rol: ${userRole}, Nombre: ${userData.full_name}`, true);

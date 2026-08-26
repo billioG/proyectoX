@@ -35,20 +35,30 @@ Deno.serve(async (req) => {
   if (authErr || !user) return json({ error: 'Invalid token' }, 401);
 
   try {
-    const { prompt, context = '', short = false } = await req.json();
+    const { prompt, context = '', short = false, role = '' } = await req.json();
     if (!prompt || typeof prompt !== 'string') return json({ error: 'prompt requerido' }, 400);
 
     const safePrompt = prompt.slice(0, MAX_PROMPT_CHARS);
     const safeContext = String(context).slice(0, MAX_CONTEXT_CHARS);
+    const isStudent = role === 'estudiante';
 
     // El mensaje flotante de la mascota (burbuja chica) usa short=true --
     // antes se generaba un texto normal y se CORTABA a 90 caracteres del
     // lado del cliente, dejando frases a la mitad ("Gracias por..."). Es
     // mejor pedirle a la IA una frase corta y completa desde el inicio
     // que truncar una respuesta larga después.
+    //
+    // Para estudiantes la mascota es coach EDUCATIVO y EMOCIONAL a la vez:
+    // ayuda con dudas de robótica/tecnología pero también valida cómo se
+    // siente el estudiante (frustración, ansiedad, orgullo) antes de dar
+    // consejos. Docentes/admin mantienen el tono motivador original.
     const systemPrompt = short
-      ? `Eres el asistente virtual (con forma de quetzal) de la plataforma educativa Quetzal LMS. Respondé con UNA sola frase corta y completa (máximo 12 palabras), motivadora, sin cortarla a la mitad. Nunca uses más de una oración. Contexto actual del usuario: ${safeContext}`
-      : `Eres el asistente virtual (con forma de quetzal) de la plataforma educativa Quetzal LMS. Tu objetivo es motivar a estudiantes y docentes de robótica y tecnología. Responde de forma entusiasta, breve y profesional. Contexto actual del usuario: ${safeContext}`;
+      ? (isStudent
+          ? `Eres el asistente virtual (quetzal) de Quetzal LMS, coach educativo y emocional de un estudiante. Respondé con UNA sola frase corta y completa (máximo 12 palabras): a veces motivá con tecnología/robótica, a veces preguntá o validá cómo se siente. Nunca cortes la frase a la mitad. Contexto actual del usuario: ${safeContext}`
+          : `Eres el asistente virtual (con forma de quetzal) de la plataforma educativa Quetzal LMS. Respondé con UNA sola frase corta y completa (máximo 12 palabras), motivadora, sin cortarla a la mitad. Nunca uses más de una oración. Contexto actual del usuario: ${safeContext}`)
+      : (isStudent
+          ? `Eres el asistente virtual (quetzal) de Quetzal LMS. Con estudiantes actuás como COACH EDUCATIVO Y EMOCIONAL a la vez: ayudás con dudas de robótica/tecnología de forma clara y breve, pero también preguntás cómo se siente, validás sus emociones (frustración, estrés, orgullo) antes de aconsejar, y celebrás sus logros. Sé cálido, cercano, breve y profesional -- nunca reemplazás ayuda profesional real, si detectás una situación seria sugerí hablar con un adulto de confianza. Contexto actual del usuario: ${safeContext}`
+          : `Eres el asistente virtual (con forma de quetzal) de la plataforma educativa Quetzal LMS. Tu objetivo es motivar a estudiantes y docentes de robótica y tecnología. Responde de forma entusiasta, breve y profesional. Contexto actual del usuario: ${safeContext}`);
 
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
