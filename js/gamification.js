@@ -513,20 +513,18 @@ window.renderGamificationHubContent = function renderGamificationHubContent(moda
                     </div>
                 </section>
                 
-                 <!-- DUELOS (Prototipo) -->
+                 <!-- DUELOS -->
                 <section>
                      <h3 class="text-2xl font-black text-white italic uppercase mb-6 flex items-center gap-3"><i class="fas fa-swords text-rose-500"></i> Desafíos de Código</h3>
-                     <div class="glass-card p-12 text-center border-dashed border-2 border-white/10 bg-transparent hover:border-white/20 transition-all cursor-pointer group" onclick="window.showToast && window.showToast('<i class=\'fas fa-shield-halved\'></i> ¡Próximamente! Estamos preparando las arenas de combate.', 'info')">
-                        <div class="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
-                            <i class="fas fa-plus text-2xl text-white/20 group-hover:text-white/50 transition-colors"></i>
-                        </div>
-                        <p class="text-sm font-black text-white uppercase tracking-widest">Crear Desafío 1v1</p>
-                        <p class="text-[0.65rem] font-bold text-slate-500 mt-2">Apuesta gemas y gana XP extra</p>
+                     <div id="duels-section">
+                        <div class="text-center text-slate-500 text-xs py-6"><i class="fas fa-spinner fa-spin"></i></div>
                      </div>
                 </section>
             </div>
         </div>
     `;
+
+  if (typeof window.loadDuelsSection === 'function') window.loadDuelsSection();
 }
 
 window.renderShopItem = function renderShopItem(name, desc, price, icon, colorClass, owned = false) {
