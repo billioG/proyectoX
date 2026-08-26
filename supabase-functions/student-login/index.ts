@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    const username = String(body?.username || '').trim();
+    const username = String(body?.username || '').trim().toLowerCase();
     const password = body?.password ? String(body.password) : '';
 
     if (!username) return json({ error: GENERIC_ERROR }, 401);

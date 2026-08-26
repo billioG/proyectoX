@@ -111,7 +111,11 @@ window.checkLoginPasswordMode = async function checkLoginPasswordMode() {
   const userEl = document.getElementById('login-username');
   const wrapEl = document.getElementById('login-password-wrap');
   const hintEl = document.getElementById('login-passwordless-hint');
-  const username = userEl?.value.trim();
+  // Los usuarios de alumno se generan siempre en minúscula -- si el
+  // celular puso la primera letra en mayúscula (autocapitalize), la
+  // comparación exacta no encontraba al alumno y nunca detectaba el modo
+  // sin contraseña.
+  const username = userEl?.value.trim().toLowerCase();
   if (!username || username.includes('@')) {
     // Email -> siempre requiere contraseña (docentes/admin), no aplica el modo clase.
     if (wrapEl) wrapEl.classList.remove('hidden');
@@ -245,7 +249,10 @@ export async function handleLogin() {
   const passEl = document.getElementById('login-password');
   const btn = document.getElementById('btn-login');
 
-  const username = userEl?.value.trim();
+  const rawUsername = userEl?.value.trim();
+  // El email sí puede tener mayúsculas válidas -- solo se normaliza el
+  // usuario de alumno (siempre se genera en minúscula).
+  const username = rawUsername?.includes('@') ? rawUsername : rawUsername?.toLowerCase();
   const password = passEl?.value.trim();
   if (!username) return showToast('<i class="fas fa-circle-xmark"></i> Ingresá tu usuario o correo', 'error');
 

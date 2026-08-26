@@ -238,6 +238,19 @@ window.saveCourse = async function saveCourse(editingId) {
   if (!title) return window.showToast('<i class="fas fa-circle-xmark"></i> Ponele un título', 'error');
   if (!classOption) return window.showToast('<i class="fas fa-circle-xmark"></i> Elegí una clase', 'error');
 
+  // El SIRE no acepta más de 100 puntos por bimestre -- si ya hay otros
+  // cursos en el mismo bimestre/clase, sus ponderaciones se SUMAN (así
+  // está pensado: varios cursos pueden repartirse el 100% de la nota del
+  // bimestre). Si entre todos superan 100, se avisa antes de guardar.
+  const { data: siblingCourses } = await window._supabase.from('courses')
+    .select('id, weight').eq('school_code', classOption.school_code).eq('grade', classOption.grade)
+    .eq('section', classOption.section).eq('bimestre', bimestre);
+  const otherWeight = (siblingCourses || []).filter(c => c.id !== editingId).reduce((sum, c) => sum + (c.weight || 0), 0);
+  if (otherWeight + weight > 100) {
+    const proceed = confirm(`Los cursos de este bimestre ya suman ${otherWeight + weight} puntos (máximo 100 para el SIRE). ¿Guardar igual?`);
+    if (!proceed) return;
+  }
+
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
 
@@ -431,12 +444,88 @@ window.renderCourseResourcesList = function renderCourseResourcesList() {
         <h4 class="text-sm font-bold text-slate-800 dark:text-white truncate">${window.sanitizeInput(l.title)}</h4>
         <p class="text-[0.65rem] text-slate-400">${LESSON_TYPE_LABEL[l.content_type]}</p>
       </div>
+      <button class="w-7 h-7 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-primary transition-colors flex items-center justify-center shrink-0" onclick="window.previewCourseResource('${l.id}')" title="Ver recurso"><i class="fas fa-eye text-[0.65rem]"></i></button>
       <button class="w-7 h-7 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-primary transition-colors flex items-center justify-center shrink-0 ${i === 0 ? 'opacity-30 pointer-events-none' : ''}" onclick="window.moveCourseResource('${l.id}', -1)"><i class="fas fa-arrow-up text-[0.65rem]"></i></button>
       <button class="w-7 h-7 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-primary transition-colors flex items-center justify-center shrink-0 ${i === lessons.length - 1 ? 'opacity-30 pointer-events-none' : ''}" onclick="window.moveCourseResource('${l.id}', 1)"><i class="fas fa-arrow-down text-[0.65rem]"></i></button>
       <button class="w-7 h-7 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-primary transition-colors flex items-center justify-center shrink-0" onclick="window.openAddResourceModal('${window._managingCourse.id}', '${l.id}')"><i class="fas fa-pen text-[0.6rem]"></i></button>
       <button class="w-7 h-7 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-rose-500 transition-colors flex items-center justify-center shrink-0" onclick="window.deleteCourseResource('${l.id}')"><i class="fas fa-trash-alt text-[0.6rem]"></i></button>
     </div>
   `).join('');
+}
+
+// Vista rápida de solo lectura para el docente -- antes solo podía editar
+// título/orden del recurso sin nunca ver realmente el contenido (video,
+// H5P, PDF...) sin tener que entrar como si fuera alumno.
+window.previewCourseResource = function previewCourseResource(lessonId) {
+  const lesson = (window._managingCourseLessons || []).find(l => l.id === lessonId);
+  if (!lesson) return;
+  const sanitizeInput = window.sanitizeInput || ((v) => v);
+
+  let mediaHtml = '';
+  if (lesson.content_type === 'video') {
+    const ytMatch = lesson.content_url?.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([a-zA-Z0-9_-]{6,})/);
+    mediaHtml = ytMatch
+      ? `<iframe class="w-full aspect-video rounded-xl" src="https://www.youtube.com/embed/${ytMatch[1]}" frameborder="0" allowfullscreen></iframe>`
+      : `<video class="w-full rounded-xl" src="${lesson.content_url}" controls></video>`;
+  } else if (lesson.content_type === 'pdf') {
+    mediaHtml = `<iframe class="w-full h-[60vh] rounded-xl border border-slate-200 dark:border-slate-700" src="${lesson.content_url}"></iframe>`;
+  } else if (lesson.content_type === 'image') {
+    mediaHtml = `<img src="${lesson.content_url}" class="w-full rounded-xl">`;
+  } else if (lesson.content_type === 'scorm') {
+    mediaHtml = `<iframe class="w-full h-[60vh] rounded-xl border border-slate-200 dark:border-slate-700" src="${lesson.content_url}"></iframe>`;
+  } else if (lesson.content_type === 'h5p') {
+    mediaHtml = `<div id="h5p-preview-container" class="w-full min-h-[50vh]"></div>`;
+  } else if (lesson.content_type === 'quiz') {
+    const qs = lesson.quiz_data || [];
+    mediaHtml = `<div class="space-y-4 text-left">${qs.map((q, i) => `
+      <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+        <p class="font-bold text-sm text-slate-800 dark:text-white mb-2">${i + 1}. ${sanitizeInput(q.question)} <span class="text-[0.6rem] text-slate-400 uppercase">(${QUIZ_QUESTION_TYPE_LABEL[q.type]})</span></p>
+        ${q.type === 'mc' ? q.options.map((opt, oi) => `<p class="text-xs ${oi === q.correctIndex ? 'text-emerald-500 font-bold' : 'text-slate-500'} pl-3">${oi === q.correctIndex ? '✓' : '·'} ${sanitizeInput(opt)}</p>`).join('') : ''}
+        ${q.type === 'tf' ? `<p class="text-xs text-emerald-500 font-bold pl-3">✓ ${q.correctBool ? 'Verdadero' : 'Falso'}</p>` : ''}
+        ${q.type === 'number' ? `<p class="text-xs text-emerald-500 font-bold pl-3">✓ ${q.correctNumber} (± ${q.tolerance || 0})</p>` : ''}
+        ${q.type === 'range' ? `<p class="text-xs text-emerald-500 font-bold pl-3">✓ Entre ${q.min} y ${q.max}</p>` : ''}
+        ${q.type === 'text' ? `<p class="text-xs text-slate-400 pl-3">Respuesta abierta -- se califica manual</p>` : ''}
+      </div>
+    `).join('') || '<p class="text-slate-400 text-sm">Este quiz todavía no tiene preguntas.</p>'}</div>`;
+  }
+
+  document.getElementById('course-resource-preview-modal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'course-resource-preview-modal';
+  modal.className = 'fixed inset-0 z-[220] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-sm animate-fadeIn';
+  modal.innerHTML = `
+    <div class="glass-card w-full max-w-2xl max-h-[90vh] flex flex-col p-0 overflow-hidden shadow-2xl animate-slideUp bg-white dark:bg-slate-900">
+      <div class="p-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center shrink-0">
+        <div>
+          <h3 class="text-sm font-black text-slate-800 dark:text-white">${sanitizeInput(lesson.title)}</h3>
+          <p class="text-[0.6rem] text-slate-400 uppercase">${LESSON_TYPE_LABEL[lesson.content_type]} · Vista previa docente</p>
+        </div>
+        <button class="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500 flex items-center justify-center" onclick="this.closest('.fixed').remove()"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="flex-1 overflow-y-auto custom-scrollbar p-5">${mediaHtml || '<p class="text-slate-400 text-sm text-center py-10">No hay contenido para previsualizar.</p>'}</div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  if (lesson.content_type === 'h5p') {
+    // Reintenta hasta que H5PStandalone esté disponible, sin escribir
+    // ninguna nota -- es solo vista previa, no crea lesson_completions.
+    const tryInit = (attempt = 1) => {
+      const container = document.getElementById('h5p-preview-container');
+      if (!container) return;
+      if (typeof H5PStandalone === 'undefined') {
+        if (attempt >= 3) { container.innerHTML = '<p class="text-rose-500 text-sm text-center py-10">No se pudo cargar el reproductor H5P.</p>'; return; }
+        setTimeout(() => tryInit(attempt + 1), 800);
+        return;
+      }
+      new H5PStandalone.H5P(container, {
+        h5pJsonPath: lesson.content_url.replace(/\/$/, ''),
+        frameJs: 'https://cdn.jsdelivr.net/npm/h5p-standalone@3.7.0/dist/frame.bundle.js',
+        frameCss: 'https://cdn.jsdelivr.net/npm/h5p-standalone@3.7.0/dist/styles/h5p.css',
+      });
+    };
+    tryInit();
+  }
 }
 
 window.moveCourseResource = async function moveCourseResource(lessonId, direction) {
@@ -1570,7 +1659,17 @@ window.initH5PSession = async function initH5PSession(lesson, attempt = 1) {
         document.getElementById('h5p-loading-overlay')?.remove();
       }
     }, 200);
-    setTimeout(() => clearInterval(waitForIframe), 15000);
+    setTimeout(() => {
+      clearInterval(waitForIframe);
+      // Si a los 15s nunca apareció el iframe, h5p-standalone se quedó
+      // colgado (ej. un fetch interno que nunca resuelve ni rechaza) --
+      // antes se quedaba el spinner girando para siempre sin forma de
+      // reintentar salvo salir y volver a entrar al recurso.
+      const overlay = document.getElementById('h5p-loading-overlay');
+      if (overlay) {
+        overlay.innerHTML = `<p class="text-rose-500 text-sm mb-3 px-4 text-center">El contenido tardó demasiado en cargar.</p><button class="btn-secondary-tw h-9 px-4 text-xs uppercase font-bold" onclick="window.selectCourseResource(window._activeCourseIndex)"><i class="fas fa-rotate"></i> Reintentar</button>`;
+      }
+    }, 15000);
 
     // El propio H5PStandalone despacha xAPI a través de H5P.externalDispatcher
     // una vez que termina de inicializar el iframe interno.
@@ -1581,19 +1680,35 @@ window.initH5PSession = async function initH5PSession(lesson, attempt = 1) {
         innerH5P.externalDispatcher.on('xAPI', (event) => {
           const statement = event?.data?.statement;
           const result = statement?.result;
-          if (!result || result.score == null || !result.score.max) return;
 
-          // Cada sub-interacción tiene su propio id de objeto xAPI -- se
-          // guarda la última nota de CADA una y se suma el total al final.
-          const objectId = statement.object?.id || crypto.randomUUID();
-          scoredInteractions.set(objectId, { raw: result.score.raw ?? 0, max: result.score.max });
+          if (result && result.score != null && result.score.max) {
+            // Cada sub-interacción tiene su propio id de objeto xAPI -- se
+            // guarda la última nota de CADA una y se suma el total al final.
+            const objectId = statement.object?.id || crypto.randomUUID();
+            scoredInteractions.set(objectId, { raw: result.score.raw ?? 0, max: result.score.max });
 
-          let totalRaw = 0, totalMax = 0;
-          scoredInteractions.forEach(s => { totalRaw += s.raw; totalMax += s.max; });
-          const pct = totalMax > 0 ? Math.round((totalRaw / totalMax) * 100) : 0;
-          const status = result.completion ? 'completed' : 'incomplete';
-          persistLessonScore(lesson.id, pct, status, statement);
-          updateLiveScoreLabel(pct, status);
+            let totalRaw = 0, totalMax = 0;
+            scoredInteractions.forEach(s => { totalRaw += s.raw; totalMax += s.max; });
+            const pct = totalMax > 0 ? Math.round((totalRaw / totalMax) * 100) : 0;
+            const status = result.completion ? 'completed' : 'incomplete';
+            persistLessonScore(lesson.id, pct, status, statement);
+            updateLiveScoreLabel(pct, status);
+            return;
+          }
+
+          // Contenido H5P sin nota (ej. "Mensaje", texto libre, tarjetas
+          // informativas) nunca dispara un result.score -- antes se
+          // ignoraba por completo, nunca se guardaba ninguna fila de
+          // avance y el curso quedaba trabado para siempre en ese
+          // recurso. Si llega una señal de "completado/respondido" y
+          // todavía no hay nada guardado, se cuenta como visto (igual que
+          // video/PDF) para desbloquear el siguiente.
+          const verb = statement?.verb?.id || '';
+          const isCompletionSignal = /\/(completed|answered)$/.test(verb) || result?.completion;
+          if (isCompletionSignal && !window._completionsCache?.has(lesson.id)) {
+            persistLessonScore(lesson.id, null, 'completed', statement);
+            updateLiveScoreLabel(null, 'completed');
+          }
         });
       }
     }, 500);
@@ -1692,14 +1807,20 @@ window.confirmExportSire = async function confirmExportSire() {
         unidadHasCourses[bIdx] = true;
       });
 
-      const unidadesConDatos = unidadPoints.filter((_, i) => unidadHasCourses[i]);
+      // El SIRE no acepta más de 100 puntos por unidad -- si el docente
+      // asignó varios cursos al mismo bimestre y sus ponderaciones suman
+      // más de 100 entre todos, se limita acá (el tope real hay que
+      // corregirlo repartiendo el peso entre esos cursos, esto es solo
+      // para no romper la importación al SIRE).
+      const cappedUnidadPoints = unidadPoints.map(v => Math.min(100, v));
+      const unidadesConDatos = cappedUnidadPoints.filter((_, i) => unidadHasCourses[i]);
       const notaFinal = unidadesConDatos.length ? Math.round(unidadesConDatos.reduce((a, b) => a + b, 0) / unidadesConDatos.length) : 0;
 
       return {
         clave: idx + 1,
         codigoPersonal: s.codigo_personal || s.cui || '',
         nombre: s.full_name,
-        unidades: unidadPoints.map((v, i) => unidadHasCourses[i] ? Math.round(v) : ''),
+        unidades: cappedUnidadPoints.map((v, i) => unidadHasCourses[i] ? Math.round(v) : ''),
         notaFinal,
         resultado: notaFinal >= 60 ? 'Promovido' : 'No Promovido',
       };

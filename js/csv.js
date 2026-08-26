@@ -52,7 +52,7 @@ async function exportProjectsCSV() {
         score,
         votes,
         created_at,
-        students(full_name, school_code, grade, section),
+        students(full_name, school_code, grade, section, schools(name, address)),
         groups(name)
       `)
       .order('created_at', { ascending: false });
@@ -61,13 +61,15 @@ async function exportProjectsCSV() {
       return showToast('<i class="fas fa-circle-xmark"></i> No hay proyectos para exportar', 'error');
     }
 
-    let csvContent = 'ID,Titulo,Descripcion,Estudiante,Grupo,Codigo_Establecimiento,Grado,Seccion,Puntuacion,Me_Gusta,Fecha\n';
+    let csvContent = 'ID,Titulo,Descripcion,Estudiante,Grupo,Establecimiento,Direccion,Codigo_Establecimiento,Grado,Seccion,Puntuacion,Me_Gusta,Fecha\n';
 
     projects.forEach(p => {
       const title = (p.title || '').replace(/,/g, ';').replace(/"/g, '""');
       const description = (p.description || '').replace(/,/g, ';').replace(/"/g, '""');
       const student = p.students?.full_name || 'N/A';
       const group = p.groups?.name || 'Sin grupo';
+      const schoolName = (p.students?.schools?.name || 'Sin asignar').replace(/,/g, ';').replace(/"/g, '""');
+      const schoolAddress = (p.students?.schools?.address || '').replace(/,/g, ';').replace(/"/g, '""');
       const schoolCode = p.students?.school_code || '';
       const grade = p.students?.grade || '';
       const section = p.students?.section || '';
@@ -75,7 +77,7 @@ async function exportProjectsCSV() {
       const votes = p.votes || 0;
       const date = new Date(p.created_at).toLocaleDateString('es-GT');
 
-      csvContent += `${p.id},"${title}","${description}",${student},${group},${schoolCode},${grade},${section},${score},${votes},${date}\n`;
+      csvContent += `${p.id},"${title}","${description}",${student},${group},"${schoolName}","${schoolAddress}",${schoolCode},${grade},${section},${score},${votes},${date}\n`;
     });
 
     downloadCSV(csvContent, 'proyectos_export.csv');
@@ -97,7 +99,8 @@ async function exportGroupsCSV() {
           role,
           students(full_name)
         ),
-        projects(title, score)
+        projects(title, score),
+        schools(name, address)
       `)
       .order('school_code, grade, section, name');
 
@@ -105,10 +108,12 @@ async function exportGroupsCSV() {
       return showToast('<i class="fas fa-circle-xmark"></i> No hay grupos para exportar', 'error');
     }
 
-    let csvContent = 'Nombre_Grupo,Codigo_Establecimiento,Grado,Seccion,Integrantes,Planner,Maker,Speaker,Proyecto,Nota\n';
+    let csvContent = 'Nombre_Grupo,Establecimiento,Direccion,Codigo_Establecimiento,Grado,Seccion,Integrantes,Planner,Maker,Speaker,Proyecto,Nota\n';
 
     groups.forEach(g => {
       const gName = (g.name || '').replace(/,/g, ';').replace(/"/g, '""');
+      const schoolName = (g.schools?.name || 'Sin asignar').replace(/,/g, ';').replace(/"/g, '""');
+      const schoolAddress = (g.schools?.address || '').replace(/,/g, ';').replace(/"/g, '""');
       const schoolCode = g.school_code || '';
       const grade = g.grade || '';
       const section = g.section || '';
@@ -121,12 +126,12 @@ async function exportGroupsCSV() {
       const projects = g.projects || [];
 
       if (projects.length === 0) {
-        csvContent += `"${gName}",${schoolCode},${grade},${section},"${allMembers}","${planner}","${maker}","${speaker}","Sin proyecto",0\n`;
+        csvContent += `"${gName}","${schoolName}","${schoolAddress}",${schoolCode},${grade},${section},"${allMembers}","${planner}","${maker}","${speaker}","Sin proyecto",0\n`;
       } else {
         projects.forEach(p => {
           const pTitle = (p.title || '').replace(/,/g, ';').replace(/"/g, '""');
           const pScore = p.score || 0;
-          csvContent += `"${gName}",${schoolCode},${grade},${section},"${allMembers}","${planner}","${maker}","${speaker}","${pTitle}",${pScore}\n`;
+          csvContent += `"${gName}","${schoolName}","${schoolAddress}",${schoolCode},${grade},${section},"${allMembers}","${planner}","${maker}","${speaker}","${pTitle}",${pScore}\n`;
         });
       }
     });

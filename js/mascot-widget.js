@@ -16,45 +16,45 @@ const MascotWidget = {
     messages: {
         estudiante: {
             normal: [
-                '¿Qué vamos a construir hoy? <i class="fas fa-robot"></i>',
-                '¡Recuerda subir tus avances! <i class="fas fa-rocket"></i>',
-                '¡El código es tu superpoder! <i class="fas fa-bolt"></i>',
-                '¿Has revisado el ranking hoy? <i class="fas fa-trophy"></i>',
-                '¡Sigue aprendiendo, el quetzal está contigo! <i class="fas fa-heart"></i>'
+                '¿Qué construimos hoy? <i class="fas fa-robot"></i>',
+                '¡Subí tus avances! <i class="fas fa-rocket"></i>',
+                'El código es tu superpoder <i class="fas fa-bolt"></i>',
+                '¿Viste el ranking hoy? <i class="fas fa-trophy"></i>',
+                '¡Seguí aprendiendo! <i class="fas fa-heart"></i>'
             ],
             happy: [
                 '¡Increíble progreso! <i class="fas fa-champagne-glasses"></i>',
-                "¡Eres una estrella del código! ⭐",
+                '¡Sos una estrella! ⭐',
                 '¡Esa racha se ve genial! <i class="fas fa-fire"></i>',
                 '¡Nada te detiene! <i class="fas fa-rocket"></i>'
             ],
             thinking: [
-                'Mm... ¿cómo optimizaríamos ese algoritmo? <i class="fas fa-circle-question"></i>',
-                'Analizando nuevas posibilidades tecnológicas... <i class="fas fa-chart-bar"></i>',
-                '¿Y si probamos un enfoque diferente? <i class="fas fa-lightbulb"></i>'
+                '¿Cómo optimizamos eso? <i class="fas fa-circle-question"></i>',
+                'Pensando ideas nuevas... <i class="fas fa-chart-bar"></i>',
+                '¿Probamos otro enfoque? <i class="fas fa-lightbulb"></i>'
             ],
             sleep: [
-                'Zzz... soñando con circuitos... <i class="fas fa-battery-full"></i>',
-                'Es tarde, ¡mañana seguimos innovando! <i class="fas fa-moon"></i>',
-                'Entrando en modo ahorro de energía... <i class="fas fa-plug"></i>'
+                'Zzz... <i class="fas fa-battery-full"></i>',
+                'Mañana seguimos <i class="fas fa-moon"></i>',
+                'Ahorrando energía <i class="fas fa-plug"></i>'
             ]
         },
         docente: {
             normal: [
-                '¡Hola, Profe! ¿Listos para inspirar? <i class="fas fa-apple-whole"></i>',
-                'Hay proyectos esperando tu evaluación. <i class="fas fa-chart-bar"></i>',
-                '¡Tus alumnos están logrando grandes cosas! <i class="fas fa-star"></i>',
-                '¿Ya pasaste asistencia hoy? <i class="fas fa-clipboard-list"></i>'
+                '¡Hola, Profe! <i class="fas fa-apple-whole"></i>',
+                'Tenés proyectos por evaluar <i class="fas fa-chart-bar"></i>',
+                '¡Tus alumnos la rompen! <i class="fas fa-star"></i>',
+                '¿Pasaste asistencia hoy? <i class="fas fa-clipboard-list"></i>'
             ],
             happy: [
-                '¡Excelente gestión de grupo! <i class="fas fa-wand-magic-sparkles"></i>',
-                'Tus KPIs están por las nubes hoy. <i class="fas fa-chart-line"></i>',
-                '¡Gracias por guiar a los futuros inventores! <i class="fas fa-robot"></i>'
+                '¡Excelente gestión! <i class="fas fa-wand-magic-sparkles"></i>',
+                'Tus KPIs van genial <i class="fas fa-chart-line"></i>',
+                '¡Gracias por guiarlos! <i class="fas fa-robot"></i>'
             ],
             work: [
-                'Evaluando talentos... <i class="fas fa-pen"></i>️',
-                'Sincronizando datos de aprendizaje... <i class="fas fa-arrows-rotate"></i>',
-                'Preparando el próximo gran desafío. <i class="fas fa-bullseye"></i>'
+                'Evaluando talentos... <i class="fas fa-pen"></i>',
+                'Sincronizando datos... <i class="fas fa-arrows-rotate"></i>',
+                'Preparando el próximo reto <i class="fas fa-bullseye"></i>'
             ]
         },
         admin: {
@@ -87,7 +87,11 @@ const MascotWidget = {
         // #mobile-menu-btn en index.html) en vez de apilarse arriba, así
         // nunca se solapan aunque el achicado (ver CSS de .mascot-robot)
         // no alcance -- antes tapaba parte del botón y bloqueaba el toque.
-        container.className = 'fixed bottom-6 right-[92px] md:bottom-6 md:right-6 z-[100] transition-all duration-500 transform hover:scale-105 group';
+        // z-[250]: por encima de TODOS los modales de la app (el más alto
+        // en uso es z-[240], el quiz de eventos sorpresa) -- antes estaba
+        // en z-[100] y quedaba tapada por el reproductor de cursos
+        // (z-[200]), donde los estudiantes pasan la mayor parte del tiempo.
+        container.className = 'fixed bottom-6 right-[92px] md:bottom-6 md:right-6 z-[250] transition-all duration-500 transform hover:scale-105 group';
         container.style.pointerEvents = 'none'; // So it doesn't block clicks when not interacting
 
         container.innerHTML = `
@@ -237,6 +241,10 @@ const MascotWidget = {
             const role = typeof window.userRole !== 'undefined' ? window.userRole : 'estudiante';
             const stateMessages = this.messages[role] ? this.messages[role][this.currentState] || this.messages[role].normal : this.messages.estudiante.normal;
             message = stateMessages[Math.floor(Math.random() * stateMessages.length)];
+        } else if (message.length > 90) {
+            // Los mensajes generados por IA no tienen tope de largo -- la
+            // burbuja es chica (200px), un mensaje largo se ve horrible.
+            message = message.slice(0, 87).replace(/\s+\S*$/, '') + '...';
         }
 
         bubble.innerHTML = message;
@@ -275,7 +283,7 @@ const MascotWidget = {
 
                 <div id="ai-chat-history" class="p-6 space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-950/20">
                     <div class="flex gap-3">
-                        <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-xs shrink-0">1B</div>
+                        <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-xs shrink-0"><i class="fas fa-feather"></i></div>
                         <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl rounded-tl-none shadow-sm text-sm font-medium text-slate-700 dark:text-slate-200 border border-slate-100 dark:border-slate-800">
                             ¡Hola! Soy tu asistente de IA. ¿En qué puedo ayudarte hoy con tus proyectos de tecnología?
                         </div>
