@@ -74,6 +74,9 @@ window.renderTeachersContent = function renderTeachersContent(container, teacher
             <button class="btn-secondary-tw grow h-12 px-6 text-xs uppercase font-bold tracking-widest" onclick="window.exportTeachersCSV()">
               <i class="fas fa-file-csv"></i> EXPORTAR
             </button>
+            <button class="btn-secondary-tw grow h-12 px-6 text-xs uppercase font-bold tracking-widest" onclick="window.openImportTeachersModal()">
+              <i class="fas fa-file-import"></i> IMPORTAR CSV
+            </button>
         </div>
       </div>
 
@@ -257,6 +260,142 @@ window.addTeacher = async function addTeacher() {
     btn.innerHTML = '<i class="fas fa-user-plus"></i> Crear Docente';
   }
 }
+
+// ================================================
+// IMPORTAR DOCENTES DESDE CSV (alta masiva)
+// ================================================
+// Reusa admin-create-teacher (misma edge function que el alta manual, ya
+// gateada por is_admin() real) llamándola una vez por fila -- así no hace
+// falta desplegar una función nueva ni tocar la lógica de creación.
+function parseTeachersCsvText(text) {
+  const lines = text.split(/\r\n|\n/).filter(l => l.trim().length);
+  return lines.map(line => {
+    const cells = [];
+    let cur = '', inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        if (inQuotes && line[i + 1] === '"') { cur += '"'; i++; }
+        else inQuotes = !inQuotes;
+      } else if ((ch === ',' || ch === '\t') && !inQuotes) {
+        cells.push(cur); cur = '';
+      } else {
+        cur += ch;
+      }
+    }
+    cells.push(cur);
+    return cells.map(c => c.trim());
+  });
+}
+
+window.openImportTeachersModal = function openImportTeachersModal() {
+  document.getElementById('import-teachers-modal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'import-teachers-modal';
+  modal.className = 'fixed inset-0 z-[220] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-sm animate-fadeIn';
+  modal.innerHTML = `
+    <div class="glass-card w-full max-w-lg max-h-[85vh] flex flex-col p-8 animate-slideUp">
+      <h2 class="text-lg font-bold text-slate-800 dark:text-white uppercase tracking-tighter mb-2"><i class="fas fa-file-import text-primary mr-2"></i> Importar Docentes (CSV)</h2>
+      <p class="text-xs text-slate-400 mb-4">El archivo puede tener cualquier orden de columnas -- se detectan solas las de nombre, correo y teléfono por el encabezado.</p>
+      <input type="file" id="import-teachers-file" accept=".csv" class="input-field-tw mb-3">
+      <div id="import-teachers-preview" class="text-xs mb-4"></div>
+      <div class="mb-4">
+        <label class="text-[0.65rem] font-black uppercase text-slate-400 tracking-widest block mb-1.5">Contraseña temporal para todos</label>
+        <input type="text" id="import-teachers-password" class="input-field-tw h-11 text-sm" value="Quetzal.2026">
+      </div>
+      <div id="import-teachers-results" class="flex-1 overflow-y-auto custom-scrollbar space-y-1.5 mb-4"></div>
+      <div class="flex gap-3 shrink-0">
+        <button class="flex-1 btn-secondary-tw h-11 text-xs uppercase font-bold" onclick="this.closest('.fixed').remove()">Cerrar</button>
+        <button class="flex-[2] btn-primary-tw h-11 text-xs uppercase font-bold" id="btn-run-import-teachers" onclick="window.runImportTeachers()"><i class="fas fa-upload"></i> Crear Cuentas</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  document.getElementById('import-teachers-file').addEventListener('change', window.previewImportTeachers);
+};
+
+window.previewImportTeachers = function previewImportTeachers(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const sanitizeInput = window.sanitizeInput || ((v) => v);
+  const reader = new FileReader();
+  reader.onload = () => {
+    const rows = parseTeachersCsvText(reader.result);
+    const previewEl = document.getElementById('import-teachers-preview');
+    if (rows.length < 2) {
+      previewEl.innerHTML = '<span class="text-rose-500 font-bold">El archivo no tiene filas de datos.</span>';
+      window._importTeachersRows = [];
+      return;
+    }
+
+    const header = rows[0].map(h => h.toLowerCase());
+    const nameIdx = header.findIndex(h => h.includes('nombre') && !h.includes('apellido'));
+    const emailIdx = header.findIndex(h => h.includes('correo') || h.includes('email'));
+    const phoneIdx = header.findIndex(h => h.includes('tel') || h.includes('phone') || h.includes('celular'));
+
+    if (nameIdx === -1 || emailIdx === -1) {
+      previewEl.innerHTML = '<span class="text-rose-500 font-bold">No se detectaron columnas de nombre y correo en el encabezado.</span>';
+      window._importTeachersRows = [];
+      return;
+    }
+
+    const dataRows = rows.slice(1).map(r => ({
+      name: (r[nameIdx] || '').trim(),
+      email: (r[emailIdx] || '').trim().toLowerCase(),
+      phone: phoneIdx > -1 ? (r[phoneIdx] || '').trim() : '',
+    })).filter(r => r.name && r.email);
+
+    window._importTeachersRows = dataRows;
+    previewEl.innerHTML = `<span class="text-emerald-500 font-bold">${dataRows.length} docente(s) detectado(s)</span> -- nombre: "${sanitizeInput(rows[0][nameIdx])}", correo: "${sanitizeInput(rows[0][emailIdx])}"${phoneIdx > -1 ? `, teléfono: "${sanitizeInput(rows[0][phoneIdx])}"` : ''}`;
+  };
+  reader.readAsText(file);
+};
+
+window.runImportTeachers = async function runImportTeachers() {
+  const rows = window._importTeachersRows || [];
+  const password = document.getElementById('import-teachers-password')?.value.trim();
+  const resultsEl = document.getElementById('import-teachers-results');
+  const btn = document.getElementById('btn-run-import-teachers');
+  const sanitizeInput = window.sanitizeInput || ((v) => v);
+
+  if (!rows.length) return window.showToast('<i class="fas fa-circle-xmark"></i> Subí un CSV válido primero', 'error');
+  if (!password || password.length < 6) return window.showToast('<i class="fas fa-circle-xmark"></i> La contraseña debe tener al menos 6 caracteres', 'error');
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creando...';
+  resultsEl.innerHTML = '';
+
+  const { data: { session } } = await window._supabase.auth.getSession();
+  let ok = 0, fail = 0;
+
+  for (const row of rows) {
+    const line = document.createElement('div');
+    line.className = 'text-xs px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800/50 flex items-center gap-2';
+    line.innerHTML = `<i class="fas fa-spinner fa-spin text-slate-400"></i> ${sanitizeInput(row.name)}`;
+    resultsEl.appendChild(line);
+    resultsEl.scrollTop = resultsEl.scrollHeight;
+
+    try {
+      const res = await fetch(`${window.SUPABASE_URL}/functions/v1/admin-create-teacher`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+        body: JSON.stringify({ name: row.name, email: row.email, phone: row.phone || null, password }),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || 'Error desconocido');
+      ok++;
+      line.innerHTML = `<i class="fas fa-circle-check text-emerald-500"></i> ${sanitizeInput(row.name)} <span class="text-slate-400">(${sanitizeInput(row.email)})</span>`;
+    } catch (err) {
+      fail++;
+      line.innerHTML = `<i class="fas fa-circle-xmark text-rose-500"></i> ${sanitizeInput(row.name)} <span class="text-rose-400">-- ${sanitizeInput(err.message)}</span>`;
+    }
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fas fa-upload"></i> Crear Cuentas';
+  window.showToast(`<i class="fas fa-circle-check"></i> ${ok} creado(s), ${fail} con error`, ok > 0 ? 'success' : 'error');
+  if (ok > 0 && typeof window.loadTeachers === 'function') window.loadTeachers();
+};
 
 window.openAssignTeacherModal = function openAssignTeacherModal(teacherId, teacherName) {
   const sanitizeInput = window.sanitizeInput || ((v) => v);
