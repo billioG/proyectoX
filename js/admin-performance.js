@@ -26,10 +26,15 @@ async function loadAdminTeacherPerformance() {
             ]);
 
             // Cuentas de prueba interna -- no deben contaminar el reporte real.
-            const teachers = (teachersRes.data || []).filter(t => !window.isTestTeacherEmail?.(t.email));
-            const ratings = ratingsRes.data || [];
-            const evaluations = evalsRes.data || [];
-            const activeTime = activeTimeRes.data || [];
+            // (ratings/evaluations también hay que filtrarlos por separado --
+            // el desglose por docente ya excluía la cuenta de prueba porque
+            // itera sobre `teachers` ya filtrado, pero los totales agregados
+            // de abajo usan estos arrays crudos directamente.)
+            const testTeacherIds = new Set((teachersRes.data || []).filter(t => window.isTestTeacherEmail?.(t.email)).map(t => t.id));
+            const teachers = (teachersRes.data || []).filter(t => !testTeacherIds.has(t.id));
+            const ratings = (ratingsRes.data || []).filter(r => !testTeacherIds.has(r.teacher_id));
+            const evaluations = (evalsRes.data || []).filter(e => !testTeacherIds.has(e.teacher_id));
+            const activeTime = (activeTimeRes.data || []).filter(a => !testTeacherIds.has(a.user_id));
 
             const secondsByTeacher = new Map();
             activeTime.forEach(r => secondsByTeacher.set(r.user_id, (secondsByTeacher.get(r.user_id) || 0) + (r.total_seconds || 0)));

@@ -55,9 +55,14 @@ window.loadAdminSuccessHub = async function loadAdminSuccessHub() {
                 const student = Array.isArray(p.students) ? p.students[0] : p.students;
                 return !student || !window.isTestSchoolCode(testSchoolCodes, student.school_code);
             });
-            const teachers = (teachersRes.data || []).filter(t => !window.isTestTeacherEmail?.(t.email));
-            const ratings = ratingsRes.data || [];
-            const evaluations = evalsRes.data || [];
+            const testTeacherIds = new Set((teachersRes.data || []).filter(t => window.isTestTeacherEmail?.(t.email)).map(t => t.id));
+            const teachers = (teachersRes.data || []).filter(t => !testTeacherIds.has(t.id));
+            // Bug: los totales agregados (Total Evaluaciones, Proyectos
+            // Calificados) usaban estos arrays crudos sin filtrar -- el
+            // desglose por docente sí excluía la cuenta de prueba, pero las
+            // tarjetas de arriba seguían sumando sus ratings/evaluaciones.
+            const ratings = (ratingsRes.data || []).filter(r => !testTeacherIds.has(r.teacher_id));
+            const evaluations = (evalsRes.data || []).filter(e => !testTeacherIds.has(e.teacher_id));
 
             // Calculate teacher performance KPIs
             const performanceData = teachers.map(t => {
