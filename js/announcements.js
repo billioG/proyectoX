@@ -1,7 +1,7 @@
 /**
  * AVISOS -- docente a su clase asignada, admin a estudiantes/docentes/todos.
- * Solo dentro de la app (no usa push) -- reusa el mismo icono de campana
- * del header para todos los roles.
+ * Además del punto rojo en la campana del header (in-app), manda push real
+ * vía notify-announcement al enviarse.
  */
 
 window.loadAnnouncementsUnreadCount = async function loadAnnouncementsUnreadCount() {
@@ -264,7 +264,7 @@ window.sendAnnouncement = async function sendAnnouncement(classOptions) {
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
 
-  const { error } = await window._supabase.from('announcements').insert(payload);
+  const { data: inserted, error } = await window._supabase.from('announcements').insert(payload).select().single();
 
   if (error) {
     window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
@@ -273,11 +273,29 @@ window.sendAnnouncement = async function sendAnnouncement(classOptions) {
     return;
   }
 
+  // Antes los avisos eran explícitamente "solo dentro de la app, sin push"
+  // -- el destinatario solo se enteraba si tenía la pestaña abierta en ese
+  // momento y veía el punto rojo en la campana.
+  if (inserted?.id) window.sendAnnouncementPush(inserted.id);
+
   window.showToast('<i class="fas fa-circle-check"></i> Aviso enviado', 'success');
   document.getElementById('send-announcement-modal')?.remove();
   document.getElementById('announcements-inbox-modal')?.remove();
   window.openAnnouncementsInbox();
 }
+
+window.sendAnnouncementPush = async function sendAnnouncementPush(announcementId) {
+  try {
+    const { data: { session } } = await window._supabase.auth.getSession();
+    await fetch(`${window.SUPABASE_URL}/functions/v1/notify-announcement`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
+      body: JSON.stringify({ announcement_id: announcementId }),
+    });
+  } catch (err) {
+    console.error('Error enviando push de aviso:', err);
+  }
+};
 
 if (typeof window !== 'undefined') {
   window.addEventListener('load', () => {
