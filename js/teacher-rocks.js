@@ -67,6 +67,15 @@ window.completeRock = async function completeRock(rockId, evidenceUrl = null, no
         const user = window.currentUser;
         if (!user || !window._supabase) return null;
 
+        // Bug real: acá siempre se insertaba xp_awarded=0, incluso para
+        // tareas SIN evidencia que quedan auto-aprobadas al toque
+        // (approval_status:'approved' de una). El único lugar que ponía el
+        // xp_value real era approveRock() -- acción manual de admin -- que
+        // nunca corre para una tarea que ya nació aprobada. Resultado: la
+        // tarea se veía "Aprobada" pero el bono nunca sumaba nada.
+        const needsApproval = !!evidenceUrl;
+        const { data: rock } = await window._supabase.from('teacher_rocks').select('xp_value').eq('id', rockId).maybeSingle();
+
         const { data, error } = await window._supabase
             .from('teacher_rock_completions')
             .insert({
@@ -74,9 +83,9 @@ window.completeRock = async function completeRock(rockId, evidenceUrl = null, no
                 rock_id: rockId,
                 evidence_url: evidenceUrl,
                 notes: notes,
-                requires_approval: evidenceUrl ? true : false,
-                approval_status: evidenceUrl ? 'pending' : 'approved',
-                xp_awarded: 0
+                requires_approval: needsApproval,
+                approval_status: needsApproval ? 'pending' : 'approved',
+                xp_awarded: needsApproval ? 0 : (rock?.xp_value || 0)
             })
             .select()
             .single();

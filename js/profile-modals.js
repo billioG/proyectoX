@@ -123,7 +123,11 @@ window.openUploadPhotoModal = function openUploadPhotoModal() {
   const modal = document.createElement('div');
   modal.className = 'fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn';
   modal.id = 'upload-photo-modal';
-  modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+  // Sin cerrar-al-tocar-afuera -- en móvil, volver del picker nativo de
+  // cámara/galería a veces dispara un click "fantasma" sobre el fondo del
+  // modal, cerrándolo antes de que la foto llegue a procesarse (por eso
+  // "desde el dispositivo no dejó cambiar foto"). El resto de los modales
+  // de la app tampoco usan este patrón -- se cierra con el botón Cancelar.
 
   modal.innerHTML = `
       <div class="glass-card w-full max-w-sm p-0 shadow-2xl animate-slideUp bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 overflow-hidden">

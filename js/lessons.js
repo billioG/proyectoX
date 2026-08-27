@@ -1159,7 +1159,7 @@ window.openSharedCoursesLibrary = async function openSharedCoursesLibrary() {
   document.body.appendChild(modal);
 
   const { data: courses, error } = await _supabase.from('courses')
-    .select('*, teachers(full_name), schools(name), lessons(id), course_feedback(liked, teacher_id)')
+    .select('*, teachers(full_name), schools(name), lessons(id)')
     .eq('is_shared', true)
     .neq('created_by', currentUser.id)
     .order('created_at', { ascending: false });
@@ -1168,6 +1168,24 @@ window.openSharedCoursesLibrary = async function openSharedCoursesLibrary() {
   if (!listEl) return;
 
   if (error) { listEl.innerHTML = `<p class="text-rose-500 text-xs">Error: ${error.message}</p>`; return; }
+
+  // Los likes/feedback son un extra -- si course_feedback todavía no existe
+  // (migración pendiente) o falla por lo que sea, no debe tumbar TODA la
+  // biblioteca, solo mostrarse sin esa parte.
+  if (courses?.length) {
+    try {
+      const courseIds = courses.map(c => c.id);
+      const { data: feedback } = await _supabase.from('course_feedback').select('course_id, liked, teacher_id').in('course_id', courseIds);
+      const byCourse = new Map();
+      (feedback || []).forEach(f => {
+        if (!byCourse.has(f.course_id)) byCourse.set(f.course_id, []);
+        byCourse.get(f.course_id).push(f);
+      });
+      courses.forEach(c => { c.course_feedback = byCourse.get(c.id) || []; });
+    } catch (e) {
+      courses.forEach(c => { c.course_feedback = []; });
+    }
+  }
   if (!courses?.length) { listEl.innerHTML = '<div class="glass-card p-10 text-center text-slate-400 text-sm">Todavía no hay cursos compartidos por otros docentes.</div>'; return; }
 
   window._sharedLibraryCache = courses;

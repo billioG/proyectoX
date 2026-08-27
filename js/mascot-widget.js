@@ -469,14 +469,22 @@ const MascotWidget = {
             // Antes se mandaba SOLO el mensaje actual, sin nada de lo dicho
             // antes -- por eso "continuá" no continuaba nada, la IA no tenía
             // memoria real de la conversación (cada request era independiente).
+            //
+            // BUG: esta variable se llamaba `history` también, tapando (shadowing)
+            // al `history` de arriba (el elemento del DOM) dentro de este bloque
+            // try -- la respuesta SÍ se guardaba en la base, pero nunca se
+            // pintaba en pantalla porque `history.innerHTML += ...` estaba
+            // escribiendo sobre el array, no sobre el DOM. Por eso la
+            // respuesta "aparecía" recién al cerrar y volver a abrir el chat
+            // (ahí renderChatHistory() sí lee de la base de cero).
             const { data: priorMessages } = await window._supabase.from('mascot_chat_messages')
                 .select('role, content').eq('user_id', window.currentUser.id)
                 .order('created_at', { ascending: false }).limit(11);
-            const history = (priorMessages || []).reverse().slice(0, -1).slice(-10);
+            const chatHistory = (priorMessages || []).reverse().slice(0, -1).slice(-10);
 
             const context = `Usuario: ${window.userData?.full_name || ''}, Rol: ${window.userRole}, Racha: ${window.userData?.streak || 0}`;
-            const response = await AIService.ask(text, context, false, history);
-            document.getElementById(loadingId).remove();
+            const response = await AIService.ask(text, context, false, chatHistory);
+            document.getElementById(loadingId)?.remove();
 
             history.innerHTML += this.assistantBubbleHtml(response);
             history.scrollTop = history.scrollHeight;
