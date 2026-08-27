@@ -156,11 +156,13 @@ function renderTeacherPerformanceHTML(container, data, kpis) {
             </div>
         </div>
 
-        <!-- Individual Teacher Performance Table -->
+        <!-- Antes esto eran DOS secciones separadas ("Desglose Individual" y
+        "Docentes Más Activos") mostrando exactamente a los mismos docentes
+        con datos distintos -- se unifica en una sola tarjeta por docente. -->
         <div class="card-header" style="margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
             <div>
                 <h3 style="margin:0; font-size: 1.1rem;"><i class="fas fa-chart-line"></i> Desglose Individual por Docente</h3>
-                <p style="color: var(--text-light); margin: 2px 0 0 0; font-size: 0.8rem;">Análisis detallado de cada docente basado en evaluaciones</p>
+                <p style="color: var(--text-light); margin: 2px 0 0 0; font-size: 0.8rem;">Evaluaciones, satisfacción y actividad real -- ordenado por más activo</p>
             </div>
             <button class="btn-primary" onclick="window.loadAdminTeacherPerformance()" style="padding: 8px 16px; font-size: 0.8rem;">
                 <i class="fas fa-sync-alt"></i> Actualizar
@@ -168,83 +170,53 @@ function renderTeacherPerformanceHTML(container, data, kpis) {
         </div>
 
         <div style="display: flex; flex-direction: column; gap: 10px;">
-            ${data.map(t => {
-                const perfColor = getPerfColor(t.avgRating);
-                const perfLabel = t.avgRating >= 4.5 ? 'Sobresaliente' : (t.avgRating >= 3.5 ? 'Competente' : (t.avgRating > 0 ? 'Bajo Desempeño' : 'Sin Datos'));
-                const perfIcon = t.avgRating >= 4.5 ? 'fa-star' : (t.avgRating >= 3.5 ? 'fa-circle-check' : (t.avgRating > 0 ? 'fa-triangle-exclamation' : 'fa-circle-xmark'));
-                return `
-                <div class="section-card" style="padding:16px 18px; ${!t.isActive ? 'opacity:0.55;' : ''}">
-                    <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
-                        <div style="width:44px; height:44px; border-radius:14px; overflow:hidden; background:var(--light-gray); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                            ${t.profile_photo_url ? `<img src="${t.profile_photo_url}" style="width:100%; height:100%; object-fit:cover;">` : '<i class="fas fa-user-tie" style="opacity:0.4;"></i>'}
-                        </div>
-                        <div style="flex: 1; min-width: 180px;">
-                            <strong style="display:block; font-size:0.95rem;">${t.full_name}</strong>
-                            <small style="color: var(--text-light);">${t.email}</small>
-                        </div>
-                        <div style="display:flex; align-items:center; gap:6px;">
-                            <span style="font-size:1.3rem; font-weight:800; color: ${perfColor};">${t.avgRating}</span>
-                            <div style="color: #f59e0b; font-size: 0.75rem;">
-                                ${'<i class="fas fa-star"></i>'.repeat(Math.round(t.avgRating))}${'<i class="fas fa-star" style="opacity:0.2;"></i>'.repeat(5 - Math.round(t.avgRating))}
-                            </div>
-                        </div>
-                        <span style="background:${perfColor}18; color:${perfColor}; font-size:0.65rem; font-weight:800; text-transform:uppercase; letter-spacing:0.03em; padding:4px 10px; border-radius:999px; white-space:nowrap;">
-                            <i class="fas ${perfIcon}"></i> ${perfLabel}
-                        </span>
-                    </div>
-                    <div style="display:flex; gap:24px; margin-top:12px; padding-top:12px; border-top:1px solid rgba(148,163,184,0.15);">
-                        <div>
-                            <div style="font-size:1.1rem; font-weight:800; line-height:1;">${t.totalRatings}</div>
-                            <div style="font-size:0.6rem; text-transform:uppercase; color: var(--text-light); font-weight:700; letter-spacing:0.05em; margin-top:2px;">Evaluaciones Recibidas</div>
-                        </div>
-                        <div>
-                            <div style="font-size:1.1rem; font-weight:800; line-height:1;">${t.totalEvals}</div>
-                            <div style="font-size:0.6rem; text-transform:uppercase; color: var(--text-light); font-weight:700; letter-spacing:0.05em; margin-top:2px;">Proyectos Evaluados</div>
-                        </div>
-                    </div>
-                </div>
-                `;
-            }).join('')}
-        </div>
-
-        <!-- Docentes más activos: conexión reciente + tiempo real de interacción -->
-        <div style="margin: 40px 0 18px;">
-            <h3 style="margin:0; font-size: 1.1rem; display:flex; align-items:center; gap:8px;"><i class="fas fa-bolt" style="color:#f59e0b;"></i> Docentes Más Activos</h3>
-            <p style="color: var(--text-light); margin: 4px 0 0 0; font-size: 0.8rem;">Última conexión y tiempo real de interacción (últimos 30 días -- exige actividad, no solo pestaña abierta)</p>
-        </div>
-        <div style="display: flex; flex-direction: column; gap: 10px;">
             ${(() => {
                 const sorted = [...data].sort((a, b) => b.activeSeconds30d - a.activeSeconds30d);
-                const maxSeconds = Math.max(1, ...sorted.map(t => t.activeSeconds30d));
-                const medalColors = ['#f59e0b', '#94a3b8', '#b45309'];
-                return sorted.map((t, i) => {
+                return sorted.map(t => {
+                    const perfColor = getPerfColor(t.avgRating);
+                    const perfLabel = t.avgRating >= 4.5 ? 'Sobresaliente' : (t.avgRating >= 3.5 ? 'Competente' : (t.avgRating > 0 ? 'Bajo Desempeño' : 'Sin Datos'));
+                    const perfIcon = t.avgRating >= 4.5 ? 'fa-star' : (t.avgRating >= 3.5 ? 'fa-circle-check' : (t.avgRating > 0 ? 'fa-triangle-exclamation' : 'fa-circle-xmark'));
                     const hours = Math.floor(t.activeSeconds30d / 3600);
                     const minutes = Math.floor((t.activeSeconds30d % 3600) / 60);
                     const connLabel = t.daysSinceLogin === null ? 'Nunca conectó' : t.daysSinceLogin === 0 ? 'Hoy' : `Hace ${t.daysSinceLogin} día(s)`;
                     const connColor = t.daysSinceLogin === null ? '#94a3b8' : t.daysSinceLogin <= 3 ? '#10b981' : '#f59e0b';
                     const connBg = t.daysSinceLogin === null ? 'rgba(148,163,184,0.12)' : t.daysSinceLogin <= 3 ? 'rgba(16,185,129,0.12)' : 'rgba(245,158,11,0.12)';
-                    const pct = Math.max(4, Math.round((t.activeSeconds30d / maxSeconds) * 100));
-                    const rankBadge = i < 3
-                        ? `<div style="width:36px; height:36px; border-radius:12px; background:${medalColors[i]}22; color:${medalColors[i]}; display:flex; align-items:center; justify-content:center; font-size:1rem;"><i class="fas fa-medal"></i></div>`
-                        : `<div style="width:36px; height:36px; border-radius:12px; background:rgba(148,163,184,0.1); color:#94a3b8; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:0.85rem;">${i + 1}</div>`;
                     return `
-                    <div class="section-card" style="display:flex; align-items:center; gap:16px; padding:16px 18px;">
-                        ${rankBadge}
-                        <div style="width:44px; height:44px; border-radius:14px; overflow:hidden; background:var(--light-gray); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                            ${t.profile_photo_url ? `<img src="${t.profile_photo_url}" style="width:100%; height:100%; object-fit:cover;">` : '<i class="fas fa-user-tie" style="opacity:0.4;"></i>'}
-                        </div>
-                        <div style="flex: 1; min-width: 0;">
-                            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:6px;">
-                                <strong style="font-size:0.95rem;">${t.full_name}</strong>
-                                <span style="background:${connBg}; color:${connColor}; font-size:0.65rem; font-weight:800; text-transform:uppercase; letter-spacing:0.03em; padding:2px 8px; border-radius:999px;">${connLabel}</span>
+                    <div class="section-card" style="padding:16px 18px; ${!t.isActive ? 'opacity:0.55;' : ''}">
+                        <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+                            <div style="width:44px; height:44px; border-radius:14px; overflow:hidden; background:var(--light-gray); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                                ${t.profile_photo_url ? `<img src="${t.profile_photo_url}" style="width:100%; height:100%; object-fit:cover;">` : '<i class="fas fa-user-tie" style="opacity:0.4;"></i>'}
                             </div>
-                            <div style="height:6px; width:100%; background:rgba(148,163,184,0.15); border-radius:999px; overflow:hidden;">
-                                <div style="height:100%; width:${pct}%; background:linear-gradient(90deg,#6366f1,#22d3ee); border-radius:999px;"></div>
+                            <div style="flex: 1; min-width: 180px;">
+                                <strong style="display:block; font-size:0.95rem;">${t.full_name}</strong>
+                                <small style="color: var(--text-light);">${t.email}</small>
                             </div>
+                            <div style="display:flex; align-items:center; gap:6px;">
+                                <span style="font-size:1.3rem; font-weight:800; color: ${perfColor};">${t.avgRating}</span>
+                                <div style="color: #f59e0b; font-size: 0.75rem;">
+                                    ${'<i class="fas fa-star"></i>'.repeat(Math.round(t.avgRating))}${'<i class="fas fa-star" style="opacity:0.2;"></i>'.repeat(5 - Math.round(t.avgRating))}
+                                </div>
+                            </div>
+                            <span style="background:${perfColor}18; color:${perfColor}; font-size:0.65rem; font-weight:800; text-transform:uppercase; letter-spacing:0.03em; padding:4px 10px; border-radius:999px; white-space:nowrap;">
+                                <i class="fas ${perfIcon}"></i> ${perfLabel}
+                            </span>
+                            <span style="background:${connBg}; color:${connColor}; font-size:0.65rem; font-weight:800; text-transform:uppercase; letter-spacing:0.03em; padding:4px 10px; border-radius:999px; white-space:nowrap;">
+                                ${connLabel}
+                            </span>
                         </div>
-                        <div style="text-align:right; flex-shrink:0; min-width:70px;">
-                            <div style="font-size:1.1rem; font-weight:800; line-height:1;">${hours}h ${minutes}m</div>
-                            <div style="font-size:0.6rem; text-transform:uppercase; color: var(--text-light); font-weight:700; letter-spacing:0.05em; margin-top:2px;">30 días</div>
+                        <div style="display:flex; gap:24px; margin-top:12px; padding-top:12px; border-top:1px solid rgba(148,163,184,0.15); flex-wrap:wrap;">
+                            <div>
+                                <div style="font-size:1.1rem; font-weight:800; line-height:1;">${t.totalRatings}</div>
+                                <div style="font-size:0.6rem; text-transform:uppercase; color: var(--text-light); font-weight:700; letter-spacing:0.05em; margin-top:2px;">Evaluaciones Recibidas</div>
+                            </div>
+                            <div>
+                                <div style="font-size:1.1rem; font-weight:800; line-height:1;">${t.totalEvals}</div>
+                                <div style="font-size:0.6rem; text-transform:uppercase; color: var(--text-light); font-weight:700; letter-spacing:0.05em; margin-top:2px;">Proyectos Evaluados</div>
+                            </div>
+                            <div>
+                                <div style="font-size:1.1rem; font-weight:800; line-height:1;">${hours}h ${minutes}m</div>
+                                <div style="font-size:0.6rem; text-transform:uppercase; color: var(--text-light); font-weight:700; letter-spacing:0.05em; margin-top:2px;">Tiempo en Plataforma (30d)</div>
+                            </div>
                         </div>
                     </div>
                     `;

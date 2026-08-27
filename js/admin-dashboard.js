@@ -271,8 +271,11 @@ window.renderDashboardUI = function renderDashboardUI(container, stats, teachers
         <div class="glass-card p-0 bg-white dark:bg-slate-900 overflow-hidden shadow-2xl">
             <div class="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
                 <h3 class="text-xl font-black text-slate-800 dark:text-white flex items-center gap-3">
-                    <i class="fas fa-chalkboard-teacher text-indigo-500"></i> Ranking Docente Global
+                    <i class="fas fa-chalkboard-teacher text-indigo-500"></i> Top 5 Docentes
                 </h3>
+                <button onclick="window.nav('admin-teacher-performance')" class="text-xs font-black uppercase text-primary hover:underline">
+                    Ver Desglose Completo <i class="fas fa-arrow-right"></i>
+                </button>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
@@ -284,7 +287,7 @@ window.renderDashboardUI = function renderDashboardUI(container, stats, teachers
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                        ${teachers.map(t => window.renderTeacherRow(t, stats)).join('')}
+                        ${teachers.slice(0, 5).map(t => window.renderTeacherRow(t, stats)).join('')}
                     </tbody>
                 </table>
             </div>
