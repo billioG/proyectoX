@@ -25,7 +25,8 @@ async function loadAdminTeacherPerformance() {
                 _supabase.from('active_time_tracking').select('user_id, total_seconds').eq('role', 'docente').gte('activity_date', thirtyDaysAgo),
             ]);
 
-            const teachers = teachersRes.data || [];
+            // Cuentas de prueba interna -- no deben contaminar el reporte real.
+            const teachers = (teachersRes.data || []).filter(t => !window.isTestTeacherEmail?.(t.email));
             const ratings = ratingsRes.data || [];
             const evaluations = evalsRes.data || [];
             const activeTime = activeTimeRes.data || [];
@@ -38,7 +39,8 @@ async function loadAdminTeacherPerformance() {
                 const tr = ratings.filter(r => r.teacher_id === t.id);
                 const te = evaluations.filter(e => e.teacher_id === t.id);
                 const avg = tr.length > 0 ? (tr.reduce((s, r) => s + r.rating, 0) / tr.length).toFixed(1) : 0;
-                const daysSinceLogin = t.last_login ? Math.floor((Date.now() - new Date(t.last_login + 'T00:00:00').getTime()) / 86400000) : null;
+                const lastLoginDate = t.last_login ? new Date(t.last_login.includes('T') ? t.last_login : t.last_login + 'T00:00:00') : null;
+                const daysSinceLogin = lastLoginDate && !isNaN(lastLoginDate.getTime()) ? Math.floor((Date.now() - lastLoginDate.getTime()) / 86400000) : null;
 
                 return {
                     ...t,
@@ -155,7 +157,7 @@ function renderTeacherPerformanceHTML(container, data, kpis) {
                 <h3 style="margin:0; font-size: 1.1rem;"><i class="fas fa-chart-line"></i> Desglose Individual por Docente</h3>
                 <p style="color: var(--text-light); margin: 2px 0 0 0; font-size: 0.8rem;">Análisis detallado de cada docente basado en evaluaciones</p>
             </div>
-            <button class="btn-primary" onclick="loadAdminTeacherPerformance()" style="padding: 8px 16px; font-size: 0.8rem;">
+            <button class="btn-primary" onclick="window.loadAdminTeacherPerformance()" style="padding: 8px 16px; font-size: 0.8rem;">
                 <i class="fas fa-sync-alt"></i> Actualizar
             </button>
         </div>
@@ -264,3 +266,9 @@ function getPerfColor(score) {
     if (score >= 2.5) return '#f59e0b';
     return '#ef4444';
 }
+
+// Este archivo se carga vía import() dinámico (ver main.js loadModule) --
+// sin exportar a window, main.js nunca podía llamar a esta función y el
+// botón "Actualizar" (onclick inline, que corre en scope global) tampoco
+// la encontraba. Por eso la pantalla se quedaba en blanco al entrar.
+window.loadAdminTeacherPerformance = loadAdminTeacherPerformance;

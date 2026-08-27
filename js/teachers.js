@@ -94,7 +94,8 @@ window.renderTeachersContent = function renderTeachersContent(container, teacher
           ${teachers.map(t => {
             // "ACTIVO" era texto fijo, siempre igual sin importar el docente --
             // ahora depende de si entró en los últimos 3 días.
-            const daysSinceLogin = t.last_login ? Math.floor((Date.now() - new Date(t.last_login + 'T00:00:00').getTime()) / 86400000) : null;
+            const lastLoginDate = t.last_login ? new Date(t.last_login.includes('T') ? t.last_login : t.last_login + 'T00:00:00') : null;
+            const daysSinceLogin = lastLoginDate && !isNaN(lastLoginDate.getTime()) ? Math.floor((Date.now() - lastLoginDate.getTime()) / 86400000) : null;
             const isRecentlyActive = daysSinceLogin !== null && daysSinceLogin <= 3;
             const statusBadge = isRecentlyActive
               ? `<div class="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-900/10 text-emerald-600 dark:text-emerald-400 text-[0.6rem] font-bold uppercase tracking-widest border border-emerald-500/10 flex items-center gap-1"><i class="fas fa-circle text-[0.4rem]"></i> ACTIVO</div>`
@@ -127,7 +128,7 @@ window.renderTeachersContent = function renderTeachersContent(container, teacher
                              <div class="text-lg font-bold text-indigo-500">${t.evalCount || 0}</div>
                          </div>
                     </div>
-                    <p class="text-[0.6rem] text-slate-400 font-bold uppercase tracking-widest mb-4"><i class="fas fa-clock"></i> Última conexión: ${t.last_login ? new Date(t.last_login + 'T00:00:00').toLocaleDateString('es-GT') : 'Nunca'}</p>
+                    <p class="text-[0.6rem] text-slate-400 font-bold uppercase tracking-widest mb-4"><i class="fas fa-clock"></i> Última conexión: ${lastLoginDate ? lastLoginDate.toLocaleDateString('es-GT') : 'Nunca'}</p>
 
                     <div class="grid grid-cols-2 gap-2">
                         <button onclick="window.viewTeacherAssignments('${t.id}', '${sanitizeInput(t.full_name)}')" class="py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-900/20 dark:hover:text-indigo-400 text-xs font-bold uppercase tracking-wider transition-all border border-transparent hover:border-indigo-200">

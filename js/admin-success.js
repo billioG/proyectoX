@@ -46,7 +46,16 @@ window.loadAdminSuccessHub = async function loadAdminSuccessHub() {
             if (projectsRes.error) throw projectsRes.error;
             if (studentsRes.error) throw studentsRes.error;
 
-            const teachers = teachersRes.data || [];
+            // Cuentas/establecimiento de prueba interna -- no deben contaminar
+            // las métricas reales de Customer Success.
+            const testSchoolCodes = window.getTestSchoolCodes ? window.getTestSchoolCodes(schoolsRes.data) : new Set();
+            const schools = (schoolsRes.data || []).filter(s => !testSchoolCodes.has(s.code));
+            const allStudents = (studentsRes.data || []).filter(s => !testSchoolCodes.has(s.school_code));
+            const allProjects = (projectsRes.data || []).filter(p => {
+                const student = Array.isArray(p.students) ? p.students[0] : p.students;
+                return !student || !testSchoolCodes.has(student.school_code);
+            });
+            const teachers = (teachersRes.data || []).filter(t => !window.isTestTeacherEmail?.(t.email));
             const ratings = ratingsRes.data || [];
             const evaluations = evalsRes.data || [];
 
@@ -82,9 +91,9 @@ window.loadAdminSuccessHub = async function loadAdminSuccessHub() {
             };
 
             return {
-                schools: schoolsRes.data || [],
-                allProjects: projectsRes.data || [],
-                allStudents: studentsRes.data || [],
+                schools,
+                allProjects,
+                allStudents,
                 kpis: aggregatedKPIs
             };
         }, (res) => {

@@ -383,7 +383,7 @@ window.renderStudentsList = function renderStudentsList(container, students) {
                         <span class="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[0.55rem] font-bold text-slate-500 uppercase tracking-widest">${s.grade} ${s.section}</span>
                         <span class="text-[0.6rem] font-mono text-slate-400">@${s.username || 'sin-usuario'}</span>
                     </div>
-                    <p class="text-[0.55rem] text-slate-400 mt-0.5"><i class="fas fa-clock"></i> ${s.last_login ? new Date(s.last_login + 'T00:00:00').toLocaleDateString('es-GT') : 'Nunca conectó'}</p>
+                    <p class="text-[0.55rem] text-slate-400 mt-0.5"><i class="fas fa-clock"></i> ${(() => { if (!s.last_login) return 'Nunca conectó'; const d = new Date(s.last_login.includes('T') ? s.last_login : s.last_login + 'T00:00:00'); return isNaN(d.getTime()) ? 'Nunca conectó' : d.toLocaleDateString('es-GT'); })()}</p>
                   </div>
                   
                   ${window.userRole === 'admin' ? `

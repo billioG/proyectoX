@@ -27,15 +27,19 @@ async function loadTeamPerformanceDashboard() {
             _supabase.from('schools').select('id, code, projects_per_bimestre')
         ]);
 
-        const teachers = teachersRes.data || [];
-        const attendanceRaw = attendanceRes.data || [];
-        const evaluations = evalsRes.data || [];
-        const evidence = weeklyEvidenceRes.data || [];
-        const reports = monthlyReportsRes.data || [];
-        const assignments = assignmentsRes.data || [];
-        const approvedWaivers = waiversRes.data || [];
-        const allGroups = groupsRes.data || [];
-        const schools = schoolsRes.data || [];
+        // Cuentas/establecimiento de prueba interna -- no deben contaminar
+        // el widget agregado de desempeño del equipo docente.
+        const testSchoolCodes = window.getTestSchoolCodes ? window.getTestSchoolCodes(schoolsRes.data) : new Set();
+        const teachers = (teachersRes.data || []).filter(t => !window.isTestTeacherEmail?.(t.email));
+        const testTeacherIds = new Set((teachersRes.data || []).filter(t => window.isTestTeacherEmail?.(t.email)).map(t => t.id));
+        const attendanceRaw = (attendanceRes.data || []).filter(r => !testTeacherIds.has(r.teacher_id));
+        const evaluations = (evalsRes.data || []).filter(e => !testTeacherIds.has(e.teacher_id));
+        const evidence = (weeklyEvidenceRes.data || []).filter(e => !testTeacherIds.has(e.teacher_id));
+        const reports = (monthlyReportsRes.data || []).filter(r => !testTeacherIds.has(r.teacher_id));
+        const assignments = (assignmentsRes.data || []).filter(a => !testTeacherIds.has(a.teacher_id) && !testSchoolCodes.has(a.school_code));
+        const approvedWaivers = (waiversRes.data || []).filter(w => !testTeacherIds.has(w.teacher_id));
+        const allGroups = (groupsRes.data || []).filter(g => !testSchoolCodes.has(g.school_code));
+        const schools = (schoolsRes.data || []).filter(s => !testSchoolCodes.has(s.code));
 
         // Filtrar docentes activos (con al menos una asignación)
         const activeTeachers = teachers.filter(t => assignments.some(a => a.teacher_id === t.id));
