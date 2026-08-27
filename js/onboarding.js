@@ -227,7 +227,15 @@ async function syncMobileSidebarForSelector(selector) {
   await new Promise((resolve) => setTimeout(resolve, 350));
 }
 
-function buildDriverSteps(rawSteps) {
+// driver.js llama a onNextClick() SIN ARGUMENTOS (no manda {element, step,
+// driver} como parecía sugerir la documentación) -- el código anterior
+// desestructuraba `opts.driver` de un `opts` undefined, tiraba un
+// TypeError silencioso ANTES de llegar a moveNext(), y driver.js se quedaba
+// recalculando el highlight del elemento VIEJO (ya oculto por el nav() que
+// sí llegó a correr) -- de ahí que todo cayera a la esquina superior
+// izquierda. Se resuelve pasando la instancia por closure en vez de por
+// argumento.
+function buildDriverSteps(rawSteps, getDriverObj) {
   return rawSteps.map((s, i) => {
     const next = rawSteps[i + 1];
     return {
@@ -238,13 +246,13 @@ function buildDriverSteps(rawSteps) {
         side: s.side || 'right',
         align: 'start',
       },
-      onNextClick: next ? async (_el, _step, opts) => {
+      onNextClick: next ? async () => {
         if (typeof next.before === 'function') {
           try { next.before(); } catch (e) { console.error('Error en paso de onboarding:', e); }
         }
         await syncMobileSidebarForSelector(next.element);
-        await waitForSelector(next.element, 3000);
-        opts.driver.moveNext();
+        await waitForSelector(next.element, 5000);
+        getDriverObj().moveNext();
       } : undefined,
     };
   });
@@ -263,7 +271,8 @@ async function runGuidedTour(rawSteps) {
     await waitForSelector(rawSteps[0].element, 2000);
   }
 
-  const driverObj = window.driver.js.driver({
+  let driverObj;
+  driverObj = window.driver.js.driver({
     showProgress: true,
     allowClose: true,
     overlayColor: 'rgb(2, 6, 23)',
@@ -272,7 +281,7 @@ async function runGuidedTour(rawSteps) {
     doneBtnText: '¡Listo! <i class="fas fa-rocket"></i>',
     progressText: '{{current}} de {{total}}',
     onDestroyed: () => completeOnboarding(),
-    steps: buildDriverSteps(rawSteps),
+    steps: buildDriverSteps(rawSteps, () => driverObj),
   });
 
   driverObj.drive();
