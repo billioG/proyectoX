@@ -253,6 +253,25 @@ function decompressData(obj) {
     }
     return decompressed;
 }
+// PostgREST corta en silencio a 1000 filas si no se pide rango explícito --
+// con la base ya superando esa cifra en `students`, varias consultas
+// agregadas (dashboard, salud por establecimiento, exportaciones) venían
+// devolviendo datos incompletos sin ningún error visible. `buildQuery`
+// recibe el cliente supabase y debe devolver una query nueva SIN .range()
+// (se le agrega acá) -- se le vuelve a llamar en cada página porque una
+// query de Supabase no se puede reutilizar/clonar tras ejecutarse.
+async function fetchAllRows(buildQuery, pageSize = 1000) {
+  let rows = [];
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await buildQuery().range(from, from + pageSize - 1);
+    if (error) throw error;
+    rows = rows.concat(data || []);
+    if (!data || data.length < pageSize) break;
+  }
+  return rows;
+}
+window.fetchAllRows = fetchAllRows;
+
 // Compatibilidad Legacy
 window.syncSystemConfig = syncSystemConfig;
 window.saveSystemConfig = saveSystemConfig;

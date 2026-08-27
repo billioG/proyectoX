@@ -36,7 +36,11 @@ window.loadAdminSuccessHub = async function loadAdminSuccessHub() {
             const [schoolsRes, projectsRes, studentsRes, teachersRes, ratingsRes, evalsRes] = await Promise.all([
                 window._supabase.from('schools').select('*'),
                 window._supabase.from('projects').select('id, created_at, students(school_code)'),
-                window._supabase.from('students').select('id, school_code'),
+                // Paginado -- ya supera las 1000 filas del límite por
+                // defecto de Supabase, que hacía subestimar studentCount
+                // (y por lo tanto el "health score") de establecimientos
+                // grandes cuyos alumnos caían después del corte.
+                window.fetchAllRows(() => window._supabase.from('students').select('id, school_code')).then(data => ({ data, error: null })),
                 window._supabase.from('teachers').select('*'),
                 window._supabase.from('teacher_ratings').select('rating, teacher_id, message, created_at, students(full_name)'),
                 window._supabase.from('evaluations').select('id, teacher_id')

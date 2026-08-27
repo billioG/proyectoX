@@ -245,15 +245,21 @@ window.loadStudents = async function loadStudents() {
         assignments = data || [];
       }
 
-      // 2. Query base de estudiantes
-      let query = _supabase.from('students').select('*, schools(name, code, address)');
-      if (userRole === 'docente' && assignments.length > 0) {
-        const schoolCodes = [...new Set(assignments.map(a => a.school_code))];
-        query = query.in('school_code', schoolCodes);
-      }
-
-      const { data: allStudents, error } = await query.order('school_code, grade, section, full_name');
-      if (error) throw error;
+      // 2. Query base de estudiantes -- paginada (ver fetchAllRows en
+      // utils.js). Sin esto, Supabase corta en silencio a las primeras 1000
+      // filas: con ~1800 alumnos reales, un establecimiento a mitad del
+      // corte se veía con menos alumnos de los que en realidad tiene, y los
+      // que venían después en el orden ni aparecían -- parecía que se
+      // habían "perdido" alumnos y establecimientos enteros, pero nunca se
+      // tocó la base de datos.
+      const allStudents = await window.fetchAllRows(() => {
+        let query = _supabase.from('students').select('*, schools(name, code, address)');
+        if (userRole === 'docente' && assignments.length > 0) {
+          const schoolCodes = [...new Set(assignments.map(a => a.school_code))];
+          query = query.in('school_code', schoolCodes);
+        }
+        return query.order('school_code, grade, section, full_name');
+      });
 
       // 3. Filtrado final por sección si es docente
       let students = allStudents || [];
@@ -676,8 +682,10 @@ window.deleteStudentsBulk = async function deleteStudentsBulk(ids) {
 
 window.exportStudentsCSV = async function exportStudentsCSV() {
   const _supabase = window._supabase;
-  const { data } = await _supabase.from('students').select('full_name, username, school_code, grade, section').order('full_name');
-  if (!data) return;
+  const data = await window.fetchAllRows(() =>
+    _supabase.from('students').select('full_name, username, school_code, grade, section').order('full_name')
+  );
+  if (!data.length) return;
 
   let csv = 'Nombre,Usuario,Escuela,Grado,Seccion\n';
   data.forEach(s => {

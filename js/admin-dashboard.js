@@ -27,7 +27,11 @@ window.loadAdminDashboard = async function loadAdminDashboard() {
             const now = new Date();
             const [projects, students, teachers, schools, evals, ratings, waivers, activeTime, monthlyReports] = await Promise.all([
                 _supabase.from('projects').select('id, created_at, students:user_id(school_code)'),
-                _supabase.from('students').select('gender, school_code'),
+                // students paginado -- ya superó las 1000 filas que Supabase
+                // devuelve por defecto sin .range(), lo que hacía que el
+                // conteo/género/breakdown por establecimiento del dashboard
+                // viniera incompleto en silencio.
+                window.fetchAllRows(() => _supabase.from('students').select('gender, school_code')).then(data => ({ data })),
                 _supabase.from('teachers').select('*'),
                 _supabase.from('schools').select('*'),
                 _supabase.from('evaluations').select('total_score, teacher_id'),
