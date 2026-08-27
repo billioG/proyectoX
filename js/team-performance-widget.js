@@ -36,10 +36,10 @@ async function loadTeamPerformanceDashboard() {
         const evaluations = (evalsRes.data || []).filter(e => !testTeacherIds.has(e.teacher_id));
         const evidence = (weeklyEvidenceRes.data || []).filter(e => !testTeacherIds.has(e.teacher_id));
         const reports = (monthlyReportsRes.data || []).filter(r => !testTeacherIds.has(r.teacher_id));
-        const assignments = (assignmentsRes.data || []).filter(a => !testTeacherIds.has(a.teacher_id) && !testSchoolCodes.has(a.school_code));
+        const assignments = (assignmentsRes.data || []).filter(a => !testTeacherIds.has(a.teacher_id) && !window.isTestSchoolCode(testSchoolCodes, a.school_code));
         const approvedWaivers = (waiversRes.data || []).filter(w => !testTeacherIds.has(w.teacher_id));
-        const allGroups = (groupsRes.data || []).filter(g => !testSchoolCodes.has(g.school_code));
-        const schools = (schoolsRes.data || []).filter(s => !testSchoolCodes.has(s.code));
+        const allGroups = (groupsRes.data || []).filter(g => !window.isTestSchoolCode(testSchoolCodes, g.school_code));
+        const schools = (schoolsRes.data || []).filter(s => !window.isTestSchoolCode(testSchoolCodes, s.code));
 
         // Filtrar docentes activos (con al menos una asignación)
         const activeTeachers = teachers.filter(t => assignments.some(a => a.teacher_id === t.id));

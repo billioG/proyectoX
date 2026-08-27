@@ -53,6 +53,19 @@ const ActivityTracker = {
         this.interval = null;
     },
 
+    // window.userData de un docente es la fila cruda de `teachers` (sin
+    // join) -- nunca tuvo `teacher_assignments`, así que este chequeo
+    // siempre caía a null y CADA docente quedaba agrupado bajo el bucket
+    // genérico "GENERAL" en vez de su establecimiento real. Se resuelve
+    // una vez por sesión y se cachea.
+    _teacherSchoolCode: undefined,
+    async resolveTeacherSchoolCode(teacherId) {
+        if (this._teacherSchoolCode !== undefined) return this._teacherSchoolCode;
+        const { data } = await window._supabase.from('teacher_assignments').select('school_code').eq('teacher_id', teacherId).limit(1).maybeSingle();
+        this._teacherSchoolCode = data?.school_code || null;
+        return this._teacherSchoolCode;
+    },
+
     async sendHeartbeat() {
         const user = window.currentUser;
         if (typeof window._supabase === 'undefined' || !user) return;
@@ -66,9 +79,7 @@ const ActivityTracker = {
             if (role === 'estudiante') {
                 schoolCode = dataUser?.school_code || null;
             } else if (role === 'docente') {
-                if (dataUser?.teacher_assignments && dataUser.teacher_assignments.length > 0) {
-                    schoolCode = dataUser.teacher_assignments[0].school_code;
-                }
+                schoolCode = await this.resolveTeacherSchoolCode(user.id);
             }
 
             const today = new Date().toISOString().split('T')[0];

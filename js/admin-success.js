@@ -49,11 +49,11 @@ window.loadAdminSuccessHub = async function loadAdminSuccessHub() {
             // Cuentas/establecimiento de prueba interna -- no deben contaminar
             // las métricas reales de Customer Success.
             const testSchoolCodes = window.getTestSchoolCodes ? window.getTestSchoolCodes(schoolsRes.data) : new Set();
-            const schools = (schoolsRes.data || []).filter(s => !testSchoolCodes.has(s.code));
-            const allStudents = (studentsRes.data || []).filter(s => !testSchoolCodes.has(s.school_code));
+            const schools = (schoolsRes.data || []).filter(s => !window.isTestSchoolCode(testSchoolCodes, s.code));
+            const allStudents = (studentsRes.data || []).filter(s => !window.isTestSchoolCode(testSchoolCodes, s.school_code));
             const allProjects = (projectsRes.data || []).filter(p => {
                 const student = Array.isArray(p.students) ? p.students[0] : p.students;
-                return !student || !testSchoolCodes.has(student.school_code);
+                return !student || !window.isTestSchoolCode(testSchoolCodes, student.school_code);
             });
             const teachers = (teachersRes.data || []).filter(t => !window.isTestTeacherEmail?.(t.email));
             const ratings = ratingsRes.data || [];

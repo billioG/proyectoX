@@ -16,6 +16,13 @@ window.isTestSchool = function isTestSchool(school) {
   return !!school?.name && TEST_SCHOOL_NAME_PATTERN.test(school.name);
 };
 
+// Los códigos de establecimiento no siempre llegan con el mismo tipo/formato
+// entre tablas (ej. "001" vs "1") -- se normaliza todo a string para que
+// las comparaciones con .has() no fallen en silencio.
 window.getTestSchoolCodes = function getTestSchoolCodes(schools) {
-  return new Set((schools || []).filter(window.isTestSchool).map(s => s.code));
+  return new Set((schools || []).filter(window.isTestSchool).map(s => String(s.code)));
+};
+
+window.isTestSchoolCode = function isTestSchoolCode(testSchoolCodes, code) {
+  return code != null && testSchoolCodes.has(String(code));
 };

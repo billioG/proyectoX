@@ -44,18 +44,18 @@ window.loadAdminDashboard = async function loadAdminDashboard() {
 
             const filteredProjects = (projects.data || []).filter(p => {
                 const student = Array.isArray(p.students) ? p.students[0] : p.students;
-                return !student || !testSchoolCodes.has(student.school_code);
+                return !student || !window.isTestSchoolCode(testSchoolCodes, student.school_code);
             });
-            const filteredStudents = (students.data || []).filter(s => !testSchoolCodes.has(s.school_code));
+            const filteredStudents = (students.data || []).filter(s => !window.isTestSchoolCode(testSchoolCodes, s.school_code));
             const filteredTeachers = (teachers.data || []).filter(t => !testTeacherIds.has(t.id));
-            const filteredSchools = (schools.data || []).filter(s => !testSchoolCodes.has(s.code));
+            const filteredSchools = (schools.data || []).filter(s => !window.isTestSchoolCode(testSchoolCodes, s.code));
             const filteredEvals = (evals.data || []).filter(e => !testTeacherIds.has(e.teacher_id));
             const filteredRatings = (ratings.data || []).filter(r => {
                 const student = Array.isArray(r.students) ? r.students[0] : r.students;
-                return !testTeacherIds.has(r.teacher_id) && (!student || !testSchoolCodes.has(student.school_code));
+                return !testTeacherIds.has(r.teacher_id) && (!student || !window.isTestSchoolCode(testSchoolCodes, student.school_code));
             });
             const filteredWaivers = (waivers.data || []).filter(w => !testTeacherIds.has(w.teacher_id));
-            const filteredActiveTime = (activeTime.data || []).filter(a => !testSchoolCodes.has(a.school_code) && !testTeacherIds.has(a.user_id));
+            const filteredActiveTime = (activeTime.data || []).filter(a => !window.isTestSchoolCode(testSchoolCodes, a.school_code) && !testTeacherIds.has(a.user_id));
             const filteredMonthlyReports = (monthlyReports.data || []).filter(r => !testTeacherIds.has(r.teacher_id));
 
             return {
@@ -372,19 +372,31 @@ window.showActiveTimeModal = function () {
     const schools = dashboardStats.schools;
     const activeData = dashboardStats.activeTime.raw;
 
+    // Antes comparaba códigos con === directo -- si schools.code guarda
+    // "001" (con ceros) y active_time_tracking.school_code llega como "1"
+    // (u otro formato), la búsqueda fallaba en silencio para CADA
+    // establecimiento real y todos terminaban etiquetados igual, como si
+    // fueran el mismo genérico "Actividad General". Se normaliza a string.
     const schoolMap = schools.reduce((acc, s) => {
-        acc[s.code] = s.name;
+        acc[String(s.code)] = s.name;
         return acc;
     }, {});
 
     const breakdown = {};
     activeData.forEach(entry => {
-        const code = entry.school_code || 'GENERAL';
+        const code = entry.school_code != null ? String(entry.school_code) : '__SIN_CODIGO__';
         if (!breakdown[code]) {
-            breakdown[code] = { name: schoolMap[code] || 'Actividad General', estudiante: 0, docente: 0, total: 0 };
+            const knownName = schoolMap[code];
+            breakdown[code] = {
+                name: knownName || (code === '__SIN_CODIGO__' ? 'Sin establecimiento asignado' : `Código desconocido: ${code}`),
+                estudiante: 0, docente: 0, total: 0,
+                estudianteUsers: new Set(), docenteUsers: new Set(),
+            };
         }
         breakdown[code][entry.role] = (breakdown[code][entry.role] || 0) + entry.total_seconds;
         breakdown[code].total += entry.total_seconds;
+        if (entry.role === 'estudiante') breakdown[code].estudianteUsers.add(entry.user_id);
+        if (entry.role === 'docente') breakdown[code].docenteUsers.add(entry.user_id);
     });
 
     const rows = Object.values(breakdown).sort((a, b) => b.total - a.total);
@@ -431,17 +443,22 @@ window.showActiveTimeModal = function () {
                             <th class="pb-3 text-center">Estudiantes</th>
                             <th class="pb-3 text-center">Docentes</th>
                             <th class="pb-3 text-center">Total</th>
+                            <th class="pb-3 text-right">% del Total</th>
                         </tr>
                     </thead>
                     <tbody class="text-sm">
-                        ${rows.map(row => `
+                        ${rows.map(row => {
+                            const pct = dashboardStats.activeTime.totalSeconds > 0 ? Math.round((row.total / dashboardStats.activeTime.totalSeconds) * 100) : 0;
+                            return `
                             <tr class="border-b border-slate-50 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                                 <td class="py-4 pr-4 font-bold text-slate-800 dark:text-white">${row.name}</td>
-                                <td class="py-4 text-center text-slate-500 font-medium">${formatTime(row.estudiante)}</td>
-                                <td class="py-4 text-center text-slate-500 font-medium">${formatTime(row.docente)}</td>
+                                <td class="py-4 text-center text-slate-500 font-medium">${formatTime(row.estudiante)} <span class="text-[0.6rem] text-slate-400">(${row.estudianteUsers.size})</span></td>
+                                <td class="py-4 text-center text-slate-500 font-medium">${formatTime(row.docente)} <span class="text-[0.6rem] text-slate-400">(${row.docenteUsers.size})</span></td>
                                 <td class="py-4 text-center font-black text-emerald-500">${formatTime(row.total)}</td>
+                                <td class="py-4 text-right text-slate-400 font-bold">${pct}%</td>
                             </tr>
-                        `).join('')}
+                        `;
+                        }).join('')}
                     </tbody>
                  </table>
             </div>
@@ -457,14 +474,14 @@ window.showSchoolSatisfactionModal = function () {
     const ratings = dashboardStats.rawRatings || [];
 
     const schoolMap = schools.reduce((acc, s) => {
-        acc[s.code] = s.name;
+        acc[String(s.code)] = s.name;
         return acc;
     }, {});
 
     const breakdown = {};
     ratings.forEach(r => {
         const student = Array.isArray(r.students) ? r.students[0] : r.students;
-        const code = student?.school_code || 'SIN_CENTRO';
+        const code = student?.school_code != null ? String(student.school_code) : 'SIN_CENTRO';
         if (!breakdown[code]) {
             breakdown[code] = { name: schoolMap[code] || 'Sin Establecimiento', sum: 0, count: 0 };
         }
