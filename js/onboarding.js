@@ -192,6 +192,31 @@ const TEACHER_TOUR_STEPS = [
   },
 ];
 
+// En móvil el sidebar vive fuera de pantalla (transform: translateX) salvo
+// que el usuario lo abra con el botón hamburguesa -- driver.js no puede
+// resaltar un elemento que está trasladado fuera del viewport, así que el
+// spotlight fallaba silenciosamente y solo se veía el globo de texto
+// flotando. Se abre/cierra el sidebar según lo que necesite cada paso, y
+// se espera a que termine la transición CSS antes de medir la posición.
+async function syncMobileSidebarForSelector(selector) {
+  if (window.innerWidth > 768) return;
+  const sidebar = document.getElementById('sidebar');
+  if (!sidebar) return;
+  const toggle = document.getElementById('mobile-menu-btn');
+  const shouldBeOpen = !!selector && selector.startsWith('#nav-');
+  const isOpen = sidebar.classList.contains('active');
+  if (shouldBeOpen === isOpen) return;
+
+  if (shouldBeOpen) {
+    sidebar.classList.add('active');
+    if (toggle) toggle.innerHTML = '<i class="fas fa-times"></i>';
+  } else {
+    sidebar.classList.remove('active');
+    if (toggle) toggle.innerHTML = '<i class="fas fa-bars"></i>';
+  }
+  await new Promise((resolve) => setTimeout(resolve, 350));
+}
+
 function buildDriverSteps(rawSteps) {
   return rawSteps.map((s, i) => {
     const next = rawSteps[i + 1];
@@ -206,8 +231,9 @@ function buildDriverSteps(rawSteps) {
       onNextClick: next ? async (_el, _step, opts) => {
         if (typeof next.before === 'function') {
           try { next.before(); } catch (e) { console.error('Error en paso de onboarding:', e); }
-          await waitForSelector(next.element, 3000);
         }
+        await syncMobileSidebarForSelector(next.element);
+        await waitForSelector(next.element, 3000);
         opts.driver.moveNext();
       } : undefined,
     };
