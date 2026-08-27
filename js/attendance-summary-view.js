@@ -4,6 +4,7 @@
 
 let globalAttendanceData = [];
 let schoolsMap = {}; // Maps school_code to school_name
+let schoolsAddressMap = {}; // Maps school_code to school_address
 let currentFilterDate = new Date(); // To track selected month
 
 window.showAttendanceSummaryView = async function showAttendanceSummaryView() {
@@ -36,7 +37,7 @@ window.showAttendanceSummaryView = async function showAttendanceSummaryView() {
                     .order('date', { ascending: false }),
                 _supabase
                     .from('schools')
-                    .select('code, name')
+                    .select('code, name, address')
             ]);
 
             if (attendanceResult.error) throw attendanceResult.error;
@@ -52,6 +53,10 @@ window.showAttendanceSummaryView = async function showAttendanceSummaryView() {
             // Crear mapa de códigos a nombres de escuela
             schoolsMap = (snapshot.schools || []).reduce((acc, school) => {
                 acc[school.code.toLowerCase()] = school.name;
+                return acc;
+            }, {});
+            schoolsAddressMap = (snapshot.schools || []).reduce((acc, school) => {
+                acc[school.code.toLowerCase()] = school.address || '';
                 return acc;
             }, {});
 
@@ -81,12 +86,14 @@ window.renderAnalyticsView = function renderAnalyticsView(container) {
     filteredData.forEach(record => {
         const schoolCode = record.students?.school_code || 'N/A';
         const schoolName = schoolsMap[schoolCode.toLowerCase()] || `Código: ${schoolCode}`; // Fallback al código si no hay nombre
+        const schoolAddress = schoolsAddressMap[schoolCode.toLowerCase()] || '';
         const teacherName = record.teachers?.full_name || 'Desconocido';
         const groupKey = `${schoolName}||${teacherName}`;
 
         if (!groupedData[groupKey]) {
             groupedData[groupKey] = {
                 schoolName: schoolName,
+                schoolAddress: schoolAddress,
                 teacherName: teacherName,
                 present: 0,
                 absent: 0,
@@ -158,6 +165,7 @@ window.renderAnalyticsView = function renderAnalyticsView(container) {
                                 </span>
                                 <div>
                                     <h3 class="text-lg font-black text-slate-800 dark:text-white leading-tight hover:text-indigo-500 transition-colors">${group.schoolName}</h3>
+                                    ${group.schoolAddress ? `<p class="text-[0.65rem] text-slate-400 font-medium">${group.schoolAddress}</p>` : ''}
                                     <div class="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 font-medium mt-1">
                                         <i class="fas fa-chalkboard-teacher text-xs"></i> ${group.teacherName}
                                     </div>

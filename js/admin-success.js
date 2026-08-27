@@ -274,6 +274,7 @@ window.renderSuccessHubHTML = function renderSuccessHubHTML(container, schools, 
                             <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
                                 <td class="px-6 py-4">
                                     <div class="text-sm font-bold text-slate-800 dark:text-white leading-tight">${sanitizeInput(s.name)}</div>
+                                    ${s.address ? `<div class="text-[0.6rem] text-slate-400 font-medium mt-0.5">${sanitizeInput(s.address)}</div>` : ''}
                                     <div class="text-[0.65rem] font-bold text-slate-400 mt-1 uppercase tracking-wide">
                                         ${s.studentCount} Estudiantes <span class="mx-1">•</span> Meta: ${s.target} Proy.
                                     </div>

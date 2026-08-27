@@ -136,13 +136,13 @@ window.renderGroupedProjects = function renderGroupedProjects(projects) {
 
   const grouped = projects.reduce((acc, p) => {
     const school = p.students?.schools?.name || 'Otro';
-    if (!acc[school]) acc[school] = [];
-    acc[school].push(p);
+    if (!acc[school]) acc[school] = { address: p.students?.schools?.address || '', projects: [] };
+    acc[school].projects.push(p);
     return acc;
   }, {});
 
   return Object.keys(grouped).sort().map(school => {
-    const pendings = grouped[school].filter(p => !(hasEvaluation(p) || p.score > 0)).length;
+    const pendings = grouped[school].projects.filter(p => !(hasEvaluation(p) || p.score > 0)).length;
     return `
       <details class="group/school bg-white dark:bg-slate-900 overflow-hidden rounded-[2rem] border border-slate-100 dark:border-slate-800" ${pendings > 0 ? 'open' : ''}>
           <summary class="list-none cursor-pointer p-6 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
@@ -150,8 +150,9 @@ window.renderGroupedProjects = function renderGroupedProjects(projects) {
                   <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center text-lg"><i class="fas fa-school"></i></div>
                   <div>
                       <h3 class="text-lg font-black text-slate-800 dark:text-white leading-none">${sanitizeInput(school)}</h3>
+                      ${grouped[school].address ? `<p class="text-[0.65rem] text-slate-400 font-medium mt-0.5">${sanitizeInput(grouped[school].address)}</p>` : ''}
                       <div class="flex items-center gap-2 mt-1">
-                          <span class="text-[0.6rem] font-bold text-slate-400 uppercase tracking-widest">${grouped[school].length} PROYECTOS</span>
+                          <span class="text-[0.6rem] font-bold text-slate-400 uppercase tracking-widest">${grouped[school].projects.length} PROYECTOS</span>
                           ${pendings > 0 ? `<span class="bg-rose-500 text-white text-[0.5rem] font-black px-2 py-0.5 rounded-full">${pendings} PENDIENTES</span>` : ''}
                       </div>
                   </div>
@@ -162,7 +163,7 @@ window.renderGroupedProjects = function renderGroupedProjects(projects) {
           </summary>
           <div class="p-6 pt-0">
               <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  ${grouped[school].map(p => window.renderProjectEvalCard(p)).join('')}
+                  ${grouped[school].projects.map(p => window.renderProjectEvalCard(p)).join('')}
               </div>
           </div>
       </details>

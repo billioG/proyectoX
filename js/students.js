@@ -246,7 +246,7 @@ window.loadStudents = async function loadStudents() {
       }
 
       // 2. Query base de estudiantes
-      let query = _supabase.from('students').select('*, schools(name, code)');
+      let query = _supabase.from('students').select('*, schools(name, code, address)');
       if (userRole === 'docente' && assignments.length > 0) {
         const schoolCodes = [...new Set(assignments.map(a => a.school_code))];
         query = query.in('school_code', schoolCodes);
@@ -293,7 +293,7 @@ window.renderStudentsList = function renderStudentsList(container, students) {
   const groupedBySchool = students.reduce((acc, student) => {
     const schoolCode = student.school_code || 'sin-asignar';
     if (!acc[schoolCode]) {
-      acc[schoolCode] = { schoolName: student.schools?.name || 'Otro Establecimiento', students: [] };
+      acc[schoolCode] = { schoolName: student.schools?.name || 'Otro Establecimiento', schoolAddress: student.schools?.address || '', students: [] };
     }
     acc[schoolCode].students.push(student);
     return acc;
@@ -340,6 +340,7 @@ window.renderStudentsList = function renderStudentsList(container, students) {
                         <div class="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-sm"><i class="fas fa-school"></i></div>
                         <div>
                             <h3 class="text-sm font-bold text-slate-800 dark:text-white leading-none">${group.schoolName}</h3>
+                            ${group.schoolAddress ? `<p class="text-[0.65rem] text-slate-400 font-medium mt-0.5">${window.sanitizeInput ? window.sanitizeInput(group.schoolAddress) : group.schoolAddress}</p>` : ''}
                             <p class="text-[0.8rem] font-medium text-slate-400 uppercase tracking-widest mt-1">${group.students.length} Alumnos Registrados</p>
                         </div>
                     </div>

@@ -33,7 +33,7 @@ window.loadTeachers = async function loadTeachers() {
                 school_code,
                 grade,
                 section,
-                schools(name, programa)
+                schools(name, programa, address)
               )
             `)
           .order('full_name'),
@@ -100,6 +100,7 @@ window.renderTeacherGroups = function renderTeacherGroups(teachers, sanitizeInpu
     teachers.forEach(t => {
         const firstSchool = t.teacher_assignments?.[0]?.schools;
         const schoolName = firstSchool?.name || 'Sin Asignar';
+        const schoolAddress = firstSchool?.address || '';
         // Un colegio puede pertenecer a varios programas (campo separado por
         // comas) -- el docente aparece repetido bajo cada programa al que
         // pertenece su establecimiento, no solo el primero.
@@ -108,23 +109,27 @@ window.renderTeacherGroups = function renderTeacherGroups(teachers, sanitizeInpu
         programaKeys.forEach(programaKey => {
             if (!groups.has(programaKey)) groups.set(programaKey, new Map());
             const bySchool = groups.get(programaKey);
-            if (!bySchool.has(schoolName)) bySchool.set(schoolName, []);
-            bySchool.get(schoolName).push(t);
+            if (!bySchool.has(schoolName)) bySchool.set(schoolName, { address: schoolAddress, teachers: [] });
+            bySchool.get(schoolName).teachers.push(t);
         });
     });
 
     return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([programa, bySchool]) => `
         <div class="mb-10">
             <h2 class="text-sm font-black text-primary uppercase tracking-[0.2em] mb-4 flex items-center gap-2"><i class="fas fa-layer-group"></i> ${sanitizeInput(programa)}</h2>
-            ${[...bySchool.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([schoolName, group]) => `
+            ${[...bySchool.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([schoolName, groupData]) => `
                 <details class="mb-5 group/school" open>
                     <summary class="list-none cursor-pointer flex items-center gap-2 mb-3 text-slate-600 dark:text-slate-300 font-bold text-xs uppercase tracking-widest">
                         <i class="fas fa-chevron-right text-[0.6rem] transition-transform group-open/school:rotate-90"></i>
-                        <i class="fas fa-school text-slate-400"></i> ${sanitizeInput(schoolName)}
-                        <span class="text-slate-400 font-normal normal-case">(${group.length})</span>
+                        <i class="fas fa-school text-slate-400"></i>
+                        <span>
+                            ${sanitizeInput(schoolName)}
+                            ${groupData.address ? `<span class="block text-[0.6rem] text-slate-400 font-medium normal-case tracking-normal">${sanitizeInput(groupData.address)}</span>` : ''}
+                        </span>
+                        <span class="text-slate-400 font-normal normal-case">(${groupData.teachers.length})</span>
                     </summary>
                     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                        ${group.map(t => window.renderTeacherCard(t, sanitizeInput)).join('')}
+                        ${groupData.teachers.map(t => window.renderTeacherCard(t, sanitizeInput)).join('')}
                     </div>
                 </details>
             `).join('')}
@@ -812,7 +817,7 @@ window.viewTeacherAssignments = async function viewTeacherAssignments(teacherId,
         school_code,
         grade,
         section,
-        schools(name)
+        schools(name, address)
       `)
       .eq('teacher_id', teacherId);
 
@@ -850,9 +855,10 @@ window.viewTeacherAssignments = async function viewTeacherAssignments(teacherId,
                 <div class="flex items-center justify-between p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm hover:border-sidebar-active/30 transition-colors group">
                   <div>
                     <div class="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                        <i class="fas fa-school text-slate-400 text-xs"></i> 
+                        <i class="fas fa-school text-slate-400 text-xs"></i>
                         ${sanitizeInput(a.schools?.name || 'Establecimiento')}
                     </div>
+                    ${a.schools?.address ? `<div class="text-[0.65rem] text-slate-400 font-medium ml-5 mt-0.5">${sanitizeInput(a.schools.address)}</div>` : ''}
                     <div class="flex gap-2 mt-2">
                         <span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-[0.65rem] font-bold uppercase tracking-wide">
                             ${a.grade}

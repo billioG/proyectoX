@@ -81,6 +81,7 @@ window.renderSchoolsContent = function renderSchoolsContent(container, schools) 
                           <p class="text-[0.7rem] text-slate-400 font-semibold uppercase tracking-widest flex items-center gap-1">
                              <i class="fas fa-map-marker-alt text-primary/50 text-[0.6rem]"></i> ${sanitizeInput(s.municipality)}, ${sanitizeInput(s.department)}
                           </p>
+                          ${s.address ? `<p class="text-[0.6rem] text-slate-400 font-medium normal-case mt-0.5">${sanitizeInput(s.address)}</p>` : ''}
                       </div>
                       <div class="flex items-center justify-between pt-4 border-t border-slate-50 dark:border-slate-800/50">
                           <div class="flex gap-2">

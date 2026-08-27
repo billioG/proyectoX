@@ -92,9 +92,18 @@ window.processAndRenderDashboard = function processAndRenderDashboard(container,
 
     // WAU: usuarios distintos con al menos una fila de actividad en los
     // últimos 7 días (misma tabla que ya alimentaba "Tiempo Activo", solo
-    // que contando usuarios únicos en vez de sumar segundos).
+    // que contando usuarios únicos en vez de sumar segundos). Desglosado
+    // por rol para el reverso de la tarjeta (flipcard).
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    const wauUserIds = new Set((activeTime || []).filter(a => a.activity_date >= sevenDaysAgo).map(a => a.user_id));
+    const wauRecent = (activeTime || []).filter(a => a.activity_date >= sevenDaysAgo);
+    const wauUserIds = new Set(wauRecent.map(a => a.user_id));
+    const wauByRole = {};
+    wauRecent.forEach(a => {
+        if (!wauByRole[a.role]) wauByRole[a.role] = new Set();
+        wauByRole[a.role].add(a.user_id);
+    });
+
+    const activeTimeBreakdown = window.buildActiveTimeBreakdown(activeTime || [], schools || []);
 
     const stats = {
         totalProjects: projects?.length || 0,
@@ -113,9 +122,16 @@ window.processAndRenderDashboard = function processAndRenderDashboard(container,
         activeTime: {
             totalSeconds: totalActiveSeconds,
             byRole: activeTimeByRole,
-            raw: activeTime || []
+            raw: activeTime || [],
+            breakdown: activeTimeBreakdown
         },
-        wau: wauUserIds.size
+        wau: wauUserIds.size,
+        wauByRole: {
+            estudiante: (wauByRole['estudiante'] || new Set()).size,
+            docente: (wauByRole['docente'] || new Set()).size,
+            admin: (wauByRole['admin'] || new Set()).size,
+            coordinador: (wauByRole['coordinador'] || new Set()).size,
+        }
     };
 
     // Actualizar variable global para modales
@@ -140,6 +156,10 @@ window.processAndRenderDashboard = function processAndRenderDashboard(container,
     window.renderDashboardUI(container, stats, teachers || [], schools || []);
     if (typeof window.loadTeamPerformanceDashboard === 'function') window.loadTeamPerformanceDashboard();
     if (typeof window.updateAdminRocksPendingBadge === 'function') window.updateAdminRocksPendingBadge();
+}
+
+window.toggleFlipCard = function toggleFlipCard(id) {
+    document.getElementById(id)?.classList.toggle('flipped');
 }
 
 window.updateAdminRocksPendingBadge = async function updateAdminRocksPendingBadge() {
@@ -226,21 +246,58 @@ window.renderDashboardUI = function renderDashboardUI(container, stats, teachers
                 <p class="text-xs text-slate-500 mt-6 font-bold uppercase tracking-wider">Crecimiento este bimestre: +12%</p>
             </div>
 
-            <div class="glass-card p-8 bg-white dark:bg-slate-900 border-l-8 border-emerald-500 cursor-pointer group hover:bg-emerald-50/50 dark:hover:bg-emerald-900/10 transition-colors" onclick="showActiveTimeModal()">
-                <div class="text-[0.65rem] font-black uppercase tracking-[0.2em] mb-4 text-slate-400">Tiempo de Actividad</div>
-                <div class="text-5xl font-black text-slate-800 dark:text-white mb-2">
-                    ${(stats.activeTime.totalSeconds / 3600).toFixed(1)} <span class="text-xl opacity-60">hrs</span>
-                </div>
-                <div class="text-[0.65rem] font-bold text-slate-400 mt-6 uppercase tracking-widest flex justify-between">
-                    <span>Est: ${Math.floor((stats.activeTime.byRole['estudiante'] || 0) / 3600)}h</span>
-                    <span>Doc: ${Math.floor((stats.activeTime.byRole['docente'] || 0) / 3600)}h</span>
+            <div id="flip-activetime" class="flip-card h-60">
+                <div class="flip-card-inner">
+                    <div class="flip-card-face glass-card p-8 bg-white dark:bg-slate-900 border-l-8 border-emerald-500 cursor-pointer group hover:bg-emerald-50/50 dark:hover:bg-emerald-900/10 transition-colors" onclick="window.toggleFlipCard('flip-activetime')">
+                        <div class="text-[0.65rem] font-black uppercase tracking-[0.2em] mb-4 text-slate-400">Tiempo de Actividad</div>
+                        <div class="text-5xl font-black text-slate-800 dark:text-white mb-2">
+                            ${(stats.activeTime.totalSeconds / 3600).toFixed(1)} <span class="text-xl opacity-60">hrs</span>
+                        </div>
+                        <div class="text-[0.65rem] font-bold text-slate-400 mt-6 uppercase tracking-widest flex justify-between items-center">
+                            <span>Est: ${Math.floor((stats.activeTime.byRole['estudiante'] || 0) / 3600)}h</span>
+                            <span>Doc: ${Math.floor((stats.activeTime.byRole['docente'] || 0) / 3600)}h</span>
+                            <i class="fas fa-rotate text-slate-300 group-hover:text-emerald-500 transition-colors"></i>
+                        </div>
+                    </div>
+                    <div class="flip-card-face flip-card-back glass-card p-6 bg-white dark:bg-slate-900 border-l-8 border-emerald-500 cursor-pointer overflow-y-auto custom-scrollbar" onclick="window.toggleFlipCard('flip-activetime')">
+                        <div class="text-[0.65rem] font-black uppercase tracking-[0.2em] mb-3 text-slate-400">Por Establecimiento</div>
+                        ${stats.activeTime.breakdown.length === 0 ? `
+                            <p class="text-xs text-slate-400">Sin datos todavía.</p>
+                        ` : `
+                            <div class="space-y-2">
+                                ${stats.activeTime.breakdown.slice(0, 6).map(row => `
+                                    <div class="flex justify-between items-center text-xs border-b border-slate-50 dark:border-slate-800 pb-1.5">
+                                        <span class="font-bold text-slate-700 dark:text-slate-200 truncate pr-2">${window.sanitizeInput ? window.sanitizeInput(row.name) : row.name}</span>
+                                        <span class="font-black text-emerald-500 shrink-0">${window.formatActiveSeconds(row.total)}</span>
+                                    </div>
+                                `).join('')}
+                                ${stats.activeTime.breakdown.length > 6 ? `<p class="text-[0.6rem] text-slate-400 font-bold uppercase pt-1">+${stats.activeTime.breakdown.length - 6} establecimiento(s) más</p>` : ''}
+                            </div>
+                        `}
+                    </div>
                 </div>
             </div>
 
-            <div class="glass-card p-8 bg-white dark:bg-slate-900 border-l-8 border-fuchsia-500">
-                <div class="text-[0.65rem] font-black uppercase tracking-[0.2em] mb-4 text-slate-400">Usuarios Activos (7 días)</div>
-                <div class="text-5xl font-black text-slate-800 dark:text-white mb-2">${stats.wau}</div>
-                <p class="text-xs text-slate-500 mt-6 font-bold uppercase tracking-wider">WAU -- al menos 1 sesión en la última semana</p>
+            <div id="flip-wau" class="flip-card h-60">
+                <div class="flip-card-inner">
+                    <div class="flip-card-face glass-card p-8 bg-white dark:bg-slate-900 border-l-8 border-fuchsia-500 cursor-pointer group hover:bg-fuchsia-50/50 dark:hover:bg-fuchsia-900/10 transition-colors" onclick="window.toggleFlipCard('flip-wau')">
+                        <div class="text-[0.65rem] font-black uppercase tracking-[0.2em] mb-4 text-slate-400">Usuarios Activos (7 días)</div>
+                        <div class="text-5xl font-black text-slate-800 dark:text-white mb-2">${stats.wau}</div>
+                        <div class="text-xs text-slate-500 mt-6 font-bold uppercase tracking-wider flex justify-between items-center">
+                            <span>WAU -- 1+ sesión esta semana</span>
+                            <i class="fas fa-rotate text-slate-300 group-hover:text-fuchsia-500 transition-colors"></i>
+                        </div>
+                    </div>
+                    <div class="flip-card-face flip-card-back glass-card p-6 bg-white dark:bg-slate-900 border-l-8 border-fuchsia-500 cursor-pointer" onclick="window.toggleFlipCard('flip-wau')">
+                        <div class="text-[0.65rem] font-black uppercase tracking-[0.2em] mb-3 text-slate-400">Por Rol</div>
+                        <div class="space-y-2.5">
+                            <div class="flex justify-between items-center text-sm"><span class="font-bold text-slate-600 dark:text-slate-300">Estudiantes</span><span class="font-black text-blue-500">${stats.wauByRole.estudiante}</span></div>
+                            <div class="flex justify-between items-center text-sm"><span class="font-bold text-slate-600 dark:text-slate-300">Docentes</span><span class="font-black text-indigo-500">${stats.wauByRole.docente}</span></div>
+                            <div class="flex justify-between items-center text-sm"><span class="font-bold text-slate-600 dark:text-slate-300">Coordinadores</span><span class="font-black text-purple-500">${stats.wauByRole.coordinador}</span></div>
+                            <div class="flex justify-between items-center text-sm"><span class="font-bold text-slate-600 dark:text-slate-300">Admin</span><span class="font-black text-rose-500">${stats.wauByRole.admin}</span></div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -397,29 +454,27 @@ window.showDemographicsDetail = function () {
     document.body.appendChild(modal);
 };
 
-window.showActiveTimeModal = function () {
-    if (!dashboardStats || !dashboardStats.activeTime) return;
-
-    const schools = dashboardStats.schools;
-    const activeData = dashboardStats.activeTime.raw;
-
-    // Antes comparaba códigos con === directo -- si schools.code guarda
-    // "001" (con ceros) y active_time_tracking.school_code llega como "1"
-    // (u otro formato), la búsqueda fallaba en silencio para CADA
-    // establecimiento real y todos terminaban etiquetados igual, como si
-    // fueran el mismo genérico "Actividad General". Se normaliza a string.
-    const schoolMap = schools.reduce((acc, s) => {
-        acc[String(s.code)] = s.name;
-        return acc;
-    }, {});
+// Antes comparaba códigos con === directo -- si schools.code guarda "001"
+// (con ceros) y active_time_tracking.school_code llega como "1" (u otro
+// formato), la búsqueda fallaba en silencio y todo terminaba etiquetado
+// igual, como si fuera un solo genérico "Actividad General". Se normaliza
+// a string y, si el match exacto falla, se reintenta quitando guiones/
+// espacios (códigos MINEDUC tipo "00-06-0002-45" vs variantes sin guiones).
+window.buildActiveTimeBreakdown = function buildActiveTimeBreakdown(activeData, schools) {
+    const schoolMap = new Map();
+    const schoolMapLoose = new Map();
+    (schools || []).forEach(s => {
+        schoolMap.set(String(s.code), s.name);
+        schoolMapLoose.set(String(s.code).replace(/[^a-z0-9]/gi, '').toUpperCase(), s.name);
+    });
 
     const breakdown = {};
-    activeData.forEach(entry => {
+    (activeData || []).forEach(entry => {
         const code = entry.school_code != null ? String(entry.school_code) : '__SIN_CODIGO__';
         if (!breakdown[code]) {
-            const knownName = schoolMap[code];
+            const knownName = schoolMap.get(code) || schoolMapLoose.get(code.replace(/[^a-z0-9]/gi, '').toUpperCase());
             breakdown[code] = {
-                name: knownName || (code === '__SIN_CODIGO__' ? 'Sin establecimiento asignado' : `Código desconocido: ${code}`),
+                name: knownName || (code === '__SIN_CODIGO__' ? 'Sin establecimiento asignado' : `Sin establecimiento registrado (${code})`),
                 estudiante: 0, docente: 0, total: 0,
                 estudianteUsers: new Set(), docenteUsers: new Set(),
             };
@@ -430,72 +485,15 @@ window.showActiveTimeModal = function () {
         if (entry.role === 'docente') breakdown[code].docenteUsers.add(entry.user_id);
     });
 
-    const rows = Object.values(breakdown).sort((a, b) => b.total - a.total);
+    return Object.values(breakdown)
+        .map(r => ({ ...r, estudianteUsers: r.estudianteUsers.size, docenteUsers: r.docenteUsers.size }))
+        .sort((a, b) => b.total - a.total);
+};
 
-    const formatTime = (seconds) => {
-        const h = Math.floor(seconds / 3600);
-        const m = Math.floor((seconds % 3600) / 60);
-        return `${h}h ${m}m`;
-    }
-
-    const modal = document.createElement('div');
-    modal.className = 'fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn';
-    modal.innerHTML = `
-        <div class="glass-card w-full max-w-3xl max-h-[85vh] flex flex-col p-0 overflow-hidden shadow-2xl animate-slideUp bg-white dark:bg-slate-900 border border-emerald-500/30">
-            <div class="p-6 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center shrink-0">
-                <h2 class="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight flex items-center gap-2">
-                    <i class="fas fa-clock text-emerald-500"></i> Tiempo Activo por Centro
-                </h2>
-                <button class="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500 transition-all flex items-center justify-center font-bold" onclick="this.closest('.fixed').remove()">
-                    <i class="fas fa-times text-lg"></i>
-                </button>
-            </div>
-            
-            <div class="flex-1 overflow-y-auto custom-scrollbar p-6">
-                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                    <div class="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/30">
-                        <div class="text-[0.6rem] font-bold text-emerald-600 uppercase mb-1">Total Acumulado</div>
-                        <div class="text-2xl font-black text-emerald-700 dark:text-emerald-400">${formatTime(dashboardStats.activeTime.totalSeconds)}</div>
-                    </div>
-                    <div class="p-4 rounded-2xl bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30">
-                        <div class="text-[0.6rem] font-bold text-blue-600 uppercase mb-1">Estudiantes</div>
-                        <div class="text-2xl font-black text-blue-700 dark:text-blue-400">${formatTime(dashboardStats.activeTime.byRole['estudiante'] || 0)}</div>
-                    </div>
-                    <div class="p-4 rounded-2xl bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/30">
-                        <div class="text-[0.6rem] font-bold text-indigo-600 uppercase mb-1">Docentes</div>
-                        <div class="text-2xl font-black text-indigo-700 dark:text-indigo-400">${formatTime(dashboardStats.activeTime.byRole['docente'] || 0)}</div>
-                    </div>
-                 </div>
-
-                 <table class="w-full text-left">
-                    <thead>
-                        <tr class="text-[0.6rem] uppercase tracking-wider text-slate-400 font-bold border-b border-slate-200 dark:border-slate-700">
-                            <th class="pb-3 text-left">Establecimiento</th>
-                            <th class="pb-3 text-center">Estudiantes</th>
-                            <th class="pb-3 text-center">Docentes</th>
-                            <th class="pb-3 text-center">Total</th>
-                            <th class="pb-3 text-right">% del Total</th>
-                        </tr>
-                    </thead>
-                    <tbody class="text-sm">
-                        ${rows.map(row => {
-                            const pct = dashboardStats.activeTime.totalSeconds > 0 ? Math.round((row.total / dashboardStats.activeTime.totalSeconds) * 100) : 0;
-                            return `
-                            <tr class="border-b border-slate-50 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                                <td class="py-4 pr-4 font-bold text-slate-800 dark:text-white">${row.name}</td>
-                                <td class="py-4 text-center text-slate-500 font-medium">${formatTime(row.estudiante)} <span class="text-[0.6rem] text-slate-400">(${row.estudianteUsers.size})</span></td>
-                                <td class="py-4 text-center text-slate-500 font-medium">${formatTime(row.docente)} <span class="text-[0.6rem] text-slate-400">(${row.docenteUsers.size})</span></td>
-                                <td class="py-4 text-center font-black text-emerald-500">${formatTime(row.total)}</td>
-                                <td class="py-4 text-right text-slate-400 font-bold">${pct}%</td>
-                            </tr>
-                        `;
-                        }).join('')}
-                    </tbody>
-                 </table>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(modal);
+window.formatActiveSeconds = function formatActiveSeconds(seconds) {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    return `${h}h ${m}m`;
 };
 
 window.showSchoolSatisfactionModal = function () {
