@@ -1030,8 +1030,8 @@ window.submitChallengeEvidence = async function submitChallengeEvidence(challeng
         if (window.AIService && comment.length < 400) {
             const challenge = (window.MONTHLY_CHALLENGES || []).find(c => c.id === challengeId);
             const judgePrompt = `Reto del mes: "${challenge?.name || challengeId}". Reflexión del docente: "${comment}". ¿Es una reflexión concreta y específica sobre su experiencia real en el aula (no una respuesta vaga tipo "ok", "listo", "bien", ni un relleno genérico)? Responde ÚNICAMENTE con la palabra SI o NO, nada más.`;
-            const verdict = await window.AIService.ask(judgePrompt, '');
-            const isGeneric = /^\s*no\b/i.test((verdict || '').trim());
+            const verdict = await window.AIService.ask(judgePrompt, '', false, [], 'strict_yesno');
+            const isGeneric = /^no$/i.test((verdict || '').trim());
             if (isGeneric) {
                 if (feedbackEl) {
                     feedbackEl.innerHTML = '<i class="fas fa-triangle-exclamation"></i> Tu reflexión parece muy genérica. Contá algo concreto: qué hiciste, con qué grupo, qué notaste.';

@@ -44,6 +44,7 @@ Deno.serve(async (req) => {
     const safeContext = String(context).slice(0, MAX_CONTEXT_CHARS);
     const isStudent = role === 'estudiante';
     const isCSLeader = role === 'cs_leader';
+    const isYesNoJudge = role === 'strict_yesno';
 
     // Historial real del chat -- sin esto cada mensaje era una request
     // aislada sin memoria de lo dicho antes, así que "continuá" generaba
@@ -69,7 +70,15 @@ Deno.serve(async (req) => {
     // texto fijo rotando por mes, sin relación real con las métricas del
     // establecimiento. Acá SÍ redacta en base a los números reales que
     // manda el cliente en el context.
-    const systemPrompt = isCSLeader
+    // Clasificador estricto SI/NO (ej. validar reflexiones de retos docentes) --
+    // usaba el mismo systemPrompt "entusiasta" del resto de la app, así que el
+    // modelo a veces respondía con una frase larga que empezaba con "No hay
+    // problema..." y el chequeo de texto (^no) la marcaba como rechazo aunque
+    // el sentido real fuera afirmativo. Un rol dedicado sin personalidad evita
+    // esa ambigüedad.
+    const systemPrompt = isYesNoJudge
+      ? `Sos un clasificador. Respondé ÚNICAMENTE con la palabra SI o la palabra NO, en mayúsculas, sin explicación, sin puntuación, sin ninguna otra palabra.`
+      : isCSLeader
       ? `Sos un Customer Success Leader senior de una plataforma educativa B2B (Quetzal LMS). Redactá UNA nota ejecutiva breve (3 a 4 oraciones), profesional y basada estrictamente en las métricas reales que se te dan -- sin inventar datos. Si las métricas son bajas, sé empático pero constructivo y sugerí una acción concreta; si son altas, celebrá y sugerí cómo escalar el éxito. Sin saludo ni firma, un solo párrafo. Métricas del establecimiento: ${safeContext}`
       : short
       ? (isStudent
@@ -92,7 +101,7 @@ Deno.serve(async (req) => {
           ...(short ? [] : safeHistory),
           { role: 'user', content: safePrompt },
         ],
-        max_tokens: short ? 40 : MAX_TOKENS_CAP,
+        max_tokens: isYesNoJudge ? 5 : short ? 40 : MAX_TOKENS_CAP,
         temperature: 0.7,
       }),
     });
