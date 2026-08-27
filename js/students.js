@@ -265,9 +265,20 @@ window.loadStudents = async function loadStudents() {
         ));
       }
 
-      return students;
-    }, (students) => {
-      window.renderStudentsList(container, students);
+      // Establecimientos sin ningún alumno importado todavía -- solo para
+      // admin (el docente ya está acotado a sus asignaciones). Sin esto, un
+      // establecimiento con 0 alumnos simplemente no dibujaba grupo alguno
+      // acá, dando la falsa impresión de que "desapareció" cuando en
+      // realidad nunca tuvo alumnos cargados en este módulo.
+      let allSchools = [];
+      if (userRole === 'admin') {
+        const { data } = await _supabase.from('schools').select('code, name, address').order('name');
+        allSchools = data || [];
+      }
+
+      return { students, allSchools };
+    }, ({ students, allSchools }) => {
+      window.renderStudentsList(container, students, allSchools);
     });
 
   } catch (err) {
@@ -276,9 +287,9 @@ window.loadStudents = async function loadStudents() {
   }
 }
 
-window.renderStudentsList = function renderStudentsList(container, students) {
+window.renderStudentsList = function renderStudentsList(container, students, allSchools = []) {
   const userRole = window.userRole;
-  if (!students || students.length === 0) {
+  if ((!students || students.length === 0) && allSchools.length === 0) {
     container.innerHTML = `
         <div class="glass-card p-12 text-center border-2 border-dashed border-slate-200 dark:border-slate-800">
             <i class="fas fa-user-graduate text-5xl text-slate-200 dark:text-slate-800 mb-4 mx-auto"></i>
@@ -290,7 +301,7 @@ window.renderStudentsList = function renderStudentsList(container, students) {
   }
 
   // Agrupar por establecimiento
-  const groupedBySchool = students.reduce((acc, student) => {
+  const groupedBySchool = (students || []).reduce((acc, student) => {
     const schoolCode = student.school_code || 'sin-asignar';
     if (!acc[schoolCode]) {
       acc[schoolCode] = { schoolName: student.schools?.name || 'Otro Establecimiento', schoolAddress: student.schools?.address || '', students: [] };
@@ -298,6 +309,15 @@ window.renderStudentsList = function renderStudentsList(container, students) {
     acc[schoolCode].students.push(student);
     return acc;
   }, {});
+
+  // Establecimientos sin alumnos -- se agregan como grupo vacío (admin) para
+  // que quede claro que existen pero no tienen nada importado, en vez de
+  // no aparecer en absoluto.
+  allSchools.forEach(s => {
+    if (!groupedBySchool[s.code]) {
+      groupedBySchool[s.code] = { schoolName: s.name, schoolAddress: s.address || '', students: [], isEmpty: true };
+    }
+  });
 
   container.innerHTML = `
       <div class="flex flex-col md:flex-row gap-4 mb-4 items-center animate-slideUp">
@@ -324,7 +344,7 @@ window.renderStudentsList = function renderStudentsList(container, students) {
       ` : ''}
 
       <div class="space-y-6">
-        ${Object.entries(groupedBySchool).map(([schoolCode, group]) => {
+        ${Object.entries(groupedBySchool).sort(([, a], [, b]) => a.schoolName.localeCompare(b.schoolName)).map(([schoolCode, group]) => {
           const groupedByClass = group.students.reduce((acc, student) => {
             const key = `${student.grade || 'Sin grado'}|${student.section || 'Sin sección'}`;
             if (!acc[key]) acc[key] = { grade: student.grade || 'Sin grado', section: student.section || 'Sin sección', students: [] };
@@ -341,11 +361,11 @@ window.renderStudentsList = function renderStudentsList(container, students) {
                         <div>
                             <h3 class="text-sm font-bold text-slate-800 dark:text-white leading-none">${group.schoolName}</h3>
                             ${group.schoolAddress ? `<p class="text-[0.65rem] text-slate-400 font-medium mt-0.5">${window.sanitizeInput ? window.sanitizeInput(group.schoolAddress) : group.schoolAddress}</p>` : ''}
-                            <p class="text-[0.8rem] font-medium text-slate-400 uppercase tracking-widest mt-1">${group.students.length} Alumnos Registrados</p>
+                            <p class="text-[0.8rem] font-medium text-slate-400 uppercase tracking-widest mt-1">${group.isEmpty ? 'Sin alumnos importados todavía' : `${group.students.length} Alumnos Registrados`}</p>
                         </div>
                     </div>
                     <div class="flex items-center gap-3">
-                        ${userRole === 'admin' ? `
+                        ${userRole === 'admin' && !group.isEmpty ? `
                           <button onclick="event.preventDefault(); event.stopPropagation(); window.deleteAllStudentsInSchool('${window.sanitizeAttr(schoolCode)}', '${window.sanitizeAttr(group.schoolName)}')" class="h-8 px-3 rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white transition-colors text-[0.65rem] font-bold uppercase tracking-widest flex items-center gap-1.5">
                             <i class="fas fa-trash-alt"></i> Eliminar todos
                           </button>
