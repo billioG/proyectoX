@@ -99,12 +99,18 @@ window.renderTeacherGroups = function renderTeacherGroups(teachers, sanitizeInpu
     const groups = new Map(); // programaKey -> Map(schoolName -> teachers[])
     teachers.forEach(t => {
         const firstSchool = t.teacher_assignments?.[0]?.schools;
-        const programaKey = firstSchool?.programa || 'Sin Programa';
         const schoolName = firstSchool?.name || 'Sin Asignar';
-        if (!groups.has(programaKey)) groups.set(programaKey, new Map());
-        const bySchool = groups.get(programaKey);
-        if (!bySchool.has(schoolName)) bySchool.set(schoolName, []);
-        bySchool.get(schoolName).push(t);
+        // Un colegio puede pertenecer a varios programas (campo separado por
+        // comas) -- el docente aparece repetido bajo cada programa al que
+        // pertenece su establecimiento, no solo el primero.
+        const programas = (firstSchool?.programa || '').split(',').map(p => p.trim()).filter(Boolean);
+        const programaKeys = programas.length > 0 ? programas : ['Sin Programa'];
+        programaKeys.forEach(programaKey => {
+            if (!groups.has(programaKey)) groups.set(programaKey, new Map());
+            const bySchool = groups.get(programaKey);
+            if (!bySchool.has(schoolName)) bySchool.set(schoolName, []);
+            bySchool.get(schoolName).push(t);
+        });
     });
 
     return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([programa, bySchool]) => `

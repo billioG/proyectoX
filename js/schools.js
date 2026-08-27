@@ -283,7 +283,7 @@ window.editSchool = async function editSchool(schoolId) {
 
             <div>
                 <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-2 block ml-1">Proyecto / Programa</label>
-                <input type="text" id="edit-school-programa" class="input-field-tw h-11 text-sm" placeholder="Ej: 1bot, STEAM" value="${window.sanitizeAttr(school.programa || '')}">
+                <input type="text" id="edit-school-programa" class="input-field-tw h-11 text-sm" placeholder="Ej: 1bot, STEAM (separar con comas si aplica a varios)" value="${window.sanitizeAttr(school.programa || '')}">
             </div>
 
             <div>
