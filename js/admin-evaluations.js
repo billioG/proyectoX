@@ -29,10 +29,16 @@ window.loadAdminEvalReport = async function loadAdminEvalReport() {
             if (projectsRes.error) throw projectsRes.error;
             if (schoolsRes.error) throw schoolsRes.error;
 
-            return {
-                projects: projectsRes.data || [],
-                schools: schoolsRes.data || []
-            };
+            // Cuentas/establecimiento de prueba interna -- no deben contaminar
+            // el reporte académico real.
+            const testSchoolCodes = window.getTestSchoolCodes ? window.getTestSchoolCodes(schoolsRes.data) : new Set();
+            const schools = (schoolsRes.data || []).filter(s => !window.isTestSchoolCode(testSchoolCodes, s.code));
+            const projects = (projectsRes.data || []).filter(p => {
+                const student = Array.isArray(p.students) ? p.students[0] : p.students;
+                return !student || !window.isTestSchoolCode(testSchoolCodes, student.school_code);
+            });
+
+            return { projects, schools };
         }, (snapshot) => {
             console.log(`📋 Reporte Académico: Procesando ${snapshot.projects.length} proyectos.`);
 

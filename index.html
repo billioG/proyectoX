@@ -549,6 +549,12 @@
             </div>
 
             <div class="flex items-center gap-4 sm:gap-6">
+                <button id="dev-mode-toggle" onclick="window.toggleDevMode && window.toggleDevMode()" style="display:none"
+                    class="w-10 h-10 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    title="Modo Desarrollador -- incluye cuentas/establecimiento de prueba en las métricas">
+                    <i class="fas fa-flask text-lg"></i>
+                </button>
+
                 <button id="theme-toggle"
                     class="w-10 h-10 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                     title="Alternar Modo Oscuro">

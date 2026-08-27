@@ -436,6 +436,8 @@ function updateHeaderUI() {
       avatarEl.classList.add('bg-primary/10', 'text-primary');
     }
   }
+
+  if (typeof window.renderDevModeToggle === 'function') window.renderDevModeToggle();
 }
 
 function setupNavigationUI() {
