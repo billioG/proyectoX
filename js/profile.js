@@ -423,8 +423,10 @@ window.loadAdminProfile = async function loadAdminProfile() {
         <button onclick="window.exportStudentsCSV()" class="btn-primary-tw w-full sm:w-auto">
             <i class="fas fa-file-csv mr-2"></i> EXPORTAR LISTADO GLOBAL DE ALUMNOS
         </button>
+        <div id="event-notif-toggle-slot" class="mt-6 flex justify-center"></div>
     </div>
   `;
+  if (typeof window.renderEventNotificationToggle === 'function') window.renderEventNotificationToggle();
 }
 
 console.log('✅ profile.js optimizado (Tailwind Edition)');

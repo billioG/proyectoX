@@ -132,6 +132,20 @@ window.processAndRenderDashboard = function processAndRenderDashboard(container,
 
     window.renderDashboardUI(container, stats, teachers || [], schools || []);
     if (typeof window.loadTeamPerformanceDashboard === 'function') window.loadTeamPerformanceDashboard();
+    if (typeof window.updateAdminRocksPendingBadge === 'function') window.updateAdminRocksPendingBadge();
+}
+
+window.updateAdminRocksPendingBadge = async function updateAdminRocksPendingBadge() {
+    const badge = document.getElementById('admin-rocks-pending-badge');
+    if (!badge || !window._supabase) return;
+    const { count } = await window._supabase.from('teacher_rock_completions')
+        .select('id', { count: 'exact', head: true }).eq('approval_status', 'pending');
+    if (count > 0) {
+        badge.textContent = count;
+        badge.style.display = 'flex';
+    } else {
+        badge.style.display = 'none';
+    }
 }
 
 window.renderDashboardUI = function renderDashboardUI(container, stats, teachers, schools) {
@@ -147,9 +161,10 @@ window.renderDashboardUI = function renderDashboardUI(container, stats, teachers
             </div>
             
             <div class="grid grid-cols-2 sm:flex sm:flex-wrap gap-3 w-full xl:w-auto">
-                <button class="sm:flex-1 xl:flex-none bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold py-2.5 px-4 sm:px-5 rounded-xl shadow-lg shadow-amber-500/10 transition-all active:scale-95 flex items-center justify-center gap-2 text-[0.65rem] sm:text-xs uppercase tracking-wider group" onclick="nav('admin-rocks')">
+                <button class="relative sm:flex-1 xl:flex-none bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold py-2.5 px-4 sm:px-5 rounded-xl shadow-lg shadow-amber-500/10 transition-all active:scale-95 flex items-center justify-center gap-2 text-[0.65rem] sm:text-xs uppercase tracking-wider group" onclick="nav('admin-rocks')">
                     <i class="fas fa-flag-checkered text-sm group-hover:scale-110 transition-transform"></i>
                     <span>Gestión Tareas</span>
+                    <span id="admin-rocks-pending-badge" style="display:none" class="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[0.6rem] font-black items-center justify-center border-2 border-white dark:border-slate-900">0</span>
                 </button>
 
                 <button class="sm:flex-1 xl:flex-none bg-gradient-to-r from-fuchsia-500 to-purple-600 hover:from-fuchsia-600 hover:to-purple-700 text-white font-bold py-2.5 px-4 sm:px-5 rounded-xl shadow-lg shadow-fuchsia-500/10 transition-all active:scale-95 flex items-center justify-center gap-2 text-[0.65rem] sm:text-xs uppercase tracking-wider group" onclick="window.openRandomEventsAdminModal()">

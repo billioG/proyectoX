@@ -92,6 +92,19 @@ window.completeRock = async function completeRock(rockId, evidenceUrl = null, no
 
         if (error) throw error;
 
+        if (needsApproval && data?.id) {
+            try {
+                const { data: { session } } = await window._supabase.auth.getSession();
+                await fetch(`${window.SUPABASE_URL}/functions/v1/notify-rock-pending`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+                    body: JSON.stringify({ completion_id: data.id }),
+                });
+            } catch (pushErr) {
+                console.error('Error notificando al admin:', pushErr);
+            }
+        }
+
         if (typeof window.showToast === 'function') window.showToast('<i class="fas fa-circle-check"></i> Tarea completada exitosamente', 'success');
 
         if (typeof window.loadRocksWidget === 'function') {

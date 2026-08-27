@@ -27,7 +27,7 @@ window.syncPushSubscription = async function syncPushSubscription(subscription) 
   const raw = subscription.toJSON();
   const { error } = await window._supabase.from('push_subscriptions').upsert({
     user_id: window.currentUser.id,
-    role: window.userRole === 'docente' ? 'docente' : 'estudiante',
+    role: window.userRole || 'estudiante',
     endpoint: raw.endpoint,
     p256dh: raw.keys.p256dh,
     auth: raw.keys.auth,
@@ -88,9 +88,10 @@ window.renderEventNotificationToggle = async function renderEventNotificationTog
     }
   }
 
+  const label = window.userRole === 'admin' ? 'Notificaciones push' : 'Notificaciones de eventos sorpresa';
   slot.innerHTML = subscription
-    ? `<div class="flex items-center gap-2 text-emerald-500 text-[0.65rem] font-black uppercase tracking-widest"><i class="fas fa-bell"></i> Notificaciones de eventos activas</div>`
-    : `<button onclick="window.enableEventNotifications()" class="btn-secondary-tw h-10 px-4 text-[0.65rem] uppercase font-bold"><i class="fas fa-bell"></i> Activar notificaciones de eventos sorpresa</button>`;
+    ? `<div class="flex items-center gap-2 text-emerald-500 text-[0.65rem] font-black uppercase tracking-widest"><i class="fas fa-bell"></i> ${label} activas</div>`
+    : `<button onclick="window.enableEventNotifications()" class="btn-secondary-tw h-10 px-4 text-[0.65rem] uppercase font-bold"><i class="fas fa-bell"></i> Activar ${label.toLowerCase()}</button>`;
 }
 
 // ================================================
