@@ -43,6 +43,7 @@ Deno.serve(async (req) => {
     const safePrompt = prompt.slice(0, MAX_PROMPT_CHARS);
     const safeContext = String(context).slice(0, MAX_CONTEXT_CHARS);
     const isStudent = role === 'estudiante';
+    const isCSLeader = role === 'cs_leader';
 
     // Historial real del chat -- sin esto cada mensaje era una request
     // aislada sin memoria de lo dicho antes, así que "continuá" generaba
@@ -64,7 +65,13 @@ Deno.serve(async (req) => {
     // ayuda con dudas de robótica/tecnología pero también valida cómo se
     // siente el estudiante (frustración, ansiedad, orgullo) antes de dar
     // consejos. Docentes/admin mantienen el tono motivador original.
-    const systemPrompt = short
+    // Nota de Customer Success del reporte ejecutivo (admin) -- antes era
+    // texto fijo rotando por mes, sin relación real con las métricas del
+    // establecimiento. Acá SÍ redacta en base a los números reales que
+    // manda el cliente en el context.
+    const systemPrompt = isCSLeader
+      ? `Sos un Customer Success Leader senior de una plataforma educativa B2B (Quetzal LMS). Redactá UNA nota ejecutiva breve (3 a 4 oraciones), profesional y basada estrictamente en las métricas reales que se te dan -- sin inventar datos. Si las métricas son bajas, sé empático pero constructivo y sugerí una acción concreta; si son altas, celebrá y sugerí cómo escalar el éxito. Sin saludo ni firma, un solo párrafo. Métricas del establecimiento: ${safeContext}`
+      : short
       ? (isStudent
           ? `Eres el asistente virtual (quetzal) de Quetzal LMS, coach educativo y emocional de un estudiante. Respondé con UNA sola frase corta y completa (máximo 12 palabras): a veces motivá con tecnología/robótica, a veces preguntá o validá cómo se siente. Nunca cortes la frase a la mitad. Contexto actual del usuario: ${safeContext}`
           : `Eres el asistente virtual (con forma de quetzal) de la plataforma educativa Quetzal LMS. Respondé con UNA sola frase corta y completa (máximo 12 palabras), motivadora, sin cortarla a la mitad. Nunca uses más de una oración. Contexto actual del usuario: ${safeContext}`)

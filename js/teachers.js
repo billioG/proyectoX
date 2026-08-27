@@ -33,7 +33,8 @@ window.loadTeachers = async function loadTeachers() {
               grade,
               section,
               schools(name)
-            )
+            ),
+            evaluations(id)
           `)
         .order('full_name');
       if (error) throw error;
@@ -101,9 +102,10 @@ window.renderTeachersContent = function renderTeachersContent(container, teacher
                          </div>
                          <div class="px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 grow text-center">
                              <div class="textxs text-slate-400 font-bold uppercase tracking-tighter">Proyectos</div>
-                             <div class="text-lg font-bold text-indigo-500">--</div>
+                             <div class="text-lg font-bold text-indigo-500">${t.evaluations?.length || 0}</div>
                          </div>
                     </div>
+                    <p class="text-[0.6rem] text-slate-400 font-bold uppercase tracking-widest mb-4"><i class="fas fa-clock"></i> Última conexión: ${t.last_login ? new Date(t.last_login + 'T00:00:00').toLocaleDateString('es-GT') : 'Nunca'}</p>
 
                     <div class="grid grid-cols-2 gap-2">
                         <button onclick="window.viewTeacherAssignments('${t.id}', '${sanitizeInput(t.full_name)}')" class="py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-900/20 dark:hover:text-indigo-400 text-xs font-bold uppercase tracking-wider transition-all border border-transparent hover:border-indigo-200">

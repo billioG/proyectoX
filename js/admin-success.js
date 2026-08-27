@@ -339,6 +339,7 @@ window.generateExecutiveReport = async function generateExecutiveReport(schoolCo
         const schoolEvals = allEvals.filter(e => teacherIds.includes(e.teacher_id));
 
         renderExecutiveReportView(container, school, schoolProjects, schoolStudents, schoolTeachers, schoolRatings, schoolEvals);
+    window.generateAICustomerSuccessNote(school, schoolProjects, schoolStudents, schoolTeachers, schoolRatings, schoolEvals);
 
     } catch (err) {
         console.error('Error reporte:', err);
@@ -385,6 +386,36 @@ window.getDynamicSuccessMessage = function getDynamicSuccessMessage(health) {
     };
 }
 
+// Antes la "Nota de Customer Success" era texto fijo rotando por mes
+// (SUCCESS_NOTES_HUB), sin ninguna relación con los números reales del
+// establecimiento. Ahora se la pedimos a la IA con el rol de Customer
+// Success Leader, en base a las métricas concretas -- si falla (offline,
+// IA ocupada) el párrafo estático de getDynamicSuccessMessage queda como
+// fallback (ya está pintado en el DOM antes de que esto corra).
+window.generateAICustomerSuccessNote = async function generateAICustomerSuccessNote(school, projects, students, teachers, ratings, evals) {
+    const el = document.getElementById('cs-ai-note');
+    if (!el || typeof AIService === 'undefined') return;
+
+    const schoolTargetVal = school.projects_per_bimestre || SYSTEM_CONFIG.projectsPerBimester;
+    const expectedGroups = Math.ceil(students.length / SYSTEM_CONFIG.studentsPerTeam);
+    const target = expectedGroups * schoolTargetVal;
+    const health = target > 0 ? Math.min(Math.round((projects.length / target) * 100), 100) : 0;
+    const avgScore = projects.length > 0 ? (projects.reduce((a, b) => a + (b.score || 0), 0) / projects.length).toFixed(1) : 0;
+    const activeTeachers = teachers.filter(t => evals.some(e => e.teacher_id === t.id)).length;
+    const avgRating = ratings.length > 0 ? (ratings.reduce((s, r) => s + r.rating, 0) / ratings.length).toFixed(1) : 'sin datos';
+
+    const metrics = `Cumplimiento de meta: ${health}%. Calidad promedio de proyectos: ${avgScore}/100. Docentes: ${teachers.length} (${activeTeachers} activos). Proyectos entregados: ${projects.length}/${target}. Satisfacción docente: ${avgRating}/5 (${ratings.length} calificaciones).`;
+
+    try {
+        const note = await AIService.ask('Redactá la nota de Customer Success para este establecimiento.', metrics.slice(0, 500), false, [], 'cs_leader');
+        if (note && document.getElementById('cs-ai-note')) {
+            document.getElementById('cs-ai-note').textContent = `"${note}"`;
+        }
+    } catch (err) {
+        console.error('Error generando nota IA de Customer Success:', err);
+    }
+};
+
 window.renderExecutiveReportView = function renderExecutiveReportView(container, school, projects, students, teachers, ratings, evals) {
     const avgScore = projects.length > 0 ? (projects.reduce((a, b) => a + (b.score || 0), 0) / projects.length).toFixed(1) : 0;
 
@@ -395,6 +426,8 @@ window.renderExecutiveReportView = function renderExecutiveReportView(container,
     const health = target > 0 ? Math.min(Math.round((projects.length / target) * 100), 100) : 0;
 
     const dynamicData = getDynamicSuccessMessage(health);
+    const adoptionPct = Math.round((teachers.filter(t => evals.some(e => e.teacher_id === t.id)).length / (teachers.length || 1)) * 100);
+    const avgTeacherRating = ratings.length > 0 ? (ratings.reduce((s, r) => s + r.rating, 0) / ratings.length).toFixed(1) : 'sin datos';
 
     container.innerHTML = `
         <div class="bg-white dark:bg-slate-900 w-full max-w-4xl mx-auto border border-slate-200 dark:border-slate-800 shadow-xl font-sans print:shadow-none print:border-none print:max-w-none transition-colors duration-300 print:m-0 print:p-0" id="executive-report-root">
@@ -720,7 +753,7 @@ window.renderExecutiveReportView = function renderExecutiveReportView(container,
                             <h4 class="text-[0.6rem] font-black uppercase text-rose-500 tracking-[0.2em] mb-4 flex items-center gap-2">
                                 <i class="fas fa-heart"></i> Nota de Customer Success
                             </h4>
-                             <p class="text-white text-lg font-medium italic leading-relaxed">"${dynamicData.note}"</p>
+                             <p id="cs-ai-note" class="text-white text-lg font-medium italic leading-relaxed">"${dynamicData.note}"</p>
                         </div>
                      </div>
 

@@ -439,7 +439,10 @@ window.openCourseManager = async function openCourseManager(courseId) {
           <h2 class="text-lg font-bold text-slate-800 dark:text-white uppercase tracking-tighter">${window.sanitizeInput(course.title)}</h2>
           <p class="text-xs text-slate-400 mt-1">${window.sanitizeInput(course.schools?.name || course.school_code)} · ${window.sanitizeInput(course.grade)} ${window.sanitizeInput(course.section)}</p>
         </div>
-        <button class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500 transition-colors flex items-center justify-center shrink-0" onclick="this.closest('.fixed').remove()"><i class="fas fa-times"></i></button>
+        <div class="flex items-center gap-2 shrink-0">
+          ${course.is_shared ? `<button class="h-8 px-3 rounded-lg bg-rose-50 dark:bg-rose-900/20 text-rose-500 hover:bg-rose-500 hover:text-white text-[0.6rem] font-black uppercase transition-all" onclick="window.openCourseFeedbackInbox('${course.id}', '${window.sanitizeAttr(course.title)}')"><i class="fas fa-heart"></i> Feedback</button>` : ''}
+          <button class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500 transition-colors flex items-center justify-center shrink-0" onclick="this.closest('.fixed').remove()"><i class="fas fa-times"></i></button>
+        </div>
       </div>
       <div id="course-resources-list" class="space-y-3 overflow-y-auto custom-scrollbar mb-6"></div>
       <button class="btn-primary-tw h-11 text-xs uppercase font-bold shrink-0" onclick="window.openAddResourceModal('${courseId}')"><i class="fas fa-plus"></i> Agregar Recurso</button>
@@ -1156,7 +1159,7 @@ window.openSharedCoursesLibrary = async function openSharedCoursesLibrary() {
   document.body.appendChild(modal);
 
   const { data: courses, error } = await _supabase.from('courses')
-    .select('*, teachers(full_name), schools(name), lessons(id)')
+    .select('*, teachers(full_name), schools(name), lessons(id), course_feedback(liked, teacher_id)')
     .eq('is_shared', true)
     .neq('created_by', currentUser.id)
     .order('created_at', { ascending: false });
@@ -1182,20 +1185,119 @@ window.openSharedCoursesLibrary = async function openSharedCoursesLibrary() {
 }
 
 function renderSharedLibraryCourseCard(c) {
+  const feedback = c.course_feedback || [];
+  const likes = feedback.filter(f => f.liked).length;
+  const likedByMe = feedback.some(f => f.teacher_id === window.currentUser?.id && f.liked);
   return `
-    <div class="glass-card p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-      <div class="flex items-center gap-3 min-w-0">
-        <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0"><i class="fas fa-book-open"></i></div>
-        <div class="min-w-0 flex-1">
-          <h4 class="text-sm font-bold text-slate-800 dark:text-white truncate">${window.sanitizeInput(c.title)}</h4>
-          <p class="text-[0.7rem] text-slate-400 truncate">${c.lessons?.length || 0} recurso(s) · por ${window.sanitizeInput(c.teachers?.full_name || 'Docente')} · ${window.sanitizeInput(c.schools?.name || c.school_code)}</p>
-          ${c.tags?.length ? `<div class="flex flex-wrap gap-1 mt-1.5">${c.tags.map(t => `<span class="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[0.55rem] font-bold text-slate-500 uppercase">${window.sanitizeInput(t)}</span>`).join('')}</div>` : ''}
+    <div class="glass-card p-4 flex flex-col gap-3">
+      <div class="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0"><i class="fas fa-book-open"></i></div>
+          <div class="min-w-0 flex-1">
+            <h4 class="text-sm font-bold text-slate-800 dark:text-white truncate">${window.sanitizeInput(c.title)}</h4>
+            <p class="text-[0.7rem] text-slate-400 truncate">${c.lessons?.length || 0} recurso(s) · por ${window.sanitizeInput(c.teachers?.full_name || 'Docente')} · ${window.sanitizeInput(c.schools?.name || c.school_code)}</p>
+            ${c.tags?.length ? `<div class="flex flex-wrap gap-1 mt-1.5">${c.tags.map(t => `<span class="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[0.55rem] font-bold text-slate-500 uppercase">${window.sanitizeInput(t)}</span>`).join('')}</div>` : ''}
+          </div>
         </div>
+        <button class="btn-primary-tw h-9 px-4 text-[0.65rem] uppercase font-bold shrink-0 sm:ml-auto" onclick="window.openCopyCourseModal('${c.id}')"><i class="fas fa-copy"></i> Copiar a mi clase</button>
       </div>
-      <button class="btn-primary-tw h-9 px-4 text-[0.65rem] uppercase font-bold shrink-0 sm:ml-auto" onclick="window.openCopyCourseModal('${c.id}')"><i class="fas fa-copy"></i> Copiar a mi clase</button>
+      <div class="flex items-center gap-4 pt-2 border-t border-slate-100 dark:border-slate-800">
+        <button class="flex items-center gap-1.5 text-xs font-bold ${likedByMe ? 'text-rose-500' : 'text-slate-400 hover:text-rose-400'}" onclick="window.toggleCourseLike('${c.id}')"><i class="fa${likedByMe ? 's' : 'r'} fa-heart"></i>${likes ? ' ' + likes : ''}</button>
+        <button class="text-xs font-bold text-slate-400 hover:text-primary" onclick="window.openCourseFeedbackModal('${c.id}', '${window.sanitizeAttr(c.title)}')"><i class="fas fa-comment-dots"></i> Feedback</button>
+      </div>
     </div>
   `;
 }
+
+window.toggleCourseLike = async function toggleCourseLike(courseId) {
+  const _supabase = window._supabase;
+  const teacherId = window.currentUser.id;
+
+  const { data: existing } = await _supabase.from('course_feedback')
+    .select('id, liked').eq('course_id', courseId).eq('teacher_id', teacherId).maybeSingle();
+
+  const { error } = existing
+    ? await _supabase.from('course_feedback').update({ liked: !existing.liked }).eq('id', existing.id)
+    : await _supabase.from('course_feedback').insert({ course_id: courseId, teacher_id: teacherId, liked: true });
+
+  if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
+  window.openSharedCoursesLibrary();
+};
+
+window.openCourseFeedbackModal = function openCourseFeedbackModal(courseId, title) {
+  document.getElementById('course-feedback-modal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'course-feedback-modal';
+  modal.className = 'fixed inset-0 z-[220] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-sm animate-fadeIn';
+  modal.innerHTML = `
+    <div class="glass-card w-full max-w-md p-6 animate-slideUp">
+      <h3 class="text-sm font-black text-slate-800 dark:text-white mb-1">Feedback para "${window.sanitizeInput(title)}"</h3>
+      <p class="text-[0.65rem] text-slate-400 mb-4">Le va a llegar al docente que compartió este curso.</p>
+      <textarea id="course-feedback-input" class="input-field-tw text-sm" rows="4" placeholder="¿Qué te pareció este curso?"></textarea>
+      <div class="flex gap-3 mt-4">
+        <button class="flex-1 btn-secondary-tw h-10 text-xs uppercase font-bold" onclick="this.closest('.fixed').remove()">Cancelar</button>
+        <button class="flex-[2] btn-primary-tw h-10 text-xs uppercase font-bold" onclick="window.submitCourseFeedback('${courseId}')"><i class="fas fa-paper-plane"></i> Enviar</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+};
+
+window.submitCourseFeedback = async function submitCourseFeedback(courseId) {
+  const input = document.getElementById('course-feedback-input');
+  const content = input?.value.trim();
+  if (!content) return;
+
+  const { error } = await window._supabase.from('course_feedback').upsert({
+    course_id: courseId,
+    teacher_id: window.currentUser.id,
+    feedback: content,
+  }, { onConflict: 'course_id,teacher_id' });
+
+  if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
+  window.showToast('<i class="fas fa-circle-check"></i> Feedback enviado', 'success');
+  document.getElementById('course-feedback-modal')?.remove();
+};
+
+// El docente creador ve el feedback que le dejaron sobre SU curso compartido.
+window.openCourseFeedbackInbox = async function openCourseFeedbackInbox(courseId, title) {
+  document.getElementById('course-feedback-inbox-modal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'course-feedback-inbox-modal';
+  modal.className = 'fixed inset-0 z-[220] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-sm animate-fadeIn';
+  modal.innerHTML = `
+    <div class="glass-card w-full max-w-md max-h-[80vh] flex flex-col p-6 animate-slideUp">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-sm font-black text-slate-800 dark:text-white">Feedback de "${window.sanitizeInput(title)}"</h3>
+        <button class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500 flex items-center justify-center shrink-0" onclick="this.closest('.fixed').remove()"><i class="fas fa-times"></i></button>
+      </div>
+      <div id="course-feedback-inbox-list" class="space-y-2 overflow-y-auto custom-scrollbar">
+        <div class="text-center text-slate-400 text-xs py-6"><i class="fas fa-spinner fa-spin"></i></div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  const { data: rows, error } = await window._supabase.from('course_feedback')
+    .select('liked, feedback, created_at, teachers(full_name)').eq('course_id', courseId)
+    .order('created_at', { ascending: false });
+
+  const listEl = document.getElementById('course-feedback-inbox-list');
+  if (error) { listEl.innerHTML = `<p class="text-rose-500 text-xs">${error.message}</p>`; return; }
+
+  const likesCount = (rows || []).filter(r => r.liked).length;
+  const withText = (rows || []).filter(r => r.feedback);
+
+  listEl.innerHTML = `
+    <p class="text-xs font-bold text-slate-500 mb-3"><i class="fas fa-heart text-rose-500"></i> ${likesCount} like(s)</p>
+    ${withText.length ? withText.map(r => `
+      <div class="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 text-xs">
+        <span class="font-bold text-slate-600 dark:text-slate-300">${window.sanitizeInput(r.teachers?.full_name || 'Docente')}</span>
+        <p class="text-slate-500 dark:text-slate-400 mt-0.5">${window.sanitizeInput(r.feedback)}</p>
+      </div>
+    `).join('') : '<p class="text-xs text-slate-400">Todavía no hay comentarios de texto.</p>'}
+  `;
+};
 
 window.filterSharedLibraryByTag = function filterSharedLibraryByTag(tag) {
   window._sharedLibraryTagFilter = tag;
