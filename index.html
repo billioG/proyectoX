@@ -42,6 +42,10 @@
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/h5p-standalone@3.7.0/dist/main.bundle.js"></script>
 
+    <!-- Driver.js -- tour guiado de onboarding (señala elementos reales de la UI) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1/dist/driver.css">
+    <script src="https://cdn.jsdelivr.net/npm/driver.js@1/dist/driver.js.iife.js"></script>
+
 
 
     <!-- Tailwind CSS 3.4 -->
@@ -603,23 +607,23 @@
             <nav class="nav-menu">
                 <!-- MENÚ ESTUDIANTE -->
                 <div id="nav-estudiante" style="display: none;">
-                    <div class="nav-item active" onclick="nav('feed')">
+                    <div id="nav-est-home" class="nav-item active" onclick="nav('feed')">
                         <i class="fas fa-home"></i>
                         <span>Inicio</span>
                     </div>
-                    <div class="nav-item" onclick="nav('lessons')">
+                    <div id="nav-est-lessons" class="nav-item" onclick="nav('lessons')">
                         <i class="fas fa-book-open"></i>
                         <span>Cursos</span>
                     </div>
-                    <div class="nav-item" onclick="nav('upload')">
+                    <div id="nav-est-upload" class="nav-item" onclick="nav('upload')">
                         <i class="fas fa-upload"></i>
                         <span>Subir Proyecto</span>
                     </div>
-                    <div class="nav-item" onclick="nav('ranking')">
+                    <div id="nav-est-ranking" class="nav-item" onclick="nav('ranking')">
                         <i class="fas fa-trophy"></i>
                         <span>Ranking</span>
                     </div>
-                    <div class="nav-item" onclick="window.loadModule('profile').then(() => window.openSuggestionModal())">
+                    <div id="nav-est-suggestions" class="nav-item" onclick="window.loadModule('profile').then(() => window.openSuggestionModal())">
                         <i class="fas fa-lightbulb"></i>
                         <span>Buzón de Sugerencias</span>
                     </div>
@@ -628,35 +632,35 @@
 
                 <!-- MENÚ DOCENTE -->
                 <div id="nav-docente" style="display: none;">
-                    <div class="nav-item active" onclick="nav('feed')">
+                    <div id="nav-doc-home" class="nav-item active" onclick="nav('feed')">
                         <i class="fas fa-home"></i>
                         <span>Inicio</span>
                     </div>
-                    <div class="nav-item" onclick="nav('lessons')">
+                    <div id="nav-doc-lessons" class="nav-item" onclick="nav('lessons')">
                         <i class="fas fa-book-open"></i>
                         <span>Cursos</span>
                     </div>
-                    <div class="nav-item" onclick="nav('evaluate')">
+                    <div id="nav-doc-evaluate" class="nav-item" onclick="nav('evaluate')">
                         <i class="fas fa-clipboard-check"></i>
                         <span>Evaluar Proyectos</span>
                     </div>
-                    <div class="nav-item" onclick="nav('groups')">
+                    <div id="nav-doc-groups" class="nav-item" onclick="nav('groups')">
                         <i class="fas fa-users"></i>
                         <span>Gestionar Equipos</span>
                     </div>
-                    <div class="nav-item" onclick="nav('attendance')">
+                    <div id="nav-doc-attendance" class="nav-item" onclick="nav('attendance')">
                         <i class="fas fa-user-check"></i>
                         <span>Tomar Asistencia</span>
                     </div>
-                    <div class="nav-item" onclick="nav('students')">
+                    <div id="nav-doc-students" class="nav-item" onclick="nav('students')">
                         <i class="fas fa-user-graduate"></i>
                         <span>Gestionar Estudiantes</span>
                     </div>
-                    <div class="nav-item" onclick="nav('ranking')">
+                    <div id="nav-doc-ranking" class="nav-item" onclick="nav('ranking')">
                         <i class="fas fa-trophy"></i>
                         <span>Ranking</span>
                     </div>
-                    <div class="nav-item" onclick="nav('bonus-system')">
+                    <div id="nav-doc-bonus" class="nav-item" onclick="nav('bonus-system')">
                         <i class="fas fa-bullseye"></i>
                         <span>Bonos y Desempeño</span>
                     </div>

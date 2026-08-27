@@ -88,6 +88,9 @@ window.renderStudentProfileUI = function renderStudentProfileUI(container, stude
             </div>
         </div>
         <div class="flex gap-2">
+            <button onclick="window.startOnboardingTour && window.startOnboardingTour()" class="btn-secondary-tw h-11 px-5 text-[0.8rem] uppercase font-bold tracking-widest">
+                <i class="fas fa-map-signs"></i> Ver Tutorial
+            </button>
             <button onclick="window.print()" class="btn-secondary-tw h-11 px-5 text-[0.8rem] uppercase font-bold tracking-widest hidden">
                 <i class="fas fa-print opacity-50"></i> PDF
             </button>
@@ -283,6 +286,7 @@ window.renderTeacherProfileUI = function renderTeacherProfileUI(container, teach
             <button onclick="window.openUploadPhotoModal()" class="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:text-primary transition-colors"><i class="fas fa-camera text-xl"></i></button>
             <button onclick="window.openEditTeacherContactModal('${teacher.phone || ''}', '${teacher.birth_date || ''}')" class="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:text-primary transition-colors" title="Editar teléfono y fecha de nacimiento"><i class="fas fa-id-card text-xl"></i></button>
             <button onclick="window.openChangePasswordModal(true)" class="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:text-primary transition-colors" title="Cambiar contraseña"><i class="fas fa-key text-xl"></i></button>
+            <button onclick="window.startOnboardingTour && window.startOnboardingTour()" class="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:text-primary transition-colors" title="Ver tutorial"><i class="fas fa-map-signs text-xl"></i></button>
             <button onclick="window.print()" class="btn-primary-tw flex items-center gap-2">
                 <i class="fas fa-print"></i> EXPORTAR FICHA
             </button>
