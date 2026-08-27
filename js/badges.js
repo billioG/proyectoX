@@ -133,6 +133,22 @@ async function awardBadge(userId, badgeId) {
   }
 }
 
+// Se llama al dar like a un comentario -- re-chequea las insignias de quien
+// lo escribió (no de quien da el like), ya sea que lo haya likeado un
+// compañero o el docente. Solo aplica si el autor es estudiante.
+async function checkCommentAuthorBadges(commentId) {
+  try {
+    const { data: comment } = await _supabase.from('resource_comments')
+      .select('author_id, author_role').eq('id', commentId).maybeSingle();
+    if (comment?.author_role === 'estudiante' && comment.author_id) {
+      await checkAllBadges(comment.author_id);
+    }
+  } catch (err) {
+    console.error('Error verificando insignias del autor del comentario:', err);
+  }
+}
+window.checkCommentAuthorBadges = checkCommentAuthorBadges;
+
 async function checkAllBadges(studentId) {
   try {
     // Obtener grupos del estudiante
@@ -154,6 +170,26 @@ async function checkAllBadges(studentId) {
     const highScores = projects?.filter(p => p.score >= 85).length || 0;
     const excellentScores = projects?.filter(p => p.score >= 90).length || 0;
 
+    // Insignias de comentarios/likes en recursos (independientes de proyectos).
+    const { count: totalComments } = await _supabase
+      .from('resource_comments')
+      .select('id', { count: 'exact', head: true })
+      .eq('author_id', studentId);
+
+    const { data: myComments } = await _supabase
+      .from('resource_comments')
+      .select('id')
+      .eq('author_id', studentId);
+    const myCommentIds = (myComments || []).map(c => c.id);
+    let commentLikesReceived = 0;
+    if (myCommentIds.length) {
+      const { count } = await _supabase
+        .from('resource_comment_likes')
+        .select('comment_id', { count: 'exact', head: true })
+        .in('comment_id', myCommentIds);
+      commentLikesReceived = count || 0;
+    }
+
     const badgesToCheck = [];
 
     if (totalProjects >= 1) badgesToCheck.push(1);
@@ -162,6 +198,8 @@ async function checkAllBadges(studentId) {
     if (totalProjects >= 5) badgesToCheck.push(5);
     if (totalLikes >= 50) badgesToCheck.push(6);
     if (highScores >= 3) badgesToCheck.push(7);
+    if ((totalComments || 0) >= 10) badgesToCheck.push(16);
+    if (commentLikesReceived >= 10) badgesToCheck.push(17);
 
     for (const badgeId of badgesToCheck) {
       await awardBadge(studentId, badgeId);

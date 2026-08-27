@@ -641,6 +641,7 @@ window.toggleTeacherCommentLike = async function toggleTeacherCommentLike(lesson
   } else {
     const { error } = await window._supabase.from('resource_comment_likes').insert({ comment_id: commentId, user_id: userId });
     if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
+    window.checkCommentAuthorBadges?.(commentId);
   }
   window.loadTeacherCommentsForGroup(lessonId);
 };
@@ -1705,6 +1706,7 @@ window.postResourceComment = async function postResourceComment(lessonId, groupI
     const msg = error.message.includes('CONTENIDO_INAPROPIADO') ? 'Ese comentario tiene lenguaje no permitido' : error.message;
     return window.showToast('<i class="fas fa-circle-xmark"></i> ' + msg, 'error');
   }
+  if (typeof checkAllBadges === 'function') checkAllBadges(window.currentUser.id);
   window.loadResourceSocialPanel(lessonId);
 };
 
@@ -1715,6 +1717,7 @@ window.toggleResourceCommentLike = async function toggleResourceCommentLike(less
   } else {
     const { error } = await window._supabase.from('resource_comment_likes').insert({ comment_id: commentId, user_id: userId });
     if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
+    window.checkCommentAuthorBadges?.(commentId);
   }
   window.loadResourceSocialPanel(lessonId);
 };

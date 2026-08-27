@@ -16,7 +16,9 @@ export const BADGES = [
     { id: 12, name: 'Buen Compañero', description: 'Participaste en 3 grupos diferentes', icon: '<i class="fas fa-handshake"></i>', condition: '3_groups' },
     { id: 13, name: 'Mente Maestra', description: 'Fuiste Planner exitoso 3 veces', icon: '<i class="fas fa-brain"></i>', condition: 'role_planner_3' },
     { id: 14, name: 'La Voz', description: 'Fuiste Speaker destacado 3 veces', icon: '<i class="fas fa-comment-dots"></i>️', condition: 'role_speaker_3' },
-    { id: 15, name: 'Sprint Final', description: 'Subiste proyecto en Noviembre', icon: '<i class="fas fa-flag-checkered"></i>', condition: 'november_project' }
+    { id: 15, name: 'Sprint Final', description: 'Subiste proyecto en Noviembre', icon: '<i class="fas fa-flag-checkered"></i>', condition: 'november_project' },
+    { id: 16, name: 'Voz Activa', description: 'Escribiste 10+ comentarios en recursos', icon: '<i class="fas fa-comments"></i>', condition: 'comments_10' },
+    { id: 17, name: 'Comentario Destacado', description: 'Tus comentarios recibieron 10+ likes', icon: '<i class="fas fa-heart"></i>', condition: 'comment_likes_10' }
 ];
 
 export const TEACHER_BADGES = [
