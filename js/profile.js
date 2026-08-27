@@ -281,6 +281,7 @@ window.renderTeacherProfileUI = function renderTeacherProfileUI(container, teach
         </div>
         <div class="flex gap-3">
             <button onclick="window.openUploadPhotoModal()" class="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:text-primary transition-colors"><i class="fas fa-camera text-xl"></i></button>
+            <button onclick="window.openEditTeacherContactModal('${teacher.phone || ''}', '${teacher.birth_date || ''}')" class="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:text-primary transition-colors" title="Editar teléfono y fecha de nacimiento"><i class="fas fa-id-card text-xl"></i></button>
             <button onclick="window.openChangePasswordModal(true)" class="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:text-primary transition-colors" title="Cambiar contraseña"><i class="fas fa-key text-xl"></i></button>
             <button onclick="window.print()" class="btn-primary-tw flex items-center gap-2">
                 <i class="fas fa-print"></i> EXPORTAR FICHA
@@ -365,6 +366,46 @@ window.renderTeacherProfileUI = function renderTeacherProfileUI(container, teach
     </div>
   `;
 }
+
+window.openEditTeacherContactModal = function openEditTeacherContactModal(phone, birthDate) {
+    document.getElementById('edit-teacher-contact-modal')?.remove();
+    const modal = document.createElement('div');
+    modal.id = 'edit-teacher-contact-modal';
+    modal.className = 'fixed inset-0 z-[220] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-sm animate-fadeIn';
+    modal.innerHTML = `
+      <div class="glass-card w-full max-w-sm p-8 animate-slideUp">
+        <h2 class="text-lg font-bold text-slate-800 dark:text-white uppercase tracking-tighter mb-6"><i class="fas fa-id-card text-primary mr-2"></i> Mis Datos</h2>
+        <div class="space-y-4">
+          <div>
+            <label class="text-[0.65rem] font-black uppercase text-slate-400 tracking-widest block mb-1.5">Teléfono</label>
+            <input type="tel" id="edit-my-phone" class="input-field-tw h-11 text-sm" value="${window.sanitizeAttr(phone || '')}" placeholder="1234-5678">
+          </div>
+          <div>
+            <label class="text-[0.65rem] font-black uppercase text-slate-400 tracking-widest block mb-1.5">Fecha de Nacimiento</label>
+            <input type="date" id="edit-my-birth" class="input-field-tw h-11 text-sm" value="${window.sanitizeAttr(birthDate || '')}">
+          </div>
+        </div>
+        <div class="flex gap-3 mt-8">
+          <button class="flex-1 btn-secondary-tw h-11 text-xs uppercase font-bold" onclick="this.closest('.fixed').remove()">Cancelar</button>
+          <button class="flex-[2] btn-primary-tw h-11 text-xs uppercase font-bold" onclick="window.saveTeacherContact()"><i class="fas fa-save"></i> Guardar</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+};
+
+window.saveTeacherContact = async function saveTeacherContact() {
+    const phone = document.getElementById('edit-my-phone')?.value.trim() || null;
+    const birth = document.getElementById('edit-my-birth')?.value || null;
+
+    const { error } = await window._supabase.from('teachers').update({ phone, birth_date: birth }).eq('id', window.currentUser.id);
+    if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
+
+    if (window.userData) { window.userData.phone = phone; window.userData.birth_date = birth; }
+    window.showToast('<i class="fas fa-circle-check"></i> Datos actualizados', 'success');
+    document.getElementById('edit-teacher-contact-modal')?.remove();
+    if (typeof window.loadProfile === 'function') window.loadProfile();
+};
 
 window.loadAdminProfile = async function loadAdminProfile() {
     const container = document.getElementById('profile-content');

@@ -112,7 +112,10 @@ window.openAnnouncementsInbox = async function openAnnouncementsInbox() {
   const adminSurveyCards = window.userRole === 'admin' ? (adminSurveys?.data || adminSurveys || []).map(s => `
     <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
       <span class="text-xs font-bold text-slate-600 dark:text-slate-300 truncate">${sanitizeInput(s.title)}</span>
-      <button class="text-primary hover:underline text-[0.6rem] font-bold uppercase shrink-0" onclick="window.openSurveyResultsModal('${s.id}')">Ver Resultados</button>
+      <div class="flex items-center gap-3 shrink-0">
+        <button class="text-primary hover:underline text-[0.6rem] font-bold uppercase" onclick="window.openSurveyResultsModal('${s.id}')">Ver Resultados</button>
+        <button class="text-slate-300 hover:text-rose-500 transition-colors" onclick="window.deleteSurvey('${s.id}')" title="Eliminar encuesta"><i class="fas fa-trash-alt text-xs"></i></button>
+      </div>
     </div>
   `).join('') : '';
 

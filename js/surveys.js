@@ -299,7 +299,10 @@ window.openSurveyResultsModal = async function openSurveyResultsModal(surveyId) 
           <h3 class="text-sm font-black text-slate-800 dark:text-white">${sanitizeInput(survey?.title || '')}</h3>
           <p class="text-[0.6rem] text-slate-400 uppercase">${responses?.length || 0} respuesta(s)</p>
         </div>
-        <button class="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500 flex items-center justify-center" onclick="this.closest('.fixed').remove()"><i class="fas fa-times"></i></button>
+        <div class="flex items-center gap-2 shrink-0">
+          ${window.userRole === 'admin' ? `<button class="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-900/20 text-rose-500 hover:bg-rose-500 hover:text-white flex items-center justify-center transition-colors" onclick="window.deleteSurvey('${surveyId}')" title="Eliminar encuesta"><i class="fas fa-trash-alt"></i></button>` : ''}
+          <button class="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500 flex items-center justify-center" onclick="this.closest('.fixed').remove()"><i class="fas fa-times"></i></button>
+        </div>
       </div>
       <div class="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-5">
         ${(questions || []).map((q, i) => {
@@ -337,5 +340,23 @@ window.openSurveyResultsModal = async function openSurveyResultsModal(surveyId) 
   `;
   document.body.appendChild(modal);
 }
+
+window.deleteSurvey = async function deleteSurvey(id) {
+  if (!confirm('¿Eliminar esta encuesta? También se borran todas las respuestas recibidas.')) return;
+  const _supabase = window._supabase;
+
+  const { data: responses } = await _supabase.from('survey_responses').select('id').eq('survey_id', id);
+  const responseIds = (responses || []).map(r => r.id);
+  if (responseIds.length) await _supabase.from('survey_answers').delete().in('response_id', responseIds);
+  await _supabase.from('survey_responses').delete().eq('survey_id', id);
+  await _supabase.from('survey_questions').delete().eq('survey_id', id);
+
+  const { error } = await _supabase.from('surveys').delete().eq('id', id);
+  if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
+
+  window.showToast('<i class="fas fa-circle-check"></i> Encuesta eliminada', 'success');
+  document.getElementById('survey-results-modal')?.remove();
+  if (typeof window.openAnnouncementsInbox === 'function') window.openAnnouncementsInbox();
+};
 
 console.log('✅ surveys.js cargado correctamente');
