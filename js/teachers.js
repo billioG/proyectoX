@@ -23,21 +23,31 @@ window.loadTeachers = async function loadTeachers() {
 
   try {
     await fetchWithCache('teachers_list', async () => {
-      const { data, error } = await _supabase
-        .from('teachers')
-        .select(`
-            *,
-            teacher_assignments(
-              id,
-              school_code,
-              grade,
-              section,
-              schools(name)
-            ),
-            evaluations(id)
-          `)
-        .order('full_name');
+      const [{ data, error }, { data: evals }] = await Promise.all([
+        _supabase
+          .from('teachers')
+          .select(`
+              *,
+              teacher_assignments(
+                id,
+                school_code,
+                grade,
+                section,
+                schools(name)
+              )
+            `)
+          .order('full_name'),
+        // Sin FK declarada entre teachers y evaluations -- PostgREST no
+        // puede embeder ese join (rompía la carga entera con 400: "Could
+        // not find a relationship"). Se trae aparte y se cuenta a mano.
+        _supabase.from('evaluations').select('teacher_id'),
+      ]);
       if (error) throw error;
+
+      const evalCountByTeacher = new Map();
+      (evals || []).forEach(e => evalCountByTeacher.set(e.teacher_id, (evalCountByTeacher.get(e.teacher_id) || 0) + 1));
+      (data || []).forEach(t => { t.evalCount = evalCountByTeacher.get(t.id) || 0; });
+
       return data;
     }, (teachers) => {
       window.renderTeachersContent(container, teachers);
@@ -102,7 +112,7 @@ window.renderTeachersContent = function renderTeachersContent(container, teacher
                          </div>
                          <div class="px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 grow text-center">
                              <div class="textxs text-slate-400 font-bold uppercase tracking-tighter">Proyectos</div>
-                             <div class="text-lg font-bold text-indigo-500">${t.evaluations?.length || 0}</div>
+                             <div class="text-lg font-bold text-indigo-500">${t.evalCount || 0}</div>
                          </div>
                     </div>
                     <p class="text-[0.6rem] text-slate-400 font-bold uppercase tracking-widest mb-4"><i class="fas fa-clock"></i> Última conexión: ${t.last_login ? new Date(t.last_login + 'T00:00:00').toLocaleDateString('es-GT') : 'Nunca'}</p>

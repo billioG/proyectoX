@@ -631,16 +631,16 @@ window.renderExecutiveReportView = function renderExecutiveReportView(container,
                             <div class="text-[0.65rem] font-bold uppercase text-indigo-700/70 dark:text-indigo-400/50 leading-tight">Nivel de Retención</div>
                         </div>
 
-                        <div class="p-5 rounded-2xl bg-rose-50 dark:!bg-[#0f172a] border border-rose-100 dark:border-rose-500/30 shadow-sm text-left group transition-all relative">
+                        <div class="p-5 rounded-2xl bg-emerald-50 dark:!bg-[#0f172a] border border-emerald-100 dark:border-emerald-500/30 shadow-sm text-left group transition-all relative">
                              <div class="flex justify-between items-start mb-3">
-                                <div class="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center text-xs shadow-inner border border-rose-500/20"><i class="fas fa-smile"></i></div>
+                                <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-xs shadow-inner border border-emerald-500/20"><i class="fas fa-smile"></i></div>
                                 <div class="flex items-center gap-2">
-                                    <span class="text-[0.6rem] font-black uppercase tracking-widest text-rose-600/60 dark:text-rose-400/70">Satisfacción</span>
+                                    <span class="text-[0.6rem] font-black uppercase tracking-widest text-emerald-600/60 dark:text-emerald-400/70">Satisfacción</span>
                                     <!-- Tooltip Ayuda -->
-                                    <div class="w-4 h-4 bg-rose-500/10 dark:bg-rose-500/20 rounded-full flex items-center justify-center text-[0.5rem] text-rose-600 dark:text-rose-400 cursor-help group/help no-print">
+                                    <div class="w-4 h-4 bg-emerald-500/10 dark:bg-emerald-500/20 rounded-full flex items-center justify-center text-[0.5rem] text-emerald-600 dark:text-emerald-400 cursor-help group/help no-print">
                                         <i class="fas fa-question"></i>
                                         <div class="invisible group-hover/help:visible absolute bottom-full right-0 mb-2 w-64 p-4 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-[100] pointer-events-none text-left animate-slideUp">
-                                            <div class="text-[0.6rem] font-black text-rose-400 uppercase mb-1 tracking-widest">Winning by Design: IMPACTO EMOCIONAL</div>
+                                            <div class="text-[0.6rem] font-black text-emerald-400 uppercase mb-1 tracking-widest">Winning by Design: IMPACTO EMOCIONAL</div>
                                             <div class="text-xs font-bold text-white mb-3">Sentimiento de Comunidad</div>
                                             <div class="space-y-2">
                                                 <div>
@@ -656,8 +656,8 @@ window.renderExecutiveReportView = function renderExecutiveReportView(container,
                                     </div>
                                 </div>
                             </div>
-                            <div class="text-2xl font-black text-rose-900 dark:text-rose-400 uppercase tracking-tighter">Positivo</div>
-                            <div class="text-[0.65rem] font-bold uppercase text-rose-700/70 dark:text-rose-400/50 leading-tight">Impacto Emocional</div>
+                            <div class="text-2xl font-black text-emerald-900 dark:text-emerald-400 uppercase tracking-tighter">Positivo</div>
+                            <div class="text-[0.65rem] font-bold uppercase text-emerald-700/70 dark:text-emerald-400/50 leading-tight">Impacto Emocional</div>
                         </div>
                     </div>
                 </section>
