@@ -77,6 +77,9 @@ window.renderTeachersContent = function renderTeachersContent(container, teacher
             <button class="btn-secondary-tw grow h-12 px-6 text-xs uppercase font-bold tracking-widest" onclick="window.openImportTeachersModal()">
               <i class="fas fa-file-import"></i> IMPORTAR CSV
             </button>
+            <button class="btn-secondary-tw grow h-12 px-6 text-xs uppercase font-bold tracking-widest" onclick="window.nav('admin-teacher-performance')">
+              <i class="fas fa-bolt"></i> ACTIVIDAD
+            </button>
         </div>
       </div>
 
@@ -88,7 +91,15 @@ window.renderTeachersContent = function renderTeachersContent(container, teacher
         </div>
       ` : `
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          ${teachers.map(t => `
+          ${teachers.map(t => {
+            // "ACTIVO" era texto fijo, siempre igual sin importar el docente --
+            // ahora depende de si entró en los últimos 3 días.
+            const daysSinceLogin = t.last_login ? Math.floor((Date.now() - new Date(t.last_login + 'T00:00:00').getTime()) / 86400000) : null;
+            const isRecentlyActive = daysSinceLogin !== null && daysSinceLogin <= 3;
+            const statusBadge = isRecentlyActive
+              ? `<div class="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-900/10 text-emerald-600 dark:text-emerald-400 text-[0.6rem] font-bold uppercase tracking-widest border border-emerald-500/10 flex items-center gap-1"><i class="fas fa-circle text-[0.4rem]"></i> ACTIVO</div>`
+              : `<div class="px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-900/10 text-amber-600 dark:text-amber-400 text-[0.6rem] font-bold uppercase tracking-widest border border-amber-500/10 flex items-center gap-1"><i class="fas fa-circle text-[0.4rem]"></i> INACTIVO</div>`;
+            return `
             <div class="teacher-card glass-card p-0 overflow-hidden hover:translate-y-[-4px] transition-all group" data-name="${t.full_name.toLowerCase()}" data-email="${t.email.toLowerCase()}">
                 <div class="p-6 relative">
                     <div class="flex justify-between items-start mb-4">
@@ -96,9 +107,7 @@ window.renderTeachersContent = function renderTeachersContent(container, teacher
                              ${t.profile_photo_url ? `<img src="${t.profile_photo_url}" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center text-slate-300 text-2xl"><i class="fas fa-user"></i></div>`}
                         </div>
                         <div class="flex flex-col items-end gap-1">
-                             <div class="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-900/10 text-emerald-600 dark:text-emerald-400 text-[0.6rem] font-bold uppercase tracking-widest border border-emerald-500/10 flex items-center gap-1">
-                                <i class="fas fa-circle text-[0.4rem]"></i> ACTIVO
-                             </div>
+                             ${statusBadge}
                              ${t.role === 'admin' ? `<span class="text-[0.55rem] font-bold text-rose-500 uppercase tracking-widest bg-rose-50 px-2 py-0.5 rounded-md">ADMIN</span>` : ''}
                         </div>
                     </div>
@@ -142,7 +151,8 @@ window.renderTeachersContent = function renderTeachersContent(container, teacher
                      </div>
                 </div>
             </div>
-          `).join('')}
+          `;
+          }).join('')}
         </div>
       `}
     `;

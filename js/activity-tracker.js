@@ -8,6 +8,12 @@ const ActivityTracker = {
     heartbeatSeconds: 30,
     lastSync: Date.now(),
     isActive: true,
+    // Antes "activo" solo significaba "la pestaña está visible" -- si el
+    // usuario dejaba la pestaña abierta y se iba, el tiempo seguía sumando
+    // como si estuviera usando la plataforma. Ahora también exige haber
+    // interactuado (mouse/teclado/touch/scroll) en los últimos 2 minutos.
+    lastInteraction: Date.now(),
+    IDLE_THRESHOLD_MS: 2 * 60 * 1000,
 
     init() {
         console.log('⏱️ ActivityTracker: Iniciando...');
@@ -24,8 +30,17 @@ const ActivityTracker = {
             }
         });
 
+        const markInteraction = () => { this.lastInteraction = Date.now(); };
+        ['mousemove', 'keydown', 'touchstart', 'scroll', 'click'].forEach(evt => {
+            document.addEventListener(evt, markInteraction, { passive: true });
+        });
+
         // Iniciar primer ciclo
         this.startHeartbeat();
+    },
+
+    isReallyActive() {
+        return this.isActive && (Date.now() - this.lastInteraction) < this.IDLE_THRESHOLD_MS;
     },
 
     startHeartbeat() {
@@ -41,7 +56,7 @@ const ActivityTracker = {
     async sendHeartbeat() {
         const user = window.currentUser;
         if (typeof window._supabase === 'undefined' || !user) return;
-        if (!this.isActive) return;
+        if (!this.isReallyActive()) return;
 
         try {
             const role = window.userRole || 'estudiante';

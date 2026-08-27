@@ -23,6 +23,11 @@ window.initGamification = async function initGamification() {
       });
 
     } else if (userRole === 'docente') {
+      // Antes solo se actualizaba last_login/streak para estudiantes -- por
+      // eso "última conexión" de un docente siempre quedaba en NUNCA aunque
+      // usara la plataforma seguido.
+      if (typeof window.updateLoginStreak === 'function') await window.updateLoginStreak();
+
       const cacheKey = `teacher_kpi_snapshot_${currentUser.id}`;
       // kpi-engine.js se carga perezosamente (solo al entrar a "feed"/"perfil"),
       // pero esto corre justo al hacer login -- si todavía no cargó,

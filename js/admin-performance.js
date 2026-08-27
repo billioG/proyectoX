@@ -17,21 +17,28 @@ async function loadAdminTeacherPerformance() {
 
     try {
         await fetchWithCache('admin_performance_dashboard', async () => {
-            const [teachersRes, ratingsRes, evalsRes] = await Promise.all([
+            const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+            const [teachersRes, ratingsRes, evalsRes, activeTimeRes] = await Promise.all([
                 _supabase.from('teachers').select('*'),
                 _supabase.from('teacher_ratings').select('rating, teacher_id, message, created_at, students:student_id(full_name)'),
-                _supabase.from('evaluations').select('id, teacher_id')
+                _supabase.from('evaluations').select('id, teacher_id'),
+                _supabase.from('active_time_tracking').select('user_id, total_seconds').eq('role', 'docente').gte('activity_date', thirtyDaysAgo),
             ]);
 
             const teachers = teachersRes.data || [];
             const ratings = ratingsRes.data || [];
             const evaluations = evalsRes.data || [];
+            const activeTime = activeTimeRes.data || [];
+
+            const secondsByTeacher = new Map();
+            activeTime.forEach(r => secondsByTeacher.set(r.user_id, (secondsByTeacher.get(r.user_id) || 0) + (r.total_seconds || 0)));
 
             // Calculate individual teacher performance
             const performanceData = teachers.map(t => {
                 const tr = ratings.filter(r => r.teacher_id === t.id);
                 const te = evaluations.filter(e => e.teacher_id === t.id);
                 const avg = tr.length > 0 ? (tr.reduce((s, r) => s + r.rating, 0) / tr.length).toFixed(1) : 0;
+                const daysSinceLogin = t.last_login ? Math.floor((Date.now() - new Date(t.last_login + 'T00:00:00').getTime()) / 86400000) : null;
 
                 return {
                     ...t,
@@ -39,7 +46,9 @@ async function loadAdminTeacherPerformance() {
                     totalRatings: tr.length,
                     totalEvals: te.length,
                     lastRatings: tr.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 3),
-                    isActive: tr.length > 0 || te.length > 0
+                    isActive: tr.length > 0 || te.length > 0,
+                    activeSeconds30d: secondsByTeacher.get(t.id) || 0,
+                    daysSinceLogin,
                 };
             }).sort((a, b) => b.avgRating - a.avgRating);
 
@@ -73,6 +82,9 @@ async function loadAdminTeacherPerformance() {
 
 function renderTeacherPerformanceHTML(container, data, kpis) {
     container.innerHTML = `
+        <button onclick="window.nav('teachers')" style="background: none; border: none; color: var(--text-light); font-weight: 700; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; cursor: pointer; margin-bottom: 16px; padding: 0;">
+            <i class="fas fa-arrow-left"></i> Volver a Docentes
+        </button>
         <!-- Aggregated KPIs Dashboard -->
         <div class="card-header" style="margin-bottom: 20px;">
             <div>
@@ -190,6 +202,40 @@ function renderTeacherPerformanceHTML(container, data, kpis) {
                             </td>
                         </tr>
                     `).join('')}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Docentes más activos: conexión reciente + tiempo real de interacción -->
+        <div class="card-header" style="margin: 30px 0 15px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h3 style="margin:0; font-size: 1.1rem;"><i class="fas fa-bolt"></i> Docentes Más Activos</h3>
+                <p style="color: var(--text-light); margin: 2px 0 0 0; font-size: 0.8rem;">Última conexión y tiempo real de interacción (últimos 30 días, no solo pestaña abierta)</p>
+            </div>
+        </div>
+        <div class="table-container section-card">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Docente</th>
+                        <th>Última Conexión</th>
+                        <th>Tiempo en Plataforma (30d)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${[...data].sort((a, b) => b.activeSeconds30d - a.activeSeconds30d).map(t => {
+                        const hours = Math.floor(t.activeSeconds30d / 3600);
+                        const minutes = Math.floor((t.activeSeconds30d % 3600) / 60);
+                        const connLabel = t.daysSinceLogin === null ? 'Nunca' : t.daysSinceLogin === 0 ? 'Hoy' : `Hace ${t.daysSinceLogin} día(s)`;
+                        const connColor = t.daysSinceLogin === null ? '#94a3b8' : t.daysSinceLogin <= 3 ? '#10b981' : '#f59e0b';
+                        return `
+                        <tr>
+                            <td><strong>${t.full_name}</strong></td>
+                            <td><span style="color: ${connColor}; font-weight: 700;">${connLabel}</span></td>
+                            <td>${hours}h ${minutes}m</td>
+                        </tr>
+                        `;
+                    }).join('')}
                 </tbody>
             </table>
         </div>
