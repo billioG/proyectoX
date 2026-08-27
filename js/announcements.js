@@ -128,6 +128,7 @@ window.openAnnouncementsInbox = async function openAnnouncementsInbox() {
         <h4 class="text-sm font-bold text-slate-800 dark:text-white">${sanitizeInput(a.title)}</h4>
         <div class="flex items-center gap-2 shrink-0">
           ${!readIds.has(a.id) ? '<span class="w-2 h-2 rounded-full bg-primary"></span>' : ''}
+          ${canDelete ? `<button class="text-slate-300 hover:text-primary transition-colors" onclick="window.openAnnouncementReadersModal('${a.id}')" title="Ver quién lo leyó"><i class="fas fa-eye text-xs"></i></button>` : ''}
           ${canDelete ? `<button class="text-slate-300 hover:text-rose-500 transition-colors" onclick="window.deleteAnnouncement('${a.id}')" title="Eliminar aviso"><i class="fas fa-trash-alt text-xs"></i></button>` : ''}
         </div>
       </div>
@@ -170,6 +171,71 @@ window.openCommentNotification = async function openCommentNotification(lessonId
     window.previewCourseResource(lessonId);
   }
 }
+
+window.openAnnouncementReadersModal = async function openAnnouncementReadersModal(id) {
+  const _supabase = window._supabase;
+  const sanitizeInput = window.sanitizeInput || ((v) => v);
+
+  document.getElementById('announcement-readers-modal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'announcement-readers-modal';
+  modal.className = 'fixed inset-0 z-[230] flex items-center justify-center p-6 bg-slate-950/90 backdrop-blur-sm animate-fadeIn';
+  modal.innerHTML = `
+    <div class="glass-card w-full max-w-md max-h-[85vh] flex flex-col p-0 overflow-hidden shadow-2xl animate-slideUp bg-white dark:bg-slate-900">
+      <div class="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center shrink-0">
+        <h3 class="text-sm font-black text-slate-800 dark:text-white uppercase tracking-tight"><i class="fas fa-eye text-primary mr-1"></i> Quién lo leyó</h3>
+        <button class="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500 flex items-center justify-center" onclick="this.closest('.fixed').remove()"><i class="fas fa-times"></i></button>
+      </div>
+      <div id="announcement-readers-list" class="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-4">
+        <div class="text-center text-slate-400 text-xs py-6"><i class="fas fa-spinner fa-spin"></i></div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  const { data: ann } = await _supabase.from('announcements').select('*').eq('id', id).single();
+  const listEl = document.getElementById('announcement-readers-list');
+  if (!ann) { listEl.innerHTML = '<p class="text-rose-500 text-xs">No se pudo cargar el aviso.</p>'; return; }
+
+  let recipients = [];
+  if (ann.audience === 'students' && ann.school_code) {
+    const { data } = await _supabase.from('students').select('id, full_name').eq('school_code', ann.school_code).eq('grade', ann.grade).eq('section', ann.section);
+    recipients = data || [];
+  } else if (ann.audience === 'students') {
+    const { data } = await _supabase.from('students').select('id, full_name');
+    recipients = data || [];
+  } else if (ann.audience === 'teachers') {
+    const { data } = await _supabase.from('teachers').select('id, full_name');
+    recipients = data || [];
+  } else {
+    const [{ data: studs }, { data: techs }] = await Promise.all([
+      _supabase.from('students').select('id, full_name'),
+      _supabase.from('teachers').select('id, full_name'),
+    ]);
+    recipients = [...(studs || []), ...(techs || [])];
+  }
+
+  const { data: reads } = await _supabase.from('announcement_reads').select('user_id').eq('announcement_id', id);
+  const readIds = new Set((reads || []).map(r => r.user_id));
+
+  const readList = recipients.filter(r => readIds.has(r.id));
+  const unreadList = recipients.filter(r => !readIds.has(r.id));
+
+  const renderNames = (list) => list.length
+    ? `<div class="flex flex-wrap gap-1.5">${list.map(r => `<span class="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-[0.7rem] font-semibold text-slate-600 dark:text-slate-300">${sanitizeInput(r.full_name)}</span>`).join('')}</div>`
+    : '<p class="text-xs text-slate-400">Nadie por ahora.</p>';
+
+  listEl.innerHTML = `
+    <div>
+      <p class="text-[0.65rem] font-black uppercase text-emerald-500 tracking-widest mb-2"><i class="fas fa-circle-check"></i> Leyeron (${readList.length}/${recipients.length})</p>
+      ${renderNames(readList)}
+    </div>
+    <div>
+      <p class="text-[0.65rem] font-black uppercase text-amber-500 tracking-widest mb-2"><i class="fas fa-clock"></i> Sin leer (${unreadList.length})</p>
+      ${renderNames(unreadList)}
+    </div>
+  `;
+};
 
 window.deleteAnnouncement = async function deleteAnnouncement(id) {
   if (!confirm('¿Eliminar este aviso? Desaparece para todos los que lo recibieron.')) return;

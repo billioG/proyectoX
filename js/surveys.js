@@ -278,10 +278,30 @@ window.openSurveyResultsModal = async function openSurveyResultsModal(surveyId) 
   const sanitizeInput = window.sanitizeInput || ((v) => v);
 
   const [{ data: survey }, { data: questions }, { data: responses }] = await Promise.all([
-    _supabase.from('surveys').select('title').eq('id', surveyId).single(),
+    _supabase.from('surveys').select('title, audience').eq('id', surveyId).single(),
     _supabase.from('survey_questions').select('*').eq('survey_id', surveyId).order('order_index', { ascending: true }),
-    _supabase.from('survey_responses').select('id').eq('survey_id', surveyId),
+    _supabase.from('survey_responses').select('id, user_id, created_at').eq('survey_id', surveyId),
   ]);
+
+  // Quiénes respondieron (nombre) vs quiénes faltan -- se resuelve contra
+  // el universo de destinatarios según la audiencia de la encuesta.
+  let recipients = [];
+  if (survey?.audience === 'students') {
+    const { data } = await _supabase.from('students').select('id, full_name');
+    recipients = data || [];
+  } else if (survey?.audience === 'teachers') {
+    const { data } = await _supabase.from('teachers').select('id, full_name');
+    recipients = data || [];
+  } else {
+    const [{ data: studs }, { data: techs }] = await Promise.all([
+      _supabase.from('students').select('id, full_name'),
+      _supabase.from('teachers').select('id, full_name'),
+    ]);
+    recipients = [...(studs || []), ...(techs || [])];
+  }
+  const respondedIds = new Set((responses || []).map(r => r.user_id));
+  const respondedList = recipients.filter(r => respondedIds.has(r.id));
+  const pendingList = recipients.filter(r => !respondedIds.has(r.id));
 
   const responseIds = (responses || []).map(r => r.id);
   const { data: answers } = responseIds.length
@@ -305,6 +325,19 @@ window.openSurveyResultsModal = async function openSurveyResultsModal(surveyId) 
         </div>
       </div>
       <div class="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-5">
+        <details class="rounded-xl border border-slate-100 dark:border-slate-800 p-3">
+          <summary class="cursor-pointer text-[0.65rem] font-black uppercase text-primary tracking-widest"><i class="fas fa-user-check"></i> Quién respondió (${respondedList.length}/${recipients.length})</summary>
+          <div class="mt-3 space-y-3">
+            <div>
+              <p class="text-[0.6rem] font-bold uppercase text-emerald-500 tracking-widest mb-1.5">Respondieron</p>
+              <div class="flex flex-wrap gap-1.5">${respondedList.length ? respondedList.map(r => `<span class="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-[0.7rem] font-semibold text-slate-600 dark:text-slate-300">${sanitizeInput(r.full_name)}</span>`).join('') : '<p class="text-xs text-slate-400">Nadie por ahora.</p>'}</div>
+            </div>
+            <div>
+              <p class="text-[0.6rem] font-bold uppercase text-amber-500 tracking-widest mb-1.5">Pendientes</p>
+              <div class="flex flex-wrap gap-1.5">${pendingList.length ? pendingList.map(r => `<span class="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-[0.7rem] font-semibold text-slate-600 dark:text-slate-300">${sanitizeInput(r.full_name)}</span>`).join('') : '<p class="text-xs text-slate-400">Todos respondieron.</p>'}</div>
+            </div>
+          </div>
+        </details>
         ${(questions || []).map((q, i) => {
     const qAnswers = (answers || []).filter(a => a.question_id === q.id);
     let body = '';

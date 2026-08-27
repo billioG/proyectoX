@@ -314,13 +314,13 @@ window.sendDuelChallenge = async function sendDuelChallenge() {
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
 
-  const { error } = await window._supabase.from('student_duels').insert({
+  const { data: inserted, error } = await window._supabase.from('student_duels').insert({
     challenger_id: window.currentUser.id,
     opponent_id: opponentId,
     wager_gems: wager,
     topic,
     question_count: questionCount,
-  });
+  }).select().single();
 
   if (error) {
     window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
@@ -332,28 +332,17 @@ window.sendDuelChallenge = async function sendDuelChallenge() {
   window.showToast('<i class="fas fa-circle-check"></i> ¡Reto enviado!', 'success');
   document.querySelector('.fixed.z-\\[210\\]')?.remove();
   window.loadDuelsSection();
-  window.sendDuelPushNotification(null, 'challenge', opponentId);
+  if (inserted?.id) window.sendDuelPushNotification(inserted.id, 'challenge');
 }
 
-// duelId es null en el envío inicial porque el insert de arriba no
-// devuelve el id -- se busca el duelo recién creado por sus datos únicos
-// (challenger + opponent + created_at reciente) antes de notificar.
-window.sendDuelPushNotification = async function sendDuelPushNotification(duelId, type, opponentId) {
+window.sendDuelPushNotification = async function sendDuelPushNotification(duelId, type) {
   try {
-    let id = duelId;
-    if (!id) {
-      const { data: recent } = await window._supabase.from('student_duels')
-        .select('id').eq('challenger_id', window.currentUser.id).eq('opponent_id', opponentId)
-        .order('created_at', { ascending: false }).limit(1).maybeSingle();
-      id = recent?.id;
-    }
-    if (!id) return;
-
+    if (!duelId) return;
     const { data: { session } } = await window._supabase.auth.getSession();
     await fetch(`${window.SUPABASE_URL}/functions/v1/notify-duel`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
-      body: JSON.stringify({ duel_id: id, type }),
+      body: JSON.stringify({ duel_id: duelId, type }),
     });
   } catch (err) {
     console.error('Error enviando push de duelo:', err);
