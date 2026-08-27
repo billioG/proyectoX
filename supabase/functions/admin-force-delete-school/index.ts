@@ -54,6 +54,23 @@ Deno.serve(async (req) => {
     }
 
     const code = school.code;
+
+    // Salvaguarda crítica: todo el borrado de abajo filtra por school_code
+    // (texto, sin FK real a schools.id) porque así está modelado el resto
+    // del esquema (students/attendance/etc. no tienen school_id). Si OTRO
+    // establecimiento comparte ese mismo código -- códigos mal cargados o
+    // duplicados, ya visto en el dashboard como "código desconocido" -- este
+    // borrado se llevaría también sus alumnos, asistencias y asignaciones
+    // por delante sin que el admin se entere. Se rechaza la operación en
+    // vez de borrar a ciegas.
+    const { data: sameCodeSchools, error: dupErr } = await admin.from('schools').select('id, name').eq('code', code).neq('id', schoolId);
+    if (dupErr) return json({ error: dupErr.message }, 500);
+    if (sameCodeSchools && sameCodeSchools.length > 0) {
+      return json({
+        error: `El código "${code}" también lo usa: ${sameCodeSchools.map(s => s.name).join(', ')}. Corregí los códigos duplicados en Establecimientos antes de forzar esta eliminación -- si no, se borrarían los datos de esos otros establecimientos también.`,
+      }, 409);
+    }
+
     const removed: Record<string, number> = {};
 
     const delByCode = async (table: string) => {

@@ -608,7 +608,16 @@ window.deleteAllStudentsInSchool = async function deleteAllStudentsInSchool(scho
   if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
   if (!students?.length) return window.showToast('<i class="fas fa-circle-info"></i> No hay alumnos en ese establecimiento', 'info');
 
-  if (!confirm(`¿Eliminar los ${students.length} alumno(s) de "${schoolName}"? Esto también elimina sus cuentas de acceso. No se puede deshacer.`)) return;
+  // Este borrado filtra por school_code (texto), no por un id único de
+  // establecimiento -- si dos establecimientos comparten código por error
+  // de carga, "eliminar todos" de uno se llevaría también los alumnos del
+  // otro sin aviso. Se avisa explícitamente antes de confirmar.
+  const { data: sameCodeSchools } = await window._supabase.from('schools').select('name').eq('code', schoolCode).neq('name', schoolName);
+  const collisionWarning = sameCodeSchools?.length
+    ? `\n\n⚠️ ADVERTENCIA: el código "${schoolCode}" también lo usa: ${sameCodeSchools.map(s => s.name).join(', ')}. Esta acción también eliminaría SUS alumnos.`
+    : '';
+
+  if (!confirm(`¿Eliminar los ${students.length} alumno(s) de "${schoolName}"? Esto también elimina sus cuentas de acceso. No se puede deshacer.${collisionWarning}`)) return;
   await window.deleteStudentsBulk(students.map(s => s.id));
 }
 
