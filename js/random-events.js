@@ -18,6 +18,23 @@ window.isPushSupported = function isPushSupported() {
   return 'serviceWorker' in navigator && 'PushManager' in window;
 }
 
+// Guarda/actualiza la suscripción en el servidor -- separado de
+// enableEventNotifications() para poder reusarlo también como auto-reparación
+// silenciosa (ver renderEventNotificationToggle) cuando el navegador cree
+// seguir suscripto pero el servidor perdió esa fila (ej. se limpió
+// push_subscriptions a mano).
+window.syncPushSubscription = async function syncPushSubscription(subscription) {
+  const raw = subscription.toJSON();
+  const { error } = await window._supabase.from('push_subscriptions').upsert({
+    user_id: window.currentUser.id,
+    role: window.userRole === 'docente' ? 'docente' : 'estudiante',
+    endpoint: raw.endpoint,
+    p256dh: raw.keys.p256dh,
+    auth: raw.keys.auth,
+  }, { onConflict: 'endpoint' });
+  if (error) throw error;
+}
+
 window.enableEventNotifications = async function enableEventNotifications() {
   if (!window.isPushSupported()) {
     return window.showToast('<i class="fas fa-circle-xmark"></i> Tu navegador no soporta notificaciones push', 'error');
@@ -37,16 +54,7 @@ window.enableEventNotifications = async function enableEventNotifications() {
       });
     }
 
-    const raw = subscription.toJSON();
-    const { error } = await window._supabase.from('push_subscriptions').upsert({
-      user_id: window.currentUser.id,
-      role: window.userRole === 'docente' ? 'docente' : 'estudiante',
-      endpoint: raw.endpoint,
-      p256dh: raw.keys.p256dh,
-      auth: raw.keys.auth,
-    }, { onConflict: 'endpoint' });
-
-    if (error) throw error;
+    await window.syncPushSubscription(subscription);
     localStorage.setItem('PX_EVENTS_SUBSCRIBED', 'true');
     window.showToast('<i class="fas fa-bell"></i> ¡Notificaciones de eventos sorpresa activadas!', 'success');
     if (typeof window.renderEventNotificationToggle === 'function') window.renderEventNotificationToggle();
@@ -63,6 +71,22 @@ window.renderEventNotificationToggle = async function renderEventNotificationTog
 
   const registration = await navigator.serviceWorker.ready.catch(() => null);
   const subscription = registration ? await registration.pushManager.getSubscription() : null;
+
+  // El navegador puede seguir "suscripto" (endpoint válido) aunque el
+  // servidor haya perdido esa fila -- sin esto el botón de activar
+  // desaparecía para siempre y el usuario quedaba con una suscripción
+  // fantasma que nunca recibía nada, sin ninguna forma de repararla desde
+  // la UI. Se re-sincroniza en silencio si falta del lado del servidor.
+  if (subscription && window.currentUser?.id) {
+    try {
+      const raw = subscription.toJSON();
+      const { data: serverRow } = await window._supabase.from('push_subscriptions')
+        .select('id').eq('endpoint', raw.endpoint).eq('user_id', window.currentUser.id).maybeSingle();
+      if (!serverRow) await window.syncPushSubscription(subscription);
+    } catch (err) {
+      console.error('Error re-sincronizando suscripción push:', err);
+    }
+  }
 
   slot.innerHTML = subscription
     ? `<div class="flex items-center gap-2 text-emerald-500 text-[0.65rem] font-black uppercase tracking-widest"><i class="fas fa-bell"></i> Notificaciones de eventos activas</div>`
