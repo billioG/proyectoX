@@ -157,8 +157,14 @@ export function nav(view) {
         sidebarActive = false;
     }
 
-    // Limpiar modales abiertos al navegar (pero NO remover el sidebar o el header)
-    document.querySelectorAll('.fixed:not(#sidebar):not(#header):not(#mascot-widget-container), .modal').forEach(m => m.remove());
+    // Limpiar modales abiertos al navegar (pero NO remover el sidebar, el
+    // header, la mascota, ni el popover/overlay del tour de driver.js --
+    // el onboarding navega entre vistas llamando nav() a mitad de tour, y
+    // sin esta exclusión este mismo cleanup borraba el popover que el tour
+    // estaba mostrando en ESE momento, dejando a driver.js con su posición
+    // interna corrupta para el resto de los pasos (se iban todos a la
+    // esquina superior izquierda).
+    document.querySelectorAll('.fixed:not(#sidebar):not(#header):not(#mascot-widget-container):not(.driver-popover):not(.driver-overlay), .modal').forEach(m => m.remove());
 
     // Cargar módulos necesarios antes de ejecutar contenido
     loadModule(view).then(() => {

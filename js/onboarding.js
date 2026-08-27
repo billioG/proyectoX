@@ -4,14 +4,24 @@
 // navega solo entre las secciones de la plataforma mientras explica.
 // ================================================
 
-function waitForSelector(selector, timeout = 3000) {
+// Los contenedores de cada vista (#eval-projects-container, #groups-container,
+// etc.) ya existen SIEMPRE en el DOM como <div> vacíos -- nav() solo cambia
+// su display, y el fetch de datos real corre en una promesa aparte que nav()
+// no expone. Esperar solo "existe en el DOM" resolvía al instante contra un
+// div de 0x0 antes de que cargara el contenido real: driver.js no podía
+// calcular una posición válida y el popover caía siempre a la esquina
+// superior izquierda -- y una vez que eso pasaba una vez, el estado interno
+// de driver.js quedaba desincronizado para el resto del tour. Por eso ahora
+// se espera a que el elemento tenga tamaño real o hijos renderizados.
+function waitForSelector(selector, timeout = 5000) {
   return new Promise((resolve) => {
     if (!selector) return resolve(null);
     const start = Date.now();
     const check = () => {
       const el = document.querySelector(selector);
-      if (el || Date.now() - start > timeout) return resolve(el);
-      setTimeout(check, 100);
+      const ready = el && (el.offsetWidth > 0 || el.offsetHeight > 0 || el.children.length > 0);
+      if (ready || Date.now() - start > timeout) return resolve(el);
+      setTimeout(check, 120);
     };
     check();
   });
