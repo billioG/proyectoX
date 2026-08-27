@@ -26,27 +26,48 @@ window.loadAdminDashboard = async function loadAdminDashboard() {
         await fetchWithCache('admin_dashboard_snapshot', async () => {
             const now = new Date();
             const [projects, students, teachers, schools, evals, ratings, waivers, activeTime, monthlyReports] = await Promise.all([
-                _supabase.from('projects').select('id, created_at'),
+                _supabase.from('projects').select('id, created_at, students:user_id(school_code)'),
                 _supabase.from('students').select('gender, school_code'),
                 _supabase.from('teachers').select('*'),
                 _supabase.from('schools').select('*'),
                 _supabase.from('evaluations').select('total_score, teacher_id'),
                 _supabase.from('teacher_ratings').select('rating, teacher_id, students(school_code)'),
                 _supabase.from('attendance_waivers').select('*, teachers!teacher_id(full_name)').eq('status', 'pending'),
-                _supabase.from('active_time_tracking').select('total_seconds, role, school_code'),
+                _supabase.from('active_time_tracking').select('user_id, total_seconds, role, school_code'),
                 _supabase.from('teacher_monthly_reports').select('*, teachers(full_name, email)').eq('month', now.getMonth() + 1).eq('year', now.getFullYear())
             ]);
 
+            // Cuentas/establecimiento de prueba interna -- no deben contaminar
+            // el dashboard ejecutivo (rendimiento, satisfacción, tiempo, etc.).
+            const testSchoolCodes = window.getTestSchoolCodes ? window.getTestSchoolCodes(schools.data) : new Set();
+            const testTeacherIds = new Set((teachers.data || []).filter(t => window.isTestTeacherEmail?.(t.email)).map(t => t.id));
+
+            const filteredProjects = (projects.data || []).filter(p => {
+                const student = Array.isArray(p.students) ? p.students[0] : p.students;
+                return !student || !testSchoolCodes.has(student.school_code);
+            });
+            const filteredStudents = (students.data || []).filter(s => !testSchoolCodes.has(s.school_code));
+            const filteredTeachers = (teachers.data || []).filter(t => !testTeacherIds.has(t.id));
+            const filteredSchools = (schools.data || []).filter(s => !testSchoolCodes.has(s.code));
+            const filteredEvals = (evals.data || []).filter(e => !testTeacherIds.has(e.teacher_id));
+            const filteredRatings = (ratings.data || []).filter(r => {
+                const student = Array.isArray(r.students) ? r.students[0] : r.students;
+                return !testTeacherIds.has(r.teacher_id) && (!student || !testSchoolCodes.has(student.school_code));
+            });
+            const filteredWaivers = (waivers.data || []).filter(w => !testTeacherIds.has(w.teacher_id));
+            const filteredActiveTime = (activeTime.data || []).filter(a => !testSchoolCodes.has(a.school_code) && !testTeacherIds.has(a.user_id));
+            const filteredMonthlyReports = (monthlyReports.data || []).filter(r => !testTeacherIds.has(r.teacher_id));
+
             return {
-                projects: projects.data || [],
-                students: students.data || [],
-                teachers: teachers.data || [],
-                schools: schools.data || [],
-                evals: evals.data || [],
-                ratings: ratings.data || [],
-                waivers: waivers.data || [],
-                activeTime: activeTime.data || [],
-                monthlyReports: monthlyReports.data || []
+                projects: filteredProjects,
+                students: filteredStudents,
+                teachers: filteredTeachers,
+                schools: filteredSchools,
+                evals: filteredEvals,
+                ratings: filteredRatings,
+                waivers: filteredWaivers,
+                activeTime: filteredActiveTime,
+                monthlyReports: filteredMonthlyReports
             };
         }, (snapshot) => {
             // Procesar y renderizar los datos (ya sean de cache o frescos)
