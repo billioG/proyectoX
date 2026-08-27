@@ -224,9 +224,95 @@ const MascotWidget = {
             </div>
         `;
         document.body.appendChild(container);
+        this.restorePosition(container);
+        this.enableDrag(container);
 
         // Show first message after a delay
         setTimeout(() => this.talk(), 2000);
+    },
+
+    // Recuerda dónde la dejó el usuario -- por device (localStorage), no
+    // sincroniza entre dispositivos a propósito, cada pantalla tiene su
+    // propio tamaño y le puede convenir un lugar distinto.
+    restorePosition(container) {
+        try {
+            const saved = JSON.parse(localStorage.getItem('PX_MASCOT_POS') || 'null');
+            if (saved && typeof saved.left === 'number' && typeof saved.top === 'number') {
+                const maxLeft = window.innerWidth - container.offsetWidth;
+                const maxTop = window.innerHeight - container.offsetHeight;
+                container.style.left = `${Math.min(Math.max(0, saved.left), Math.max(0, maxLeft))}px`;
+                container.style.top = `${Math.min(Math.max(0, saved.top), Math.max(0, maxTop))}px`;
+                container.style.right = 'auto';
+                container.style.bottom = 'auto';
+            }
+        } catch (e) { /* posición corrupta en localStorage -- se queda en la esquina default */ }
+    },
+
+    // Arrastrable con mouse y touch (Pointer Events cubre ambos). Un click
+    // simple (sin mover) sigue abriendo el chat -- solo un movimiento real
+    // arriba del umbral cuenta como arrastre y bloquea ese click.
+    enableDrag(container) {
+        const robot = container.querySelector('.mascot-robot');
+        if (!robot) return;
+        let startX = 0, startY = 0, startLeft = 0, startTop = 0, dragging = false, moved = false;
+
+        const onPointerDown = (e) => {
+            if (e.button !== undefined && e.button !== 0) return;
+            dragging = true;
+            moved = false;
+            const rect = container.getBoundingClientRect();
+            startLeft = rect.left;
+            startTop = rect.top;
+            startX = e.clientX;
+            startY = e.clientY;
+        };
+
+        const onPointerMove = (e) => {
+            if (!dragging) return;
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+            if (!moved && Math.hypot(dx, dy) > 6) {
+                moved = true;
+                container.style.transition = 'none';
+                robot.style.cursor = 'grabbing';
+            }
+            if (!moved) return;
+            e.preventDefault();
+
+            const maxLeft = window.innerWidth - container.offsetWidth;
+            const maxTop = window.innerHeight - container.offsetHeight;
+            container.style.left = `${Math.min(Math.max(0, startLeft + dx), Math.max(0, maxLeft))}px`;
+            container.style.top = `${Math.min(Math.max(0, startTop + dy), Math.max(0, maxTop))}px`;
+            container.style.right = 'auto';
+            container.style.bottom = 'auto';
+        };
+
+        const onPointerUp = () => {
+            if (!dragging) return;
+            dragging = false;
+            container.style.transition = '';
+            robot.style.cursor = 'pointer';
+            if (moved) {
+                const rect = container.getBoundingClientRect();
+                localStorage.setItem('PX_MASCOT_POS', JSON.stringify({ left: rect.left, top: rect.top }));
+                this._justDragged = true;
+            }
+        };
+
+        robot.addEventListener('pointerdown', onPointerDown);
+        window.addEventListener('pointermove', onPointerMove);
+        window.addEventListener('pointerup', onPointerUp);
+
+        // Si el click que sigue viene justo después de un arrastre real, se
+        // bloquea acá -- si no, soltar el mouse después de mover abría el
+        // chat de golpe (el navegador dispara click igual tras un drag).
+        robot.addEventListener('click', (e) => {
+            if (this._justDragged) {
+                e.stopImmediatePropagation();
+                e.preventDefault();
+                this._justDragged = false;
+            }
+        }, true);
     },
 
     async talk() {

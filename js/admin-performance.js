@@ -88,69 +88,65 @@ async function loadAdminTeacherPerformance() {
 }
 
 function renderTeacherPerformanceHTML(container, data, kpis) {
+    const sanitizeInput = window.sanitizeInput || ((v) => v);
     container.innerHTML = `
-        <button onclick="window.nav('teachers')" style="background: none; border: none; color: var(--text-light); font-weight: 700; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; cursor: pointer; margin-bottom: 16px; padding: 0;">
+        <button onclick="window.nav('teachers')" class="text-slate-400 hover:text-primary font-bold text-xs uppercase tracking-widest mb-4 flex items-center gap-2 transition-colors">
             <i class="fas fa-arrow-left"></i> Volver a Docentes
         </button>
-        <!-- Aggregated KPIs Dashboard -->
-        <div class="card-header" style="margin-bottom: 20px;">
+
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
             <div>
-                <h2 style="margin:0; font-size: 1.5rem;"><i class="fas fa-chart-bar"></i> Desempeño General de Docentes</h2>
-                <p style="color: var(--text-light); margin: 2px 0 0 0; font-size: 0.85rem;">Métricas agregadas de todos los docentes activos</p>
+                <h1 class="text-2xl md:text-3xl font-black text-slate-800 dark:text-white tracking-tight leading-none mb-2"><i class="fas fa-chart-bar text-primary"></i> Desempeño General de Docentes</h1>
+                <p class="text-slate-500 dark:text-slate-400 font-medium text-sm">Métricas agregadas de todos los docentes activos</p>
             </div>
+            <button onclick="window.loadAdminTeacherPerformance()" class="btn-secondary-tw h-10 px-5 text-xs uppercase font-bold tracking-widest shrink-0">
+                <i class="fas fa-sync-alt"></i> Actualizar
+            </button>
         </div>
 
-        <!-- KPIs Summary Cards -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 20px;">
-            <div style="background: linear-gradient(135deg, #fef3c7, #fde68a); padding: 18px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-left: 5px solid #f59e0b;">
-                <div style="display: flex; justify-content: space-between; align-items: start;">
-                    <div>
-                        <div style="font-size: 0.7rem; text-transform: uppercase; color: #92400e; font-weight: 700; margin-bottom: 5px;">Calificación Promedio</div>
-                        <div style="font-size: 2rem; font-weight: 900; color: #78350f; line-height: 1;">${kpis.overallAvgRating}</div>
-                        <div style="margin-top: 5px; color: #92400e; font-size: 0.7rem;">⭐ De ${kpis.totalActiveTeachers} docentes</div>
-                    </div>
-                    <i class="fas fa-star" style="font-size: 2rem; color: #f59e0b; opacity: 0.3;"></i>
+        <!-- KPIs -->
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-10">
+            <div class="glass-card p-6 border-l-4 border-amber-500 group hover:-translate-y-1 transition-transform">
+                <div class="flex justify-between items-start mb-4">
+                    <span class="text-[0.65rem] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400">Calificación Promedio</span>
+                    <div class="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-amber-500 flex items-center justify-center text-lg group-hover:bg-amber-500 group-hover:text-white transition-colors"><i class="fas fa-star"></i></div>
                 </div>
+                <div class="text-3xl font-black text-slate-800 dark:text-white mb-1">${kpis.overallAvgRating}</div>
+                <p class="text-[0.6rem] font-bold text-slate-400 uppercase tracking-wide">De ${kpis.totalActiveTeachers} docentes activos</p>
             </div>
 
-            <div style="background: linear-gradient(135deg, #dbeafe, #bfdbfe); padding: 18px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-left: 5px solid #3b82f6;">
-                <div style="display: flex; justify-content: space-between; align-items: start;">
-                    <div>
-                        <div style="font-size: 0.7rem; text-transform: uppercase; color: #1e40af; font-weight: 700; margin-bottom: 5px;">Total Evaluaciones</div>
-                        <div style="font-size: 2rem; font-weight: 900; color: #1e3a8a; line-height: 1;">${kpis.totalRatings}</div>
-                        <div style="margin-top: 5px; color: #1e40af; font-size: 0.7rem;"><i class="fas fa-pen-to-square"></i> ${kpis.avgRatingsPerTeacher} por docente</div>
-                    </div>
-                    <i class="fas fa-clipboard-list" style="font-size: 2rem; color: #3b82f6; opacity: 0.3;"></i>
+            <div class="glass-card p-6 border-l-4 border-blue-500 group hover:-translate-y-1 transition-transform">
+                <div class="flex justify-between items-start mb-4">
+                    <span class="text-[0.65rem] font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400">Total Evaluaciones</span>
+                    <div class="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-500 flex items-center justify-center text-lg group-hover:bg-blue-500 group-hover:text-white transition-colors"><i class="fas fa-pen-to-square"></i></div>
                 </div>
+                <div class="text-3xl font-black text-slate-800 dark:text-white mb-1">${kpis.totalRatings}</div>
+                <p class="text-[0.6rem] font-bold text-slate-400 uppercase tracking-wide">${kpis.avgRatingsPerTeacher} por docente</p>
             </div>
 
-            <div style="background: linear-gradient(135deg, #d1fae5, #a7f3d0); padding: 18px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-left: 5px solid #10b981;">
-                <div style="display: flex; justify-content: space-between; align-items: start;">
-                    <div>
-                        <div style="font-size: 0.7rem; text-transform: uppercase; color: #065f46; font-weight: 700; margin-bottom: 5px;">Proyectos Calificados</div>
-                        <div style="font-size: 2rem; font-weight: 900; color: #064e3b; line-height: 1;">${kpis.totalEvaluations}</div>
-                        <div style="margin-top: 5px; color: #065f46; font-size: 0.7rem;"><i class="fas fa-book"></i> ${kpis.avgEvalsPerTeacher} por docente</div>
-                    </div>
-                    <i class="fas fa-project-diagram" style="font-size: 2rem; color: #10b981; opacity: 0.3;"></i>
+            <div class="glass-card p-6 border-l-4 border-emerald-500 group hover:-translate-y-1 transition-transform">
+                <div class="flex justify-between items-start mb-4">
+                    <span class="text-[0.65rem] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">Proyectos Calificados</span>
+                    <div class="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-500 flex items-center justify-center text-lg group-hover:bg-emerald-500 group-hover:text-white transition-colors"><i class="fas fa-project-diagram"></i></div>
                 </div>
+                <div class="text-3xl font-black text-slate-800 dark:text-white mb-1">${kpis.totalEvaluations}</div>
+                <p class="text-[0.6rem] font-bold text-slate-400 uppercase tracking-wide">${kpis.avgEvalsPerTeacher} por docente</p>
             </div>
 
-            <div style="background: linear-gradient(135deg, #e0e7ff, #c7d2fe); padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-left: 5px solid #8b5cf6;">
-                <div>
-                    <div style="font-size: 0.8rem; text-transform: uppercase; color: #5b21b6; font-weight: 700; margin-bottom: 12px;">Distribución de Desempeño</div>
-                    <div style="display: grid; grid-template-columns: 1fr; gap: 8px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span style="font-size: 0.8rem; color: #5b21b6;">Sobresaliente</span>
-                            <strong style="color: #10b981; font-size: 1.1rem;">${kpis.excellentTeachers}</strong>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span style="font-size: 0.8rem; color: #5b21b6;">Competente</span>
-                            <strong style="color: #3b82f6; font-size: 1.1rem;">${kpis.competentTeachers}</strong>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span style="font-size: 0.8rem; color: #5b21b6;">Necesita Atención</span>
-                            <strong style="color: #ef4444; font-size: 1.1rem;">${kpis.needsAttention}</strong>
-                        </div>
+            <div class="glass-card p-6 border-l-4 border-primary">
+                <span class="text-[0.65rem] font-bold uppercase tracking-widest text-primary block mb-3">Distribución de Desempeño</span>
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wide">Sobresaliente</span>
+                        <strong class="text-emerald-500 text-base">${kpis.excellentTeachers}</strong>
+                    </div>
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wide">Competente</span>
+                        <strong class="text-blue-500 text-base">${kpis.competentTeachers}</strong>
+                    </div>
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wide">Necesita Atención</span>
+                        <strong class="text-rose-500 text-base">${kpis.needsAttention}</strong>
                     </div>
                 </div>
             </div>
@@ -158,18 +154,12 @@ function renderTeacherPerformanceHTML(container, data, kpis) {
 
         <!-- Antes esto eran DOS secciones separadas ("Desglose Individual" y
         "Docentes Más Activos") mostrando exactamente a los mismos docentes
-        con datos distintos -- se unifica en una sola tarjeta por docente. -->
-        <div class="card-header" style="margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
-            <div>
-                <h3 style="margin:0; font-size: 1.1rem;"><i class="fas fa-chart-line"></i> Desglose Individual por Docente</h3>
-                <p style="color: var(--text-light); margin: 2px 0 0 0; font-size: 0.8rem;">Evaluaciones, satisfacción y actividad real -- ordenado por más activo</p>
-            </div>
-            <button class="btn-primary" onclick="window.loadAdminTeacherPerformance()" style="padding: 8px 16px; font-size: 0.8rem;">
-                <i class="fas fa-sync-alt"></i> Actualizar
-            </button>
-        </div>
+        con datos distintos -- unificado en una sola fila colapsable por
+        docente (menos ruido visual, el detalle se ve solo si hace falta). -->
+        <h3 class="text-lg font-bold text-slate-800 dark:text-white uppercase tracking-tight flex items-center gap-2 mb-1"><i class="fas fa-chart-line text-primary"></i> Desglose Individual por Docente</h3>
+        <p class="text-slate-500 dark:text-slate-400 text-xs mb-5">Evaluaciones, satisfacción y actividad real -- ordenado por más activo. Tocá una fila para ver el detalle.</p>
 
-        <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div class="space-y-3 mb-10">
             ${(() => {
                 const sorted = [...data].sort((a, b) => b.activeSeconds30d - a.activeSeconds30d);
                 return sorted.map(t => {
@@ -179,63 +169,57 @@ function renderTeacherPerformanceHTML(container, data, kpis) {
                     const hours = Math.floor(t.activeSeconds30d / 3600);
                     const minutes = Math.floor((t.activeSeconds30d % 3600) / 60);
                     const connLabel = t.daysSinceLogin === null ? 'Nunca conectó' : t.daysSinceLogin === 0 ? 'Hoy' : `Hace ${t.daysSinceLogin} día(s)`;
-                    const connColor = t.daysSinceLogin === null ? '#94a3b8' : t.daysSinceLogin <= 3 ? '#10b981' : '#f59e0b';
-                    const connBg = t.daysSinceLogin === null ? 'rgba(148,163,184,0.12)' : t.daysSinceLogin <= 3 ? 'rgba(16,185,129,0.12)' : 'rgba(245,158,11,0.12)';
+                    const connClasses = t.daysSinceLogin === null ? 'bg-slate-100 dark:bg-slate-800 text-slate-500' : t.daysSinceLogin <= 3 ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400';
                     return `
-                    <div class="section-card" style="padding:16px 18px; ${!t.isActive ? 'opacity:0.55;' : ''}">
-                        <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
-                            <div style="width:44px; height:44px; border-radius:14px; overflow:hidden; background:var(--light-gray); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                                ${t.profile_photo_url ? `<img src="${t.profile_photo_url}" style="width:100%; height:100%; object-fit:cover;">` : '<i class="fas fa-user-tie" style="opacity:0.4;"></i>'}
+                    <details class="group/row glass-card overflow-hidden ${!t.isActive ? 'opacity-60' : ''}">
+                        <summary class="list-none cursor-pointer p-4 flex items-center gap-4 flex-wrap hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
+                            <i class="fas fa-chevron-right text-slate-300 dark:text-slate-600 text-xs transition-transform group-open/row:rotate-90 shrink-0"></i>
+                            <div class="w-11 h-11 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
+                                ${t.profile_photo_url ? `<img src="${t.profile_photo_url}" class="w-full h-full object-cover">` : '<i class="fas fa-user-tie text-slate-400"></i>'}
                             </div>
-                            <div style="flex: 1; min-width: 180px;">
-                                <strong style="display:block; font-size:0.95rem;">${t.full_name}</strong>
-                                <small style="color: var(--text-light);">${t.email}</small>
+                            <div class="flex-1 min-w-[160px]">
+                                <div class="font-bold text-sm text-slate-800 dark:text-white">${sanitizeInput(t.full_name)}</div>
+                                <div class="text-xs text-slate-400">${sanitizeInput(t.email)}</div>
                             </div>
-                            <div style="display:flex; align-items:center; gap:6px;">
-                                <span style="font-size:1.3rem; font-weight:800; color: ${perfColor};">${t.avgRating}</span>
-                                <div style="color: #f59e0b; font-size: 0.75rem;">
-                                    ${'<i class="fas fa-star"></i>'.repeat(Math.round(t.avgRating))}${'<i class="fas fa-star" style="opacity:0.2;"></i>'.repeat(5 - Math.round(t.avgRating))}
-                                </div>
+                            <div class="flex items-center gap-1.5 shrink-0">
+                                <span class="text-lg font-black" style="color:${perfColor}">${t.avgRating}</span>
+                                <div class="text-amber-400 text-xs">${'<i class="fas fa-star"></i>'.repeat(Math.round(t.avgRating))}${'<i class="fas fa-star opacity-20"></i>'.repeat(5 - Math.round(t.avgRating))}</div>
                             </div>
-                            <span style="background:${perfColor}18; color:${perfColor}; font-size:0.65rem; font-weight:800; text-transform:uppercase; letter-spacing:0.03em; padding:4px 10px; border-radius:999px; white-space:nowrap;">
+                            <span class="px-2.5 py-1 rounded-lg text-[0.6rem] font-bold uppercase tracking-widest shrink-0" style="background:${perfColor}18; color:${perfColor};">
                                 <i class="fas ${perfIcon}"></i> ${perfLabel}
                             </span>
-                            <span style="background:${connBg}; color:${connColor}; font-size:0.65rem; font-weight:800; text-transform:uppercase; letter-spacing:0.03em; padding:4px 10px; border-radius:999px; white-space:nowrap;">
-                                ${connLabel}
-                            </span>
-                        </div>
-                        <div style="display:flex; gap:24px; margin-top:12px; padding-top:12px; border-top:1px solid rgba(148,163,184,0.15); flex-wrap:wrap;">
+                            <span class="px-2.5 py-1 rounded-lg text-[0.6rem] font-bold uppercase tracking-widest shrink-0 ${connClasses}">${connLabel}</span>
+                        </summary>
+                        <div class="px-4 pb-4 pt-1 border-t border-slate-100 dark:border-slate-800 flex gap-8 flex-wrap">
                             <div>
-                                <div style="font-size:1.1rem; font-weight:800; line-height:1;">${t.totalRatings}</div>
-                                <div style="font-size:0.6rem; text-transform:uppercase; color: var(--text-light); font-weight:700; letter-spacing:0.05em; margin-top:2px;">Evaluaciones Recibidas</div>
+                                <div class="text-lg font-black text-slate-800 dark:text-white leading-none">${t.totalRatings}</div>
+                                <div class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-wide mt-1">Evaluaciones Recibidas</div>
                             </div>
                             <div>
-                                <div style="font-size:1.1rem; font-weight:800; line-height:1;">${t.totalEvals}</div>
-                                <div style="font-size:0.6rem; text-transform:uppercase; color: var(--text-light); font-weight:700; letter-spacing:0.05em; margin-top:2px;">Proyectos Evaluados</div>
+                                <div class="text-lg font-black text-slate-800 dark:text-white leading-none">${t.totalEvals}</div>
+                                <div class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-wide mt-1">Proyectos Evaluados</div>
                             </div>
                             <div>
-                                <div style="font-size:1.1rem; font-weight:800; line-height:1;">${hours}h ${minutes}m</div>
-                                <div style="font-size:0.6rem; text-transform:uppercase; color: var(--text-light); font-weight:700; letter-spacing:0.05em; margin-top:2px;">Tiempo en Plataforma (30d)</div>
+                                <div class="text-lg font-black text-slate-800 dark:text-white leading-none">${hours}h ${minutes}m</div>
+                                <div class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-wide mt-1">Tiempo en Plataforma (30d)</div>
                             </div>
                         </div>
-                    </div>
+                    </details>
                     `;
                 }).join('');
             })()}
         </div>
 
-        <h3 style="margin: 30px 0 15px;"><i class="fas fa-comments"></i> Comentarios de Estudiantes Destacados</h3>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px;">
+        <h3 class="text-lg font-bold text-slate-800 dark:text-white uppercase tracking-tight flex items-center gap-2 mb-5"><i class="fas fa-comments text-primary"></i> Comentarios de Estudiantes Destacados</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             ${data.flatMap(t => t.lastRatings.filter(r => r.message).map(r => `
-                <div class="section-card" style="padding:15px; border-left: 4px solid ${getPerfColor(r.rating)};">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                        <strong>${r.students?.full_name || 'Estudiante'}</strong>
-                        <span style="color: #f59e0b;">${'<i class="fas fa-star"></i>'.repeat(r.rating)}</span>
+                <div class="glass-card p-4 border-l-4" style="border-color:${getPerfColor(r.rating)};">
+                    <div class="flex justify-between items-center mb-2">
+                        <strong class="text-sm text-slate-800 dark:text-white">${sanitizeInput(r.students?.full_name || 'Estudiante')}</strong>
+                        <span class="text-amber-400 text-xs">${'<i class="fas fa-star"></i>'.repeat(r.rating)}</span>
                     </div>
-                    <p style="font-size: 0.9rem; font-style: italic; color: var(--text-color);">"${r.message}"</p>
-                    <div style="margin-top: 10px; text-align: right;">
-                        <small style="color: var(--text-light);">Para: ${t.full_name}</small>
-                    </div>
+                    <p class="text-sm italic text-slate-600 dark:text-slate-300">"${sanitizeInput(r.message)}"</p>
+                    <p class="text-right text-[0.6rem] font-bold uppercase text-slate-400 tracking-wide mt-3">Para: ${sanitizeInput(t.full_name)}</p>
                 </div>
             `)).slice(0, 6).join('')}
         </div>
