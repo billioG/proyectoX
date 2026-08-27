@@ -634,10 +634,21 @@ window.createUsersFromExtractedData = async function createUsersFromExtractedDat
         console.error('Error lookup:', e);
     }
 
-    const toCreate = students.filter(s =>
-        !existingUsernames.has(s.username) && !existingEmails.has(s.email) && !(s.cui && existingCUIs.has(s.cui))
-    );
-    const skippedCount = students.length - toCreate.length;
+    // Antes se descartaba silenciosamente por qué cada alumno se omitía --
+    // solo quedaba el número total (skippedCount), sin nombre ni motivo, así
+    // que el admin no tenía forma de saber a quién le tocaba revisar.
+    const toCreate = [];
+    const skipped = [];
+    students.forEach(s => {
+        let reason = null;
+        if (existingUsernames.has(s.username)) reason = `usuario "${s.username}" ya existe`;
+        else if (existingEmails.has(s.email)) reason = `correo "${s.email}" ya existe`;
+        else if (s.cui && existingCUIs.has(s.cui)) reason = `CUI "${s.cui}" ya existe`;
+
+        if (reason) skipped.push({ ...s, reason });
+        else toCreate.push(s);
+    });
+    const skippedCount = skipped.length;
 
     progressContainer.style.display = 'block';
     progressBar.style.width = '30%';
@@ -676,10 +687,14 @@ window.createUsersFromExtractedData = async function createUsersFromExtractedDat
     progressBar.style.background = successCount > 0 ? '#10b981' : '#f59e0b';
     progressBar.style.width = '100%';
     statusText.classList.remove('animate-pulse');
+    const sanitize = window.sanitizeInput || ((v) => v);
     const errorDetails = results.filter(r => r.status === 'error')
         .slice(0, 10)
-        .map(r => `<div class="text-[0.7rem] text-rose-500">${window.sanitizeInput ? window.sanitizeInput(r.username) : r.username}: ${window.sanitizeInput ? window.sanitizeInput(r.message || '') : (r.message || '')}</div>`)
+        .map(r => `<div class="text-[0.7rem] text-rose-500">${sanitize(r.username)}: ${sanitize(r.message || '')}</div>`)
         .join('');
+    const skippedDetails = skipped.map(s =>
+        `<div class="text-[0.7rem] text-amber-600 dark:text-amber-400"><strong>${sanitize(s.full_name || s.username || '?')}</strong> -- ${sanitize(s.reason)}</div>`
+    ).join('');
     statusText.innerHTML = `
         <div class="text-center mb-6"><h3 class="text-xl font-black uppercase">Proceso Completado</h3></div>
         <div class="grid grid-cols-3 gap-4">
@@ -687,7 +702,13 @@ window.createUsersFromExtractedData = async function createUsersFromExtractedDat
             <div class="bg-amber-50 p-4 rounded-xl text-center"><div class="text-2xl font-black text-amber-500">${skippedCount}</div><div class="text-[0.6rem] uppercase tracking-tighter">Omitidos</div></div>
             <div class="bg-rose-50 p-4 rounded-xl text-center"><div class="text-2xl font-black text-rose-500">${errorCount}</div><div class="text-[0.6rem] uppercase tracking-tighter">Errores</div></div>
         </div>
-        ${errorDetails ? `<div class="mt-4 max-h-40 overflow-y-auto">${errorDetails}</div>` : ''}
+        ${skippedDetails ? `
+            <details class="mt-4">
+                <summary class="cursor-pointer text-[0.65rem] font-bold text-amber-500 uppercase tracking-widest">Ver ${skippedCount} omitido(s) y motivo</summary>
+                <div class="mt-2 max-h-48 overflow-y-auto space-y-1 text-left">${skippedDetails}</div>
+            </details>
+        ` : ''}
+        ${errorDetails ? `<div class="mt-4 max-h-40 overflow-y-auto text-left">${errorDetails}</div>` : ''}
     `;
 
     if (successCount > 0) window.showToast(`<i class="fas fa-circle-check"></i> ${successCount} estudiantes creados`, 'success');
