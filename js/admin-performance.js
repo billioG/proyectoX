@@ -2,8 +2,16 @@
 // GESTIÓN DE RENDIMIENTO DOCENTE (ADMIN)
 // ================================================
 
-async function loadAdminTeacherPerformance() {
-    const container = document.getElementById('admin-teacher-performance-container');
+async function loadAdminTeacherPerformance(opts = {}) {
+    const {
+        containerId = 'admin-teacher-performance-container',
+        teacherIds = null,
+        cacheKey = 'admin_performance_dashboard',
+        title = 'Desempeño General de Docentes',
+        subtitle = 'Métricas agregadas de todos los docentes activos',
+        backView = 'teachers',
+    } = opts;
+    const container = document.getElementById(containerId);
     if (!container) return;
 
     if (!container.innerHTML || container.innerHTML.includes('fa-spinner')) {
@@ -16,7 +24,7 @@ async function loadAdminTeacherPerformance() {
     }
 
     try {
-        await fetchWithCache('admin_performance_dashboard', async () => {
+        await fetchWithCache(cacheKey, async () => {
             const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
             const [teachersRes, ratingsRes, evalsRes, activeTimeRes] = await Promise.all([
                 _supabase.from('teachers').select('*'),
@@ -31,7 +39,8 @@ async function loadAdminTeacherPerformance() {
             // itera sobre `teachers` ya filtrado, pero los totales agregados
             // de abajo usan estos arrays crudos directamente.)
             const testTeacherIds = new Set((teachersRes.data || []).filter(t => window.isTestTeacherEmail?.(t.email)).map(t => t.id));
-            const teachers = (teachersRes.data || []).filter(t => !testTeacherIds.has(t.id));
+            let teachers = (teachersRes.data || []).filter(t => !testTeacherIds.has(t.id));
+            if (teacherIds) teachers = teachers.filter(t => teacherIds.includes(t.id));
             const ratings = (ratingsRes.data || []).filter(r => !testTeacherIds.has(r.teacher_id));
             const evaluations = (evalsRes.data || []).filter(e => !testTeacherIds.has(e.teacher_id));
             const activeTime = (activeTimeRes.data || []).filter(a => !testTeacherIds.has(a.user_id));
@@ -78,7 +87,7 @@ async function loadAdminTeacherPerformance() {
 
             return { performanceData, aggregatedKPIs };
         }, (data) => {
-            renderTeacherPerformanceHTML(container, data.performanceData, data.aggregatedKPIs);
+            renderTeacherPerformanceHTML(container, data.performanceData, data.aggregatedKPIs, { title, subtitle, backView });
         });
 
     } catch (err) {
@@ -87,19 +96,22 @@ async function loadAdminTeacherPerformance() {
     }
 }
 
-function renderTeacherPerformanceHTML(container, data, kpis) {
+function renderTeacherPerformanceHTML(container, data, kpis, opts = {}) {
+    const { title = 'Desempeño General de Docentes', subtitle = 'Métricas agregadas de todos los docentes activos', backView = 'teachers' } = opts;
     const sanitizeInput = window.sanitizeInput || ((v) => v);
     container.innerHTML = `
-        <button onclick="window.nav('teachers')" class="text-slate-400 hover:text-primary font-bold text-xs uppercase tracking-widest mb-4 flex items-center gap-2 transition-colors">
-            <i class="fas fa-arrow-left"></i> Volver a Docentes
+        ${backView ? `
+        <button onclick="window.nav('${backView}')" class="text-slate-400 hover:text-primary font-bold text-xs uppercase tracking-widest mb-4 flex items-center gap-2 transition-colors">
+            <i class="fas fa-arrow-left"></i> Volver
         </button>
+        ` : ''}
 
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
             <div>
-                <h1 class="text-2xl md:text-3xl font-black text-slate-800 dark:text-white tracking-tight leading-none mb-2"><i class="fas fa-chart-bar text-primary"></i> Desempeño General de Docentes</h1>
-                <p class="text-slate-500 dark:text-slate-400 font-medium text-sm">Métricas agregadas de todos los docentes activos</p>
+                <h1 class="text-2xl md:text-3xl font-black text-slate-800 dark:text-white tracking-tight leading-none mb-2"><i class="fas fa-chart-bar text-primary"></i> ${sanitizeInput(title)}</h1>
+                <p class="text-slate-500 dark:text-slate-400 font-medium text-sm">${sanitizeInput(subtitle)}</p>
             </div>
-            <button onclick="window.loadAdminTeacherPerformance()" class="btn-secondary-tw h-10 px-5 text-xs uppercase font-bold tracking-widest shrink-0">
+            <button onclick="typeof window.loadCoordinatorDashboard === 'function' && window.userRole === 'coordinador' ? window.loadCoordinatorDashboard() : window.loadAdminTeacherPerformance()" class="btn-secondary-tw h-10 px-5 text-xs uppercase font-bold tracking-widest shrink-0">
                 <i class="fas fa-sync-alt"></i> Actualizar
             </button>
         </div>

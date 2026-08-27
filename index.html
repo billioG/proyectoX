@@ -719,6 +719,17 @@
                         <span>Incentivos y Pagos</span>
                     </div>
                 </div>
+
+                <div id="nav-coordinador" style="display: none;">
+                    <div class="nav-item active" onclick="nav('coordinator-dashboard')">
+                        <i class="fas fa-users-gear"></i>
+                        <span>Mis Docentes</span>
+                    </div>
+                    <div class="nav-item" onclick="nav('feed')">
+                        <i class="fas fa-rocket"></i>
+                        <span>Explorar Proyectos</span>
+                    </div>
+                </div>
             </nav>
             <!-- Widget de Desempeño Docente (Dinámico) -->
             <div id="teacher-sidebar-widget"></div>
@@ -729,6 +740,11 @@
             <!-- DASHBOARD ADMIN (INICIO PARA ADMIN) -->
             <section id="view-admin-dashboard" class="view-section">
                 <div id="admin-dashboard-container"></div>
+            </section>
+
+            <!-- DASHBOARD COORDINADOR -->
+            <section id="view-coordinator-dashboard" class="view-section" style="display: none;">
+                <div id="coordinator-dashboard-container"></div>
             </section>
 
             <!-- GESTIÓN DE ROCAS MENSUALES (ADMIN) -->

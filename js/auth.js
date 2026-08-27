@@ -314,7 +314,7 @@ export async function handleSuccessfulLogin(user) {
     const { data: teacherRow } = await _supabase.from('teachers').select('*').eq('id', user.id).maybeSingle();
     if (teacherRow) {
       data = teacherRow;
-      role = teacherRow.role === 'admin' ? 'admin' : 'docente';
+      role = teacherRow.role === 'admin' ? 'admin' : teacherRow.role === 'coordinador' ? 'coordinador' : 'docente';
     } else {
       const { data: studentRow } = await _supabase.from('students').select('*').eq('id', user.id).maybeSingle();
       if (studentRow) {
@@ -373,7 +373,7 @@ export async function handleSuccessfulLogin(user) {
     if (mustChangePassword) {
       showMandatoryPasswordChangeModal();
     } else {
-      const defaultView = window.userRole === 'admin' ? 'admin-dashboard' : window.userRole === 'estudiante' ? 'lessons' : 'feed';
+      const defaultView = window.userRole === 'admin' ? 'admin-dashboard' : window.userRole === 'coordinador' ? 'coordinator-dashboard' : window.userRole === 'estudiante' ? 'lessons' : 'feed';
       const lastView = sessionStorage.getItem('PX_LAST_VIEW');
       // Además de existir en el DOM, la vista guardada tiene que ser válida
       // para el rol de ESTE usuario -- si no, un estudiante podría heredar
@@ -441,7 +441,7 @@ function updateHeaderUI() {
 }
 
 function setupNavigationUI() {
-  ['nav-estudiante', 'nav-docente', 'nav-admin'].forEach(id => {
+  ['nav-estudiante', 'nav-docente', 'nav-admin', 'nav-coordinador'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = id === `nav-${userRole}` ? 'block' : 'none';
   });

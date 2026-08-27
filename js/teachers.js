@@ -33,7 +33,7 @@ window.loadTeachers = async function loadTeachers() {
                 school_code,
                 grade,
                 section,
-                schools(name)
+                schools(name, programa)
               )
             `)
           .order('full_name'),
@@ -89,9 +89,44 @@ window.renderTeachersContent = function renderTeachersContent(container, teacher
             <p class="text-slate-500 font-bold uppercase tracking-widest text-sm mb-6">No hay docentes registrados</p>
             <button class="btn-primary-tw mx-auto h-11 px-8" onclick="window.openAddTeacherModal()"><i class="fas fa-plus"></i> AGREGAR EL PRIMERO</button>
         </div>
-      ` : `
-        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          ${teachers.map(t => {
+      ` : window.renderTeacherGroups(teachers, sanitizeInput)}
+    `;
+}
+
+// Agrupa por programa (schools.programa) -> establecimiento (primera
+// asignación del docente). Un docente sin asignaciones cae en "Sin Asignar".
+window.renderTeacherGroups = function renderTeacherGroups(teachers, sanitizeInput) {
+    const groups = new Map(); // programaKey -> Map(schoolName -> teachers[])
+    teachers.forEach(t => {
+        const firstSchool = t.teacher_assignments?.[0]?.schools;
+        const programaKey = firstSchool?.programa || 'Sin Programa';
+        const schoolName = firstSchool?.name || 'Sin Asignar';
+        if (!groups.has(programaKey)) groups.set(programaKey, new Map());
+        const bySchool = groups.get(programaKey);
+        if (!bySchool.has(schoolName)) bySchool.set(schoolName, []);
+        bySchool.get(schoolName).push(t);
+    });
+
+    return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([programa, bySchool]) => `
+        <div class="mb-10">
+            <h2 class="text-sm font-black text-primary uppercase tracking-[0.2em] mb-4 flex items-center gap-2"><i class="fas fa-layer-group"></i> ${sanitizeInput(programa)}</h2>
+            ${[...bySchool.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([schoolName, group]) => `
+                <details class="mb-5 group/school" open>
+                    <summary class="list-none cursor-pointer flex items-center gap-2 mb-3 text-slate-600 dark:text-slate-300 font-bold text-xs uppercase tracking-widest">
+                        <i class="fas fa-chevron-right text-[0.6rem] transition-transform group-open/school:rotate-90"></i>
+                        <i class="fas fa-school text-slate-400"></i> ${sanitizeInput(schoolName)}
+                        <span class="text-slate-400 font-normal normal-case">(${group.length})</span>
+                    </summary>
+                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                        ${group.map(t => window.renderTeacherCard(t, sanitizeInput)).join('')}
+                    </div>
+                </details>
+            `).join('')}
+        </div>
+    `).join('');
+}
+
+window.renderTeacherCard = function renderTeacherCard(t, sanitizeInput) {
             // "ACTIVO" era texto fijo, siempre igual sin importar el docente --
             // ahora depende de si entró en los últimos 3 días.
             const lastLoginDate = t.last_login ? new Date(t.last_login.includes('T') ? t.last_login : t.last_login + 'T00:00:00') : null;
@@ -110,6 +145,7 @@ window.renderTeachersContent = function renderTeachersContent(container, teacher
                         <div class="flex flex-col items-end gap-1">
                              ${statusBadge}
                              ${t.role === 'admin' ? `<span class="text-[0.55rem] font-bold text-rose-500 uppercase tracking-widest bg-rose-50 px-2 py-0.5 rounded-md">ADMIN</span>` : ''}
+                             ${t.role === 'coordinador' ? `<span class="text-[0.55rem] font-bold text-indigo-500 uppercase tracking-widest bg-indigo-50 px-2 py-0.5 rounded-md">COORDINADOR</span>` : ''}
                         </div>
                     </div>
                     
@@ -138,6 +174,22 @@ window.renderTeachersContent = function renderTeachersContent(container, teacher
                             <i class="fas fa-plus mr-1"></i> Asignar
                         </button>
                     </div>
+                    ${t.role !== 'admin' ? `
+                    <div class="grid grid-cols-1 gap-2 mt-2">
+                        ${t.role === 'coordinador' ? `
+                        <button onclick="window.openCoordinatorAssignModal('${t.id}', '${sanitizeInput(t.full_name)}')" class="py-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 text-xs font-bold uppercase tracking-wider transition-all border border-indigo-100 dark:border-indigo-800">
+                            <i class="fas fa-users-gear mr-1"></i> Docentes a Cargo
+                        </button>
+                        <button onclick="window.setTeacherRole('${t.id}', 'docente')" class="py-2 rounded-xl bg-transparent text-slate-400 hover:text-rose-500 text-[0.65rem] font-bold uppercase tracking-wider transition-all">
+                            Quitar rol de coordinador
+                        </button>
+                        ` : `
+                        <button onclick="window.setTeacherRole('${t.id}', 'coordinador')" class="py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-900/20 dark:hover:text-indigo-400 text-[0.65rem] font-bold uppercase tracking-wider transition-all border border-transparent hover:border-indigo-200">
+                            <i class="fas fa-user-shield mr-1"></i> Hacer Coordinador
+                        </button>
+                        `}
+                    </div>
+                    ` : ''}
                 </div>
 
                 <div class="bg-slate-50/50 dark:bg-slate-800/30 p-3 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center group-hover:bg-slate-100 dark:group-hover:bg-slate-800 transition-colors">
@@ -153,10 +205,6 @@ window.renderTeachersContent = function renderTeachersContent(container, teacher
                 </div>
             </div>
           `;
-          }).join('')}
-        </div>
-      `}
-    `;
 }
 
 window.openAddTeacherModal = function openAddTeacherModal() {
@@ -478,12 +526,15 @@ window.loadSchoolsForAssignment = async function loadSchoolsForAssignment() {
   try {
     const { data: schools } = await _supabase
       .from('schools')
-      .select('code, name, level')
+      .select('code, name, level, address')
       .order('name');
 
     if (schools && schools.length > 0) {
+      // <option> nativo no soporta texto en dos tamaños -- se agrega la
+      // dirección en la misma línea para poder distinguir establecimientos
+      // con el mismo nombre (antes solo se mostraba el nombre).
       select.innerHTML = '<option value="">Seleccionar...</option>' +
-        schools.map(s => `<option value="${s.code}" data-level="${s.level}">${sanitizeInput(s.name)}</option>`).join('');
+        schools.map(s => `<option value="${s.code}" data-level="${s.level}">${sanitizeInput(s.name)}${s.address ? ' — ' + sanitizeInput(s.address) : ''}</option>`).join('');
     }
   } catch (err) {
     console.error('Error cargando establecimientos:', err);
@@ -655,6 +706,28 @@ window.assignTeacher = async function assignTeacher(teacherId) {
       if (newAssignments.length === 0) {
         if (typeof showToast === 'function') showToast('ℹ️ El docente ya está asignado a todos los grados existentes', 'info');
       } else {
+        // Conflicto: grupos que ya están a cargo de OTRO docente -- antes se
+        // asignaban en silencio, permitiendo que dos docentes terminaran
+        // compartiendo el mismo grupo sin que el admin se enterara.
+        const { data: otherAssignments } = await _supabase
+          .from('teacher_assignments')
+          .select('grade, section, teachers(full_name)')
+          .eq('school_code', schoolCode)
+          .neq('teacher_id', teacherId);
+        const ownerByGroup = new Map();
+        (otherAssignments || []).forEach(a => ownerByGroup.set(`${a.grade}-${a.section}`, a.teachers?.full_name || 'otro docente'));
+        const conflicts = newAssignments.filter(a => ownerByGroup.has(`${a.grade}-${a.section}`));
+
+        if (conflicts.length > 0) {
+          const names = [...new Set(conflicts.map(c => ownerByGroup.get(`${c.grade}-${c.section}`)))].join(', ');
+          const proceed = confirm(`${conflicts.length} de estos grupos ya están a cargo de: ${names}. ¿Seguro que querés asignarlos también a este docente?`);
+          if (!proceed) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-check"></i> Finalizar Asignación';
+            return;
+          }
+        }
+
         const { error: insertError } = await _supabase
           .from('teacher_assignments')
           .insert(newAssignments);
@@ -676,6 +749,25 @@ window.assignTeacher = async function assignTeacher(teacherId) {
       if (existing) {
         if (typeof showToast === 'function') showToast('<i class="fas fa-triangle-exclamation"></i>️ Esta asignación ya existe', 'warning');
       } else {
+        const { data: conflict } = await _supabase
+          .from('teacher_assignments')
+          .select('id, teachers(full_name)')
+          .eq('school_code', schoolCode)
+          .eq('grade', grade)
+          .eq('section', section)
+          .neq('teacher_id', teacherId)
+          .maybeSingle();
+
+        if (conflict) {
+          const otherName = conflict.teachers?.full_name || 'otro docente';
+          const proceed = confirm(`Este grupo (${grade} "${section}") ya está a cargo de ${otherName}. ¿Seguro que querés asignarlo también a este docente?`);
+          if (!proceed) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-check"></i> Finalizar Asignación';
+            return;
+          }
+        }
+
         const { error } = await _supabase
           .from('teacher_assignments')
           .insert({
@@ -948,6 +1040,100 @@ window.deleteTeacher = async function deleteTeacher(teacherId, teacherName) {
   } catch (err) {
     console.error('Error eliminando docente:', err);
     if (typeof showToast === 'function') showToast('<i class="fas fa-circle-xmark"></i> Error: ' + err.message, 'error');
+  }
+}
+
+// ================================================
+// ROL COORDINADOR
+// ================================================
+window.setTeacherRole = async function setTeacherRole(teacherId, role) {
+  const _supabase = window._supabase;
+  const showToast = window.showToast;
+  const loadTeachers = window.loadTeachers;
+
+  if (role === 'coordinador' && !confirm('¿Convertir a este docente en coordinador? Podrá ver la información de los docentes que le asignes.')) return;
+  if (role === 'docente' && !confirm('¿Quitar el rol de coordinador? Perderá acceso a la información de sus docentes asignados.')) return;
+
+  try {
+    const { error } = await _supabase.from('teachers').update({ role }).eq('id', teacherId);
+    if (error) throw error;
+    if (typeof showToast === 'function') showToast('<i class="fas fa-circle-check"></i> Rol actualizado', 'success');
+    if (typeof loadTeachers === 'function') await loadTeachers();
+  } catch (err) {
+    console.error('Error actualizando rol:', err);
+    if (typeof showToast === 'function') showToast('<i class="fas fa-circle-xmark"></i> Error: ' + err.message, 'error');
+  }
+}
+
+window.openCoordinatorAssignModal = async function openCoordinatorAssignModal(coordinatorId, coordinatorName) {
+  const _supabase = window._supabase;
+  const sanitizeInput = window.sanitizeInput || ((v) => v);
+  document.getElementById('coordinator-assign-modal')?.remove();
+
+  const [{ data: allTeachers }, { data: currentAssignments }] = await Promise.all([
+    _supabase.from('teachers').select('id, full_name, email').neq('id', coordinatorId).order('full_name'),
+    _supabase.from('coordinator_assignments').select('teacher_id').eq('coordinator_id', coordinatorId),
+  ]);
+  const assignedIds = new Set((currentAssignments || []).map(a => a.teacher_id));
+
+  const modal = document.createElement('div');
+  modal.id = 'coordinator-assign-modal';
+  modal.className = 'fixed inset-0 z-[220] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn';
+  modal.innerHTML = `
+    <div class="glass-card w-full max-w-lg max-h-[85vh] flex flex-col p-8 animate-slideUp bg-white dark:bg-slate-900">
+      <div class="flex justify-between items-center mb-2">
+        <h2 class="text-lg font-black text-slate-800 dark:text-white uppercase tracking-tight m-0"><i class="fas fa-users-gear text-indigo-500 mr-2"></i> Docentes a Cargo</h2>
+        <button class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500 transition-colors flex items-center justify-center font-bold" onclick="this.closest('.fixed').remove()">
+            <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <p class="text-xs text-slate-400 mb-4">Seleccioná qué docentes puede ver <strong>${sanitizeInput(coordinatorName)}</strong> desde su panel de coordinador.</p>
+      <div class="flex-1 overflow-y-auto custom-scrollbar space-y-1.5 mb-4" id="coordinator-teacher-list">
+        ${(allTeachers || []).map(t => `
+          <label class="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors">
+            <input type="checkbox" value="${t.id}" ${assignedIds.has(t.id) ? 'checked' : ''} class="coordinator-teacher-checkbox w-5 h-5 rounded text-primary focus:ring-primary border-slate-300">
+            <span class="text-sm font-bold text-slate-700 dark:text-slate-300">${sanitizeInput(t.full_name)}</span>
+            <span class="text-xs text-slate-400 ml-auto">${sanitizeInput(t.email)}</span>
+          </label>
+        `).join('') || '<p class="text-xs text-slate-400 text-center py-8">No hay otros docentes registrados.</p>'}
+      </div>
+      <button class="btn-primary-tw w-full h-12 text-xs uppercase font-bold tracking-widest shrink-0" onclick="window.saveCoordinatorAssignments('${coordinatorId}')" id="btn-save-coordinator-assign">
+        <i class="fas fa-save"></i> Guardar
+      </button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+
+window.saveCoordinatorAssignments = async function saveCoordinatorAssignments(coordinatorId) {
+  const _supabase = window._supabase;
+  const showToast = window.showToast;
+  const btn = document.getElementById('btn-save-coordinator-assign');
+  const selectedIds = [...document.querySelectorAll('.coordinator-teacher-checkbox:checked')].map(el => el.value);
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+
+  try {
+    // Reemplazo completo: borra todas las asignaciones actuales de este
+    // coordinador y crea de nuevo solo las que quedaron marcadas -- más
+    // simple y seguro que diffear altas/bajas fila por fila.
+    const { error: delError } = await _supabase.from('coordinator_assignments').delete().eq('coordinator_id', coordinatorId);
+    if (delError) throw delError;
+
+    if (selectedIds.length > 0) {
+      const { error: insError } = await _supabase.from('coordinator_assignments')
+        .insert(selectedIds.map(teacher_id => ({ coordinator_id: coordinatorId, teacher_id })));
+      if (insError) throw insError;
+    }
+
+    if (typeof showToast === 'function') showToast('<i class="fas fa-circle-check"></i> Docentes asignados correctamente', 'success');
+    document.getElementById('coordinator-assign-modal')?.remove();
+  } catch (err) {
+    console.error('Error guardando asignaciones de coordinador:', err);
+    if (typeof showToast === 'function') showToast('<i class="fas fa-circle-xmark"></i> Error: ' + err.message, 'error');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-save"></i> Guardar';
   }
 }
 

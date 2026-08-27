@@ -33,7 +33,7 @@ window.loadAdminDashboard = async function loadAdminDashboard() {
                 _supabase.from('evaluations').select('total_score, teacher_id'),
                 _supabase.from('teacher_ratings').select('rating, teacher_id, students(school_code)'),
                 _supabase.from('attendance_waivers').select('*, teachers!teacher_id(full_name)').eq('status', 'pending'),
-                _supabase.from('active_time_tracking').select('user_id, total_seconds, role, school_code'),
+                _supabase.from('active_time_tracking').select('user_id, total_seconds, role, school_code, activity_date'),
                 _supabase.from('teacher_monthly_reports').select('*, teachers(full_name, email)').eq('month', now.getMonth() + 1).eq('year', now.getFullYear())
             ]);
 
@@ -90,6 +90,12 @@ window.processAndRenderDashboard = function processAndRenderDashboard(container,
         return acc;
     }, {});
 
+    // WAU: usuarios distintos con al menos una fila de actividad en los
+    // últimos 7 días (misma tabla que ya alimentaba "Tiempo Activo", solo
+    // que contando usuarios únicos en vez de sumar segundos).
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const wauUserIds = new Set((activeTime || []).filter(a => a.activity_date >= sevenDaysAgo).map(a => a.user_id));
+
     const stats = {
         totalProjects: projects?.length || 0,
         totalStudents: students?.length || 0,
@@ -108,7 +114,8 @@ window.processAndRenderDashboard = function processAndRenderDashboard(container,
             totalSeconds: totalActiveSeconds,
             byRole: activeTimeByRole,
             raw: activeTime || []
-        }
+        },
+        wau: wauUserIds.size
     };
 
     // Actualizar variable global para modales
@@ -228,6 +235,12 @@ window.renderDashboardUI = function renderDashboardUI(container, stats, teachers
                     <span>Est: ${Math.floor((stats.activeTime.byRole['estudiante'] || 0) / 3600)}h</span>
                     <span>Doc: ${Math.floor((stats.activeTime.byRole['docente'] || 0) / 3600)}h</span>
                 </div>
+            </div>
+
+            <div class="glass-card p-8 bg-white dark:bg-slate-900 border-l-8 border-fuchsia-500">
+                <div class="text-[0.65rem] font-black uppercase tracking-[0.2em] mb-4 text-slate-400">Usuarios Activos (7 días)</div>
+                <div class="text-5xl font-black text-slate-800 dark:text-white mb-2">${stats.wau}</div>
+                <p class="text-xs text-slate-500 mt-6 font-bold uppercase tracking-wider">WAU -- al menos 1 sesión en la última semana</p>
             </div>
         </div>
 

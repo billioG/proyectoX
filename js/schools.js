@@ -282,6 +282,11 @@ window.editSchool = async function editSchool(schoolId) {
             </div>
 
             <div>
+                <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-2 block ml-1">Proyecto / Programa</label>
+                <input type="text" id="edit-school-programa" class="input-field-tw h-11 text-sm" placeholder="Ej: 1bot, STEAM" value="${window.sanitizeAttr(school.programa || '')}">
+            </div>
+
+            <div>
                 <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-2 block ml-1">Teléfono</label>
                 <input type="tel" id="edit-school-phone" class="input-field-tw h-11 text-sm" value="${window.sanitizeAttr(school.phone || '')}">
             </div>
@@ -379,6 +384,7 @@ window.captureSchoolGPS = function captureSchoolGPS() {
 window.saveSchoolChanges = async function saveSchoolChanges(schoolId) {
   const name = document.getElementById('edit-school-name')?.value.trim();
   const address = document.getElementById('edit-school-address')?.value.trim();
+  const programa = document.getElementById('edit-school-programa')?.value.trim();
   const phone = document.getElementById('edit-school-phone')?.value.trim();
   const email = document.getElementById('edit-school-email')?.value.trim();
   const department = document.getElementById('edit-school-department')?.value.trim();
@@ -408,6 +414,7 @@ window.saveSchoolChanges = async function saveSchoolChanges(schoolId) {
       .update({
         name,
         address: address || null,
+        programa: programa || null,
         phone: phone || null,
         email: email || null,
         department,
