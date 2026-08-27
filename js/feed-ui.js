@@ -52,11 +52,22 @@ window.renderAdminPanel = function renderAdminPanel() {
 
 window.renderChallengeBanner = function renderChallengeBanner(activeChallenge, hasCompleted) {
   if (!activeChallenge) return '';
+  // El banner naranja + punto pulsando siempre gritaba "pendiente", incluso
+  // ya completado -- el check quedaba perdido al final y daba la impresión
+  // contraria. Si ya se completó, el banner entero pasa a verde y sin pulso.
+  const colorClasses = hasCompleted
+    ? 'bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/20'
+    : 'bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/20';
+  const textClass = hasCompleted ? 'text-emerald-500' : 'text-amber-600';
+  const dotHtml = hasCompleted
+    ? '<i class="fas fa-circle-check text-emerald-500"></i>'
+    : '<div class="w-3 h-3 rounded-full bg-amber-500 animate-ping"></div>';
+  const label = hasCompleted ? 'Reto Completado' : 'Reto Activo';
+
   return `
-    <div onclick="window.openChallengeEvidenceModal && window.openChallengeEvidenceModal('${activeChallenge.id}')" class="flex items-center gap-3 px-4 py-2 bg-amber-500/10 hover:bg-amber-500/20 rounded-xl border border-amber-500/20 cursor-pointer transition-all group/challenge relative" title="${window.sanitizeAttr(activeChallenge.description || '')}">
-      <div class="w-3 h-3 rounded-full bg-amber-500 animate-ping"></div>
-      <span class="text-[0.8rem] font-semibold text-amber-600 uppercase tracking-widest">Reto Activo: ${window.sanitizeInput(activeChallenge.name || '')}</span>
-      ${hasCompleted ? '<i class="fas fa-check-circle text-emerald-500 text-sm"></i>' : ''}
+    <div onclick="window.openChallengeEvidenceModal && window.openChallengeEvidenceModal('${activeChallenge.id}')" class="flex items-center gap-3 px-4 py-2 ${colorClasses} rounded-xl border cursor-pointer transition-all group/challenge relative" title="${window.sanitizeAttr(activeChallenge.description || '')}">
+      ${dotHtml}
+      <span class="text-[0.8rem] font-semibold ${textClass} uppercase tracking-widest">${label}: ${window.sanitizeInput(activeChallenge.name || '')}</span>
     </div>
   `;
 }

@@ -18,7 +18,7 @@ async function loadTeamPerformanceDashboard() {
         const [teachersRes, attendanceRes, evalsRes, weeklyEvidenceRes, monthlyReportsRes, assignmentsRes, waiversRes, groupsRes, schoolsRes] = await Promise.all([
             _supabase.from('teachers').select('*'),
             _supabase.from('attendance').select('teacher_id, date, status'),
-            _supabase.from('evaluations').select('teacher_id, created_at'),
+            _supabase.from('evaluations').select('teacher_id, created_at, project_id'),
             _supabase.from('weekly_evidence').select('teacher_id, created_at'),
             _supabase.from('teacher_monthly_reports').select('teacher_id, month, year'),
             _supabase.from('teacher_assignments').select('teacher_id, school_code, grade, section'),
@@ -87,12 +87,34 @@ async function loadTeamPerformanceDashboard() {
             }
         });
 
+        // Evaluaciones cuentan por (docente, equipo) distinto, no crudas --
+        // si no, un solo equipo subiendo muchos proyectos infla la métrica
+        // de un docente sin que realmente cubra más equipos.
+        const monthlyEvals = evaluations.filter(e => {
+            const d = new Date(e.created_at);
+            return d >= startDate && d <= endDate;
+        });
+        const evalProjectIds = [...new Set(monthlyEvals.map(e => e.project_id).filter(Boolean))];
+        const { data: evaluatedProjectsAll } = evalProjectIds.length
+            ? await _supabase.from('projects').select('id, group_id').in('id', evalProjectIds)
+            : { data: [] };
+        const projectGroupMap = new Map((evaluatedProjectsAll || []).map(p => [p.id, p.group_id]));
+
+        const seenTeacherGroup = new Set();
+        let dedupedEvalCount = 0;
+        monthlyEvals.forEach(e => {
+            const groupId = projectGroupMap.get(e.project_id);
+            if (groupId) {
+                const key = `${e.teacher_id}_${groupId}`;
+                if (!seenTeacherGroup.has(key)) { seenTeacherGroup.add(key); dedupedEvalCount++; }
+            } else {
+                dedupedEvalCount++;
+            }
+        });
+
         const completed = {
             attendance: uniqueLists.size,
-            evaluations: evaluations.filter(e => {
-                const d = new Date(e.created_at);
-                return d >= startDate && d <= endDate;
-            }).length,
+            evaluations: dedupedEvalCount,
             evidence: evidence.filter(ev => {
                 const d = new Date(ev.created_at);
                 return d >= startDate && d <= endDate;

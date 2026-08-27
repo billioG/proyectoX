@@ -28,7 +28,7 @@ window.calculateMonthlyKPIs = async function calculateMonthlyKPIs(teacherId, ass
         console.log('🔍 KPI Engine - School codes extraídos:', assignmentSchoolCodes);
         const [attRes, evalRes, evidRes, repRes, challengeRes, waiversRes, groupsRes, schoolsRes] = await Promise.all([
             _supabase.from('attendance').select('date').eq('teacher_id', teacherId).gte('date', startOfMonth.split('T')[0]).lte('date', endOfMonth.split('T')[0]),
-            _supabase.from('evaluations').select('id').eq('teacher_id', teacherId).gte('created_at', startOfMonth).lte('created_at', endOfMonth),
+            _supabase.from('evaluations').select('id, project_id').eq('teacher_id', teacherId).gte('created_at', startOfMonth).lte('created_at', endOfMonth),
             _supabase.from('weekly_evidence').select('id').eq('teacher_id', teacherId).gte('created_at', startOfMonth).lte('created_at', endOfMonth),
             _supabase.from('teacher_monthly_reports').select('id').eq('teacher_id', teacherId).eq('month', currentMonth).eq('year', currentYear),
             _supabase.from('teacher_challenges').select('id').eq('teacher_id', teacherId).gte('created_at', startOfMonth).lte('created_at', endOfMonth),
@@ -43,7 +43,19 @@ window.calculateMonthlyKPIs = async function calculateMonthlyKPIs(teacherId, ass
         // Contar listas únicas (por fecha)
         const uniqueDates = new Set(attRes.data?.map(r => r.date));
         const attCount = uniqueDates.size;
-        const evalCount = evalRes.data?.length || 0;
+
+        // Evaluaciones cuentan por EQUIPO distinto, no por evaluación cruda --
+        // si no, un solo equipo podía subir muchos proyectos y el docente
+        // inflaba la métrica evaluándolos todos sin cubrir al resto de equipos.
+        const evalProjectIds = (evalRes.data || []).map(e => e.project_id).filter(Boolean);
+        let evalCount = 0;
+        if (evalProjectIds.length) {
+            const { data: evaluatedProjects } = await _supabase.from('projects').select('id, group_id').in('id', evalProjectIds);
+            const distinctGroups = new Set((evaluatedProjects || []).map(p => p.group_id).filter(Boolean));
+            const individualProjects = (evaluatedProjects || []).filter(p => !p.group_id).length;
+            evalCount = distinctGroups.size + individualProjects;
+        }
+
         const evidCount = evidRes.data?.length || 0;
         const repCount = repRes.data?.length || 0;
         const challengeCount = challengeRes.data?.length || 0;
