@@ -19,6 +19,22 @@ window.loadDuelsSection = async function loadDuelsSection() {
   window.renderDuelsSection();
   if (typeof window.updateDuelPendingBadge === 'function') window.updateDuelPendingBadge();
   window.checkDuelResults();
+  window.subscribeDuelRealtime();
+}
+
+// Antes el retador se quedaba viendo "Esperando respuesta..." hasta que
+// recargaba la página a mano, aunque el rival ya hubiera aceptado -- con
+// esto el botón cambia solo a "Jugar" apenas cambia el estado del duelo.
+window.subscribeDuelRealtime = function subscribeDuelRealtime() {
+  if (window._duelRealtimeChannel) return;
+  const currentUser = window.currentUser;
+  if (!currentUser) return;
+
+  window._duelRealtimeChannel = window._supabase
+    .channel(`duels-live-${currentUser.id}`)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'student_duels', filter: `challenger_id=eq.${currentUser.id}` }, () => window.loadDuelsSection())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'student_duels', filter: `opponent_id=eq.${currentUser.id}` }, () => window.loadDuelsSection())
+    .subscribe();
 }
 
 // Muestra la animación de resultado (como la de insignias) una sola vez
@@ -187,6 +203,10 @@ window.renderDuelsSection = function renderDuelsSection() {
             : won
               ? `<span class="text-[0.6rem] font-black uppercase text-emerald-400"><i class="fas fa-trophy"></i> Ganaste +${d.wager_gems} gemas</span>`
               : `<span class="text-[0.6rem] font-black uppercase text-rose-400">Perdiste</span>`;
+          // Antes solo se veía la retroalimentación una vez, en el modal
+          // que aparece justo al completarse -- si lo cerrabas sin fijarte,
+          // no había forma de volver a ver qué respondiste mal.
+          actionHtml = `<button class="h-8 px-3 rounded-lg bg-white/10 text-white text-[0.6rem] font-black uppercase" onclick="window.showDuelReview('${d.id}')"><i class="fas fa-list-check"></i> Revisar</button>`;
         }
 
         return `
@@ -257,10 +277,17 @@ window.openCreateDuelModal = async function openCreateDuelModal() {
           <input type="number" id="duel-wager" min="0" value="10" class="input-field-tw h-11 text-sm" oninput="window.updateDuelWagerPreview()">
           <p class="text-[0.6rem] text-slate-500 mt-1">Tenés ${userData?.gems ?? 0} gemas.</p>
         </div>
+        <div>
+          <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Categoría</label>
+          <select id="duel-topic" class="input-field-tw h-11 text-sm">
+            <option value="">🎲 Aleatorio</option>
+            ${DUEL_TOPIC_POOL.map(t => `<option value="${window.sanitizeAttr(t)}">${window.sanitizeInput(t)}</option>`).join('')}
+          </select>
+        </div>
         <div class="p-4 rounded-xl bg-white/5 border border-white/10 text-center">
           <p class="text-[0.6rem] font-black uppercase text-slate-400 tracking-widest mb-1">Preguntas de este duelo</p>
           <p id="duel-wager-preview" class="text-2xl font-black text-primary">${computeDuelQuestionCount(10)}</p>
-          <p class="text-[0.6rem] text-slate-500 mt-1">La plataforma elige el tema al azar (STEAM, robótica y cultura general de Guatemala e internacional) y ajusta la cantidad de preguntas según lo que apuestes -- más gemas, más preguntas.</p>
+          <p class="text-[0.6rem] text-slate-500 mt-1">Ajusta la cantidad de preguntas según lo que apuestes -- más gemas, más preguntas.</p>
         </div>
       </div>
       <div class="flex gap-3 mt-8">
@@ -275,7 +302,8 @@ window.openCreateDuelModal = async function openCreateDuelModal() {
 window.sendDuelChallenge = async function sendDuelChallenge() {
   const opponentId = document.getElementById('duel-opponent')?.value;
   const wager = parseInt(document.getElementById('duel-wager')?.value) || 0;
-  const topic = DUEL_TOPIC_POOL[Math.floor(Math.random() * DUEL_TOPIC_POOL.length)];
+  const chosenTopic = document.getElementById('duel-topic')?.value;
+  const topic = chosenTopic || DUEL_TOPIC_POOL[Math.floor(Math.random() * DUEL_TOPIC_POOL.length)];
   const questionCount = computeDuelQuestionCount(wager);
   const btn = document.getElementById('btn-send-duel');
   const userData = window.userData;
@@ -304,6 +332,32 @@ window.sendDuelChallenge = async function sendDuelChallenge() {
   window.showToast('<i class="fas fa-circle-check"></i> ¡Reto enviado!', 'success');
   document.querySelector('.fixed.z-\\[210\\]')?.remove();
   window.loadDuelsSection();
+  window.sendDuelPushNotification(null, 'challenge', opponentId);
+}
+
+// duelId es null en el envío inicial porque el insert de arriba no
+// devuelve el id -- se busca el duelo recién creado por sus datos únicos
+// (challenger + opponent + created_at reciente) antes de notificar.
+window.sendDuelPushNotification = async function sendDuelPushNotification(duelId, type, opponentId) {
+  try {
+    let id = duelId;
+    if (!id) {
+      const { data: recent } = await window._supabase.from('student_duels')
+        .select('id').eq('challenger_id', window.currentUser.id).eq('opponent_id', opponentId)
+        .order('created_at', { ascending: false }).limit(1).maybeSingle();
+      id = recent?.id;
+    }
+    if (!id) return;
+
+    const { data: { session } } = await window._supabase.auth.getSession();
+    await fetch(`${window.SUPABASE_URL}/functions/v1/notify-duel`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
+      body: JSON.stringify({ duel_id: id, type }),
+    });
+  } catch (err) {
+    console.error('Error enviando push de duelo:', err);
+  }
 }
 
 window.cancelDuel = async function cancelDuel(duelId) {
@@ -338,6 +392,7 @@ window.respondDuel = async function respondDuel(duelId, accept) {
     if (!res.ok) throw new Error(result.error || 'Error generando el quiz');
     window.showToast('<i class="fas fa-circle-check"></i> ¡Reto aceptado! Ya podés jugar', 'success');
     window.loadDuelsSection();
+    window.sendDuelPushNotification(duelId, 'accepted');
   } catch (err) {
     window.showToast('<i class="fas fa-circle-xmark"></i> ' + err.message, 'error');
   }
