@@ -58,6 +58,7 @@ window.checkDuelResults = async function checkDuelResults() {
 }
 
 window.showDuelResultModal = function showDuelResultModal(duel, myScore) {
+  if (typeof window.ensureCompanionStyles === 'function') window.ensureCompanionStyles();
   const currentUser = window.currentUser;
   const isChallenger = duel.challenger_id === currentUser.id;
   const opponentName = isChallenger ? (duel.opponent?.full_name || 'Rival') : (duel.challenger?.full_name || 'Rival');
@@ -65,7 +66,10 @@ window.showDuelResultModal = function showDuelResultModal(duel, myScore) {
   const tie = !duel.winner_id;
   const sanitizeInput = window.sanitizeInput || ((v) => v);
 
-  const icon = tie ? '<i class="fas fa-handshake"></i>' : won ? '<i class="fas fa-trophy"></i>' : '<i class="fas fa-shield-heart"></i>';
+  const companionClass = tie ? 'companion-idle' : won ? 'companion-victory' : 'companion-defeat';
+  const companionHtml = typeof window.renderCompanionSvg === 'function'
+    ? window.renderCompanionSvg(window._myCompanionStageIndex || 0, companionClass)
+    : (tie ? '<i class="fas fa-handshake"></i>' : won ? '<i class="fas fa-trophy"></i>' : '<i class="fas fa-shield-heart"></i>');
   const title = tie ? '¡Empate!' : won ? '¡Ganaste el Duelo!' : 'Duelo Perdido';
   const gemsLine = tie
     ? 'Nadie ganó ni perdió gemas.'
@@ -78,8 +82,8 @@ window.showDuelResultModal = function showDuelResultModal(duel, myScore) {
     <div class="relative w-full max-w-sm p-8 text-center">
       <div class="mb-6 relative">
         <div class="absolute inset-0 ${won ? 'bg-emerald-500' : tie ? 'bg-slate-400' : 'bg-rose-500'} blur-[60px] opacity-40 animate-pulse"></div>
-        <div class="relative text-[6rem] animate-bounce-in drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)] ${won ? 'text-emerald-400' : tie ? 'text-slate-300' : 'text-rose-400'}">
-          ${icon}
+        <div class="relative w-32 h-32 mx-auto drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)]">
+          ${companionHtml}
         </div>
       </div>
       <div class="relative z-10 space-y-2 mb-6 animate-slideUp">
@@ -402,6 +406,13 @@ window.openDuelQuiz = async function openDuelQuiz(duelId) {
 
   duel.questions = questions;
   window._activeDuel = { duel, index: 0, selections: [] };
+
+  if (typeof window.getCompanionStage === 'function' && typeof window.ensureCompanionStyles === 'function') {
+    window.ensureCompanionStyles();
+    const { data: me } = await window._supabase.from('students').select('gems_earned_total').eq('id', window.currentUser.id).maybeSingle();
+    window._myCompanionStageIndex = window.getCompanionStage(me?.gems_earned_total).stageIndex;
+  }
+
   window.renderDuelQuizQuestion();
 }
 
@@ -418,10 +429,11 @@ window.renderDuelQuizQuestion = function renderDuelQuizQuestion() {
   modal.className = 'fixed inset-0 z-[220] flex items-center justify-center p-6 bg-slate-950/95 backdrop-blur-md animate-fadeIn';
   modal.innerHTML = `
     <div class="glass-card w-full max-w-lg p-8 shadow-2xl animate-slideUp bg-slate-900 border border-white/10">
-      <div class="flex justify-between items-center mb-6">
+      <div class="flex justify-between items-center mb-4">
         <span class="text-[0.6rem] font-black uppercase text-slate-400 tracking-widest">Pregunta ${index + 1} / ${duel.questions.length}</span>
         <span class="text-[0.6rem] font-black uppercase text-primary">${duel.topic}</span>
       </div>
+      ${typeof window.renderCompanionSvg === 'function' ? `<div class="w-16 h-16 mx-auto mb-4">${window.renderCompanionSvg(window._myCompanionStageIndex || 0)}</div>` : ''}
       <h3 class="text-lg font-bold text-white mb-6">${sanitizeInput(q.question)}</h3>
       <div class="space-y-3">
         ${q.options.map((opt, i) => `

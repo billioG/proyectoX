@@ -58,6 +58,7 @@ window.loadStudentProfile = async function loadStudentProfile() {
         if (data) {
             window.renderStudentProfileUI(container, data.student, data.projects, data.earnedBadgeIds, data.myTeacher, data.xpData);
             if (typeof window.renderEventNotificationToggle === 'function') window.renderEventNotificationToggle();
+            if (typeof window.renderCompanionCard === 'function') window.renderCompanionCard('companion-card-slot', data.student.id);
         }
     });
 }
@@ -117,6 +118,8 @@ window.renderStudentProfileUI = function renderStudentProfileUI(container, stude
     </div>
 
     <div class="flex justify-center md:justify-start mb-8" id="event-notif-toggle-slot"></div>
+
+    <div id="companion-card-slot" class="mb-12"></div>
 
     ${myTeacher ? `
         <div class="glass-card p-8 bg-gradient-to-br from-primary/5 to-transparent border border-primary/10 flex flex-col md:flex-row justify-between items-center gap-6 mb-12 relative overflow-hidden">
