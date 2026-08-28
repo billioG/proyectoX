@@ -653,14 +653,16 @@ window.createUsersFromExtractedData = async function createUsersFromExtractedDat
 
     try {
         statusText.textContent = 'Verificando duplicados en la nube...';
-        const { data: allExisting } = await window._supabase.from('students').select('username, email, cui');
-        if (allExisting) {
-            allExisting.forEach(s => {
-                if (s.username) existingUsernames.add(s.username);
-                if (s.email) existingEmails.add(s.email);
-                if (s.cui) existingCUIs.add(s.cui);
-            });
-        }
+        // PostgREST corta en 1000 filas sin paginar -- con más de 1000
+        // estudiantes en la DB esto se quedaba corto silenciosamente y
+        // dejaba pasar duplicados reales hacia el servidor, que los
+        // rechazaba con error en vez de omitirlos acá.
+        const allExisting = await window.fetchAllRows(() => window._supabase.from('students').select('username, email, cui'));
+        allExisting.forEach(s => {
+            if (s.username) existingUsernames.add(s.username);
+            if (s.email) existingEmails.add(s.email);
+            if (s.cui) existingCUIs.add(s.cui);
+        });
     } catch (e) {
         console.error('Error lookup:', e);
     }
