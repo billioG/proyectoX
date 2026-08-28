@@ -244,6 +244,10 @@ const MascotWidget = {
                     <path id="mascot-sparkle-l" d="M 168 148 l 3 8 l 8 3 l -8 3 l -3 8 l -3 -8 l -8 -3 l 8 -3 Z" fill="#FFFFFF" style="display:none" />
                     <path id="mascot-sparkle-r" d="M 248 148 l 3 8 l 8 3 l -8 3 l -3 8 l -3 -8 l -8 -3 l 8 -3 Z" fill="#FFFFFF" style="display:none" />
 
+                    <!-- Cejas de susto -- solo octubre (araña colgando), ver setSeasonalExpression(). -->
+                    <path id="mascot-scared-brow-l" d="M 138 126 L 160 116" stroke="#1E293B" stroke-width="5" stroke-linecap="round" style="display:none" />
+                    <path id="mascot-scared-brow-r" d="M 262 126 L 240 116" stroke="#1E293B" stroke-width="5" stroke-linecap="round" style="display:none" />
+
                     <!-- Pico Amarillo -->
                     <path d="M 182 168 Q 200 162 218 168 C 218 195 200 218 200 218 C 200 218 182 195 182 168 Z" fill="#FFC107" />
                     <path d="M 188 170 Q 200 166 212 170 C 210 185 200 202 200 202 C 200 202 190 185 188 170 Z" fill="#FFA000" opacity="0.5" />
@@ -275,78 +279,114 @@ const MascotWidget = {
     // indígena específica) para que ninguno resulte pesado ni de mal gusto.
     getSeasonalAccessorySvg(month) {
         switch (month) {
-            case 0: // Enero -- regreso a clases: birrete de graduación, grande y arriba de todo
+            case 0: // Enero -- regreso a clases: lápiz en un ala, cuaderno en la otra
                 return `
-                    <polygon points="200,8 275,45 200,82 125,45" fill="#212121" stroke="#000" stroke-width="2" />
-                    <rect x="175" y="45" width="50" height="30" fill="#37474F" />
-                    <line x1="270" y1="45" x2="272" y2="90" stroke="#FBC02D" stroke-width="4" />
-                    <circle cx="272" cy="96" r="10" fill="#FBC02D" />
+                    <g transform="rotate(-35 85 220)">
+                        <rect x="70" y="185" width="16" height="70" fill="#FFC107" stroke="#F57F17" stroke-width="1.5" />
+                        <rect x="70" y="176" width="16" height="11" fill="#F06292" />
+                        <polygon points="70,255 86,255 78,275" fill="#8D6E63" />
+                        <polygon points="74,255 82,255 78,266" fill="#37474F" />
+                    </g>
+                    <rect x="288" y="190" width="46" height="62" rx="4" fill="#42A5F5" stroke="#1565C0" stroke-width="2.5" />
+                    <line x1="296" y1="206" x2="326" y2="206" stroke="#FFFFFF" stroke-width="2.5" />
+                    <line x1="296" y1="218" x2="326" y2="218" stroke="#FFFFFF" stroke-width="2.5" />
+                    <line x1="296" y1="230" x2="326" y2="230" stroke="#FFFFFF" stroke-width="2.5" />
+                    <circle cx="290" cy="196" r="2.5" fill="#0D47A1" /><circle cx="290" cy="210" r="2.5" fill="#0D47A1" /><circle cx="290" cy="224" r="2.5" fill="#0D47A1" /><circle cx="290" cy="238" r="2.5" fill="#0D47A1" />
                 `;
-            case 1: // Febrero -- mes del amor: anteojos de corazón grandes, tapan los ojos
+            case 1: // Febrero -- mes del amor: anteojos de corazón sobre los ojos (tamaño ajustado)
                 return `
-                    <path d="M 160 148 C 143 118 98 128 98 158 C 98 185 133 200 160 228 C 187 200 222 185 222 158 C 222 128 177 118 160 148 Z" fill="#EC407A" stroke="#AD1457" stroke-width="5" />
-                    <path d="M 240 148 C 223 118 178 128 178 158 C 178 185 213 200 240 228 C 267 200 302 185 302 158 C 302 128 257 118 240 148 Z" fill="#EC407A" stroke="#AD1457" stroke-width="5" />
-                    <rect x="200" y="150" width="20" height="8" fill="#AD1457" />
+                    <path d="M 160 145 C 148 128 128 132 128 150 C 128 168 145 178 160 195 C 175 178 192 168 192 150 C 192 132 172 128 160 145 Z" fill="#EC407A" stroke="#AD1457" stroke-width="4" />
+                    <path d="M 240 145 C 228 128 208 132 208 150 C 208 168 225 178 240 195 C 255 178 272 168 272 150 C 272 132 252 128 240 145 Z" fill="#EC407A" stroke="#AD1457" stroke-width="4" />
+                    <rect x="194" y="150" width="12" height="6" fill="#AD1457" />
                 `;
-            case 2: // Marzo -- Día de la Mujer: gran moño morado en la cabeza
+            case 2: // Marzo -- Día de la Mujer: placa "8M" en el pecho (texto, siempre legible)
                 return `
-                    <path d="M 200 45 C 155 15 110 40 150 68 C 110 90 155 115 200 85 Z" fill="#AB47BC" stroke="#6A1B9A" stroke-width="4" />
-                    <path d="M 200 45 C 245 15 290 40 250 68 C 290 90 245 115 200 85 Z" fill="#AB47BC" stroke="#6A1B9A" stroke-width="4" />
-                    <circle cx="200" cy="65" r="18" fill="#8E24AA" stroke="#6A1B9A" stroke-width="3" />
+                    <rect x="152" y="215" width="96" height="34" rx="17" fill="#9C27B0" stroke="#5E1487" stroke-width="2.5" />
+                    <text x="200" y="239" text-anchor="middle" font-size="24" font-weight="bold" font-family="sans-serif" fill="#FFFFFF">8M</text>
                 `;
-            case 3: // Abril -- Día de la Tierra: gran hoja/brote sobre la cabeza
+            case 3: // Abril -- Día de la Tierra: mundo grande al frente, a la altura del pecho
                 return `
-                    <path d="M 200 20 C 145 30 130 90 185 105 C 175 65 190 35 200 20 Z" fill="#81C784" stroke="#2E7D32" stroke-width="4" />
-                    <path d="M 200 20 C 255 30 270 90 215 105 C 225 65 210 35 200 20 Z" fill="#4CAF50" stroke="#2E7D32" stroke-width="4" />
-                    <line x1="200" y1="20" x2="200" y2="100" stroke="#2E7D32" stroke-width="4" />
+                    <circle cx="200" cy="235" r="46" fill="#42A5F5" stroke="#1565C0" stroke-width="3.5" />
+                    <path d="M 158 220 Q 200 205 242 220" stroke="#1565C0" stroke-width="3" fill="none" />
+                    <path d="M 158 250 Q 200 265 242 250" stroke="#1565C0" stroke-width="3" fill="none" />
+                    <path d="M 200 189 C 185 210 185 260 200 281" stroke="#1565C0" stroke-width="3" fill="none" />
+                    <path d="M 178 205 C 168 218 174 230 186 226 C 183 238 198 242 204 230 C 216 235 224 220 212 213 Z" fill="#66BB6A" />
+                    <path d="M 205 245 C 198 255 205 268 218 262 C 222 272 236 270 236 258 Z" fill="#66BB6A" />
                 `;
-            case 4: // Mayo -- Día de la Madre: corona de flores grande en la frente
+            case 4: // Mayo -- Día de la Madre: girasol grande y claro en el ala izquierda
                 return `
-                    <circle cx="150" cy="75" r="22" fill="#F48FB1" stroke="#C2185B" stroke-width="3" /><circle cx="200" cy="55" r="24" fill="#F06292" stroke="#C2185B" stroke-width="3" /><circle cx="250" cy="75" r="22" fill="#F48FB1" stroke="#C2185B" stroke-width="3" />
-                    <circle cx="150" cy="75" r="8" fill="#FFEB3B" /><circle cx="200" cy="55" r="9" fill="#FFEB3B" /><circle cx="250" cy="75" r="8" fill="#FFEB3B" />
+                    <g transform="translate(88,205) scale(1.8)">
+                        <ellipse cx="0" cy="-17" rx="7" ry="11" fill="#FDD835" stroke="#F9A825" stroke-width="1.5" />
+                        <ellipse cx="12" cy="-12" rx="7" ry="11" fill="#FDD835" stroke="#F9A825" stroke-width="1.5" transform="rotate(45 12 -12)" />
+                        <ellipse cx="17" cy="0" rx="7" ry="11" fill="#FDD835" stroke="#F9A825" stroke-width="1.5" transform="rotate(90 17 0)" />
+                        <ellipse cx="12" cy="12" rx="7" ry="11" fill="#FDD835" stroke="#F9A825" stroke-width="1.5" transform="rotate(135 12 12)" />
+                        <ellipse cx="0" cy="17" rx="7" ry="11" fill="#FDD835" stroke="#F9A825" stroke-width="1.5" transform="rotate(180 0 17)" />
+                        <ellipse cx="-12" cy="12" rx="7" ry="11" fill="#FDD835" stroke="#F9A825" stroke-width="1.5" transform="rotate(225 -12 12)" />
+                        <ellipse cx="-17" cy="0" rx="7" ry="11" fill="#FDD835" stroke="#F9A825" stroke-width="1.5" transform="rotate(270 -17 0)" />
+                        <ellipse cx="-12" cy="-12" rx="7" ry="11" fill="#FDD835" stroke="#F9A825" stroke-width="1.5" transform="rotate(315 -12 -12)" />
+                        <circle cx="0" cy="0" r="11" fill="#795548" stroke="#4E342E" stroke-width="1.5" />
+                        <path d="M 0 28 L -5 58 L 8 51 Z" fill="#66BB6A" stroke="#2E7D32" stroke-width="2" />
+                    </g>
                 `;
-            case 5: // Junio -- Día del Padre y del Maestro: corbata grande + birrete chico
+            case 5: // Junio -- Día del Padre y del Maestro: solo lentes + corbatín (sin nada arriba de la cabeza)
                 return `
-                    <path d="M 178 90 L 222 90 L 210 130 L 200 145 L 190 130 Z" fill="#5C6BC0" stroke="#283593" stroke-width="3" />
-                    <path d="M 185 200 L 215 200 L 208 285 L 200 305 L 192 285 Z" fill="#3949AB" stroke="#1A237E" stroke-width="3" />
+                    <circle cx="160" cy="158" r="30" fill="none" stroke="#3E2723" stroke-width="6" />
+                    <circle cx="240" cy="158" r="30" fill="none" stroke="#3E2723" stroke-width="6" />
+                    <line x1="190" y1="158" x2="210" y2="158" stroke="#3E2723" stroke-width="6" />
+                    <path d="M 200 225 L 172 212 L 172 240 Z" fill="#3949AB" stroke="#1A237E" stroke-width="2.5" />
+                    <path d="M 200 225 L 228 212 L 228 240 Z" fill="#3949AB" stroke="#1A237E" stroke-width="2.5" />
+                    <circle cx="200" cy="225" r="8" fill="#1A237E" />
                 `;
-            case 6: // Julio -- cumpleaños: gorro de fiesta grande + confeti abundante
+            case 6: // Julio -- cumpleaños: gorro de fiesta + más serpentina
                 return `
                     <path d="M 165 95 L 235 95 L 200 15 Z" fill="#FFCA28" stroke="#F57F17" stroke-width="3" />
                     <circle cx="200" cy="12" r="10" fill="#FF5252" />
                     <rect x="178" y="55" width="12" height="12" fill="#EC407A" transform="rotate(20 184 61)" />
                     <rect x="205" y="65" width="12" height="12" fill="#42A5F5" transform="rotate(-15 211 71)" />
-                    <circle cx="120" cy="120" r="7" fill="#FF5252" /><circle cx="290" cy="130" r="7" fill="#29B6F6" /><circle cx="110" cy="200" r="7" fill="#66BB6A" /><circle cx="300" cy="220" r="7" fill="#FFEE58" />
+                    <path d="M 95 140 Q 115 160 95 180 Q 75 200 95 220" stroke="#EC407A" stroke-width="4" fill="none" />
+                    <path d="M 305 140 Q 285 160 305 180 Q 325 200 305 220" stroke="#29B6F6" stroke-width="4" fill="none" />
+                    <path d="M 120 250 Q 140 270 120 290" stroke="#FFEE58" stroke-width="4" fill="none" />
+                    <path d="M 280 250 Q 260 270 280 290" stroke="#66BB6A" stroke-width="4" fill="none" />
+                    <circle cx="120" cy="120" r="6" fill="#FF5252" /><circle cx="290" cy="130" r="6" fill="#29B6F6" />
                 `;
-            case 7: // Agosto -- Día Internacional de los Pueblos Indígenas: banda tejida colorida en el pecho, más ancha
+            case 7: // Agosto -- Día Internacional de los Pueblos Indígenas: corona de plumas grandes y coloridas
                 return `
-                    <path d="M 130 190 L 270 190 L 270 250 L 130 250 Z" fill="#D32F2F" />
-                    <path d="M 130 202 L 270 202 L 270 214 L 130 214 Z" fill="#FBC02D" />
-                    <path d="M 130 226 L 270 226 L 270 238 L 130 238 Z" fill="#1976D2" />
-                    <path d="M 130 214 L 270 214 L 270 226 L 130 226 Z" fill="#43A047" />
+                    <path d="M 138 95 Q 200 74 262 95 L 262 108 Q 200 87 138 108 Z" fill="#8D6E63" stroke="#5D4037" stroke-width="2" />
+                    <path d="M 155 98 L 145 20 L 165 55 L 158 10 L 178 48 Z" fill="#43A047" stroke="#1B5E20" stroke-width="2" />
+                    <path d="M 178 96 L 172 8 L 192 45 L 184 0 L 202 40 Z" fill="#FDD835" stroke="#F57F17" stroke-width="2" />
+                    <path d="M 200 94 L 200 4 L 218 42 L 210 -2 L 228 38 Z" fill="#E53935" stroke="#B71C1C" stroke-width="2" />
+                    <path d="M 222 96 L 228 8 L 208 45 L 216 0 L 198 40 Z" fill="#1E88E5" stroke="#0D47A1" stroke-width="2" />
+                    <path d="M 245 98 L 255 20 L 235 55 L 242 10 L 222 48 Z" fill="#43A047" stroke="#1B5E20" stroke-width="2" />
                 `;
-            case 8: // Septiembre -- Independencia de Guatemala: banda diagonal ancha con estrella
+            case 8: // Septiembre -- Independencia de Guatemala: banderita a un lado
                 return `
-                    <path d="M 130 180 L 165 180 L 235 330 L 200 330 Z" fill="#4FC3F7" stroke="#0288D1" stroke-width="3" />
-                    <path d="M 165 180 L 195 180 L 265 330 L 235 330 Z" fill="#FFFFFF" stroke="#B0BEC5" stroke-width="2" />
-                    <path d="M 170 240 l 6 -18 l 6 18 l -15 -11 h 18 z" fill="#4FC3F7" />
+                    <line x1="295" y1="150" x2="295" y2="270" stroke="#8D6E63" stroke-width="5" />
+                    <path d="M 295 150 L 355 150 L 355 195 L 295 195 Z" fill="#FFFFFF" stroke="#CFD8DC" stroke-width="1.5" />
+                    <path d="M 295 150 L 313 150 L 313 195 L 295 195 Z" fill="#4FC3F7" />
+                    <path d="M 337 150 L 355 150 L 355 195 L 337 195 Z" fill="#4FC3F7" />
                 `;
-            case 9: // Octubre -- Halloween: sombrero de bruja grande
+            case 9: // Octubre -- Halloween: sombrero de bruja + araña colgando a la altura del pecho
                 return `
                     <path d="M 200 5 L 250 95 L 150 95 Z" fill="#4A148C" stroke="#1A0033" stroke-width="3" />
                     <ellipse cx="200" cy="97" rx="55" ry="13" fill="#4A148C" stroke="#1A0033" stroke-width="3" />
                     <rect x="175" y="65" width="50" height="14" fill="#FF6F00" />
+                    <line x1="200" y1="100" x2="200" y2="245" stroke="#E0E0E0" stroke-width="1.5" />
+                    <path d="M 172 235 Q 200 218 228 235 M 172 260 Q 200 250 228 260 M 178 222 Q 200 245 178 268 M 222 222 Q 200 245 222 268" stroke="#E0E0E0" stroke-width="1.5" fill="none" />
+                    <circle cx="200" cy="258" r="11" fill="#212121" /><circle cx="200" cy="243" r="8" fill="#212121" />
+                    <line x1="191" y1="252" x2="174" y2="246" stroke="#212121" stroke-width="2.5" /><line x1="191" y1="262" x2="172" y2="264" stroke="#212121" stroke-width="2.5" />
+                    <line x1="209" y1="252" x2="226" y2="246" stroke="#212121" stroke-width="2.5" /><line x1="209" y1="262" x2="228" y2="264" stroke="#212121" stroke-width="2.5" />
                 `;
-            case 10: // Noviembre -- Día de Muertos: corona de cempasúchil, más flores y más grande (sin calaveras)
+            case 10: // Noviembre -- Día de Muertos: aureola + radiografía SOLO del pecho hacia abajo (3 costillas gruesas, puntas redondeadas)
                 return `
-                    <circle cx="140" cy="85" r="18" fill="#FB8C00" stroke="#E65100" stroke-width="2" /><circle cx="180" cy="55" r="18" fill="#FFA726" stroke="#E65100" stroke-width="2" /><circle cx="220" cy="55" r="18" fill="#FFA726" stroke="#E65100" stroke-width="2" /><circle cx="260" cy="85" r="18" fill="#FB8C00" stroke="#E65100" stroke-width="2" />
-                    <circle cx="140" cy="85" r="7" fill="#BF360C" /><circle cx="180" cy="55" r="7" fill="#BF360C" /><circle cx="220" cy="55" r="7" fill="#BF360C" /><circle cx="260" cy="85" r="7" fill="#BF360C" />
+                    <path d="M 118 195 C 112 240 112 290 140 325 C 160 335 240 335 260 325 C 288 290 288 240 282 195 C 260 210 140 210 118 195 Z" fill="#1565C0" opacity="0.3" />
+                    <path d="M 150 225 Q 200 217 250 225 M 150 260 Q 200 252 250 260 M 150 295 Q 200 287 250 295" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" fill="none" opacity="0.9" />
+                    <line x1="200" y1="200" x2="200" y2="325" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" opacity="0.9" />
+                    <ellipse cx="200" cy="42" rx="52" ry="13" fill="none" stroke="#FFD54F" stroke-width="6" />
                 `;
-            case 11: // Diciembre -- Navidad: gorro navideño grande y esponjoso
+            case 11: // Diciembre -- Navidad: cuernos de reno
                 return `
-                    <path d="M 200 10 L 250 95 Q 185 78 150 100 Z" fill="#E53935" stroke="#B71C1C" stroke-width="3" />
-                    <ellipse cx="150" cy="100" rx="26" ry="15" fill="#FFFFFF" />
-                    <circle cx="250" cy="90" r="15" fill="#FFFFFF" />
+                    <path d="M 150 92 L 128 55 L 142 62 L 118 30 L 138 48 L 122 15 L 150 60" fill="none" stroke="#795548" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" />
+                    <path d="M 250 92 L 272 55 L 258 62 L 282 30 L 262 48 L 278 15 L 250 60" fill="none" stroke="#795548" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" />
                 `;
             default:
                 return '';
@@ -354,16 +394,25 @@ const MascotWidget = {
     },
 
     // Meses de fiesta grande -- ojos con brillo (expresión distinta, no solo
-    // accesorio) además del disfraz de arriba.
-    festiveMonths: [6, 9, 11],
+    // accesorio) además del disfraz de arriba. Octubre tiene su propia
+    // expresión (susto por la araña) en vez del brillo.
+    festiveMonths: [6, 11],
 
     setSeasonalExpression(month) {
         const sparkleL = document.getElementById('mascot-sparkle-l');
         const sparkleR = document.getElementById('mascot-sparkle-r');
-        if (!sparkleL || !sparkleR) return;
-        const show = this.festiveMonths.includes(month);
-        sparkleL.style.display = show ? 'block' : 'none';
-        sparkleR.style.display = show ? 'block' : 'none';
+        const browL = document.getElementById('mascot-scared-brow-l');
+        const browR = document.getElementById('mascot-scared-brow-r');
+        if (sparkleL && sparkleR) {
+            const showSparkle = this.festiveMonths.includes(month);
+            sparkleL.style.display = showSparkle ? 'block' : 'none';
+            sparkleR.style.display = showSparkle ? 'block' : 'none';
+        }
+        if (browL && browR) {
+            const showScared = month === 9;
+            browL.style.display = showScared ? 'block' : 'none';
+            browR.style.display = showScared ? 'block' : 'none';
+        }
     },
 
     // Recuerda dónde la dejó el usuario -- por device (localStorage), no
