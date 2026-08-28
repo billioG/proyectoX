@@ -3,13 +3,15 @@
  * nota), estilo Platzi: bloqueo secuencial y barra de progreso.
  */
 
-const LESSON_TYPE_ICON = { video: 'fa-video', pdf: 'fa-file-pdf', image: 'fa-image', scorm: 'fa-cube', h5p: 'fa-puzzle-piece' };
-const LESSON_TYPE_LABEL = { video: 'Video', pdf: 'PDF', image: 'Imagen', scorm: 'SCORM', h5p: 'H5P', quiz: 'Quiz' };
+const LESSON_TYPE_ICON = { video: 'fa-video', pdf: 'fa-file-pdf', image: 'fa-image', scorm: 'fa-cube', h5p: 'fa-puzzle-piece', html5: 'fa-window-maximize' };
+const LESSON_TYPE_LABEL = { video: 'Video', pdf: 'PDF', image: 'Imagen', scorm: 'SCORM', h5p: 'H5P', html5: 'Aplicación HTML5', quiz: 'Quiz' };
 const LESSON_TYPES_WITH_GRADE = new Set(['scorm', 'h5p', 'quiz']);
-// Subconjunto de LESSON_TYPES_WITH_GRADE que sube un .zip (H5P/SCORM) -- el
-// quiz también tiene nota automática pero su UI de carga es un formulario de
-// preguntas, no un archivo, así que necesita su propio chequeo separado.
-const ZIP_RESOURCE_TYPES = new Set(['scorm', 'h5p']);
+// Subconjunto que sube un .zip (H5P/SCORM/HTML5 genérico) -- el quiz también
+// tiene nota automática pero su UI de carga es un formulario de preguntas,
+// no un archivo, así que necesita su propio chequeo separado. HTML5 no tiene
+// nota automática (no habla xAPI/SCORM API) -- se completa como video/PDF,
+// con "marcar como visto".
+const ZIP_RESOURCE_TYPES = new Set(['scorm', 'h5p', 'html5']);
 const QUIZ_QUESTION_TYPE_LABEL = { mc: 'Opción múltiple', tf: 'Verdadero/Falso', number: 'Número exacto', range: 'Rango (min-max)', text: 'Respuesta abierta (manual)' };
 const LESSON_STORAGE_BUCKET = 'course-content';
 
@@ -508,7 +510,7 @@ window.previewCourseResource = function previewCourseResource(lessonId) {
     mediaHtml = `<iframe class="w-full h-[60vh] rounded-xl border border-slate-200 dark:border-slate-700" src="${lesson.content_url}"></iframe>`;
   } else if (lesson.content_type === 'image') {
     mediaHtml = `<img src="${lesson.content_url}" class="w-full rounded-xl">`;
-  } else if (lesson.content_type === 'scorm') {
+  } else if (lesson.content_type === 'scorm' || lesson.content_type === 'html5') {
     mediaHtml = `<iframe class="w-full h-[60vh] rounded-xl border border-slate-200 dark:border-slate-700" src="${lesson.content_url}"></iframe>`;
   } else if (lesson.content_type === 'h5p') {
     mediaHtml = `<div id="h5p-preview-container" class="w-full min-h-[50vh]"></div>`;
@@ -715,6 +717,7 @@ window.openAddResourceModal = function openAddResourceModal(courseId, editLesson
             <option value="image">Imagen</option>
             <option value="scorm">SCORM (.zip -- con nota automática)</option>
             <option value="h5p">H5P (.zip -- con nota automática)</option>
+            <option value="html5">Aplicación HTML5 (.zip -- sin nota automática)</option>
             <option value="quiz">Quiz (preguntas -- con nota automática)</option>
           </select>
         </div>
@@ -977,16 +980,20 @@ window.saveResource = async function saveResource(courseId, editingId) {
 
       // Muchos exportadores (Genially, Lumi, etc.) empaquetan H5P DENTRO
       // de un SCORM real (traen imsmanifest.xml + SCORM_API_wrapper.js).
-      // Si el .zip trae manifiesto, es SCORM sin importar qué eligió el
-      // docente en el dropdown -- evita que quede mal etiquetado y sin
-      // reproducirse.
-      if (uploaded.entryUrl) {
+      // Se detecta el tipo real del paquete leyendo su contenido (manifiesto
+      // > h5p.json > index.html) sin importar qué eligió el docente en el
+      // dropdown -- evita que quede mal etiquetado y sin reproducirse.
+      if (uploaded.packageType === 'scorm') {
         content_type = 'scorm';
         finalUrl = uploaded.entryUrl;
-      } else if (content_type === 'scorm') {
-        throw new Error('No se encontró el archivo de entrada del paquete SCORM (imsmanifest.xml)');
-      } else {
+      } else if (uploaded.packageType === 'h5p') {
+        content_type = 'h5p';
         finalUrl = uploaded.baseUrl; // H5P nativo necesita la carpeta base, no un archivo puntual
+      } else if (uploaded.packageType === 'html5') {
+        content_type = 'html5';
+        finalUrl = uploaded.entryUrl;
+      } else {
+        throw new Error('No se encontró un archivo de entrada reconocible en el paquete (imsmanifest.xml, h5p.json o index.html).');
       }
     }
 
@@ -1117,7 +1124,9 @@ window.extractAndUploadPackage = async function extractAndUploadPackage(file, ba
   const { data: { publicUrl: baseUrl } } = _supabase.storage.from(LESSON_STORAGE_BUCKET).getPublicUrl(basePath);
 
   let entryUrl = null;
+  let packageType = null;
   if (manifestXml) {
+    packageType = 'scorm';
     try {
       const doc = new DOMParser().parseFromString(manifestXml, 'text/xml');
       const resource = doc.querySelector('resources > resource[href]') || doc.querySelector('resource[href]');
@@ -1137,9 +1146,23 @@ window.extractAndUploadPackage = async function extractAndUploadPackage(file, ba
     } catch (e) {
       console.warn('No se pudo leer imsmanifest.xml:', e);
     }
+  } else if (h5pJsonEntry) {
+    packageType = 'h5p';
+  } else {
+    // Aplicación HTML5 genérica (Genially, exports de IA, etc.) -- sin
+    // manifiesto ni h5p.json, solo un index.html + assets relativos. Se
+    // busca en cualquier nivel del paquete (suele venir dentro de una
+    // carpeta contenedora) y se sirve por el mismo proxy que SCORM, por la
+    // misma razón (Storage fuerza text/plain en .html público).
+    const indexEntry = entries.find(e => /(^|\/)index\.html?$/i.test(e.name));
+    if (indexEntry) {
+      packageType = 'html5';
+      const objectPath = `${basePath}/${indexEntry.name}`;
+      entryUrl = `${window.SUPABASE_URL}/functions/v1/serve-scorm-entry?path=${encodeURIComponent(objectPath)}`;
+    }
   }
 
-  return { baseUrl: baseUrl.endsWith('/') ? baseUrl : baseUrl + '/', entryUrl };
+  return { baseUrl: baseUrl.endsWith('/') ? baseUrl : baseUrl + '/', entryUrl, packageType };
 }
 
 // ================================================
@@ -1628,6 +1651,10 @@ window.selectCourseResource = function selectCourseResource(index) {
     mediaHtml = `<img src="${lesson.content_url}" class="w-full rounded-xl">`;
   } else if (lesson.content_type === 'scorm') {
     mediaHtml = `<iframe id="scorm-frame" class="w-full h-[60vh] rounded-xl border border-slate-200 dark:border-slate-700" src="${lesson.content_url}"></iframe>`;
+  } else if (lesson.content_type === 'html5') {
+    // Sin nota automática (no habla xAPI/SCORM API) -- se completa como
+    // video/PDF, con el botón "Marcar como visto" del footer genérico.
+    mediaHtml = `<iframe class="w-full h-[60vh] rounded-xl border border-slate-200 dark:border-slate-700" src="${lesson.content_url}"></iframe>`;
   } else if (lesson.content_type === 'h5p') {
     // El spinner va AFUERA de #h5p-container (h5p-standalone no siempre
     // limpia el innerHTML previo, así que si el spinner vivía adentro a
