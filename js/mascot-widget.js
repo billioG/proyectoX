@@ -40,6 +40,14 @@ const MascotWidget = {
                 'Zzz... <i class="fas fa-battery-full"></i>',
                 'Mañana seguimos <i class="fas fa-moon"></i>',
                 'Ahorrando energía <i class="fas fa-plug"></i>'
+            ],
+            concerned: [
+                'Ayer no te vi por acá... <i class="fas fa-face-frown"></i>',
+                '¿Todo bien? Te extrañé ayer <i class="fas fa-heart-crack"></i>'
+            ],
+            sad: [
+                'Hace días que no venís... ¿me extrañaste? <i class="fas fa-face-sad-tear"></i>',
+                'Tu racha te espera hace días <i class="fas fa-face-sad-tear"></i>'
             ]
         },
         docente: {
@@ -58,6 +66,12 @@ const MascotWidget = {
                 'Evaluando talentos... <i class="fas fa-pen"></i>',
                 'Sincronizando datos... <i class="fas fa-arrows-rotate"></i>',
                 'Preparando el próximo reto <i class="fas fa-bullseye"></i>'
+            ],
+            concerned: [
+                'Ayer no te vimos, Profe <i class="fas fa-face-frown"></i>'
+            ],
+            sad: [
+                'Hace días que no entra, Profe... sus alumnos preguntan <i class="fas fa-face-sad-tear"></i>'
             ]
         },
         admin: {
@@ -217,9 +231,26 @@ const MascotWidget = {
                     <circle cx="234" cy="158" r="15" fill="#1E293B" class="mascot-eye" id="eye-r" />
                     <circle cx="229" cy="152" r="5" fill="#FFFFFF" />
 
+                    <!-- Párpados caídos (tristeza/preocupación) -- ocultos por
+                    defecto, setFace() los muestra en 'concerned'/'sad'. -->
+                    <path id="eyelid-l" d="M 132 150 Q 160 130 188 150 L 188 158 Q 160 140 132 158 Z" fill="#00C853" style="display:none" />
+                    <path id="eyelid-r" d="M 212 150 Q 240 130 268 150 L 268 158 Q 240 140 212 158 Z" fill="#00C853" style="display:none" />
+
+                    <!-- Lágrima -- solo en 'sad' (3+ días sin entrar). -->
+                    <path id="mascot-tear" d="M 160 190 C 160 205 148 212 148 222 C 148 230 154 235 160 235 C 166 235 172 230 172 222 C 172 212 160 205 160 190 Z" fill="#4FC3F7" style="display:none" />
+
+                    <!-- Brillo festivo -- solo en meses de fiesta grande (cumpleaños,
+                    Halloween, Navidad), ver setSeasonalExpression(). -->
+                    <path id="mascot-sparkle-l" d="M 168 148 l 3 8 l 8 3 l -8 3 l -3 8 l -3 -8 l -8 -3 l 8 -3 Z" fill="#FFFFFF" style="display:none" />
+                    <path id="mascot-sparkle-r" d="M 248 148 l 3 8 l 8 3 l -8 3 l -3 8 l -3 -8 l -8 -3 l 8 -3 Z" fill="#FFFFFF" style="display:none" />
+
                     <!-- Pico Amarillo -->
                     <path d="M 182 168 Q 200 162 218 168 C 218 195 200 218 200 218 C 200 218 182 195 182 168 Z" fill="#FFC107" />
                     <path d="M 188 170 Q 200 166 212 170 C 210 185 200 202 200 202 C 200 202 190 185 188 170 Z" fill="#FFA000" opacity="0.5" />
+
+                    <!-- Accesorio del mes -- ver getSeasonalAccessorySvg(), se
+                    llena en render() según la fecha actual. -->
+                    <g id="mascot-accessory"></g>
                 </svg>
             </div>
         `;
@@ -227,8 +258,112 @@ const MascotWidget = {
         this.restorePosition(container);
         this.enableDrag(container);
 
+        // Accesorio de temporada -- automático según el mes actual.
+        const month = new Date().getMonth();
+        const accessory = document.getElementById('mascot-accessory');
+        if (accessory) accessory.innerHTML = this.getSeasonalAccessorySvg(month);
+        this.setSeasonalExpression(month);
+
         // Show first message after a delay
         setTimeout(() => this.talk(), 2000);
+    },
+
+    // Accesorio de temporada por mes (0=enero ... 11=diciembre). Coordenadas
+    // pensadas para el viewBox 400x500 del SVG de la mascota -- cabeza
+    // centrada en x=200, y≈65-160. Elegidos simples y decorativos a
+    // propósito (sin íconos religiosos ni caricaturas de rasgos/vestimenta
+    // indígena específica) para que ninguno resulte pesado ni de mal gusto.
+    getSeasonalAccessorySvg(month) {
+        switch (month) {
+            case 0: // Enero -- regreso a clases: birrete de graduación, grande y arriba de todo
+                return `
+                    <polygon points="200,8 275,45 200,82 125,45" fill="#212121" stroke="#000" stroke-width="2" />
+                    <rect x="175" y="45" width="50" height="30" fill="#37474F" />
+                    <line x1="270" y1="45" x2="272" y2="90" stroke="#FBC02D" stroke-width="4" />
+                    <circle cx="272" cy="96" r="10" fill="#FBC02D" />
+                `;
+            case 1: // Febrero -- mes del amor: anteojos de corazón grandes, tapan los ojos
+                return `
+                    <path d="M 160 148 C 143 118 98 128 98 158 C 98 185 133 200 160 228 C 187 200 222 185 222 158 C 222 128 177 118 160 148 Z" fill="#EC407A" stroke="#AD1457" stroke-width="5" />
+                    <path d="M 240 148 C 223 118 178 128 178 158 C 178 185 213 200 240 228 C 267 200 302 185 302 158 C 302 128 257 118 240 148 Z" fill="#EC407A" stroke="#AD1457" stroke-width="5" />
+                    <rect x="200" y="150" width="20" height="8" fill="#AD1457" />
+                `;
+            case 2: // Marzo -- Día de la Mujer: gran moño morado en la cabeza
+                return `
+                    <path d="M 200 45 C 155 15 110 40 150 68 C 110 90 155 115 200 85 Z" fill="#AB47BC" stroke="#6A1B9A" stroke-width="4" />
+                    <path d="M 200 45 C 245 15 290 40 250 68 C 290 90 245 115 200 85 Z" fill="#AB47BC" stroke="#6A1B9A" stroke-width="4" />
+                    <circle cx="200" cy="65" r="18" fill="#8E24AA" stroke="#6A1B9A" stroke-width="3" />
+                `;
+            case 3: // Abril -- Día de la Tierra: gran hoja/brote sobre la cabeza
+                return `
+                    <path d="M 200 20 C 145 30 130 90 185 105 C 175 65 190 35 200 20 Z" fill="#81C784" stroke="#2E7D32" stroke-width="4" />
+                    <path d="M 200 20 C 255 30 270 90 215 105 C 225 65 210 35 200 20 Z" fill="#4CAF50" stroke="#2E7D32" stroke-width="4" />
+                    <line x1="200" y1="20" x2="200" y2="100" stroke="#2E7D32" stroke-width="4" />
+                `;
+            case 4: // Mayo -- Día de la Madre: corona de flores grande en la frente
+                return `
+                    <circle cx="150" cy="75" r="22" fill="#F48FB1" stroke="#C2185B" stroke-width="3" /><circle cx="200" cy="55" r="24" fill="#F06292" stroke="#C2185B" stroke-width="3" /><circle cx="250" cy="75" r="22" fill="#F48FB1" stroke="#C2185B" stroke-width="3" />
+                    <circle cx="150" cy="75" r="8" fill="#FFEB3B" /><circle cx="200" cy="55" r="9" fill="#FFEB3B" /><circle cx="250" cy="75" r="8" fill="#FFEB3B" />
+                `;
+            case 5: // Junio -- Día del Padre y del Maestro: corbata grande + birrete chico
+                return `
+                    <path d="M 178 90 L 222 90 L 210 130 L 200 145 L 190 130 Z" fill="#5C6BC0" stroke="#283593" stroke-width="3" />
+                    <path d="M 185 200 L 215 200 L 208 285 L 200 305 L 192 285 Z" fill="#3949AB" stroke="#1A237E" stroke-width="3" />
+                `;
+            case 6: // Julio -- cumpleaños: gorro de fiesta grande + confeti abundante
+                return `
+                    <path d="M 165 95 L 235 95 L 200 15 Z" fill="#FFCA28" stroke="#F57F17" stroke-width="3" />
+                    <circle cx="200" cy="12" r="10" fill="#FF5252" />
+                    <rect x="178" y="55" width="12" height="12" fill="#EC407A" transform="rotate(20 184 61)" />
+                    <rect x="205" y="65" width="12" height="12" fill="#42A5F5" transform="rotate(-15 211 71)" />
+                    <circle cx="120" cy="120" r="7" fill="#FF5252" /><circle cx="290" cy="130" r="7" fill="#29B6F6" /><circle cx="110" cy="200" r="7" fill="#66BB6A" /><circle cx="300" cy="220" r="7" fill="#FFEE58" />
+                `;
+            case 7: // Agosto -- Día Internacional de los Pueblos Indígenas: banda tejida colorida en el pecho, más ancha
+                return `
+                    <path d="M 130 190 L 270 190 L 270 250 L 130 250 Z" fill="#D32F2F" />
+                    <path d="M 130 202 L 270 202 L 270 214 L 130 214 Z" fill="#FBC02D" />
+                    <path d="M 130 226 L 270 226 L 270 238 L 130 238 Z" fill="#1976D2" />
+                    <path d="M 130 214 L 270 214 L 270 226 L 130 226 Z" fill="#43A047" />
+                `;
+            case 8: // Septiembre -- Independencia de Guatemala: banda diagonal ancha con estrella
+                return `
+                    <path d="M 130 180 L 165 180 L 235 330 L 200 330 Z" fill="#4FC3F7" stroke="#0288D1" stroke-width="3" />
+                    <path d="M 165 180 L 195 180 L 265 330 L 235 330 Z" fill="#FFFFFF" stroke="#B0BEC5" stroke-width="2" />
+                    <path d="M 170 240 l 6 -18 l 6 18 l -15 -11 h 18 z" fill="#4FC3F7" />
+                `;
+            case 9: // Octubre -- Halloween: sombrero de bruja grande
+                return `
+                    <path d="M 200 5 L 250 95 L 150 95 Z" fill="#4A148C" stroke="#1A0033" stroke-width="3" />
+                    <ellipse cx="200" cy="97" rx="55" ry="13" fill="#4A148C" stroke="#1A0033" stroke-width="3" />
+                    <rect x="175" y="65" width="50" height="14" fill="#FF6F00" />
+                `;
+            case 10: // Noviembre -- Día de Muertos: corona de cempasúchil, más flores y más grande (sin calaveras)
+                return `
+                    <circle cx="140" cy="85" r="18" fill="#FB8C00" stroke="#E65100" stroke-width="2" /><circle cx="180" cy="55" r="18" fill="#FFA726" stroke="#E65100" stroke-width="2" /><circle cx="220" cy="55" r="18" fill="#FFA726" stroke="#E65100" stroke-width="2" /><circle cx="260" cy="85" r="18" fill="#FB8C00" stroke="#E65100" stroke-width="2" />
+                    <circle cx="140" cy="85" r="7" fill="#BF360C" /><circle cx="180" cy="55" r="7" fill="#BF360C" /><circle cx="220" cy="55" r="7" fill="#BF360C" /><circle cx="260" cy="85" r="7" fill="#BF360C" />
+                `;
+            case 11: // Diciembre -- Navidad: gorro navideño grande y esponjoso
+                return `
+                    <path d="M 200 10 L 250 95 Q 185 78 150 100 Z" fill="#E53935" stroke="#B71C1C" stroke-width="3" />
+                    <ellipse cx="150" cy="100" rx="26" ry="15" fill="#FFFFFF" />
+                    <circle cx="250" cy="90" r="15" fill="#FFFFFF" />
+                `;
+            default:
+                return '';
+        }
+    },
+
+    // Meses de fiesta grande -- ojos con brillo (expresión distinta, no solo
+    // accesorio) además del disfraz de arriba.
+    festiveMonths: [6, 9, 11],
+
+    setSeasonalExpression(month) {
+        const sparkleL = document.getElementById('mascot-sparkle-l');
+        const sparkleR = document.getElementById('mascot-sparkle-r');
+        if (!sparkleL || !sparkleR) return;
+        const show = this.festiveMonths.includes(month);
+        sparkleL.style.display = show ? 'block' : 'none';
+        sparkleR.style.display = show ? 'block' : 'none';
     },
 
     // Recuerda dónde la dejó el usuario -- por device (localStorage), no
@@ -319,10 +454,24 @@ const MascotWidget = {
         const bubble = document.getElementById('mascot-msg');
         if (!bubble) return;
 
+        // Primer mensaje de la sesión -- si el usuario estuvo ausente, la
+        // mascota lo saluda triste/preocupada en vez del mensaje random de
+        // siempre (window._daysSinceLastLogin lo calcula updateLoginStreak
+        // ANTES de sobreescribir last_login, ver gamification.js).
+        let isMoodGreeting = false;
+        if (!this._greetedThisSession) {
+            this._greetedThisSession = true;
+            const daysAway = window._daysSinceLastLogin || 0;
+            if (daysAway >= 3) { this.currentState = 'sad'; isMoodGreeting = true; }
+            else if (daysAway >= 1) { this.currentState = 'concerned'; isMoodGreeting = true; }
+        }
+
         let message = "";
 
-        // Si tenemos AIService disponible, intentamos obtener un mensaje "inteligente"
-        if (typeof window.AIService !== 'undefined' && window.currentUser) {
+        // Si tenemos AIService disponible, intentamos obtener un mensaje
+        // "inteligente" -- salvo que este sea el saludo de "te extrañé" por
+        // ausencia, que no debe competir con un mensaje random de la IA.
+        if (!isMoodGreeting && typeof window.AIService !== 'undefined' && window.currentUser) {
             try {
                 // Solo usamos AI proactiva un 30% de las veces para no saturar la cuota
                 if (Math.random() > 0.7) {
@@ -497,28 +646,20 @@ const MascotWidget = {
     },
 
     setFace(state) {
-        const mouth = document.getElementById('mascot-mouth');
         const eyeL = document.getElementById('eye-l');
         const eyeR = document.getElementById('eye-r');
-        if (!mouth) return;
+        const eyelidL = document.getElementById('eyelid-l');
+        const eyelidR = document.getElementById('eyelid-r');
+        const tear = document.getElementById('mascot-tear');
+        if (!eyeL || !eyeR) return;
 
-        switch (state) {
-            case 'happy':
-                mouth.setAttribute('d', 'M35 55 Q50 65 65 55');
-                break;
-            case 'alert':
-                mouth.setAttribute('d', 'M40 60 L60 60');
-                eyeL.setAttribute('fill', '#EF4444');
-                eyeR.setAttribute('fill', '#EF4444');
-                break;
-            case 'thinking':
-                mouth.setAttribute('d', 'M40 58 Q50 55 60 58');
-                break;
-            default:
-                mouth.setAttribute('d', 'M40 55 Q50 60 60 55');
-                eyeL.setAttribute('fill', '#1E293B');
-                eyeR.setAttribute('fill', '#1E293B');
-        }
+        eyeL.setAttribute('fill', state === 'alert' ? '#EF4444' : '#1E293B');
+        eyeR.setAttribute('fill', state === 'alert' ? '#EF4444' : '#1E293B');
+
+        const showEyelids = state === 'concerned' || state === 'sad';
+        if (eyelidL) eyelidL.style.display = showEyelids ? 'block' : 'none';
+        if (eyelidR) eyelidR.style.display = showEyelids ? 'block' : 'none';
+        if (tear) tear.style.display = state === 'sad' ? 'block' : 'none';
     },
 
     startCycle() {

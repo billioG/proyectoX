@@ -279,6 +279,12 @@ window.updateLoginStreak = async function updateLoginStreak() {
   const today = new Date().toISOString().split('T')[0];
   const lastLogin = userData.last_login;
 
+  // Se guarda ANTES de sobreescribir last_login más abajo -- la mascota
+  // (mascot-widget.js) lo lee para saber "cuánto te extrañamos" en este
+  // login. Si se leyera userData.last_login después de este punto, ya
+  // diría "hoy" y nunca se podría detectar la ausencia.
+  window._daysSinceLastLogin = lastLogin ? Math.floor((new Date(today) - new Date(lastLogin)) / 86400000) : 0;
+
   if (lastLogin === today) return;
 
   const yesterday = new Date();
