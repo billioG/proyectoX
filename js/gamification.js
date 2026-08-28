@@ -541,7 +541,7 @@ window.openGamificationHub = async function openGamificationHub() {
   // nunca "feed"/"perfil" (ej. el estudiante aterriza en Cursos por
   // default) -- duels.js/tournaments.js son lazy y si no están cargados
   // sus secciones se quedan pegadas en el spinner para siempre.
-  if ((typeof window.loadDuelsSection !== 'function' || typeof window.loadTournamentsSection !== 'function') && typeof window.loadModule === 'function') {
+  if ((typeof window.loadDuelsSection !== 'function' || typeof window.loadHangmanSection !== 'function' || typeof window.loadTournamentsSection !== 'function') && typeof window.loadModule === 'function') {
     await window.loadModule('profile');
   }
 
@@ -655,6 +655,14 @@ window.renderGamificationHubContent = function renderGamificationHubContent(moda
                      </div>
                 </section>
 
+                 <!-- AHORCADO 1V1 -->
+                <section>
+                     <h3 class="text-2xl font-black text-white italic uppercase mb-6 flex items-center gap-3"><i class="fas fa-spider text-rose-500"></i> Ahorcado 1v1</h3>
+                     <div id="hangman-section">
+                        <div class="text-center text-slate-500 text-xs py-6"><i class="fas fa-spinner fa-spin"></i></div>
+                     </div>
+                </section>
+
                  <!-- TORNEOS ENTRE ESTABLECIMIENTOS -->
                 <section>
                      <h3 class="text-2xl font-black text-white italic uppercase mb-6 flex items-center gap-3"><i class="fas fa-earth-americas text-emerald-500"></i> Torneos Entre Establecimientos</h3>
@@ -667,6 +675,7 @@ window.renderGamificationHubContent = function renderGamificationHubContent(moda
     `;
 
   if (typeof window.loadDuelsSection === 'function') window.loadDuelsSection();
+  if (typeof window.loadHangmanSection === 'function') window.loadHangmanSection();
   if (typeof window.loadTournamentsSection === 'function') window.loadTournamentsSection();
 }
 
