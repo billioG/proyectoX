@@ -434,26 +434,13 @@ async function ensureUniqueUsernames(students) {
         const a1 = student.apellido1 || '1bot';
         const a2 = student.apellido2 || '';
 
-        const { base, alternative } = generateUsername(p1, p2, a1, a2);
-
-        let finalUsername = base;
-
-        // Si ya existe en DB o en este lote
-        if (existingUsernames.has(base) || usedInThisBatch.has(base)) {
-            if (alternative && !existingUsernames.has(alternative) && !usedInThisBatch.has(alternative)) {
-                finalUsername = alternative;
-            } else {
-                // Generar variante con números
-                let counter = 1;
-                let testUsername = base + counter;
-                // Límite de seguridad para evitar loops infinitos
-                while ((existingUsernames.has(testUsername) || usedInThisBatch.has(testUsername)) && counter < 1000) {
-                    counter++;
-                    testUsername = base + counter;
-                }
-                finalUsername = testUsername;
-            }
-        }
+        // generateUsernameVariants ya prueba en cascada letra del segundo
+        // nombre, segundo apellido y ambos combinados ANTES de caer a un
+        // sufijo numérico -- unificado con la misma lógica que usa
+        // createUsersFromExtractedData() para no generar "rgonzalez1" cuando
+        // "rgonzalez2" (segundo apellido) todavía está libre.
+        const variants = generateUsernameVariants(p1, p2, a1, a2);
+        const finalUsername = variants.find(v => !existingUsernames.has(v) && !usedInThisBatch.has(v)) || variants[variants.length - 1];
 
         usedInThisBatch.add(finalUsername);
 
