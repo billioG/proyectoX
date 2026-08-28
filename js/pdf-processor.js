@@ -686,6 +686,7 @@ window.createUsersFromExtractedData = async function createUsersFromExtractedDat
         if (!existingUsernames.has(s.username) && !existingEmails.has(s.email)) {
             existingUsernames.add(s.username);
             existingEmails.add(s.email);
+            if (s.cui) existingCUIs.add(s.cui);
             toCreate.push(s);
             return;
         }
@@ -701,6 +702,7 @@ window.createUsersFromExtractedData = async function createUsersFromExtractedDat
 
         existingUsernames.add(resolvedUsername);
         existingEmails.add(`${resolvedUsername}@${domain}`);
+        if (s.cui) existingCUIs.add(s.cui);
         toCreate.push({ ...s, username: resolvedUsername, email: `${resolvedUsername}@${domain}` });
     });
     const skippedCount = skipped.length;
