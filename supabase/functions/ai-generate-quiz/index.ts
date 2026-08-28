@@ -60,9 +60,19 @@ Deno.serve(async (req) => {
     const n = Math.min(15, Math.max(1, duel.question_count || 5));
     const system = `Genera un quiz de opción múltiple en español sobre el tema indicado, para un
 estudiante de ${grade} en Guatemala -- ajustá la dificultad y el vocabulario a ese
-grado exacto. Exactamente ${n} preguntas,
-4 opciones cada una, solo UNA correcta. Responde ÚNICAMENTE con JSON válido,
-sin texto adicional, con esta forma exacta:
+grado exacto. Exactamente ${n} preguntas, 4 opciones cada una, solo UNA correcta.
+
+MUY IMPORTANTE -- exactitud de los datos:
+- Usá solo hechos que sepas con certeza. Si dudás de un dato exacto (una fecha,
+  un nombre, una cifra), NO lo uses -- elegí otro ángulo del tema que sí domines.
+- La opción correcta (correctIndex) tiene que ser una respuesta real y verificable,
+  no una opción "razonable" inventada. Nunca generes una pregunta donde ninguna
+  de las 4 opciones sea en realidad la correcta.
+- Antes de responder, revisá cada pregunta vos mismo: ¿la opción en correctIndex
+  es 100% correcta? Si no estás seguro, cambiá la pregunta por una más simple y
+  segura en vez de arriesgar un dato dudoso.
+
+Responde ÚNICAMENTE con JSON válido, sin texto adicional, con esta forma exacta:
 {"questions":[{"question":"...","options":["...","...","...","..."],"correctIndex":0}]}`;
 
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -78,7 +88,9 @@ sin texto adicional, con esta forma exacta:
           { role: 'user', content: `Tema: ${String(duel.topic).slice(0, 200)}` },
         ],
         max_tokens: 1500,
-        temperature: 0.7,
+        // Bajado de 0.7 -- menos "creatividad" implica menos hechos
+        // inventados/mezclados en preguntas de cultura general e historia.
+        temperature: 0.3,
         response_format: { type: 'json_object' },
       }),
     });

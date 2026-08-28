@@ -127,4 +127,41 @@ window.submitPracticeAnswers = async function submitPracticeAnswers() {
     window.userData.gems = (window.userData.gems || 0) + result.gems_awarded;
   }
   if (typeof window.initGamification === 'function') window.initGamification();
+
+  window.showPracticeReview(result.review || []);
+};
+
+// Antes no había forma de ver qué preguntas fallaste al terminar Práctica
+// Solo (a diferencia de Duelos, que sí tiene "Revisar") -- el RPC ya
+// devuelve el detalle de cada pregunta apenas se resuelve la sesión.
+window.showPracticeReview = function showPracticeReview(review) {
+  const sanitizeInput = window.sanitizeInput || ((v) => v);
+  if (!review.length) return;
+
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 z-[235] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md animate-fadeIn';
+  modal.innerHTML = `
+    <div class="glass-card w-full max-w-lg max-h-[85vh] flex flex-col p-0 overflow-hidden shadow-2xl animate-slideUp bg-slate-900 border border-white/10">
+      <div class="p-5 border-b border-white/10 flex justify-between items-center shrink-0">
+        <h3 class="text-sm font-black text-white uppercase tracking-widest"><i class="fas fa-list-check text-primary mr-1"></i> Retroalimentación</h3>
+        <button class="w-9 h-9 rounded-xl bg-white/5 text-slate-400 hover:text-rose-500 flex items-center justify-center" onclick="this.closest('.fixed').remove()"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-3">
+        ${review.map((q, i) => {
+          const correct = q.selected === q.correctIndex;
+          return `
+          <div class="p-4 rounded-xl bg-white/5 border ${correct ? 'border-emerald-500/30' : 'border-rose-500/30'}">
+            <p class="text-sm font-bold text-white mb-2">${i + 1}. ${sanitizeInput(q.question)} ${correct ? '<i class="fas fa-circle-check text-emerald-400"></i>' : '<i class="fas fa-circle-xmark text-rose-400"></i>'}</p>
+            ${(q.options || []).map((opt, oi) => `
+              <p class="text-xs pl-3 py-0.5 ${oi === q.correctIndex ? 'text-emerald-400 font-bold' : oi === q.selected ? 'text-rose-400 font-bold' : 'text-slate-500'}">
+                ${oi === q.correctIndex ? '✓' : oi === q.selected ? '✗' : '·'} ${sanitizeInput(opt)}
+              </p>
+            `).join('')}
+          </div>
+        `;
+        }).join('')}
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
 };
