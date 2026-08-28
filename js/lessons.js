@@ -136,6 +136,27 @@ window.deleteCourse = async function deleteCourse(courseId) {
   window.loadLessons();
 }
 
+// Storage no tiene carpetas reales -- list() solo devuelve el nivel
+// inmediato del prefijo, y una entrada que en realidad es un
+// pseudo-directorio viene con id:null. Los paquetes SCORM/H5P/HTML5 casi
+// siempre traen una carpeta contenedora (el .zip trae todo adentro de
+// "MiPaquete/..."), así que un list()+remove() de un solo nivel nunca
+// encontraba los archivos reales -- el borrado de recurso corría sin
+// error pero no liberaba nada de espacio en Storage.
+async function listAllFilesRecursive(bucket, prefix) {
+  const { data: entries } = await window._supabase.storage.from(bucket).list(prefix, { limit: 1000 });
+  let files = [];
+  for (const e of (entries || [])) {
+    const fullPath = `${prefix}/${e.name}`;
+    if (e.id === null) {
+      files = files.concat(await listAllFilesRecursive(bucket, fullPath));
+    } else {
+      files.push(fullPath);
+    }
+  }
+  return files;
+}
+
 async function cleanupLessonStorageIfOrphaned(contentPath) {
   if (!contentPath) return;
   // Una lección copiada desde la biblioteca comparte content_path con el
@@ -143,9 +164,11 @@ async function cleanupLessonStorageIfOrphaned(contentPath) {
   // lección (copia u original) sigue apuntando a esa misma carpeta.
   const { count } = await window._supabase.from('lessons').select('id', { count: 'exact', head: true }).eq('content_path', contentPath);
   if (!count) {
-    const { data: files } = await window._supabase.storage.from(LESSON_STORAGE_BUCKET).list(contentPath, { limit: 1000 });
-    if (files?.length) {
-      await window._supabase.storage.from(LESSON_STORAGE_BUCKET).remove(files.map(f => `${contentPath}/${f.name}`));
+    const files = await listAllFilesRecursive(LESSON_STORAGE_BUCKET, contentPath);
+    // remove() tiene límites prácticos de tamaño de request -- se manda en
+    // lotes de 100 por si algún paquete SCORM viene con muchísimos assets.
+    for (let i = 0; i < files.length; i += 100) {
+      await window._supabase.storage.from(LESSON_STORAGE_BUCKET).remove(files.slice(i, i + 100));
     }
   }
 }
