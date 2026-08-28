@@ -534,7 +534,9 @@ window.previewCourseResource = function previewCourseResource(lessonId) {
   } else if (lesson.content_type === 'image') {
     mediaHtml = `<img src="${lesson.content_url}" class="w-full rounded-xl">`;
   } else if (lesson.content_type === 'scorm' || lesson.content_type === 'html5') {
-    mediaHtml = `<iframe class="w-full h-[60vh] rounded-xl border border-slate-200 dark:border-slate-700" src="${lesson.content_url}"></iframe>`;
+    // Ver comentario en selectCourseResource() -- srcdoc en vez de src=""
+    // evita que Supabase pise el Content-Type a text/plain en la navegación.
+    mediaHtml = `<iframe id="teacher-preview-frame" class="w-full h-[60vh] rounded-xl border border-slate-200 dark:border-slate-700"></iframe>`;
   } else if (lesson.content_type === 'h5p') {
     mediaHtml = `<div id="h5p-preview-container" class="w-full min-h-[50vh]"></div>`;
   } else if (lesson.content_type === 'quiz') {
@@ -573,7 +575,9 @@ window.previewCourseResource = function previewCourseResource(lessonId) {
   document.body.appendChild(modal);
   window.loadTeacherResourceComments(lessonId);
 
-  if (lesson.content_type === 'h5p') {
+  if (lesson.content_type === 'scorm' || lesson.content_type === 'html5') {
+    window.loadIframeViaFetch('teacher-preview-frame', lesson.content_url);
+  } else if (lesson.content_type === 'h5p') {
     // Reintenta hasta que H5PStandalone esté disponible, sin escribir
     // ninguna nota -- es solo vista previa, no crea lesson_completions.
     const tryInit = (attempt = 1) => {
@@ -1673,11 +1677,22 @@ window.selectCourseResource = function selectCourseResource(index) {
   } else if (lesson.content_type === 'image') {
     mediaHtml = `<img src="${lesson.content_url}" class="w-full rounded-xl">`;
   } else if (lesson.content_type === 'scorm') {
-    mediaHtml = `<iframe id="scorm-frame" class="w-full h-[60vh] rounded-xl border border-slate-200 dark:border-slate-700" src="${lesson.content_url}"></iframe>`;
+    // src="" (no srcdoc) hacía una navegación HTTP normal al proxy --
+    // Supabase pisa el Content-Type a text/plain + CSP sandbox en CUALQUIER
+    // respuesta que sirva HTML a un cliente, sea de Storage o de una edge
+    // function (política de la plataforma, no algo que el proxy pueda
+    // evitar seteando sus propios headers). Encima el iframe quedaba en el
+    // origen de Supabase, distinto al de esta app, así que window.parent.API
+    // (donde SCORM busca la API de notas) tampoco era alcanzable por
+    // política de mismo origen. Cargar el HTML por fetch() y meterlo con
+    // srcdoc resuelve ambos problemas de una: no hay navegación HTTP (no
+    // aplica la política de Content-Type) y un iframe srcdoc sin atributo
+    // sandbox hereda el origen del padre (SCORM_API sí es alcanzable).
+    mediaHtml = `<iframe id="scorm-frame" class="w-full h-[60vh] rounded-xl border border-slate-200 dark:border-slate-700"></iframe>`;
   } else if (lesson.content_type === 'html5') {
     // Sin nota automática (no habla xAPI/SCORM API) -- se completa como
     // video/PDF, con el botón "Marcar como visto" del footer genérico.
-    mediaHtml = `<iframe class="w-full h-[60vh] rounded-xl border border-slate-200 dark:border-slate-700" src="${lesson.content_url}"></iframe>`;
+    mediaHtml = `<iframe id="html5-frame" class="w-full h-[60vh] rounded-xl border border-slate-200 dark:border-slate-700"></iframe>`;
   } else if (lesson.content_type === 'h5p') {
     // El spinner va AFUERA de #h5p-container (h5p-standalone no siempre
     // limpia el innerHTML previo, así que si el spinner vivía adentro a
@@ -1710,7 +1725,10 @@ window.selectCourseResource = function selectCourseResource(index) {
   }
 
   if (lesson.content_type === 'scorm') {
+    window.loadIframeViaFetch('scorm-frame', lesson.content_url);
     window.initScormSession(lesson.id);
+  } else if (lesson.content_type === 'html5') {
+    window.loadIframeViaFetch('html5-frame', lesson.content_url);
   } else if (lesson.content_type === 'h5p') {
     window.initH5PSession(lesson);
   }
@@ -2046,6 +2064,24 @@ function updateLiveScoreLabel(score, status) {
   if (!el) return;
   const pct = score !== null && !isNaN(score) ? `${Math.round(score)}%` : '--';
   el.innerHTML = `<i class="fas fa-circle-check text-emerald-500 mr-1"></i> Nota actual: <strong>${pct}</strong> ${status ? `(${window.sanitizeInput(status)})` : ''}`;
+}
+
+// Carga el HTML de entrada (SCORM/HTML5) por fetch() y lo mete con srcdoc
+// en vez de navegar el iframe a la URL directamente -- ver el comentario
+// largo en selectCourseResource() sobre por qué src="" no funciona (Supabase
+// pisa el Content-Type a text/plain + CSP sandbox en cualquier respuesta
+// HTML servida a un cliente, y de paso deja el iframe en otro origen).
+window.loadIframeViaFetch = async function loadIframeViaFetch(iframeId, url) {
+  const iframe = document.getElementById(iframeId);
+  if (!iframe || !url) return;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    iframe.srcdoc = await res.text();
+  } catch (e) {
+    console.error('Error cargando contenido embebido:', e);
+    iframe.srcdoc = '<p style="font-family:sans-serif;color:#e11d48;padding:24px;text-align:center;">No se pudo cargar el contenido.</p>';
+  }
 }
 
 window.initScormSession = function initScormSession(lessonId) {
