@@ -27,31 +27,51 @@ function daysSince(dateStr: string): number {
   return Math.floor((Date.now() - last.getTime()) / 86400000);
 }
 
+const BRAND_GREEN = '#00C853';
+const MASCOT_URL = `${APP_URL}/icon-192.png`;
+
+function baseTemplate(opts: { badge: string; heading: string; body: string; cta: string }): string {
+  return `
+  <div style="background:#f1f5f9;padding:32px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+    <div style="max-width:420px;margin:0 auto;background:#ffffff;border-radius:24px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.06);">
+      <div style="background:${BRAND_GREEN};padding:32px 24px;text-align:center;">
+        <img src="${MASCOT_URL}" width="72" height="72" alt="Quetzal" style="display:block;margin:0 auto 8px;border-radius:16px;">
+        <span style="display:inline-block;background:rgba(255,255,255,0.25);color:#ffffff;font-size:11px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;padding:4px 12px;border-radius:999px;">${opts.badge}</span>
+      </div>
+      <div style="padding:32px 28px;text-align:center;">
+        <h1 style="margin:0 0 12px;color:#1e293b;font-size:22px;font-weight:800;">${opts.heading}</h1>
+        <p style="margin:0 0 24px;color:#64748b;font-size:15px;line-height:1.6;">${opts.body}</p>
+        <a href="${APP_URL}" style="display:inline-block;padding:14px 32px;background:${BRAND_GREEN};color:#ffffff;text-decoration:none;border-radius:14px;font-weight:800;font-size:14px;letter-spacing:0.02em;">${opts.cta}</a>
+      </div>
+      <div style="padding:16px 28px;background:#f8fafc;text-align:center;">
+        <p style="margin:0;color:#94a3b8;font-size:11px;">Quetzal LMS -- yoaprendo.online</p>
+      </div>
+    </div>
+  </div>
+  `;
+}
+
 function emailHtml(name: string, kind: '24h' | '3d'): { subject: string; html: string } {
   const firstName = (name || '').trim().split(' ')[0] || 'Campeón/a';
   if (kind === '24h') {
     return {
       subject: '¡Te extrañamos! 🦜',
-      html: `
-        <div style="font-family:sans-serif;max-width:480px;margin:0 auto;text-align:center;padding:24px;">
-          <div style="font-size:48px;">🦜</div>
-          <h1 style="color:#1e293b;">¡Hola, ${firstName}!</h1>
-          <p style="color:#475569;font-size:16px;">Ayer no te vimos en Quetzal LMS. ¡Tu racha te espera! Entrá hoy para no perderla.</p>
-          <a href="${APP_URL}" style="display:inline-block;margin-top:16px;padding:12px 28px;background:#059669;color:white;text-decoration:none;border-radius:12px;font-weight:bold;">Volver a entrar</a>
-        </div>
-      `,
+      html: baseTemplate({
+        badge: 'Racha en riesgo',
+        heading: `¡Hola, ${firstName}!`,
+        body: 'Ayer no te vimos en Quetzal LMS. Tu racha te está esperando -- entrá hoy para no perderla.',
+        cta: 'Volver a entrar',
+      }),
     };
   }
   return {
     subject: 'Ya van varios días... ¿todo bien? 🥺',
-    html: `
-      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;text-align:center;padding:24px;">
-        <div style="font-size:48px;">🥺🦜</div>
-        <h1 style="color:#1e293b;">${firstName}, hace días que no te vemos</h1>
-        <p style="color:#475569;font-size:16px;">Ya pasaron 3 días desde tu última visita a Quetzal LMS. Tus compañeros siguen avanzando -- ¡volvé cuando puedas!</p>
-        <a href="${APP_URL}" style="display:inline-block;margin-top:16px;padding:12px 28px;background:#059669;color:white;text-decoration:none;border-radius:12px;font-weight:bold;">Entrar ahora</a>
-      </div>
-    `,
+    html: baseTemplate({
+      badge: '3+ días sin ingresar',
+      heading: `${firstName}, hace días que no te vemos`,
+      body: 'Ya pasaron 3 días desde tu última visita. Tus compañeros siguen avanzando -- volvé cuando puedas, acá te esperamos.',
+      cta: 'Entrar ahora',
+    }),
   };
 }
 
