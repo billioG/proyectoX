@@ -338,6 +338,14 @@ export async function handleSuccessfulLogin(user) {
       }
     }
 
+    // Egresado (ver "Promover Ciclo Escolar" en Estudiantes -- admin) --
+    // se conserva la cuenta y su historial, pero ya no puede entrar.
+    if (data?.status === 'egresado') {
+      await _supabase.auth.signOut();
+      showToast('<i class="fas fa-graduation-cap"></i> Esta cuenta ya egresó y no tiene acceso. Contactá a tu establecimiento si creés que es un error.', 'error');
+      return;
+    }
+
     updateAppState('userRole', role);
     updateAppState('userData', data);
 

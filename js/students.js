@@ -389,7 +389,14 @@ window.renderStudentsList = function renderStudentsList(container, students, all
                   <summary class="list-none cursor-pointer">
                     <div class="bg-slate-50 dark:bg-slate-800/50 rounded-lg px-4 py-2.5 flex items-center justify-between hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                       <span class="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">${window.sanitizeInput(cg.grade)} ${window.sanitizeInput(cg.section)} <span class="text-slate-400 font-normal normal-case">· ${cg.students.length} alumnos</span></span>
-                      <i class="fas fa-chevron-down text-[0.6rem] text-slate-400 group-open/class:rotate-180 transition-transform"></i>
+                      <div class="flex items-center gap-2">
+                        ${userRole === 'admin' ? `
+                          <button onclick="event.preventDefault(); event.stopPropagation(); window.promoteClassToNextGrade('${window.sanitizeAttr(schoolCode)}', '${window.sanitizeAttr(cg.grade)}', '${window.sanitizeAttr(cg.section)}', ${cg.students.length})" class="h-7 px-3 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white transition-colors text-[0.6rem] font-black uppercase tracking-widest flex items-center gap-1.5">
+                            <i class="fas fa-graduation-cap"></i> Promover
+                          </button>
+                        ` : ''}
+                        <i class="fas fa-chevron-down text-[0.6rem] text-slate-400 group-open/class:rotate-180 transition-transform"></i>
+                      </div>
                     </div>
                   </summary>
                   <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 mt-3">
@@ -645,6 +652,32 @@ window.deleteAllStudentsInSchool = async function deleteAllStudentsInSchool(scho
 
   if (!confirm(`¿Eliminar los ${students.length} alumno(s) de "${schoolName}"? Esto también elimina sus cuentas de acceso. No se puede deshacer.${collisionWarning}`)) return;
   await window.deleteStudentsBulk(students.map(s => s.id));
+}
+
+// Fin de ciclo escolar: promueve TODA una clase (mismo colegio/grado/
+// sección) al siguiente grado de una sola vez, sin recrear cuentas ni
+// tocar XP/gemas/rachas -- si el grado actual es el último (6to
+// Diversificado) no hay "siguiente grado", así que en cambio se marca
+// egresado (ver auth.js: un egresado ya no puede loguearse).
+window.promoteClassToNextGrade = async function promoteClassToNextGrade(schoolCode, grade, section, count) {
+  const nextGrade = window.getNextGrade ? window.getNextGrade(grade) : null;
+
+  const confirmMsg = nextGrade
+    ? `¿Promover ${count} alumno(s) de "${grade} ${section}" a "${nextGrade}"? Mantienen su usuario, XP, gemas e insignias -- solo cambia el grado. No se puede deshacer desde acá.`
+    : `"${grade}" es el último grado -- ${count} alumno(s) de "${grade} ${section}" quedarán marcados como EGRESADOS (ya no podrán iniciar sesión, pero se conserva su historial). ¿Continuar?`;
+  if (!confirm(confirmMsg)) return;
+
+  const updatePayload = nextGrade ? { grade: nextGrade } : { status: 'egresado' };
+  const { error } = await window._supabase.from('students')
+    .update(updatePayload)
+    .eq('school_code', schoolCode).eq('grade', grade).eq('section', section);
+
+  if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
+
+  window.showToast(nextGrade
+    ? `<i class="fas fa-graduation-cap"></i> ${count} alumno(s) promovidos a ${nextGrade}`
+    : `<i class="fas fa-graduation-cap"></i> ${count} alumno(s) marcados como egresados`, 'success');
+  if (typeof window.loadStudents === 'function') window.loadStudents();
 }
 
 window.bulkDeleteSelectedStudents = async function bulkDeleteSelectedStudents() {

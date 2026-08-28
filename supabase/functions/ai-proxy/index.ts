@@ -16,6 +16,14 @@ const MAX_CONTEXT_CHARS = 500;
 const MAX_HISTORY_TURNS = 10;
 const MAX_HISTORY_CHARS = 500;
 
+// La mascota contestaba fechas/datos históricos con seguridad pero
+// contradiciéndose entre un mensaje y el siguiente (ej. dos fechas
+// distintas para la misma firma de la paz en Guatemala) -- se le pide
+// explícitamente que dude en voz alta en vez de inventar con confianza.
+const FACTUAL_ACCURACY_NOTE = ` Si te preguntan un dato concreto (fecha, nombre, cifra) del que no estés
+completamente seguro, decilo ("no tengo ese dato exacto, pero...") en vez de inventar uno con
+seguridad -- es peor dar un dato falso con confianza que admitir que no lo sabés con certeza.`;
+
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, content-type',
@@ -85,8 +93,8 @@ Deno.serve(async (req) => {
           ? `Eres el asistente virtual (quetzal) de Quetzal LMS, coach educativo y emocional de un estudiante. Respondé con UNA sola frase corta y completa (máximo 12 palabras): a veces motivá con tecnología/robótica, a veces preguntá o validá cómo se siente. Nunca cortes la frase a la mitad. Contexto actual del usuario: ${safeContext}`
           : `Eres el asistente virtual (con forma de quetzal) de la plataforma educativa Quetzal LMS. Respondé con UNA sola frase corta y completa (máximo 12 palabras), motivadora, sin cortarla a la mitad. Nunca uses más de una oración. Contexto actual del usuario: ${safeContext}`)
       : (isStudent
-          ? `Eres el asistente virtual (quetzal) de Quetzal LMS. Con estudiantes actuás como COACH EDUCATIVO Y EMOCIONAL a la vez: ayudás con dudas de robótica/tecnología de forma clara y breve, pero también preguntás cómo se siente, validás sus emociones (frustración, estrés, orgullo) antes de aconsejar, y celebrás sus logros. Sé cálido, cercano, breve y profesional -- nunca reemplazás ayuda profesional real, si detectás una situación seria sugerí hablar con un adulto de confianza. Si la respuesta es larga, priorizá completar la idea aunque sea más breve -- nunca la cortes a la mitad de una oración. Contexto actual del usuario: ${safeContext}`
-          : `Eres el asistente virtual (con forma de quetzal) de la plataforma educativa Quetzal LMS. Tu objetivo es motivar a estudiantes y docentes de robótica y tecnología. Responde de forma entusiasta, breve y profesional. Si la respuesta es larga, priorizá completar la idea aunque sea más breve -- nunca la cortes a la mitad de una oración. Contexto actual del usuario: ${safeContext}`);
+          ? `Eres el asistente virtual (quetzal) de Quetzal LMS. Con estudiantes actuás como COACH EDUCATIVO Y EMOCIONAL a la vez: ayudás con dudas de robótica/tecnología de forma clara y breve, pero también preguntás cómo se siente, validás sus emociones (frustración, estrés, orgullo) antes de aconsejar, y celebrás sus logros. Sé cálido, cercano, breve y profesional -- nunca reemplazás ayuda profesional real, si detectás una situación seria sugerí hablar con un adulto de confianza. Si la respuesta es larga, priorizá completar la idea aunque sea más breve -- nunca la cortes a la mitad de una oración.${FACTUAL_ACCURACY_NOTE} Contexto actual del usuario: ${safeContext}`
+          : `Eres el asistente virtual (con forma de quetzal) de la plataforma educativa Quetzal LMS. Tu objetivo es motivar a estudiantes y docentes de robótica y tecnología. Responde de forma entusiasta, breve y profesional. Si la respuesta es larga, priorizá completar la idea aunque sea más breve -- nunca la cortes a la mitad de una oración.${FACTUAL_ACCURACY_NOTE} Contexto actual del usuario: ${safeContext}`);
 
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -102,7 +110,9 @@ Deno.serve(async (req) => {
           { role: 'user', content: safePrompt },
         ],
         max_tokens: isYesNoJudge ? 5 : short ? 40 : MAX_TOKENS_CAP,
-        temperature: 0.7,
+        // Bajado de 0.7 -- menos "creatividad" implica menos datos/fechas
+        // inventados o mezclados cuando la mascota responde algo factual.
+        temperature: isYesNoJudge ? 0.7 : 0.5,
       }),
     });
 

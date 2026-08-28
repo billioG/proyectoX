@@ -289,6 +289,21 @@ function getGradeRank(gradeText) {
 }
 window.getGradeRank = getGradeRank;
 
+// Secuencia canónica de grados (usada para "Promover Ciclo Escolar") --
+// devuelve el siguiente grado exacto, o null si ya es el último (6to
+// Diversificado), lo que indica que ese alumno egresa en vez de promover.
+const GRADE_SEQUENCE = [
+  '1ro Primaria', '2do Primaria', '3ro Primaria', '4to Primaria', '5to Primaria', '6to Primaria',
+  '1ro Básico', '2do Básico', '3ro Básico',
+  '4to Diversificado', '5to Diversificado', '6to Diversificado',
+];
+function getNextGrade(gradeText) {
+  const idx = GRADE_SEQUENCE.findIndex(g => g.toLowerCase() === String(gradeText || '').trim().toLowerCase());
+  if (idx === -1 || idx === GRADE_SEQUENCE.length - 1) return null;
+  return GRADE_SEQUENCE[idx + 1];
+}
+window.getNextGrade = getNextGrade;
+
 // Compatibilidad Legacy
 window.syncSystemConfig = syncSystemConfig;
 window.saveSystemConfig = saveSystemConfig;
