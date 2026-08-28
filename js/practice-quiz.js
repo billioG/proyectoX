@@ -25,11 +25,16 @@ window.renderPracticeQuizSection = function renderPracticeQuizSection() {
 window.startPracticeQuiz = async function startPracticeQuiz(topic) {
   window.showToast('<i class="fas fa-circle-notch fa-spin"></i> Generando preguntas...', 'info');
   try {
+    // El SELECT sobre esta tabla solo tiene permiso de columnas puntuales
+    // (ver migrations/student-practice-quiz.sql -- "questions" está oculta),
+    // así que después del insert hay que pedir explícitamente esas columnas
+    // en vez de select() sin argumentos (que pide "*" y choca contra la
+    // columna vedada, tirando "permission denied for table").
     const { data: inserted, error: insertErr } = await window._supabase.from('student_practice_sessions').insert({
       student_id: window.currentUser.id,
       topic,
       question_count: PRACTICE_QUESTION_COUNT,
-    }).select().single();
+    }).select('id, student_id, topic, question_count, status, created_at').single();
     if (insertErr) throw insertErr;
 
     const { data: { session } } = await window._supabase.auth.getSession();
