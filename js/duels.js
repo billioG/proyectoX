@@ -239,7 +239,17 @@ const DUEL_TOPIC_POOL = [
   'Cultura maya', 'Tradiciones y fiestas de Guatemala', 'Biodiversidad de Guatemala',
   'Cultura general internacional', 'Historia mundial', 'Geografía mundial',
   'Ciencia y descubrimientos', 'Arte y cultura general',
+  // Pedido puntual de un docente: temas técnicos concretos de los kits y del
+  // curso de programación, para repasar vocabulario que no suelen repasar solos.
+  'Componentes de kits de robótica (sensores, actuadores, controladores)',
+  'Sintaxis básica de C++ (variables, tipos de datos, operadores)',
+  'Estructuras de control en C++ (condicionales, bucles)',
+  'Funciones, métodos y objetos en programación',
 ];
+// Otros módulos (ej. practice-quiz.js) reusan este mismo pool de temas --
+// duels.js se carga como módulo ES, así que un const de acá no es visible
+// afuera sin exponerlo explícitamente.
+window.DUEL_TOPIC_POOL = DUEL_TOPIC_POOL;
 
 function computeDuelQuestionCount(wager) {
   return Math.max(5, Math.min(15, 5 + Math.floor((wager || 0) / 10)));

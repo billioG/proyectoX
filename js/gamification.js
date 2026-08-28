@@ -640,6 +640,14 @@ window.renderGamificationHubContent = function renderGamificationHubContent(moda
                     </div>
                 </section>
                 
+                 <!-- PRÁCTICA SOLO -->
+                <section>
+                     <h3 class="text-2xl font-black text-white italic uppercase mb-6 flex items-center gap-3"><i class="fas fa-brain text-cyan-400"></i> Práctica Solo</h3>
+                     <div id="practice-quiz-section">
+                        ${typeof window.renderPracticeQuizSection === 'function' ? window.renderPracticeQuizSection() : '<div class="text-center text-slate-500 text-xs py-6"><i class="fas fa-spinner fa-spin"></i></div>'}
+                     </div>
+                </section>
+
                  <!-- DUELOS -->
                 <section>
                      <h3 class="text-2xl font-black text-white italic uppercase mb-6 flex items-center gap-3"><i class="fas fa-swords text-rose-500"></i> Desafíos de Código</h3>
