@@ -175,81 +175,127 @@ window.renderDuelsSection = function renderDuelsSection() {
     return;
   }
 
-  container.innerHTML = createBtnHtml + `
-    <div class="space-y-2">
-      ${duels.map(d => {
-        const isChallenger = d.challenger_id === currentUser.id;
-        const opponentName = isChallenger ? (d.opponent?.full_name || 'Rival') : (d.challenger?.full_name || 'Rival');
-        let statusHtml = '';
-        let actionHtml = '';
+  const renderDuelCard = (d) => {
+    const isChallenger = d.challenger_id === currentUser.id;
+    const opponentName = isChallenger ? (d.opponent?.full_name || 'Rival') : (d.challenger?.full_name || 'Rival');
+    let statusHtml = '';
+    let actionHtml = '';
 
-        if (d.status === 'pending' && !isChallenger) {
-          statusHtml = `<span class="text-[0.6rem] font-black uppercase text-amber-400">Te retó -- ${d.wager_gems} gemas</span>`;
-          actionHtml = `
-            <button class="h-8 px-3 rounded-lg bg-emerald-500 text-white text-[0.6rem] font-black uppercase mr-2" onclick="window.respondDuel('${d.id}', true)">Aceptar</button>
-            <button class="h-8 px-3 rounded-lg bg-rose-500 text-white text-[0.6rem] font-black uppercase" onclick="window.respondDuel('${d.id}', false)">Rechazar</button>
-          `;
-        } else if (d.status === 'pending' && isChallenger) {
-          statusHtml = `<span class="text-[0.6rem] font-black uppercase text-slate-400">Esperando respuesta...</span>`;
-          actionHtml = `<button class="h-8 px-3 rounded-lg bg-slate-700 text-white text-[0.6rem] font-black uppercase" onclick="window.cancelDuel('${d.id}')">Cancelar</button>`;
-        } else if (d.status === 'rejected') {
-          statusHtml = `<span class="text-[0.6rem] font-black uppercase text-slate-500">Rechazado</span>`;
-        } else if (d.status === 'cancelled') {
-          statusHtml = `<span class="text-[0.6rem] font-black uppercase text-slate-500">${isChallenger ? 'Cancelaste el desafío' : 'Cancelado'}</span>`;
-        } else if (d.status === 'active') {
-          statusHtml = `<span class="text-[0.6rem] font-black uppercase text-primary">En curso -- ${d.wager_gems} gemas</span>`;
-          actionHtml = `<button class="h-8 px-4 rounded-lg bg-primary text-white text-[0.6rem] font-black uppercase" onclick="window.openDuelQuiz('${d.id}')">Jugar</button>`;
-        } else if (d.status === 'completed') {
-          const won = d.winner_id === currentUser.id;
-          const tie = !d.winner_id;
-          statusHtml = tie
-            ? `<span class="text-[0.6rem] font-black uppercase text-slate-400">Empate</span>`
-            : won
-              ? `<span class="text-[0.6rem] font-black uppercase text-emerald-400"><i class="fas fa-trophy"></i> Ganaste +${d.wager_gems} gemas</span>`
-              : `<span class="text-[0.6rem] font-black uppercase text-rose-400">Perdiste</span>`;
-          // Antes solo se veía la retroalimentación una vez, en el modal
-          // que aparece justo al completarse -- si lo cerrabas sin fijarte,
-          // no había forma de volver a ver qué respondiste mal.
-          actionHtml = `<button class="h-8 px-3 rounded-lg bg-white/10 text-white text-[0.6rem] font-black uppercase" onclick="window.showDuelReview('${d.id}')"><i class="fas fa-list-check"></i> Revisar</button>`;
-        }
+    if (d.status === 'pending' && !isChallenger) {
+      statusHtml = `<span class="text-[0.6rem] font-black uppercase text-amber-400">Te retó -- ${d.wager_gems} gemas</span>`;
+      actionHtml = `
+        <button class="h-8 px-3 rounded-lg bg-emerald-500 text-white text-[0.6rem] font-black uppercase mr-2" onclick="window.respondDuel('${d.id}', true)">Aceptar</button>
+        <button class="h-8 px-3 rounded-lg bg-rose-500 text-white text-[0.6rem] font-black uppercase" onclick="window.respondDuel('${d.id}', false)">Rechazar</button>
+      `;
+    } else if (d.status === 'pending' && isChallenger) {
+      statusHtml = `<span class="text-[0.6rem] font-black uppercase text-slate-400">Esperando respuesta...</span>`;
+      actionHtml = `<button class="h-8 px-3 rounded-lg bg-slate-700 text-white text-[0.6rem] font-black uppercase" onclick="window.cancelDuel('${d.id}')">Cancelar</button>`;
+    } else if (d.status === 'rejected') {
+      statusHtml = `<span class="text-[0.6rem] font-black uppercase text-slate-500">Rechazado</span>`;
+    } else if (d.status === 'cancelled') {
+      statusHtml = `<span class="text-[0.6rem] font-black uppercase text-slate-500">${isChallenger ? 'Cancelaste el desafío' : 'Cancelado'}</span>`;
+    } else if (d.status === 'active') {
+      statusHtml = `<span class="text-[0.6rem] font-black uppercase text-primary">En curso -- ${d.wager_gems} gemas</span>`;
+      actionHtml = `<button class="h-8 px-4 rounded-lg bg-primary text-white text-[0.6rem] font-black uppercase" onclick="window.openDuelQuiz('${d.id}')">Jugar</button>`;
+    } else if (d.status === 'completed') {
+      const won = d.winner_id === currentUser.id;
+      const tie = !d.winner_id;
+      statusHtml = tie
+        ? `<span class="text-[0.6rem] font-black uppercase text-slate-400">Empate</span>`
+        : won
+          ? `<span class="text-[0.6rem] font-black uppercase text-emerald-400"><i class="fas fa-trophy"></i> Ganaste +${d.wager_gems} gemas</span>`
+          : `<span class="text-[0.6rem] font-black uppercase text-rose-400">Perdiste</span>`;
+      // Antes solo se veía la retroalimentación una vez, en el modal
+      // que aparece justo al completarse -- si lo cerrabas sin fijarte,
+      // no había forma de volver a ver qué respondiste mal.
+      actionHtml = `<button class="h-8 px-3 rounded-lg bg-white/10 text-white text-[0.6rem] font-black uppercase" onclick="window.showDuelReview('${d.id}')"><i class="fas fa-list-check"></i> Revisar</button>`;
+    }
 
-        return `
-          <div class="glass-card p-4 flex items-center justify-between gap-3 bg-white/5 border-white/5">
-            <div class="min-w-0">
-              <div class="text-xs font-bold text-white truncate">vs ${sanitizeInput(opponentName)}</div>
-              <div class="text-[0.6rem] text-slate-500 truncate">${sanitizeInput(d.topic)}</div>
-              ${statusHtml}
-            </div>
-            <div class="shrink-0 flex items-center">${actionHtml}</div>
-          </div>
-        `;
-      }).join('')}
+    return `
+      <div class="glass-card p-4 flex items-center justify-between gap-3 bg-white/5 border-white/5">
+        <div class="min-w-0">
+          <div class="text-xs font-bold text-white truncate">vs ${sanitizeInput(opponentName)}</div>
+          <div class="text-[0.6rem] text-slate-500 truncate">${sanitizeInput(d.topic)}</div>
+          ${statusHtml}
+        </div>
+        <div class="shrink-0 flex items-center">${actionHtml}</div>
+      </div>
+    `;
+  };
+
+  // Lo que requiere atención (pendiente de responder/jugar) queda a la
+  // vista; lo que ya terminó (completado/cancelado/rechazado) se amontonaba
+  // sin fin en la misma lista -- ahora va colapsado en un acordeón aparte.
+  const activeDuels = duels.filter(d => d.status === 'pending' || d.status === 'active');
+  const historyDuels = duels.filter(d => d.status === 'completed' || d.status === 'cancelled' || d.status === 'rejected');
+
+  const activeHtml = activeDuels.length
+    ? `<div class="space-y-2">${activeDuels.map(renderDuelCard).join('')}</div>`
+    : '';
+
+  const historyHtml = historyDuels.length ? `
+    <div class="mt-3">
+      <button class="w-full flex items-center justify-between px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-[0.65rem] font-black uppercase tracking-widest text-slate-400 transition-colors" onclick="window.toggleDuelHistory()">
+        <span><i class="fas fa-clock-rotate-left"></i> Historial (${historyDuels.length})</span>
+        <i id="duel-history-chevron" class="fas fa-chevron-down transition-transform"></i>
+      </button>
+      <div id="duel-history-list" class="hidden space-y-2 mt-2">${historyDuels.map(renderDuelCard).join('')}</div>
     </div>
-  `;
+  ` : '';
+
+  container.innerHTML = createBtnHtml + activeHtml + historyHtml;
 }
 
-// El tema y la cantidad de preguntas ya no los elige el alumno -- el tema
-// sale al azar de este pool (STEAM/tecnología + cultura general de
-// Guatemala e internacional) y la cantidad de preguntas escala con lo
-// que apuesta (más gemas en juego, más preguntas).
-const DUEL_TOPIC_POOL = [
-  'Robótica educativa', 'Programación por bloques', 'Ciencias de la computación',
-  'Electrónica básica', 'Inteligencia artificial', 'Matemática aplicada',
-  'Física básica', 'Historia de Guatemala', 'Geografía de Guatemala',
-  'Cultura maya', 'Tradiciones y fiestas de Guatemala', 'Biodiversidad de Guatemala',
-  'Cultura general internacional', 'Historia mundial', 'Geografía mundial',
-  'Ciencia y descubrimientos', 'Arte y cultura general',
+window.toggleDuelHistory = function toggleDuelHistory() {
+  const list = document.getElementById('duel-history-list');
+  const chevron = document.getElementById('duel-history-chevron');
+  if (!list) return;
+  list.classList.toggle('hidden');
+  if (chevron) chevron.classList.toggle('rotate-180');
+}
+
+// Cada tema trae un "minRank" (ver getGradeRank() en utils.js: Primaria
+// 1-6, Básico 7-9, Diversificado 10-12) -- un alumno de 4to primaria no
+// debería toparse con "Electrónica básica" ni C++, pero sí con robótica/
+// programación por bloques a nivel introductorio. Los de cultura general
+// quedan en 0 (cualquier grado).
+const DUEL_TOPIC_POOL_FULL = [
+  { name: 'Historia de Guatemala', minRank: 0 },
+  { name: 'Geografía de Guatemala', minRank: 0 },
+  { name: 'Cultura maya', minRank: 0 },
+  { name: 'Tradiciones y fiestas de Guatemala', minRank: 0 },
+  { name: 'Biodiversidad de Guatemala', minRank: 0 },
+  { name: 'Cultura general internacional', minRank: 0 },
+  { name: 'Historia mundial', minRank: 0 },
+  { name: 'Geografía mundial', minRank: 0 },
+  { name: 'Ciencia y descubrimientos', minRank: 0 },
+  { name: 'Arte y cultura general', minRank: 0 },
+  { name: 'Robótica educativa', minRank: 4 },
+  { name: 'Programación por bloques', minRank: 4 },
+  { name: 'Ciencias de la computación', minRank: 4 },
+  { name: 'Matemática aplicada', minRank: 4 },
+  { name: 'Física básica', minRank: 4 },
   // Pedido puntual de un docente: temas técnicos concretos de los kits y del
-  // curso de programación, para repasar vocabulario que no suelen repasar solos.
-  'Componentes de kits de robótica (sensores, actuadores, controladores)',
-  'Sintaxis básica de C++ (variables, tipos de datos, operadores)',
-  'Estructuras de control en C++ (condicionales, bucles)',
-  'Funciones, métodos y objetos en programación',
+  // curso de programación, para repasar vocabulario que no suelen repasar
+  // solos -- reservados a Básico/Diversificado (ya vieron esto en clase).
+  { name: 'Electrónica básica', minRank: 7 },
+  { name: 'Inteligencia artificial', minRank: 7 },
+  { name: 'Componentes de kits de robótica (sensores, actuadores, controladores)', minRank: 7 },
+  { name: 'Sintaxis básica de C++ (variables, tipos de datos, operadores)', minRank: 7 },
+  { name: 'Estructuras de control en C++ (condicionales, bucles)', minRank: 7 },
+  { name: 'Funciones, métodos y objetos en programación', minRank: 7 },
 ];
+
+// Filtra el pool completo al grado del alumno actual -- se usa tanto acá
+// (Duelos) como en practice-quiz.js (Práctica Solo).
+function getDuelTopicPoolForCurrentUser() {
+  const rank = window.getGradeRank ? window.getGradeRank(window.userData?.grade) : 99;
+  return DUEL_TOPIC_POOL_FULL.filter(t => t.minRank <= rank).map(t => t.name);
+}
 // Otros módulos (ej. practice-quiz.js) reusan este mismo pool de temas --
 // duels.js se carga como módulo ES, así que un const de acá no es visible
 // afuera sin exponerlo explícitamente.
-window.DUEL_TOPIC_POOL = DUEL_TOPIC_POOL;
+window.getDuelTopicPoolForCurrentUser = getDuelTopicPoolForCurrentUser;
 
 function computeDuelQuestionCount(wager) {
   return Math.max(5, Math.min(15, 5 + Math.floor((wager || 0) / 10)));
@@ -295,7 +341,7 @@ window.openCreateDuelModal = async function openCreateDuelModal() {
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Categoría</label>
           <select id="duel-topic" class="input-field-tw h-11 text-sm">
             <option value="">🎲 Aleatorio</option>
-            ${DUEL_TOPIC_POOL.map(t => `<option value="${window.sanitizeAttr(t)}">${window.sanitizeInput(t)}</option>`).join('')}
+            ${getDuelTopicPoolForCurrentUser().map(t => `<option value="${window.sanitizeAttr(t)}">${window.sanitizeInput(t)}</option>`).join('')}
           </select>
         </div>
         <div class="p-4 rounded-xl bg-white/5 border border-white/10 text-center">
@@ -317,7 +363,8 @@ window.sendDuelChallenge = async function sendDuelChallenge() {
   const opponentId = document.getElementById('duel-opponent')?.value;
   const wager = parseInt(document.getElementById('duel-wager')?.value) || 0;
   const chosenTopic = document.getElementById('duel-topic')?.value;
-  const topic = chosenTopic || DUEL_TOPIC_POOL[Math.floor(Math.random() * DUEL_TOPIC_POOL.length)];
+  const pool = getDuelTopicPoolForCurrentUser();
+  const topic = chosenTopic || pool[Math.floor(Math.random() * pool.length)];
   const questionCount = computeDuelQuestionCount(wager);
   const btn = document.getElementById('btn-send-duel');
   const userData = window.userData;

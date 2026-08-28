@@ -9,7 +9,7 @@
 const PRACTICE_QUESTION_COUNT = 8;
 
 window.renderPracticeQuizSection = function renderPracticeQuizSection() {
-  const topics = window.DUEL_TOPIC_POOL || [];
+  const topics = window.getDuelTopicPoolForCurrentUser ? window.getDuelTopicPoolForCurrentUser() : [];
   return `
     <p class="text-xs text-slate-400 mb-4">Elegí un tema y repasá solo, a tu ritmo. Ganás XP y gemas por acertar (una vez por tema al día).</p>
     <div class="grid grid-cols-2 md:grid-cols-3 gap-3">

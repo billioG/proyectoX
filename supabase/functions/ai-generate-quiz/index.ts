@@ -51,9 +51,16 @@ Deno.serve(async (req) => {
     if (user.id !== duel.challenger_id && user.id !== duel.opponent_id) return json({ error: 'No autorizado' }, 403);
     if (duel.questions) return json({ ok: true }); // ya generado, no regenerar
 
+    // Nivel de dificultad segun el grado de quien retó (challenger) -- se lee
+    // server-side (no del cliente) para que no se pueda pedir un grado falso
+    // y así preguntas más fáciles/difíciles de lo que corresponde.
+    const { data: challenger } = await serviceClientRead.from('students').select('grade').eq('id', duel.challenger_id).maybeSingle();
+    const grade = challenger?.grade || 'educación básica';
+
     const n = Math.min(15, Math.max(1, duel.question_count || 5));
-    const system = `Genera un quiz de opción múltiple en español sobre el tema indicado, nivel
-estudiantes de educacion basica/diversificado en Guatemala. Exactamente ${n} preguntas,
+    const system = `Genera un quiz de opción múltiple en español sobre el tema indicado, para un
+estudiante de ${grade} en Guatemala -- ajustá la dificultad y el vocabulario a ese
+grado exacto. Exactamente ${n} preguntas,
 4 opciones cada una, solo UNA correcta. Responde ÚNICAMENTE con JSON válido,
 sin texto adicional, con esta forma exacta:
 {"questions":[{"question":"...","options":["...","...","...","..."],"correctIndex":0}]}`;

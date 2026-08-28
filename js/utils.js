@@ -272,6 +272,23 @@ async function fetchAllRows(buildQuery, pageSize = 1000) {
 }
 window.fetchAllRows = fetchAllRows;
 
+// Convierte "3ro Básico"/"4to Primaria"/"2do Diversificado" en un rango
+// numérico comparable (Primaria 1-6, Básico 7-9, Diversificado 10-12) --
+// usado para filtrar contenido (temas de duelos/práctica) por qué tan
+// avanzado es, sin tener que mantener listas de grados a mano.
+const GRADE_ORDINALS = { '1ro': 1, '2do': 2, '3ro': 3, '4to': 4, '5to': 5, '6to': 6 };
+function getGradeRank(gradeText) {
+  if (!gradeText) return 0;
+  const parts = String(gradeText).trim().toLowerCase().split(/\s+/);
+  const ord = GRADE_ORDINALS[parts[0]] || 0;
+  const level = parts[1] || '';
+  if (level.startsWith('prim')) return ord;
+  if (level.startsWith('bás') || level.startsWith('bas')) return 6 + ord;
+  if (level.startsWith('div')) return 9 + ord;
+  return ord;
+}
+window.getGradeRank = getGradeRank;
+
 // Compatibilidad Legacy
 window.syncSystemConfig = syncSystemConfig;
 window.saveSystemConfig = saveSystemConfig;
