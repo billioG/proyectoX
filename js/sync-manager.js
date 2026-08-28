@@ -336,8 +336,41 @@ class SyncManager {
                 }
             }
 
-            // 2. Gestionar el archivo si existe
-            if (data._fileBlob) {
+            // weekly_evidence tiene un constraint de 1 por semana -- si otro
+            // dispositivo/queue ya sincronizó la evidencia de esta semana
+            // para este docente, insertar de nuevo tira 23505 y el item se
+            // queda reintentando para siempre en la cola. Se detecta acá y
+            // se descarta como ya-sincronizado en vez de reintentar.
+            if (table === 'weekly_evidence') {
+                const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+                const { data: existing } = await _supabase
+                    .from('weekly_evidence')
+                    .select('id')
+                    .eq('teacher_id', data.teacher_id)
+                    .gte('created_at', sevenDaysAgo)
+                    .maybeSingle();
+
+                if (existing) {
+                    console.log(`♻️ Evidencia semanal ya existe para este docente -- se descarta duplicado.`);
+                    return true;
+                }
+            }
+
+            // 2. Gestionar el/los archivo(s) si existen -- la mayoría de tablas
+            // usan _fileBlob (1 archivo), weekly_evidence usa _fileBlobs (varios,
+            // se guardan como array JSON en el mismo campo urlField).
+            if (data._fileBlobs?.length) {
+                const urls = [];
+                for (const blob of data._fileBlobs) {
+                    const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}`;
+                    const { error: uploadError } = await _supabase.storage.from(bucket).upload(fileName, blob);
+                    if (uploadError) throw uploadError;
+                    const { data: { publicUrl } } = _supabase.storage.from(bucket).getPublicUrl(fileName);
+                    urls.push(publicUrl);
+                }
+                data[urlField] = JSON.stringify(urls);
+                delete data._fileBlobs;
+            } else if (data._fileBlob) {
                 const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}`;
                 const { error: uploadError } = await _supabase.storage
                     .from(bucket)

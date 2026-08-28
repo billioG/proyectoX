@@ -207,6 +207,12 @@ window.processAndRenderBonus = function processAndRenderBonus(container, data) {
     const tutorId = currentUser.id;
     const now = new Date();
 
+    // Misma ventana de 7 días que valida sync-manager.js antes de insertar --
+    // si ya hay evidencia de esta semana, se oculta el botón en vez de dejar
+    // que el docente la reintente y choque con el constraint "1 por semana".
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const hasEvidenceThisWeek = (evidence || []).some(e => new Date(e.created_at) >= sevenDaysAgo);
+
     // Procesar Rocas
     const activeRocks = (rocks || []).filter(r => {
         if (!r.school_code) return true;
@@ -510,6 +516,17 @@ window.renderTutorView = function renderTutorView(container, teacher, kpis, assi
                         </div>
                     </div>
 
+                    ${hasEvidenceThisWeek ? `
+                    <div class="glass-card p-6 text-left border-2 border-emerald-200 dark:border-emerald-900 bg-emerald-50/50 dark:bg-emerald-500/5 cursor-not-allowed">
+                        <div class="flex items-center gap-4 mb-2">
+                             <div class="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                                <i class="fas fa-check-circle"></i>
+                             </div>
+                             <div class="text-sm font-black uppercase text-emerald-600 dark:text-emerald-400">Evidencia de esta semana lista</div>
+                        </div>
+                        <div class="text-[0.6rem] font-bold text-slate-400 pl-14">Ya podés subir la próxima a partir de la semana que viene</div>
+                    </div>
+                    ` : `
                     <button class="glass-card p-6 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group border-2 border-slate-200 dark:border-slate-800 hover:border-primary/50" onclick="window.openEvidenceAuditModal()">
                         <div class="flex items-center gap-4 mb-2">
                              <div class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 group-hover:bg-primary group-hover:text-white transition-colors">
@@ -519,6 +536,7 @@ window.renderTutorView = function renderTutorView(container, teacher, kpis, assi
                         </div>
                         <div class="text-[0.6rem] font-bold text-slate-400 pl-14">Cumple meta de Auditoría y Fotos Académicas</div>
                     </button>
+                    `}
                 </div>
                 
                  <!-- HISTORIAL DE PAGOS (Visible al final) -->
@@ -709,14 +727,15 @@ window.openEvidenceAuditModal = function openEvidenceAuditModal() {
                     </div>
                 </div>
 
-                <div class="p-10 border-4 border-dashed border-slate-100 dark:border-slate-800 rounded-[2rem] flex flex-col items-center justify-center text-slate-400 group cursor-pointer hover:border-primary transition-all duration-500" id="photo-dropzone" onclick="document.getElementById('audit-photo').click()">
-                    <i class="fas fa-camera text-5xl mb-3 group-hover:text-primary transition-colors"></i>
-                    <span class="text-[0.65rem] font-black uppercase tracking-widest">Tomar Foto con Alumnos y Kits</span>
-                    <input type="file" id="audit-photo" accept="image/*" capture="camera" class="hidden" onchange="handleDocPhotoSelect(this)">
-                </div>
-
-                <div id="doc-preview-container" class="hidden">
-                     <img id="doc-preview" class="w-full aspect-video object-cover rounded-[1.5rem] shadow-2xl border-4 border-white dark:border-slate-800">
+                <div>
+                    <label class="text-[0.6rem] font-black uppercase text-slate-400 tracking-widest mb-2 block">Evidencia Fotográfica (5 fotos)</label>
+                    <div class="p-10 border-4 border-dashed border-slate-100 dark:border-slate-800 rounded-[2rem] flex flex-col items-center justify-center text-slate-400 group cursor-pointer hover:border-primary transition-all duration-500" id="photo-dropzone" onclick="document.getElementById('audit-photo').click()">
+                        <i class="fas fa-camera text-5xl mb-3 group-hover:text-primary transition-colors"></i>
+                        <span class="text-[0.65rem] font-black uppercase tracking-widest">Tomar/Seleccionar 5 Fotos con Alumnos y Kits</span>
+                        <input type="file" id="audit-photo" accept="image/*" capture="camera" multiple class="hidden" onchange="handleDocPhotoSelect(this)">
+                    </div>
+                    <div id="doc-preview-container" class="hidden mt-3 flex gap-2 flex-wrap"></div>
+                    <p class="text-[0.55rem] font-bold text-slate-400 uppercase tracking-widest mt-2 flex items-center gap-1"><i class="fas fa-info-circle text-primary"></i> Se requieren exactamente 5 fotografías.</p>
                 </div>
             </div>
 
@@ -730,46 +749,64 @@ window.openEvidenceAuditModal = function openEvidenceAuditModal() {
 }
 
 window.handleDocPhotoSelect = function handleDocPhotoSelect(input) {
-    if (!input.files?.[0]) return;
-    const file = input.files[0];
-    const preview = document.getElementById('doc-preview');
+    const files = Array.from(input.files || []);
     const container = document.getElementById('doc-preview-container');
     const dropzone = document.getElementById('photo-dropzone');
     const btn = document.getElementById('btn-save-doc');
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        preview.src = e.target.result;
-        container.classList.remove('hidden');
-        dropzone.classList.add('hidden');
-        btn.disabled = false;
-        btn.onclick = async () => {
-            const title = document.getElementById('doc-title').value;
-            if (!title) return showToast('<i class="fas fa-circle-xmark"></i> Agrega un título a la actividad', 'error');
+    if (files.length !== 5) {
+        showToast('<i class="fas fa-triangle-exclamation"></i>️ Seleccioná exactamente 5 fotos', 'warning');
+        input.value = '';
+        container.classList.add('hidden');
+        container.innerHTML = '';
+        btn.disabled = true;
+        return;
+    }
 
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
-            try {
-                const combinedDesc = `Resultados: ${document.getElementById('doc-results').value}\nInconvenientes: ${document.getElementById('doc-challenges').value}\nImpacto: ${document.getElementById('doc-desc').value}`;
+    container.innerHTML = '';
+    files.forEach(f => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const imgDiv = document.createElement('div');
+            imgDiv.className = 'w-16 h-16 rounded-xl overflow-hidden border-2 border-white dark:border-slate-800 shadow-sm ring-1 ring-slate-100 dark:ring-slate-700';
+            imgDiv.innerHTML = `<img src="${e.target.result}" class="w-full h-full object-cover">`;
+            container.appendChild(imgDiv);
+        };
+        reader.readAsDataURL(f);
+    });
+    container.classList.remove('hidden');
+    dropzone.classList.add('hidden');
+    btn.disabled = false;
+    btn.onclick = async () => {
+        const title = document.getElementById('doc-title').value;
+        if (!title) return showToast('<i class="fas fa-circle-xmark"></i> Agrega un título a la actividad', 'error');
 
-                // Preparar datos de evidencia semanal
-                const evidenceData = {
-                    teacher_id: currentUser.id,
-                    title: title,
-                    description: combinedDesc,
-                    created_at: new Date().toISOString(),
-                    _fileBlob: file
-                };
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+        try {
+            const combinedDesc = `Resultados: ${document.getElementById('doc-results').value}\nInconvenientes: ${document.getElementById('doc-challenges').value}\nImpacto: ${document.getElementById('doc-desc').value}`;
 
-                // Preparar datos de auditoría de activos
-                const schoolIdForAudit = parseInt(document.getElementById('bonus-school-picker')?.value, 10);
-                if (!schoolIdForAudit) throw new Error('Selecciona un establecimiento en "Check-in" antes de subir evidencia.');
-                const auditData = {
-                    tutor_id: currentUser.id,
-                    school_id: schoolIdForAudit,
-                    status: 'valid',
-                    _fileBlob: file
-                };
+            // Preparar datos de evidencia semanal -- 5 fotos en vez de 1, ver
+            // handleFileUploadSync() en sync-manager.js (soporta _fileBlobs
+            // array además del _fileBlob suelto que usan projects/audits).
+            const evidenceData = {
+                teacher_id: currentUser.id,
+                title: title,
+                description: combinedDesc,
+                created_at: new Date().toISOString(),
+                _fileBlobs: files
+            };
+
+            // Preparar datos de auditoría de activos (solo necesita 1 foto
+            // representativa, se usa la primera de las 5).
+            const schoolIdForAudit = parseInt(document.getElementById('bonus-school-picker')?.value, 10);
+            if (!schoolIdForAudit) throw new Error('Selecciona un establecimiento en "Check-in" antes de subir evidencia.');
+            const auditData = {
+                tutor_id: currentUser.id,
+                school_id: schoolIdForAudit,
+                status: 'valid',
+                _fileBlob: files[0]
+            };
 
                 // USAR EL GESTOR DE SINCRONIZACIÓN (MODO KOLIBRI / OFFLINE)
                 await _syncManager.enqueue('submit_evidence', evidenceData);
@@ -778,14 +815,12 @@ window.handleDocPhotoSelect = function handleDocPhotoSelect(input) {
                 showToast('<i class="fas fa-rocket"></i> Evidencia guardada (Pendiente Sync)', 'success');
                 loadBonusSystem();
                 document.querySelector('.fixed.z-\\[600\\]')?.remove();
-            } catch (e) {
-                showToast('<i class="fas fa-circle-xmark"></i> Error al guardar: ' + e.message, 'error');
-                btn.disabled = false;
-                btn.innerHTML = 'REINTENTAR';
-            }
+        } catch (e) {
+            showToast('<i class="fas fa-circle-xmark"></i> Error al guardar: ' + e.message, 'error');
+            btn.disabled = false;
+            btn.innerHTML = 'REINTENTAR';
         }
     };
-    reader.readAsDataURL(file);
 }
 
 
