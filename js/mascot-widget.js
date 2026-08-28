@@ -255,6 +255,12 @@ const MascotWidget = {
                     <!-- Accesorio del mes -- ver getSeasonalAccessorySvg(), se
                     llena en render() según la fecha actual. -->
                     <g id="mascot-accessory"></g>
+
+                    <!-- Gafas permanentes -- item comprado en la tienda (ver
+                    gamification.js buyShopItem 'Gafas de la Mascota'), no
+                    depende del mes. Independiente del accesorio estacional
+                    de arriba para que puedan convivir sin pisarse. -->
+                    <g id="mascot-permanent-accessory"></g>
                 </svg>
             </div>
         `;
@@ -268,8 +274,27 @@ const MascotWidget = {
         if (accessory) accessory.innerHTML = this.getSeasonalAccessorySvg(month);
         this.setSeasonalExpression(month);
 
+        // Gafas permanentes -- item comprado en la tienda, no depende del mes.
+        const permAccessory = document.getElementById('mascot-permanent-accessory');
+        if (permAccessory && window.userData?.has_mascot_glasses) {
+            permAccessory.innerHTML = this.getGlassesSvg();
+        }
+
         // Show first message after a delay
         setTimeout(() => this.talk(), 2000);
+    },
+
+    // Gafas de sol permanentes (item de tienda) -- cubren ambos ojos
+    // (centrados en x=160/240, y=158) con un puente al centro, estilo flat
+    // sin gradientes igual que el resto del arte de la mascota.
+    getGlassesSvg() {
+        return `
+            <rect x="128" y="143" width="64" height="34" rx="14" fill="#1E293B" />
+            <rect x="208" y="143" width="64" height="34" rx="14" fill="#1E293B" />
+            <rect x="192" y="152" width="16" height="6" rx="3" fill="#1E293B" />
+            <rect x="140" y="150" width="20" height="8" rx="4" fill="#FFFFFF" opacity="0.3" />
+            <rect x="220" y="150" width="20" height="8" rx="4" fill="#FFFFFF" opacity="0.3" />
+        `;
     },
 
     // Accesorio de temporada por mes (0=enero ... 11=diciembre). Coordenadas

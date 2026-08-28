@@ -557,7 +557,7 @@ window.openGamificationHub = async function openGamificationHub() {
     await fetchWithCache('student_ranking_top', async () => {
       return await _supabase
         .from('students')
-        .select('full_name, xp, profile_photo_url')
+        .select('full_name, xp, profile_photo_url, has_gold_frame')
         .order('xp', { ascending: false })
         .limit(10);
     }, (topStudents) => {
@@ -597,10 +597,9 @@ window.renderGamificationHubContent = function renderGamificationHubContent(moda
                 <section>
                     <h3 class="text-2xl font-black text-white italic uppercase mb-6 flex items-center gap-3"><i class="fas fa-store text-indigo-500"></i> Tienda de Mascotas</h3>
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        ${window.renderShopItem('Búho Cibernético', 'Tu compañero de código', 500, '<i class="fas fa-feather"></i>', 'bg-indigo-500')}
                         ${window.renderShopItem('Racha Congelada', 'Protege tu racha 1 día', 300, '<i class="fas fa-cube"></i>', 'bg-cyan-500', userData?.streak_freeze)}
-                        ${window.renderShopItem('Marco Dorado', 'Brilla en el ranking', 1000, '<i class="fas fa-image"></i>️', 'bg-amber-500')}
-                        ${window.renderShopItem('Desafío 1v1', 'Reta a un amigo', 100, '<i class="fas fa-shield-halved"></i>️', 'bg-rose-500')}
+                        ${window.renderShopItem('Marco Dorado', 'Borde dorado en el ranking', 1000, '<i class="fas fa-image"></i>️', 'bg-amber-500', userData?.has_gold_frame)}
+                        ${window.renderShopItem('Gafas de la Mascota', 'Accesorio permanente para tu mascota', 400, '<i class="fas fa-glasses"></i>', 'bg-slate-700', userData?.has_mascot_glasses)}
                     </div>
                 </section>
 
@@ -623,9 +622,9 @@ window.renderGamificationHubContent = function renderGamificationHubContent(moda
                                             ${i === 0 ? '<i class="fas fa-medal"></i>' : (i === 1 ? '<i class="fas fa-medal"></i>' : (i === 2 ? '<i class="fas fa-medal"></i>' : i + 1))}
                                         </td>
                                         <td class="p-4 text-white flex items-center gap-3">
-                                            <div class="w-8 h-8 rounded-full bg-slate-700 overflow-hidden border border-white/10">
+                                            <div class="w-8 h-8 rounded-full bg-slate-700 overflow-hidden ${s.has_gold_frame ? 'border-2 border-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.6)]' : 'border border-white/10'}">
                                                 ${s.profile_photo_url ? `<img src="${s.profile_photo_url}" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center bg-slate-600 text-[0.6rem]">${s.full_name.charAt(0)}</div>`}
-                                            </div> 
+                                            </div>
                                             <span class="truncate max-w-[150px]">${s.full_name}</span>
                                             ${s.full_name === userData?.full_name ? '<span class="px-2 py-0.5 rounded-full bg-primary text-[0.5rem] uppercase">Tú</span>' : ''}
                                         </td>
@@ -700,27 +699,36 @@ window.buyShopItem = async function buyShopItem(name, price) {
     return;
   }
 
-  // Logic for specific items
-  if (name === 'Racha Congelada') {
-    if (userData.streak_freeze) {
-      if (typeof showToast === 'function') showToast('<i class="fas fa-cube"></i> Ya tienes un hielo activo', 'info');
+  // Compra genérica: activa un flag permanente en la fila del alumno y
+  // descuenta las gemas -- usado por los cosméticos (Marco Dorado, Gafas).
+  const permanentUnlock = async (flagField, ownedMsg, boughtMsg) => {
+    if (userData[flagField]) {
+      if (typeof showToast === 'function') showToast(ownedMsg, 'info');
       return;
     }
-
     const table = userRole === 'estudiante' ? 'students' : 'teachers';
     const { error } = await _supabase.from(table).update({
       gems: userData.gems - price,
-      streak_freeze: true
+      [flagField]: true
     }).eq('id', currentUser.id);
 
     if (!error) {
       userData.gems -= price;
-      userData.streak_freeze = true;
-      if (typeof showToast === 'function') showToast('<i class="fas fa-cube"></i> ¡Hielo de Racha activado!', 'success');
-      // Refresh hub and sidebar
+      userData[flagField] = true;
+      if (typeof showToast === 'function') showToast(boughtMsg, 'success');
       if (typeof window.openGamificationHub === 'function') window.openGamificationHub();
       if (typeof window.initGamification === 'function') window.initGamification();
+    } else if (typeof showToast === 'function') {
+      showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
     }
+  };
+
+  if (name === 'Racha Congelada') {
+    await permanentUnlock('streak_freeze', '<i class="fas fa-cube"></i> Ya tienes un hielo activo', '<i class="fas fa-cube"></i> ¡Hielo de Racha activado!');
+  } else if (name === 'Marco Dorado') {
+    await permanentUnlock('has_gold_frame', '<i class="fas fa-image"></i> Ya tenés el Marco Dorado', '<i class="fas fa-image"></i> ¡Marco Dorado desbloqueado! Ya brilla en el ranking');
+  } else if (name === 'Gafas de la Mascota') {
+    await permanentUnlock('has_mascot_glasses', '<i class="fas fa-glasses"></i> Tu mascota ya tiene sus gafas', '<i class="fas fa-glasses"></i> ¡Gafas desbloqueadas! Recargá para verlas en tu mascota');
   } else {
     if (typeof showToast === 'function') showToast('<i class="fas fa-rocket"></i> ¡Próximamente más artículos en la tienda!', 'info');
   }
