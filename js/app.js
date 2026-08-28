@@ -14,6 +14,7 @@ import './data/badges.js';
 import './badges.js';
 import './data/quotes.js';
 import './data/challenges.js';
+import './data/student-challenges.js';
 import './kolibri-sync.js';
 import './test-accounts-filter.js';
 import './onboarding.js';

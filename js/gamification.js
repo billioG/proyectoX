@@ -20,7 +20,7 @@ window.submitStudentChallengeEvidence = async function submitStudentChallengeEvi
 
     try {
         if (window.AIService && comment.length < 400) {
-            const challenge = (window.MONTHLY_CHALLENGES || []).find(c => c.id === challengeId);
+            const challenge = (window.STUDENT_MONTHLY_CHALLENGES || []).find(c => c.id === challengeId);
             const judgePrompt = `Reto del mes: "${challenge?.name || challengeId}". Reflexión de un estudiante: "${comment}". ¿Es una reflexión concreta y específica (no una respuesta vaga tipo "ok", "listo", "bien", ni un relleno genérico)? Responde ÚNICAMENTE con la palabra SI o NO, nada más.`;
             const verdict = await window.AIService.ask(judgePrompt, '', false, [], 'strict_yesno');
             const isGeneric = /^no$/i.test((verdict || '').trim());

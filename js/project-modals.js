@@ -208,7 +208,7 @@ window.openChallengeEvidenceModal = async function openChallengeEvidenceModal(ch
 }
 
 window.openStudentChallengeModal = async function openStudentChallengeModal(challengeId) {
-  const challenge = (window.MONTHLY_CHALLENGES || []).find(c => c.id === challengeId);
+  const challenge = (window.STUDENT_MONTHLY_CHALLENGES || []).find(c => c.id === challengeId);
 
   const { data: existing } = await window._supabase.from('student_challenges')
     .select('comment, created_at').eq('student_id', window.currentUser.id).eq('challenge_id', challengeId).maybeSingle();

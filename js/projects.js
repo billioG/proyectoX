@@ -115,17 +115,19 @@ window.renderActiveChallengeBanner = async function renderActiveChallengeBanner(
   const _supabase = window._supabase;
   const currentUser = window.currentUser;
   const userRole = window.userRole;
-  const MONTHLY_CHALLENGES = window.MONTHLY_CHALLENGES;
   const renderChallengeBanner = window.renderChallengeBanner;
 
-  if (typeof MONTHLY_CHALLENGES === 'undefined' || !MONTHLY_CHALLENGES) return '';
-  const active = MONTHLY_CHALLENGES.find(c => c.isActive);
-  if (!active) return '';
-
-  // Reto del mes: mismo contenido para docentes y estudiantes, pero cada
-  // rol tiene su propia tabla (student_challenges no comparte FK con
+  // Reto del mes: contenido DISTINTO para docentes (técnica docente) y
+  // estudiantes (gestión emocional/crecimiento personal) -- cada uno con
+  // su propia lista (data/challenges.js vs data/student-challenges.js),
+  // su propia tabla (student_challenges no comparte FK con
   // teacher_challenges) y su propio modal de envío.
   const isStudent = userRole === 'estudiante';
+  const CHALLENGES = isStudent ? window.STUDENT_MONTHLY_CHALLENGES : window.MONTHLY_CHALLENGES;
+  if (!CHALLENGES) return '';
+  const active = CHALLENGES.find(c => c.isActive);
+  if (!active) return '';
+
   const table = isStudent ? 'student_challenges' : 'teacher_challenges';
   const idField = isStudent ? 'student_id' : 'teacher_id';
   const openFn = isStudent ? 'openStudentChallengeModal' : 'openChallengeEvidenceModal';
