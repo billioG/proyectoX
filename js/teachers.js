@@ -119,14 +119,13 @@ window.renderTeacherGroups = function renderTeacherGroups(teachers, sanitizeInpu
             <h2 class="text-sm font-black text-primary uppercase tracking-[0.2em] mb-4 flex items-center gap-2"><i class="fas fa-layer-group"></i> ${sanitizeInput(programa)}</h2>
             ${[...bySchool.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([schoolName, groupData]) => `
                 <details class="mb-5 group/school" open>
-                    <summary class="list-none cursor-pointer flex items-center gap-2 mb-3 text-slate-600 dark:text-slate-300 font-bold text-xs uppercase tracking-widest">
-                        <i class="fas fa-chevron-right text-[0.6rem] transition-transform group-open/school:rotate-90"></i>
-                        <i class="fas fa-school text-slate-400"></i>
-                        <span>
-                            ${sanitizeInput(schoolName)}
-                            ${groupData.address ? `<span class="block text-[0.6rem] text-slate-400 font-medium normal-case tracking-normal">${sanitizeInput(groupData.address)}</span>` : ''}
+                    <summary class="list-none cursor-pointer flex items-start gap-2 mb-3 text-slate-600 dark:text-slate-300 font-bold text-xs uppercase tracking-widest">
+                        <i class="fas fa-chevron-right text-[0.6rem] transition-transform group-open/school:rotate-90 mt-0.5 shrink-0"></i>
+                        <i class="fas fa-school text-slate-400 mt-0.5 shrink-0"></i>
+                        <span class="min-w-0 flex-1 break-words">
+                            ${sanitizeInput(schoolName)} <span class="text-slate-400 font-normal normal-case">(${groupData.teachers.length})</span>
+                            ${groupData.address ? `<span class="block text-[0.6rem] text-slate-400 font-medium normal-case tracking-normal break-words">${sanitizeInput(groupData.address)}</span>` : ''}
                         </span>
-                        <span class="text-slate-400 font-normal normal-case">(${groupData.teachers.length})</span>
                     </summary>
                     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                         ${groupData.teachers.map(t => window.renderTeacherCard(t, sanitizeInput)).join('')}
