@@ -40,7 +40,10 @@
     <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/h5p-standalone@3.7.0/dist/main.bundle.js"></script>
+    <!-- Autoalojado (antes CDN jsdelivr) -- en redes escolares con filtros de
+    contenido, ese CDN a veces queda bloqueado o muy lento, y el reproductor
+    H5P se quedaba colgado en "Cargando..." sin nunca fallar de forma clara. -->
+    <script src="vendor/h5p-standalone/main.bundle.js"></script>
 
     <!-- Driver.js -- tour guiado de onboarding (señala elementos reales de la UI) -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1/dist/driver.css">

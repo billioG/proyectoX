@@ -13,6 +13,13 @@ const ZIP_RESOURCE_TYPES = new Set(['scorm', 'h5p']);
 const QUIZ_QUESTION_TYPE_LABEL = { mc: 'Opción múltiple', tf: 'Verdadero/Falso', number: 'Número exacto', range: 'Rango (min-max)', text: 'Respuesta abierta (manual)' };
 const LESSON_STORAGE_BUCKET = 'course-content';
 
+// h5p-standalone autoalojado (vendor/h5p-standalone/) en vez de CDN jsdelivr
+// -- en redes escolares con filtros de contenido ese CDN a veces queda
+// bloqueado/lento y el reproductor se quedaba colgado sin fallar nunca.
+function h5pVendorUrl(file) {
+  return `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}vendor/h5p-standalone/${file}`;
+}
+
 // El navegador puede descargar la pestaña en segundo plano (Chrome Memory
 // Saver) y al volver hace una recarga real -- no hay forma de evitarlo
 // desde la app, pero sí de no perder lo ya escrito: autoguardamos estos
@@ -554,8 +561,8 @@ window.previewCourseResource = function previewCourseResource(lessonId) {
       }
       new H5PStandalone.H5P(container, {
         h5pJsonPath: lesson.content_url.replace(/\/$/, ''),
-        frameJs: 'https://cdn.jsdelivr.net/npm/h5p-standalone@3.7.0/dist/frame.bundle.js',
-        frameCss: 'https://cdn.jsdelivr.net/npm/h5p-standalone@3.7.0/dist/styles/h5p.css',
+        frameJs: h5pVendorUrl('frame.bundle.js'),
+        frameCss: h5pVendorUrl('styles/h5p.css'),
       });
     };
     tryInit();
@@ -2080,8 +2087,8 @@ window.initH5PSession = async function initH5PSession(lesson, attempt = 1) {
 
     const h5p = new H5PStandalone.H5P(container, {
       h5pJsonPath: lesson.content_url.replace(/\/$/, ''),
-      frameJs: 'https://cdn.jsdelivr.net/npm/h5p-standalone@3.7.0/dist/frame.bundle.js',
-      frameCss: 'https://cdn.jsdelivr.net/npm/h5p-standalone@3.7.0/dist/styles/h5p.css',
+      frameJs: h5pVendorUrl('frame.bundle.js'),
+      frameCss: h5pVendorUrl('styles/h5p.css'),
     });
 
     // No confiar en que h5p-standalone limpie el contenedor solo -- se
