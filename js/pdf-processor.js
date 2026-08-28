@@ -357,12 +357,23 @@ function generateUsernameVariants(primerNombre, segundoNombre, apellido1, apelli
     const a1 = cleanName(apellido1);
     const a2 = cleanName(apellido2);
 
-    const candidates = [
-        n1.charAt(0) + a1,
-        n2 ? n1.charAt(0) + n2.charAt(0) + a1 : '',
-        a2 && a2 !== a1 ? n1.charAt(0) + a2 : '',
-        a2 && a2 !== a1 && n2 ? n1.charAt(0) + n2.charAt(0) + a2 : '',
-    ].filter(Boolean);
+    // No todos los PDF de MINEDUC listan las columnas en el mismo orden
+    // (nombres/apellidos a veces vienen invertidos según el establecimiento),
+    // así que en vez de asumir ciegamente cuál token es "nombre" y cuál
+    // "apellido", se prueban más combinaciones cruzadas antes de caer a un
+    // sufijo numérico.
+    const seen = new Set();
+    const candidates = [];
+    const tryAdd = (v) => { if (v && v.length > 1 && !seen.has(v)) { seen.add(v); candidates.push(v); } };
+
+    tryAdd(n1.charAt(0) + a1);
+    tryAdd(n2 && n1.charAt(0) + n2.charAt(0) + a1);
+    tryAdd(a2 && a2 !== a1 && n1.charAt(0) + a2);
+    tryAdd(a2 && a2 !== a1 && n2 && n1.charAt(0) + n2.charAt(0) + a2);
+    tryAdd(n2 && n1.charAt(0) + n2);
+    tryAdd(a1 && n1 + a1.charAt(0));
+    tryAdd(a2 && a2 !== a1 && a1.charAt(0) + a2);
+    tryAdd(a2 && a2 !== a1 && n1 + a2.charAt(0));
 
     const base = candidates[0] || (n1 + a1) || 'estudiante';
     for (let i = 1; i <= 999; i++) candidates.push(base + i);

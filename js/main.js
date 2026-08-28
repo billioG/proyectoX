@@ -42,14 +42,18 @@ export async function loadModule(name) {
             // Para archivos que no son módulos, seguimos usando inyección si es necesario,
             // pero probaremos import() primero ya que es más limpio.
             // Agregamos ./ para rutas relativas correctas en ESM
-            const path = src.startsWith('js/') ? `./${src.split('js/')[1]}` : src;
+            // ?v= cache-busting: sin esto un módulo lazy-loaded puede quedar
+            // cacheado por el navegador de un deploy viejo (ver comentario
+            // en index.html junto a window.APP_VERSION).
+            const version = window.APP_VERSION || '';
+            const path = (src.startsWith('js/') ? `./${src.split('js/')[1]}` : src) + (version ? `?v=${version}` : '');
             await import(path);
             LOADED_MODULES.add(src);
         } catch (e) {
             console.warn(`Fallback de carga para ${src}. Probando inyección tradicional...`);
             return new Promise((resolve, reject) => {
                 const script = document.createElement('script');
-                script.src = src;
+                script.src = src + (window.APP_VERSION ? `?v=${window.APP_VERSION}` : '');
                 script.onload = () => {
                     LOADED_MODULES.add(src);
                     resolve();
