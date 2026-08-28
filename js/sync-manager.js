@@ -307,6 +307,11 @@ class SyncManager {
                 case 'asset_audit':
                     return await this.handleFileUploadSync('audit_photos', data, 'photo_url', 'asset_audits');
 
+                case 'tutor_checkin':
+                    const { error: checkinError } = await _supabase.from('tutor_attendance').insert(data);
+                    if (checkinError) throw checkinError;
+                    return true;
+
                 default:
                     console.warn(`⚠️ Acción no soportada: ${action}`);
                     return true;

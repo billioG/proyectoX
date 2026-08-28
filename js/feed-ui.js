@@ -50,7 +50,7 @@ window.renderAdminPanel = function renderAdminPanel() {
   `;
 }
 
-window.renderChallengeBanner = function renderChallengeBanner(activeChallenge, hasCompleted) {
+window.renderChallengeBanner = function renderChallengeBanner(activeChallenge, hasCompleted, openFn = 'openChallengeEvidenceModal') {
   if (!activeChallenge) return '';
   // El banner naranja + punto pulsando siempre gritaba "pendiente", incluso
   // ya completado -- el check quedaba perdido al final y daba la impresión
@@ -65,7 +65,7 @@ window.renderChallengeBanner = function renderChallengeBanner(activeChallenge, h
   const label = hasCompleted ? 'Reto Completado' : 'Reto Activo';
 
   return `
-    <div onclick="window.openChallengeEvidenceModal && window.openChallengeEvidenceModal('${activeChallenge.id}')" class="flex items-center gap-3 px-4 py-2 ${colorClasses} rounded-xl border cursor-pointer transition-all group/challenge relative" title="${window.sanitizeAttr(activeChallenge.description || '')}">
+    <div onclick="window.${openFn} && window.${openFn}('${activeChallenge.id}')" class="flex items-center gap-3 px-4 py-2 ${colorClasses} rounded-xl border cursor-pointer transition-all group/challenge relative" title="${window.sanitizeAttr(activeChallenge.description || '')}">
       ${dotHtml}
       <span class="text-[0.8rem] font-semibold ${textClass} uppercase tracking-widest">${label}: ${window.sanitizeInput(activeChallenge.name || '')}</span>
     </div>

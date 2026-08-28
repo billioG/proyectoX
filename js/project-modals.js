@@ -207,6 +207,56 @@ window.openChallengeEvidenceModal = async function openChallengeEvidenceModal(ch
   document.body.appendChild(modal);
 }
 
+window.openStudentChallengeModal = async function openStudentChallengeModal(challengeId) {
+  const challenge = (window.MONTHLY_CHALLENGES || []).find(c => c.id === challengeId);
+
+  const { data: existing } = await window._supabase.from('student_challenges')
+    .select('comment, created_at').eq('student_id', window.currentUser.id).eq('challenge_id', challengeId).maybeSingle();
+
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm';
+  modal.innerHTML = `
+      <div class="glass-card w-full max-w-lg p-8 dark:bg-slate-900 shadow-2xl transform scale-100 transition-all duration-300">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                <i class="fas fa-trophy text-amber-500"></i> ${existing ? 'Tu Reflexión de este Mes' : 'Completar Reto del Mes'}
+            </h3>
+            <button class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors" onclick="this.closest('.fixed').remove()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        ${challenge ? `
+        <div class="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 mb-6">
+            <p class="text-sm font-black text-amber-700 dark:text-amber-400 mb-1">${window.sanitizeInput(challenge.name)}</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400">${window.sanitizeInput(challenge.description)}</p>
+            <p class="text-[0.65rem] font-bold text-amber-600 mt-2 uppercase tracking-widest"><i class="fas fa-gift"></i> +30 XP y 10 gemas</p>
+        </div>` : ''}
+
+        ${existing ? `
+        <div class="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/30 mb-2">
+            <p class="text-[0.65rem] font-bold text-emerald-600 uppercase tracking-widest mb-2"><i class="fas fa-circle-check"></i> Enviado el ${new Date(existing.created_at).toLocaleDateString('es-GT')}</p>
+            <p class="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">${window.sanitizeInput(existing.comment)}</p>
+        </div>
+        ` : `
+        <p class="text-slate-600 dark:text-slate-400 text-sm mb-3 leading-relaxed">
+            Contanos cómo aplicaste esto en tu vida o con tus compañeros. Sé concreto.
+        </p>
+        <p class="text-[0.7rem] text-slate-400 mb-3 italic">Una IA revisa que tu reflexión sea concreta antes de contarla como completada -- "ok" o "listo" no alcanza.</p>
+
+        <textarea id="student-challenge-comment" class="w-full h-32 p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all mb-2" placeholder="Escribe aquí tu reflexión..."></textarea>
+        <p id="student-challenge-comment-feedback" class="text-xs text-rose-500 font-semibold mb-6 hidden"></p>
+
+        <div class="flex gap-4">
+            <button class="grow bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold py-3 rounded-xl transition-all" onclick="this.closest('.fixed').remove()">CANCELAR</button>
+            <button id="btn-submit-student-challenge" class="grow bg-primary hover:bg-primary-dark text-white font-bold py-3 rounded-xl shadow-lg shadow-primary/20 transition-all" onclick="window.submitStudentChallengeEvidence && window.submitStudentChallengeEvidence('${challengeId}')">ENVIAR</button>
+        </div>
+        `}
+      </div>
+  `;
+  document.body.appendChild(modal);
+}
+
 window.uploadProject = async function uploadProject() {
   const title = document.getElementById('project-title')?.value.trim();
   const description = document.getElementById('project-description')?.value.trim();

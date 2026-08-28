@@ -2,6 +2,67 @@
  * SISTEMA DE GAMIFICACIÓN Y KPIs (XP, NIVELES, INDICADORES)
  */
 
+window.submitStudentChallengeEvidence = async function submitStudentChallengeEvidence(challengeId) {
+    const _supabase = window._supabase;
+    const currentUser = window.currentUser;
+    const userData = window.userData;
+    const showToast = window.showToast;
+
+    const comment = document.getElementById('student-challenge-comment')?.value.trim();
+    const feedbackEl = document.getElementById('student-challenge-comment-feedback');
+    if (feedbackEl) { feedbackEl.classList.add('hidden'); feedbackEl.textContent = ''; }
+    if (!comment) return showToast('<i class="fas fa-circle-xmark"></i> Contanos un poco tu experiencia', 'error');
+
+    const btn = document.getElementById('btn-submit-student-challenge');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Revisando con IA...';
+
+    try {
+        if (window.AIService && comment.length < 400) {
+            const challenge = (window.MONTHLY_CHALLENGES || []).find(c => c.id === challengeId);
+            const judgePrompt = `Reto del mes: "${challenge?.name || challengeId}". Reflexión de un estudiante: "${comment}". ¿Es una reflexión concreta y específica (no una respuesta vaga tipo "ok", "listo", "bien", ni un relleno genérico)? Responde ÚNICAMENTE con la palabra SI o NO, nada más.`;
+            const verdict = await window.AIService.ask(judgePrompt, '', false, [], 'strict_yesno');
+            const isGeneric = /^no$/i.test((verdict || '').trim());
+            if (isGeneric) {
+                if (feedbackEl) {
+                    feedbackEl.innerHTML = '<i class="fas fa-triangle-exclamation"></i> Tu respuesta parece muy genérica. Contá algo concreto que hiciste.';
+                    feedbackEl.classList.remove('hidden');
+                }
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+                return;
+            }
+        }
+
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Enviando...';
+        const { error } = await _supabase.from('student_challenges').insert({
+            student_id: currentUser.id,
+            challenge_id: challengeId,
+            comment: comment,
+            created_at: new Date().toISOString()
+        });
+
+        if (error) throw error;
+
+        await _supabase.from('students').update({
+            xp: (userData?.xp || 0) + 30,
+            gems: (userData?.gems || 0) + 10
+        }).eq('id', currentUser.id);
+        if (userData) { userData.xp = (userData.xp || 0) + 30; userData.gems = (userData.gems || 0) + 10; }
+
+        showToast('<i class="fas fa-trophy"></i> ¡Reto completado! +30 XP y 10 gemas', 'success');
+        document.querySelector('.fixed.z-\\[100\\]')?.remove();
+        if (typeof window.initGamification === 'function') window.initGamification();
+        if (typeof window.loadFeed === 'function') window.loadFeed();
+    } catch (err) {
+        console.error(err);
+        showToast('<i class="fas fa-circle-xmark"></i> Error: ' + err.message, 'error');
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}
+
 window.initGamification = async function initGamification() {
   const userRole = window.userRole;
   const currentUser = window.currentUser;

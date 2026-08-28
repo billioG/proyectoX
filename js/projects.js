@@ -73,7 +73,11 @@ window.processAndRenderFeed = async function processAndRenderFeed(container, all
   window.setupVideoAudioControl();
 }
 
-window.renderStudentRatingPrompt = async function renderStudentRatingPrompt() { return ''; }
+window.renderStudentRatingPrompt = async function renderStudentRatingPrompt() {
+  const challengeHtml = await window.renderActiveChallengeBanner();
+  if (!challengeHtml) return '';
+  return `<div class="mb-8 animate-slideUp">${challengeHtml}</div>`;
+}
 
 window.renderTeacherManagementPanel = async function renderTeacherManagementPanel() {
   const _supabase = window._supabase;
@@ -110,14 +114,24 @@ window.renderTeacherManagementPanel = async function renderTeacherManagementPane
 window.renderActiveChallengeBanner = async function renderActiveChallengeBanner() {
   const _supabase = window._supabase;
   const currentUser = window.currentUser;
+  const userRole = window.userRole;
   const MONTHLY_CHALLENGES = window.MONTHLY_CHALLENGES;
   const renderChallengeBanner = window.renderChallengeBanner;
 
   if (typeof MONTHLY_CHALLENGES === 'undefined' || !MONTHLY_CHALLENGES) return '';
   const active = MONTHLY_CHALLENGES.find(c => c.isActive);
   if (!active) return '';
-  const { data } = await _supabase.from('teacher_challenges').select('id').eq('teacher_id', currentUser.id).eq('challenge_id', active.id).maybeSingle();
-  return (typeof renderChallengeBanner === 'function') ? renderChallengeBanner(active, !!data) : '';
+
+  // Reto del mes: mismo contenido para docentes y estudiantes, pero cada
+  // rol tiene su propia tabla (student_challenges no comparte FK con
+  // teacher_challenges) y su propio modal de envío.
+  const isStudent = userRole === 'estudiante';
+  const table = isStudent ? 'student_challenges' : 'teacher_challenges';
+  const idField = isStudent ? 'student_id' : 'teacher_id';
+  const openFn = isStudent ? 'openStudentChallengeModal' : 'openChallengeEvidenceModal';
+
+  const { data } = await _supabase.from(table).select('id').eq(idField, currentUser.id).eq('challenge_id', active.id).maybeSingle();
+  return (typeof renderChallengeBanner === 'function') ? renderChallengeBanner(active, !!data, openFn) : '';
 }
 
 window.renderFeedFilters = function renderFeedFilters(projects) {

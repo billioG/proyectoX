@@ -207,6 +207,11 @@ window.processAndRenderBonus = function processAndRenderBonus(container, data) {
     const tutorId = currentUser.id;
     const now = new Date();
 
+    // Cache local de los colegios asignados (con geofence) para el check-in
+    // GPS offline -- si no hay internet no se puede consultar 'schools' de
+    // nuevo, pero esta data ya viajó en el snapshot cacheado por fetchWithCache.
+    window._tutorSchoolsCache = (assignments || []).map(a => a.schools).filter(Boolean);
+
     // Misma ventana de 7 días que valida sync-manager.js antes de insertar --
     // si ya hay evidencia de esta semana, se oculta el botón en vez de dejar
     // que el docente la reintente y choque con el constraint "1 por semana".
@@ -676,13 +681,31 @@ window.handleTutorCheckIn = async function handleTutorCheckIn(schoolId) {
     navigator.geolocation.getCurrentPosition(async (pos) => {
         try {
             const { latitude, longitude } = pos.coords;
-            const { data: sch } = await _supabase.from('schools').select('*').eq('id', schoolId).single();
-            if (!sch) throw new Error("Colegio no encontrado.");
+
+            // Sin internet no se puede consultar 'schools' de nuevo -- se
+            // usa el snapshot cacheado (mismos colegios, mismo geofence) que
+            // ya viajó la última vez que hubo señal.
+            let sch = null;
+            try {
+                const { data } = await _supabase.from('schools').select('*').eq('id', schoolId).single();
+                sch = data;
+            } catch (e) { /* sin red, sigue con la cache */ }
+            if (!sch) sch = (window._tutorSchoolsCache || []).find(s => String(s.id) === String(schoolId));
+            if (!sch) throw new Error("Colegio no encontrado (y no hay cache offline -- abrí esta pantalla con internet al menos una vez).");
+
             const dist = calculateDist(latitude, longitude, sch.latitude, sch.longitude);
             if (dist > (sch.geofence_radius || 150)) throw new Error(`Fuera de rango (${Math.round(dist)}m)`);
-            const { error } = await _supabase.from('tutor_attendance').insert({ tutor_id: currentUser.id, school_id: schoolId, latitude, longitude, distance_meters: dist, is_valid_entry: true });
-            if (error) throw error;
-            showToast('<i class="fas fa-circle-check"></i> Asistencia confirmada', 'success');
+
+            const checkinData = { tutor_id: currentUser.id, school_id: schoolId, latitude, longitude, distance_meters: dist, is_valid_entry: true };
+
+            if (navigator.onLine) {
+                const { error } = await _supabase.from('tutor_attendance').insert(checkinData);
+                if (error) throw error;
+                showToast('<i class="fas fa-circle-check"></i> Asistencia confirmada', 'success');
+            } else {
+                await _syncManager.enqueue('tutor_checkin', checkinData);
+                showToast('<i class="fas fa-cloud-arrow-up"></i> Sin internet -- asistencia guardada, se sincroniza sola cuando vuelva la señal', 'success');
+            }
             loadBonusSystem();
         } catch (err) { showToast('<i class="fas fa-circle-xmark"></i> ' + err.message, 'error'); btn.disabled = false; btn.innerHTML = orig; }
     }, (err) => { showToast('<i class="fas fa-circle-xmark"></i> GPS Requerido', 'error'); btn.disabled = false; btn.innerHTML = orig; }, { enableHighAccuracy: true });

@@ -1797,6 +1797,7 @@ window.buildResourceCommentsHtml = function buildResourceCommentsHtml(comments, 
       <div class="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 text-xs">
         <span class="font-bold ${c.author_role === 'docente' ? 'text-primary' : 'text-slate-600 dark:text-slate-300'}">${sanitizeInput(c.author_name)}${c.author_role === 'docente' ? ' <i class="fas fa-chalkboard-user"></i>' : ''}</span>
         <p class="text-slate-500 dark:text-slate-400 mt-0.5">${sanitizeInput(c.content)}</p>
+        ${c.attachment_url ? `<a href="${c.attachment_url}" target="_blank" rel="noopener" class="block mt-1.5">${/\.(png|jpe?g|gif|webp)$/i.test(c.attachment_url) ? `<img src="${c.attachment_url}" class="max-h-32 rounded-lg border border-slate-200 dark:border-slate-700">` : `<span class="text-[0.65rem] font-bold text-primary"><i class="fas fa-paperclip"></i> Ver archivo adjunto</span>`}</a>` : ''}
         <div class="flex items-center gap-3 mt-1.5">
           <button class="text-[0.65rem] font-bold ${likedByMe ? 'text-rose-500' : 'text-slate-400 hover:text-rose-400'}" onclick="${fns.likeFn(c.id, likedByMe)}"><i class="fa${likedByMe ? 's' : 'r'} fa-heart"></i>${likes.length ? ' ' + likes.length : ''}</button>
           <button class="text-[0.65rem] font-bold text-slate-400 hover:text-primary" onclick="window.toggleCommentReplyBox('${c.id}')"><i class="fas fa-reply"></i> Responder</button>
@@ -1878,8 +1879,13 @@ window.renderResourceSocialPanel = function renderResourceSocialPanel(lessonId, 
         <h4 class="text-xs font-black uppercase text-slate-400 tracking-widest mb-2"><i class="fas fa-comments"></i> Comentarios del equipo</h4>
         ${!groupId ? `<p class="text-xs text-slate-400">Formá parte de un equipo para comentar acá.</p>` : `
           <div id="resource-comments-list" class="space-y-2 max-h-52 overflow-y-auto custom-scrollbar mb-2 pr-1">${commentsHtml}</div>
+          <div id="resource-comment-attachment-preview" class="hidden mb-2"></div>
           <div class="flex gap-2">
             <input id="resource-comment-input" class="input-field-tw h-9 text-sm flex-1" placeholder="Escribí un comentario...">
+            <label class="w-9 h-9 shrink-0 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-primary flex items-center justify-center cursor-pointer" title="Adjuntar captura o archivo (evidencia)">
+              <i class="fas fa-paperclip"></i>
+              <input type="file" id="resource-comment-file" class="hidden" accept="image/*,.pdf" onchange="window.previewResourceCommentAttachment(this)">
+            </label>
             <button class="btn-primary-tw h-9 px-4 text-xs uppercase font-bold shrink-0" onclick="window.postResourceComment('${lessonId}', '${groupId}', null)"><i class="fas fa-paper-plane"></i></button>
           </div>
         `}
@@ -1907,6 +1913,15 @@ window.postResourceNote = async function postResourceNote(lessonId) {
   window.loadResourceSocialPanel(lessonId);
 };
 
+window.previewResourceCommentAttachment = function previewResourceCommentAttachment(input) {
+  const preview = document.getElementById('resource-comment-attachment-preview');
+  if (!preview) return;
+  const file = input.files?.[0];
+  if (!file) { preview.classList.add('hidden'); preview.innerHTML = ''; return; }
+  preview.classList.remove('hidden');
+  preview.innerHTML = `<span class="inline-flex items-center gap-2 text-[0.65rem] font-bold text-primary bg-primary/10 px-2 py-1 rounded-lg"><i class="fas fa-paperclip"></i> ${window.sanitizeInput(file.name)} <i class="fas fa-times cursor-pointer" onclick="document.getElementById('resource-comment-file').value=''; window.previewResourceCommentAttachment(document.getElementById('resource-comment-file'));"></i></span>`;
+};
+
 window.postResourceComment = async function postResourceComment(lessonId, groupId, parentId) {
   const inputId = parentId ? `reply-input-${parentId}` : 'resource-comment-input';
   const input = document.getElementById(inputId);
@@ -1914,6 +1929,19 @@ window.postResourceComment = async function postResourceComment(lessonId, groupI
   const content = input.value.trim();
   if (!content) return;
   const userData = window.userData || {};
+
+  // Adjunto (evidencia de tarea) -- solo disponible en el comentario raíz,
+  // no en respuestas, para mantener el input simple.
+  const fileInput = !parentId ? document.getElementById('resource-comment-file') : null;
+  const file = fileInput?.files?.[0];
+  let attachment_url = null;
+  if (file) {
+    const fileName = `${window.currentUser.id}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+    const { error: uploadError } = await window._supabase.storage.from('comment-attachments').upload(fileName, file);
+    if (uploadError) return window.showToast('<i class="fas fa-circle-xmark"></i> Error subiendo el adjunto: ' + uploadError.message, 'error');
+    const { data } = window._supabase.storage.from('comment-attachments').getPublicUrl(fileName);
+    attachment_url = data.publicUrl;
+  }
 
   const { error } = await window._supabase.from('resource_comments').insert({
     lesson_id: lessonId,
@@ -1923,12 +1951,14 @@ window.postResourceComment = async function postResourceComment(lessonId, groupI
     author_name: userData.full_name || 'Estudiante',
     author_role: window.userRole,
     content,
+    attachment_url,
   });
 
   if (error) {
     const msg = error.message.includes('CONTENIDO_INAPROPIADO') ? 'Ese comentario tiene lenguaje no permitido' : error.message;
     return window.showToast('<i class="fas fa-circle-xmark"></i> ' + msg, 'error');
   }
+  if (fileInput) { fileInput.value = ''; window.previewResourceCommentAttachment(fileInput); }
   if (typeof checkAllBadges === 'function') checkAllBadges(window.currentUser.id);
   window.loadResourceSocialPanel(lessonId);
 };
