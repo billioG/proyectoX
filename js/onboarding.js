@@ -285,6 +285,14 @@ async function runGuidedTour(rawSteps) {
   driverObj = window.driver.js.driver({
     showProgress: true,
     allowClose: true,
+    // driver.js deja pasar clicks al elemento resaltado por default. En los
+    // pasos que resaltan un ítem de menú real (#nav-est-lessons, etc.) el
+    // usuario tiende a clickear el propio menú en vez de "Siguiente" -- eso
+    // navega la app de verdad pero el tour no se entera y avanza, así que
+    // se queda resaltando el ítem del menú sin nunca mostrar la info del
+    // siguiente paso. Se bloquea la interacción con el elemento resaltado
+    // para forzar el flujo por "Siguiente".
+    disableActiveInteraction: true,
     overlayColor: 'rgb(2, 6, 23)',
     nextBtnText: 'Siguiente →',
     prevBtnText: '← Atrás',

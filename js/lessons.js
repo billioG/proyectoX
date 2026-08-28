@@ -521,6 +521,19 @@ window.renderCourseResourcesList = function renderCourseResourcesList() {
 window.previewCourseResource = function previewCourseResource(lessonId) {
   const lesson = (window._managingCourseLessons || []).find(l => l.id === lessonId);
   if (!lesson) return;
+
+  // Mismo workaround que en selectCourseResource(): el estado global de
+  // h5p-standalone (window.H5P/H5PIntegration) queda contaminado tras el
+  // primer H5P cargado en la página -- vista previa docente y reproductor
+  // alumno comparten el mismo _loadedH5PLessonId a propósito, porque el
+  // problema es global, no por contexto.
+  if (lesson.content_type === 'h5p' && window._loadedH5PLessonId && window._loadedH5PLessonId !== lesson.id) {
+    sessionStorage.setItem('PX_RESUME_PREVIEW', JSON.stringify({ courseId: lesson.course_id, lessonId: lesson.id }));
+    window.location.reload();
+    return;
+  }
+  if (lesson.content_type === 'h5p') window._loadedH5PLessonId = lesson.id;
+
   const sanitizeInput = window.sanitizeInput || ((v) => v);
 
   let mediaHtml = '';

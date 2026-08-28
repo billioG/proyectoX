@@ -398,6 +398,21 @@ export async function handleSuccessfulLogin(user) {
           }, 300);
         } catch (e) { /* ignora resume corrupto */ }
       }
+
+      // Mismo workaround, para la vista previa de H5P del docente (modal
+      // "Gestionar recursos" -> Vista previa).
+      const resumePreviewRaw = sessionStorage.getItem('PX_RESUME_PREVIEW');
+      if (resumePreviewRaw && (window.userRole === 'docente' || window.userRole === 'admin')) {
+        sessionStorage.removeItem('PX_RESUME_PREVIEW');
+        try {
+          const { courseId, lessonId } = JSON.parse(resumePreviewRaw);
+          nav('lessons');
+          setTimeout(async () => {
+            await window.openCourseManager(courseId);
+            window.previewCourseResource(lessonId);
+          }, 300);
+        } catch (e) { /* ignora resume corrupto */ }
+      }
     }
 
     if (typeof initGamification === 'function') initGamification();
