@@ -66,8 +66,33 @@ const STUDENT_TOUR_STEPS = [
   {
     before: () => window.nav('upload'),
     element: '#project-title',
-    title: 'Contale a todos tu proyecto',
-    description: 'Poné un título claro, describí qué problema resuelve y subí el video (máx 50MB). Podés subirlo individual o a nombre de tu equipo.',
+    title: 'Título de tu proyecto',
+    description: 'Poné un nombre claro y llamativo -- es lo primero que va a ver la comunidad.',
+  },
+  {
+    element: '#project-description',
+    title: 'Inspiración y Retos',
+    description: 'Contá qué problema resuelve tu proyecto y qué materiales usaste. Mientras más detalle, mejor lo va a poder evaluar tu docente.',
+  },
+  {
+    element: '#project-bimestre',
+    title: 'Bimestre',
+    description: 'Elegí el bimestre al que corresponde esta entrega.',
+  },
+  {
+    element: '#project-group',
+    title: 'Individual o en equipo',
+    description: 'Si trabajaste con tu equipo, seleccionalo acá -- el proyecto va a quedar publicado a nombre de todos.',
+  },
+  {
+    element: '#project-video',
+    title: 'Demostración en Video',
+    description: 'Subí un video mostrando tu proyecto funcionando (máx 50MB). Es obligatorio para poder publicar.',
+  },
+  {
+    element: '#btn-upload-project',
+    title: 'Publicar',
+    description: 'Cuando todo esté listo, tocá acá para publicar tu proyecto y que lo vea toda la comunidad.',
   },
   {
     element: '#nav-est-ranking',
@@ -97,6 +122,13 @@ const STUDENT_TOUR_STEPS = [
   },
   {
     element: '#mascot-widget-container',
+    // La mascota fuerza pointer-events:auto !important sobre sí misma (para
+    // que siempre se pueda tocar), lo que gana incluso a disableActiveInteraction.
+    // Con side:'right' (default) el popover y su botón "Listo" quedaban
+    // encima del propio widget en la esquina inferior derecha -- el click
+    // en "Listo" lo interceptaba la mascota (abría su chat) en vez de
+    // cerrar el tour, y solo la X (arriba del popover) funcionaba.
+    side: 'left',
     title: 'Tu mascota',
     description: 'Te acompaña, te motiva y podés hablarle -- es tu coach educativo y emocional. Tocala cuando quieras.',
   },
@@ -202,6 +234,13 @@ const TEACHER_TOUR_STEPS = [
   },
   {
     element: '#mascot-widget-container',
+    // La mascota fuerza pointer-events:auto !important sobre sí misma (para
+    // que siempre se pueda tocar), lo que gana incluso a disableActiveInteraction.
+    // Con side:'right' (default) el popover y su botón "Listo" quedaban
+    // encima del propio widget en la esquina inferior derecha -- el click
+    // en "Listo" lo interceptaba la mascota (abría su chat) en vez de
+    // cerrar el tour, y solo la X (arriba del popover) funcionaba.
+    side: 'left',
     title: 'Tu mascota',
     description: 'Te acompaña y te da apoyo -- tocala cuando quieras hablar con ella.',
   },

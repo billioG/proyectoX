@@ -339,6 +339,37 @@ function generateUsername(primerNombre, segundoNombre, apellido1, apellido2) {
     return { base: baseUsername, alternative: altUsername };
 }
 
+// Lista de candidatos para cuando el username choca con OTRO estudiante real
+// (mismo patrón "primera letra + apellido" pero es gente distinta) -- se
+// prueba en cascada: letra del segundo nombre, segundo apellido, ambos
+// combinados, y como último recurso un sufijo numérico. Se usa solo cuando
+// el CUI NO coincide (si el CUI coincide sí es la misma persona reimportada
+// y ahí corresponde omitir de verdad).
+function generateUsernameVariants(primerNombre, segundoNombre, apellido1, apellido2) {
+    const cleanName = (str) => (str || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[̀-ͯ]/g, '')
+        .replace(/[^a-z]/g, '');
+
+    const n1 = cleanName(primerNombre);
+    const n2 = cleanName(segundoNombre);
+    const a1 = cleanName(apellido1);
+    const a2 = cleanName(apellido2);
+
+    const candidates = [
+        n1.charAt(0) + a1,
+        n2 ? n1.charAt(0) + n2.charAt(0) + a1 : '',
+        a2 && a2 !== a1 ? n1.charAt(0) + a2 : '',
+        a2 && a2 !== a1 && n2 ? n1.charAt(0) + n2.charAt(0) + a2 : '',
+    ].filter(Boolean);
+
+    const base = candidates[0] || (n1 + a1) || 'estudiante';
+    for (let i = 1; i <= 999; i++) candidates.push(base + i);
+
+    return candidates;
+}
+
 async function ensureUniqueUsernames(students) {
     console.log(`🔍 Iniciando validación de unicidad para ${students.length} estudiantes...`);
     window.showToast(`<i class="fas fa-rocket"></i> Creando ${students.length} usuarios... Por favor espera.`, 'info');
@@ -637,16 +668,40 @@ window.createUsersFromExtractedData = async function createUsersFromExtractedDat
     // Antes se descartaba silenciosamente por qué cada alumno se omitía --
     // solo quedaba el número total (skippedCount), sin nombre ni motivo, así
     // que el admin no tenía forma de saber a quién le tocaba revisar.
+    //
+    // El CUI es el DNI real -- si coincide, es la MISMA persona reimportada
+    // y ahí sí corresponde omitir. Pero un choque de username/correo sin
+    // choque de CUI casi siempre es OTRO estudiante que generó el mismo
+    // patrón "primera letra + apellido" (ej. dos "Erick Almonte" en
+    // escuelas distintas) -- para esos se prueban variantes (letra del
+    // segundo nombre, segundo apellido, sufijo numérico) antes de omitir.
     const toCreate = [];
     const skipped = [];
     students.forEach(s => {
-        let reason = null;
-        if (existingUsernames.has(s.username)) reason = `usuario "${s.username}" ya existe`;
-        else if (existingEmails.has(s.email)) reason = `correo "${s.email}" ya existe`;
-        else if (s.cui && existingCUIs.has(s.cui)) reason = `CUI "${s.cui}" ya existe`;
+        if (s.cui && existingCUIs.has(s.cui)) {
+            skipped.push({ ...s, reason: `CUI "${s.cui}" ya existe (mismo estudiante)` });
+            return;
+        }
 
-        if (reason) skipped.push({ ...s, reason });
-        else toCreate.push(s);
+        if (!existingUsernames.has(s.username) && !existingEmails.has(s.email)) {
+            existingUsernames.add(s.username);
+            existingEmails.add(s.email);
+            toCreate.push(s);
+            return;
+        }
+
+        const variants = generateUsernameVariants(s.primerNombre, s.segundoNombre, s.apellido1, s.apellido2);
+        const domain = (s.email || '').split('@')[1] || 'estudiante.edu.gt';
+        const resolvedUsername = variants.find(v => !existingUsernames.has(v) && !existingEmails.has(`${v}@${domain}`));
+
+        if (!resolvedUsername) {
+            skipped.push({ ...s, reason: `usuario "${s.username}" ya existe y no se pudo generar variante` });
+            return;
+        }
+
+        existingUsernames.add(resolvedUsername);
+        existingEmails.add(`${resolvedUsername}@${domain}`);
+        toCreate.push({ ...s, username: resolvedUsername, email: `${resolvedUsername}@${domain}` });
     });
     const skippedCount = skipped.length;
 
