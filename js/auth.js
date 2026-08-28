@@ -381,6 +381,23 @@ export async function handleSuccessfulLogin(user) {
       // antes (ej. "students", con el import de nómina MINEDUC).
       const hasLastView = lastView && document.getElementById(`view-${lastView}`) && isViewAllowedForRole(lastView, window.userRole);
       nav(hasLastView ? lastView : defaultView);
+
+      // Resume tras reload forzado (workaround H5P: 2do recurso h5p en la
+      // misma sesión de página siempre falla, así que se recarga la página
+      // completa y se retoma acá el curso/recurso donde el usuario iba).
+      const resumeRaw = sessionStorage.getItem('PX_RESUME_COURSE');
+      if (resumeRaw && window.userRole === 'estudiante') {
+        sessionStorage.removeItem('PX_RESUME_COURSE');
+        try {
+          const { courseId, index } = JSON.parse(resumeRaw);
+          nav('lessons');
+          setTimeout(async () => {
+            if (!window._coursesCache) await window.loadLessons();
+            window.openCoursePlayer(courseId);
+            window.selectCourseResource(index);
+          }, 300);
+        } catch (e) { /* ignora resume corrupto */ }
+      }
     }
 
     if (typeof initGamification === 'function') initGamification();

@@ -1663,6 +1663,20 @@ window.selectCourseResource = function selectCourseResource(index) {
   window._activeCourseIndex = index;
   const lesson = items[index];
 
+  // h5p-standalone acumula estado global (window.H5P/window.H5PIntegration)
+  // entre instancias y se corrompe al inicializar un SEGUNDO contenido H5P
+  // sin recargar la página completa -- confirmado: el primero siempre
+  // carga bien, el segundo siempre falla ("tardó demasiado"), y solo
+  // recargar la página lo arregla. En vez de pedirle al alumno que
+  // recargue a mano (perdiendo su lugar en el curso), se recarga sola acá
+  // guardando dónde estaba para volver directo a este mismo recurso.
+  if (lesson.content_type === 'h5p' && window._loadedH5PLessonId && window._loadedH5PLessonId !== lesson.id) {
+    sessionStorage.setItem('PX_RESUME_COURSE', JSON.stringify({ courseId: window._activeCourse.course.id, index }));
+    window.location.reload();
+    return;
+  }
+  if (lesson.content_type === 'h5p') window._loadedH5PLessonId = lesson.id;
+
   const titleEl = document.getElementById('course-player-resource-title');
   if (titleEl) titleEl.textContent = lesson.title;
 

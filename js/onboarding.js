@@ -264,6 +264,16 @@ async function runGuidedTour(rawSteps) {
     return;
   }
 
+  // initOnboarding() puede dispararse más de una vez para el mismo login
+  // (ej. auto-login con sesión cacheada + el propio submit del form, o un
+  // re-render disparado por el service worker) -- sin este guard, cada
+  // llamada creaba su PROPIA instancia de driver.js corriendo en paralelo,
+  // cada una resaltando un paso distinto de la misma lista al mismo tiempo
+  // (visible como dos popovers superpuestos, ej. "11 de 12" y "12 de 12"
+  // a la vez).
+  if (window._onboardingTourActive) return;
+  window._onboardingTourActive = true;
+
   // El primer paso puede necesitar su propio `before` (ej. asegurar que
   // arrancamos en "feed") antes de que driver.js empiece a resaltar nada.
   if (typeof rawSteps[0]?.before === 'function') {
@@ -280,7 +290,7 @@ async function runGuidedTour(rawSteps) {
     prevBtnText: '← Atrás',
     doneBtnText: '¡Listo! <i class="fas fa-rocket"></i>',
     progressText: '{{current}} de {{total}}',
-    onDestroyed: () => completeOnboarding(),
+    onDestroyed: () => { window._onboardingTourActive = false; completeOnboarding(); },
     steps: buildDriverSteps(rawSteps, () => driverObj),
   });
 
