@@ -20,8 +20,8 @@ const MODULE_MAP = {
     'admin-eval-report': ['js/admin-evaluations.js'],
     'evaluate': ['js/evaluation.js', 'js/evaluation-modals.js', 'js/evaluation-notifications.js'],
     'ranking': ['js/ranking.js'],
-    'profile': ['js/profile.js', 'js/badges.js', 'js/kpi-engine.js', 'js/gamification.js', 'js/duels.js', 'js/hangman-duel.js', 'js/practice-quiz.js', 'js/companion.js', 'js/tournaments.js', 'js/profile-modals.js', 'js/feed-ui.js', 'js/project-modals.js', 'js/reports.js', 'js/certificates.js'],
-    'feed': ['js/projects.js', 'js/gamification.js', 'js/duels.js', 'js/hangman-duel.js', 'js/practice-quiz.js', 'js/companion.js', 'js/tournaments.js', 'js/kpi-engine.js', 'js/feed-ui.js', 'js/project-modals.js', 'js/profile-modals.js', 'js/reports.js', 'js/certificates.js'],
+    'profile': ['js/profile.js', 'js/badges.js', 'js/kpi-engine.js', 'js/gamification.js', 'js/duels.js', 'js/hangman-duel.js', 'js/timed-math-duel.js', 'js/debug-duel.js', 'js/practice-quiz.js', 'js/companion.js', 'js/tournaments.js', 'js/profile-modals.js', 'js/feed-ui.js', 'js/project-modals.js', 'js/reports.js', 'js/certificates.js'],
+    'feed': ['js/projects.js', 'js/gamification.js', 'js/duels.js', 'js/hangman-duel.js', 'js/timed-math-duel.js', 'js/debug-duel.js', 'js/practice-quiz.js', 'js/companion.js', 'js/tournaments.js', 'js/kpi-engine.js', 'js/feed-ui.js', 'js/project-modals.js', 'js/profile-modals.js', 'js/reports.js', 'js/certificates.js'],
     'upload': ['js/project-modals.js', 'js/groups.js'],
     'bonus-system': ['js/bonus-system.js', 'js/certificates.js'],
     'lessons': ['js/lessons.js']
