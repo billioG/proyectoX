@@ -210,8 +210,15 @@ window.processAndRenderBonus = function processAndRenderBonus(container, data) {
     // Misma ventana de 7 días que valida sync-manager.js antes de insertar --
     // si ya hay evidencia de esta semana, se oculta el botón en vez de dejar
     // que el docente la reintente y choque con el constraint "1 por semana".
+    // "evidence" viene de la DB -- pero al subir en modo offline (Kolibri) la
+    // evidencia queda en la cola local (IndexedDB) hasta que sincroniza, así
+    // que recién ahí aparecería acá. Por eso también se guarda un timestamp
+    // en localStorage apenas se encola, para bloquear el botón al instante
+    // sin esperar a que termine de sincronizar.
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const hasEvidenceThisWeek = (evidence || []).some(e => new Date(e.created_at) >= sevenDaysAgo);
+    const lastLocalSubmit = localStorage.getItem(`px_last_evidence_submit_${tutorId}`);
+    const hasEvidenceThisWeek = (evidence || []).some(e => new Date(e.created_at) >= sevenDaysAgo)
+        || (lastLocalSubmit && new Date(lastLocalSubmit) >= sevenDaysAgo);
 
     // Procesar Rocas
     const activeRocks = (rocks || []).filter(r => {
@@ -811,6 +818,10 @@ window.handleDocPhotoSelect = function handleDocPhotoSelect(input) {
                 // USAR EL GESTOR DE SINCRONIZACIÓN (MODO KOLIBRI / OFFLINE)
                 await _syncManager.enqueue('submit_evidence', evidenceData);
                 await _syncManager.enqueue('asset_audit', auditData);
+
+                // Bloquear el botón al instante -- no esperar a que sincronice
+                // para que el docente vea que ya quedó registrada esta semana.
+                localStorage.setItem(`px_last_evidence_submit_${currentUser.id}`, new Date().toISOString());
 
                 showToast('<i class="fas fa-rocket"></i> Evidencia guardada (Pendiente Sync)', 'success');
                 loadBonusSystem();
