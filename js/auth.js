@@ -6,6 +6,21 @@ import { MOTIVATIONAL_QUOTES } from './data/quotes.js';
  * AUTH - Gestión de autenticación y sesión de usuario (Tailwind Edition)
  */
 
+// Espera a que window[name] exista como función -- usado para el resume
+// tras el reload forzado por H5P, donde el módulo que la define (lessons.js)
+// puede seguir cargando vía import() dinámico en frío.
+function waitForGlobalFn(name, timeout = 8000) {
+  return new Promise((resolve) => {
+    const start = Date.now();
+    const check = () => {
+      if (typeof window[name] === 'function') return resolve(true);
+      if (Date.now() - start > timeout) return resolve(false);
+      setTimeout(check, 100);
+    };
+    check();
+  });
+}
+
 export async function initAuth() {
   // El link de "recuperar contraseña" también autentica al usuario (así
   // funciona Supabase Auth) -- si no distinguimos este caso, getSession()
@@ -385,17 +400,23 @@ export async function handleSuccessfulLogin(user) {
       // Resume tras reload forzado (workaround H5P: 2do recurso h5p en la
       // misma sesión de página siempre falla, así que se recarga la página
       // completa y se retoma acá el curso/recurso donde el usuario iba).
+      // nav('lessons') dispara la carga del módulo lessons.js vía import()
+      // dinámico -- en frío (recién recargada la página) puede tardar más
+      // de los 300ms fijos que había antes, dejando openCoursePlayer/
+      // openCourseManager todavía indefinidos quand se intentaban llamar.
+      // Por eso ahora se espera activamente a que la función exista.
       const resumeRaw = sessionStorage.getItem('PX_RESUME_COURSE');
       if (resumeRaw && window.userRole === 'estudiante') {
         sessionStorage.removeItem('PX_RESUME_COURSE');
         try {
           const { courseId, index } = JSON.parse(resumeRaw);
           nav('lessons');
-          setTimeout(async () => {
+          waitForGlobalFn('openCoursePlayer').then(async (ok) => {
+            if (!ok) return;
             if (!window._coursesCache) await window.loadLessons();
             window.openCoursePlayer(courseId);
             window.selectCourseResource(index);
-          }, 300);
+          });
         } catch (e) { /* ignora resume corrupto */ }
       }
 
@@ -407,10 +428,11 @@ export async function handleSuccessfulLogin(user) {
         try {
           const { courseId, lessonId } = JSON.parse(resumePreviewRaw);
           nav('lessons');
-          setTimeout(async () => {
+          waitForGlobalFn('openCourseManager').then(async (ok) => {
+            if (!ok) return;
             await window.openCourseManager(courseId);
             window.previewCourseResource(lessonId);
-          }, 300);
+          });
         } catch (e) { /* ignora resume corrupto */ }
       }
     }

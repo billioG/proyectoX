@@ -45,7 +45,7 @@ const STUDENT_TOUR_STEPS = [
   {
     element: '#feed-container',
     title: 'Proyectos de la comunidad',
-    description: 'Mirá lo que hicieron otros estudiantes y dale like a los que más te gusten. Arriba del feed podés retar a un compañero a un Duelo 1v1 apostando gemas.',
+    description: 'Mirá lo que hicieron otros estudiantes y dale like a los que más te gusten.',
   },
   {
     element: '#nav-est-lessons',
@@ -89,6 +89,11 @@ const STUDENT_TOUR_STEPS = [
     element: '#announcements-bell',
     title: 'Avisos',
     description: 'Notificaciones de tu docente, encuestas y respuestas a tus comentarios -- el punto rojo indica que hay algo nuevo sin ver.',
+  },
+  {
+    element: '#open-game-center-btn',
+    title: 'Centro de Juego',
+    description: 'Retá a un compañero a un Duelo 1v1 apostando gemas y mirá cómo evoluciona tu mascota con las que ganás.',
   },
   {
     element: '#mascot-widget-container',
@@ -245,15 +250,24 @@ function buildDriverSteps(rawSteps, getDriverObj) {
         description: s.description,
         side: s.side || 'right',
         align: 'start',
+        // driver.js SOLO lee onNextClick/onPrevClick/onCloseClick anidados
+        // dentro de `popover` (ver su función interna L(): `t?.popover
+        // ?.onNextClick`) -- puesto al nivel del step (como estaba antes)
+        // nunca se ejecuta y cae al avance por default, que solo mueve el
+        // índice sin correr `before()` ni esperar que el elemento del
+        // siguiente paso exista. Resultado: cualquier paso que dependiera
+        // de un nav() previo (ir a Cursos, Ranking, etc.) se quedaba con el
+        // popover flotando sin resaltar nada, porque la vista real nunca
+        // cambiaba.
+        onNextClick: next ? async () => {
+          if (typeof next.before === 'function') {
+            try { next.before(); } catch (e) { console.error('Error en paso de onboarding:', e); }
+          }
+          await syncMobileSidebarForSelector(next.element);
+          await waitForSelector(next.element, 5000);
+          getDriverObj().moveNext();
+        } : undefined,
       },
-      onNextClick: next ? async () => {
-        if (typeof next.before === 'function') {
-          try { next.before(); } catch (e) { console.error('Error en paso de onboarding:', e); }
-        }
-        await syncMobileSidebarForSelector(next.element);
-        await waitForSelector(next.element, 5000);
-        getDriverObj().moveNext();
-      } : undefined,
     };
   });
 }

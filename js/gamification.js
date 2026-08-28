@@ -193,7 +193,7 @@ window.renderGamificationSidebar = function renderGamificationSidebar(level, tot
       </div>
 
       <!-- GAME CENTER BUTTON (NEW) -->
-      <button onclick="window.openGamificationHub && window.openGamificationHub()" class="w-full py-3 mt-4 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-black uppercase tracking-widest shadow-lg shadow-indigo-500/25 hover:scale-[1.02] active:scale-95 transition-all text-[0.65rem] flex items-center justify-center gap-2 relative z-10">
+      <button id="open-game-center-btn" onclick="window.openGamificationHub && window.openGamificationHub()" class="w-full py-3 mt-4 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-black uppercase tracking-widest shadow-lg shadow-indigo-500/25 hover:scale-[1.02] active:scale-95 transition-all text-[0.65rem] flex items-center justify-center gap-2 relative z-10">
         <i class="fas fa-gamepad animate-bounce"></i> Abrir Centro de Juego
         <span id="duel-pending-badge" style="display:none" class="ml-1 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[0.6rem] font-black items-center justify-center animate-pulse">0</span>
       </button>
