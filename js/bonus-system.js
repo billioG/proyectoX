@@ -292,7 +292,7 @@ window.processAndRenderBonus = function processAndRenderBonus(container, data) {
     if (adminProg < 1) adminProg = Math.min(1, adminProg + wildcardValue);
     else if (prodProg < 1) prodProg = Math.min(1, prodProg + wildcardValue);
 
-    window.renderTutorView(container, teacher, [...adminKpis, ...prodKpis], assignments, history, { adminProg, prodProg });
+    window.renderTutorView(container, teacher, [...adminKpis, ...prodKpis], assignments, history, { adminProg, prodProg }, hasEvidenceThisWeek);
 }
 
 window.calculateMetrics = async function calculateMetrics(tutorId) {
@@ -313,7 +313,7 @@ window.calculateMetrics = async function calculateMetrics(tutorId) {
 // UI RENDERING
 // ================================================
 
-window.renderTutorView = function renderTutorView(container, teacher, kpis, assignments, history, calculatedProgs) {
+window.renderTutorView = function renderTutorView(container, teacher, kpis, assignments, history, calculatedProgs, hasEvidenceThisWeek) {
     const base = parseFloat(teacher.base_salary || 0);
     const maxAdmin = parseFloat(teacher.bonus_admin_max || 0);
     const maxProd = parseFloat(teacher.bonus_prod_max || 0);
