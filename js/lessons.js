@@ -588,6 +588,7 @@ window.previewCourseResource = function previewCourseResource(lessonId) {
         setTimeout(() => tryInit(attempt + 1), 800);
         return;
       }
+      resetH5PGlobalState();
       new H5PStandalone.H5P(container, {
         h5pJsonPath: lesson.content_url.replace(/\/$/, ''),
         frameJs: h5pVendorUrl('frame.bundle.js'),
@@ -2144,9 +2145,28 @@ window.teardownScormSession = function teardownScormSession() {
 // ================================================
 // RUNTIME H5P -- captura nota vía eventos xAPI
 // ================================================
+// h5p-standalone guarda TODO en globales compartidos (window.H5P,
+// window.H5PIntegration, y marca cada <script>/<link> que inyecta con
+// data-h5p="..." para no volver a insertarlos) -- está pensado para una
+// sola actividad por carga de página completa, no para navegar entre
+// varios recursos H5P de un curso sin recargar. La segunda vez, esos
+// globales quedan con el estado de la actividad ANTERIOR (ej.
+// H5P.preventInit en false, contenidos previos todavía en
+// H5PIntegration.contents) y la inicialización de la nueva falla --
+// coincide exacto con "el primero carga bien, el segundo da error, y
+// recargar la página lo arregla" reportado. Se resetea todo antes de
+// cada instancia nueva para que cada una arranque como si fuera la
+// primera carga de la página.
+function resetH5PGlobalState() {
+  delete window.H5P;
+  delete window.H5PIntegration;
+  document.querySelectorAll('script[data-h5p], link[data-h5p]').forEach(el => el.remove());
+}
+
 window.initH5PSession = async function initH5PSession(lesson, attempt = 1) {
   const container = document.getElementById('h5p-container');
   if (!container) return;
+  resetH5PGlobalState();
 
   // A veces main.bundle.js (que define window.H5PStandalone) todavía no
   // terminó de ejecutarse cuando el alumno navega rápido entre recursos del
