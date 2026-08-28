@@ -67,6 +67,20 @@ async function sendEmail(to: string, subject: string, html: string) {
 Deno.serve(async (req) => {
   if (req.headers.get('x-cron-secret') !== CRON_SECRET) return json({ error: 'Unauthorized' }, 401);
 
+  // Modo de prueba: manda un solo correo de muestra a la dirección indicada,
+  // sin tocar email_notifications_log ni depender de que alguien esté
+  // realmente inactivo -- para verificar Resend/dominio de punta a punta.
+  try {
+    const body = await req.json().catch(() => ({}));
+    if (body?.test_email) {
+      const { subject, html } = emailHtml('Billy (prueba)', body.test_kind === '3d' ? '3d' : '24h');
+      await sendEmail(body.test_email, `[PRUEBA] ${subject}`, html);
+      return json({ ok: true, test: true, sent_to: body.test_email });
+    }
+  } catch (e) {
+    return json({ error: `Fallo el envío de prueba: ${String(e)}` }, 500);
+  }
+
   const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
   let sent24h = 0, sent3d = 0, errors = 0;
 
