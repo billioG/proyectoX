@@ -52,6 +52,9 @@ window.renderSchoolsContent = function renderSchoolsContent(container, schools) 
                 <i class="fas fa-map-marked-alt mr-2"></i> DISTRIBUCIÓN
             </button>
         </div>
+        <button class="btn-secondary-tw h-12 px-5 text-xs uppercase font-bold tracking-widest shrink-0" onclick="window.openManagePrograms()">
+            <i class="fas fa-layer-group"></i> Programas
+        </button>
       </div>
 
       <div id="schools-list-view" class="space-y-6">
@@ -282,9 +285,14 @@ window.editSchool = async function editSchool(schoolId) {
                 <input type="text" id="edit-school-address" class="input-field-tw h-11 text-sm" value="${window.sanitizeAttr(school.address || '')}">
             </div>
 
-            <div>
-                <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-2 block ml-1">Proyecto / Programa</label>
-                <input type="text" id="edit-school-programa" class="input-field-tw h-11 text-sm" placeholder="Ej: 1bot, STEAM (separar con comas si aplica a varios)" value="${window.sanitizeAttr(school.programa || '')}">
+            <div class="col-span-full">
+                <div class="flex items-center justify-between mb-2">
+                    <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest block ml-1">Proyecto / Programa</label>
+                    <button type="button" class="text-[0.6rem] font-bold text-primary uppercase tracking-widest" onclick="window.openManagePrograms()"><i class="fas fa-gear"></i> Gestionar programas</button>
+                </div>
+                <div id="edit-school-programs-list" class="flex flex-wrap gap-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 min-h-[3rem]">
+                    <span class="text-xs text-slate-400">Cargando programas...</span>
+                </div>
             </div>
 
             <div>
@@ -343,11 +351,36 @@ window.editSchool = async function editSchool(schoolId) {
     `;
 
     document.body.appendChild(modal);
+    window.loadProgramsChecklistForSchool(schoolId);
 
   } catch (err) {
     console.error('Error cargando establecimiento:', err);
     showToast('<i class="fas fa-circle-xmark"></i> Error al cargar establecimiento', 'error');
   }
+}
+
+window.loadProgramsChecklistForSchool = async function loadProgramsChecklistForSchool(schoolId) {
+  const container = document.getElementById('edit-school-programs-list');
+  if (!container) return;
+  const sanitizeInput = window.sanitizeInput || ((v) => v);
+
+  const [{ data: allPrograms }, { data: current }] = await Promise.all([
+    window._supabase.from('programs').select('id, name').order('name'),
+    window._supabase.from('school_programs').select('program_id').eq('school_id', schoolId),
+  ]);
+  const selectedIds = new Set((current || []).map(sp => sp.program_id));
+
+  if (!allPrograms || allPrograms.length === 0) {
+    container.innerHTML = `<span class="text-xs text-slate-400">No hay programas creados todavía -- <button type="button" class="text-primary font-bold underline" onclick="window.openManagePrograms()">crear uno</button></span>`;
+    return;
+  }
+
+  container.innerHTML = allPrograms.map(p => `
+    <label class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 cursor-pointer text-xs font-bold text-slate-600 dark:text-slate-300">
+      <input type="checkbox" value="${p.id}" ${selectedIds.has(p.id) ? 'checked' : ''} class="school-program-checkbox w-4 h-4">
+      ${sanitizeInput(p.name)}
+    </label>
+  `).join('');
 }
 
 window.captureSchoolGPS = function captureSchoolGPS() {
@@ -385,7 +418,7 @@ window.captureSchoolGPS = function captureSchoolGPS() {
 window.saveSchoolChanges = async function saveSchoolChanges(schoolId) {
   const name = document.getElementById('edit-school-name')?.value.trim();
   const address = document.getElementById('edit-school-address')?.value.trim();
-  const programa = document.getElementById('edit-school-programa')?.value.trim();
+  const selectedProgramIds = [...document.querySelectorAll('.school-program-checkbox:checked')].map(el => el.value);
   const phone = document.getElementById('edit-school-phone')?.value.trim();
   const email = document.getElementById('edit-school-email')?.value.trim();
   const department = document.getElementById('edit-school-department')?.value.trim();
@@ -415,7 +448,6 @@ window.saveSchoolChanges = async function saveSchoolChanges(schoolId) {
       .update({
         name,
         address: address || null,
-        programa: programa || null,
         phone: phone || null,
         email: email || null,
         department,
@@ -432,6 +464,17 @@ window.saveSchoolChanges = async function saveSchoolChanges(schoolId) {
       .eq('id', schoolId);
 
     if (error) throw error;
+
+    // Reemplazo completo de programas -- borra todos los vínculos actuales
+    // de este establecimiento y crea de nuevo solo los que quedaron
+    // marcados (mismo patrón que las asignaciones de coordinador).
+    const { error: delProgErr } = await window._supabase.from('school_programs').delete().eq('school_id', schoolId);
+    if (delProgErr) throw delProgErr;
+    if (selectedProgramIds.length > 0) {
+      const { error: insProgErr } = await window._supabase.from('school_programs')
+        .insert(selectedProgramIds.map(program_id => ({ school_id: schoolId, program_id })));
+      if (insProgErr) throw insProgErr;
+    }
 
     showToast('<i class="fas fa-circle-check"></i> Establecimiento actualizado correctamente', 'success');
 

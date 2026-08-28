@@ -11,7 +11,7 @@ const MODULE_MAP = {
     'admin-teacher-performance': ['js/admin-performance.js'],
     'coordinator-dashboard': ['js/admin-performance.js', 'js/coordinator.js'],
     'admin-success': ['js/admin-success.js', 'js/team-performance-widget.js', 'js/kpi-engine.js'],
-    'schools': ['js/schools.js'],
+    'schools': ['js/schools.js', 'js/programs.js'],
     'students': ['js/students.js', 'js/pdf-processor.js'],
     'teachers': ['js/teachers.js'],
     'groups': ['js/groups.js'],

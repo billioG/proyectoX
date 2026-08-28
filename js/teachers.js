@@ -33,7 +33,7 @@ window.loadTeachers = async function loadTeachers() {
                 school_code,
                 grade,
                 section,
-                schools(name, programa, address)
+                schools(name, address, school_programs(programs(name)))
               )
             `)
           .order('full_name'),
@@ -101,10 +101,10 @@ window.renderTeacherGroups = function renderTeacherGroups(teachers, sanitizeInpu
         const firstSchool = t.teacher_assignments?.[0]?.schools;
         const schoolName = firstSchool?.name || 'Sin Asignar';
         const schoolAddress = firstSchool?.address || '';
-        // Un colegio puede pertenecer a varios programas (campo separado por
-        // comas) -- el docente aparece repetido bajo cada programa al que
-        // pertenece su establecimiento, no solo el primero.
-        const programas = (firstSchool?.programa || '').split(',').map(p => p.trim()).filter(Boolean);
+        // Un colegio puede pertenecer a varios programas (tabla programs +
+        // school_programs, gestionados por el admin) -- el docente aparece
+        // repetido bajo cada programa al que pertenece su establecimiento.
+        const programas = (firstSchool?.school_programs || []).map(sp => sp.programs?.name).filter(Boolean);
         const programaKeys = programas.length > 0 ? programas : ['Sin Programa'];
         programaKeys.forEach(programaKey => {
             if (!groups.has(programaKey)) groups.set(programaKey, new Map());
