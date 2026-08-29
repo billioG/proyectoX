@@ -1581,14 +1581,34 @@ window.loadStudentCourses = async function loadStudentCourses(container) {
     return;
   }
 
-  const [{ data: courses, error }, { data: completions }] = await Promise.all([
+  const cacheKey = `student_courses_${currentUser.id}`;
+  let courses, completions, fromCache = false;
+
+  const [coursesRes, completionsRes] = await Promise.all([
     _supabase.from('courses').select('*, lessons(*)')
       .eq('school_code', userData.school_code).eq('grade', userData.grade).eq('section', userData.section)
       .order('created_at', { ascending: false }),
     _supabase.from('lesson_completions').select('lesson_id, score, status').eq('student_id', currentUser.id),
-  ]);
+  ]).catch(() => [{ data: null, error: { message: 'offline' } }, { data: null }]);
 
-  if (error) { container.innerHTML = `<p class="text-rose-500 text-xs">Error: ${error.message}</p>`; return; }
+  if (coursesRes?.error || !coursesRes?.data) {
+    // Sin conexión (o el fetch tiró) -- se usa la última copia de cursos
+    // vista con internet, guardada la vez anterior que esto sí funcionó.
+    const cached = await window._syncManager?.getCache(cacheKey);
+    if (cached) {
+      courses = cached.courses;
+      completions = cached.completions;
+      fromCache = true;
+    } else {
+      container.innerHTML = `<p class="text-rose-500 text-xs">Error: ${coursesRes?.error?.message || 'No se pudo cargar'}</p>`;
+      return;
+    }
+  } else {
+    courses = coursesRes.data;
+    completions = completionsRes?.data;
+    window._syncManager?.setCache(cacheKey, { courses, completions });
+  }
+
   if (!courses?.length) { container.innerHTML = '<div class="glass-card p-10 text-center text-slate-400 text-sm">Tu docente todavía no publicó cursos.</div>'; return; }
 
   const completionsByLesson = new Map((completions || []).map(c => [c.lesson_id, c]));
@@ -1596,6 +1616,7 @@ window.loadStudentCourses = async function loadStudentCourses(container) {
   window._completionsCache = completionsByLesson;
 
   container.innerHTML = `
+    ${fromCache ? '<div class="glass-card p-3 mb-4 border border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs flex items-center gap-2"><i class="fas fa-cloud-slash"></i> Sin conexión -- viendo la última versión guardada. El progreso que ya viste offline vuelve a estar disponible; nuevos cursos/recursos aparecen al reconectar.</div>' : ''}
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
       ${courses.map(c => {
         const items = (c.lessons || []).slice().sort((a, b) => a.order_index - b.order_index);

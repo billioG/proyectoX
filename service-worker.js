@@ -2,7 +2,14 @@
 // SERVICE WORKER - PROJECTX PWA
 // ================================================
 
-const CACHE_NAME = 'projectx-v1.0.38';
+const CACHE_NAME = 'projectx-v1.0.39';
+// Caché de archivos de lecciones (video/PDF/imagen/paquetes SCORM-H5P) --
+// separada de CACHE_NAME a propósito: CACHE_NAME se recrea y se BORRA
+// entera en cada deploy (bump de versión) para forzar JS/CSS frescos, pero
+// eso mismo borraría todo el contenido offline descargado por el alumno si
+// compartiera el mismo nombre. Esta NO se toca en "activate" salvo que
+// cambie la estrategia de cacheo en sí (no en cada feature nueva).
+const MEDIA_CACHE_NAME = 'projectx-media-v1';
 // Rutas RELATIVAS (sin "/" inicial) -- con "/" apuntaban siempre a la raíz
 // del dominio, lo cual rompe el sitio cuando se sirve desde un subpath
 // (ej. billiog.github.io/proyectoX/) porque pedía billiog.github.io/js/...
@@ -42,7 +49,7 @@ self.addEventListener('activate', event => {
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames.map(cacheName => {
-          if (cacheName !== CACHE_NAME) {
+          if (cacheName !== CACHE_NAME && cacheName !== MEDIA_CACHE_NAME) {
             console.log('🗑️ Eliminando caché antigua:', cacheName);
             return caches.delete(cacheName);
           }
@@ -51,6 +58,15 @@ self.addEventListener('activate', event => {
     }).then(() => self.clients.claim())
   );
 });
+
+// Archivos de lecciones (video/PDF/imagen/paquetes SCORM-H5P) viven en
+// Supabase Storage -- se cachean para que el alumno pueda repasar contenido
+// ya visto sin conexión (escuelas con internet inestable durante el día).
+// El resto de Supabase (REST/Auth/Realtime, notas, progreso) sigue
+// SIEMPRE yendo a la red -- cachear eso arriesgaría mostrar datos viejos.
+function isSupabaseStorageGet(url) {
+  return url.includes('supabase.co') && url.includes('/storage/v1/object/');
+}
 
 // Estrategia de caché: Network First, fallback a Cache
 self.addEventListener('fetch', event => {
@@ -61,10 +77,14 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Ignorar requests de Supabase (siempre necesitan red)
-  if (request.url.includes('supabase.co')) {
+  const isMedia = isSupabaseStorageGet(request.url);
+
+  // Ignorar el resto de requests de Supabase (siempre necesitan red)
+  if (request.url.includes('supabase.co') && !isMedia) {
     return;
   }
+
+  const targetCacheName = isMedia ? MEDIA_CACHE_NAME : CACHE_NAME;
 
   const fallbackToCache = () => caches.match(request).then(cachedResponse => {
     if (cachedResponse) {
@@ -90,7 +110,7 @@ self.addEventListener('fetch', event => {
         // Si la respuesta es válida, guardar en caché
         if (response && response.status === 200) {
           const responseClone = response.clone();
-          caches.open(CACHE_NAME).then(cache => {
+          caches.open(targetCacheName).then(cache => {
             cache.put(request, responseClone);
           });
           return response;
