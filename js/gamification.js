@@ -36,22 +36,17 @@ window.submitStudentChallengeEvidence = async function submitStudentChallengeEvi
         }
 
         btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Enviando...';
-        const { error } = await _supabase.from('student_challenges').insert({
-            student_id: currentUser.id,
-            challenge_id: challengeId,
-            comment: comment,
-            created_at: new Date().toISOString()
+        // La recompensa se calcula y otorga EN SERVIDOR -- el insert (con su
+        // unique constraint student_id+challenge_id) y el +30XP/+10gemas
+        // pasan en la misma transacción, así que no se puede reclamar dos
+        // veces llamando solo a la parte del premio.
+        const { data: reward, error } = await _supabase.rpc('claim_student_challenge_reward', {
+            p_challenge_id: challengeId, p_comment: comment,
         });
-
         if (error) throw error;
+        if (userData) { userData.xp = (userData.xp || 0) + reward.xp; userData.gems = (userData.gems || 0) + reward.gems; }
 
-        await _supabase.from('students').update({
-            xp: (userData?.xp || 0) + 30,
-            gems: (userData?.gems || 0) + 10
-        }).eq('id', currentUser.id);
-        if (userData) { userData.xp = (userData.xp || 0) + 30; userData.gems = (userData.gems || 0) + 10; }
-
-        showToast('<i class="fas fa-trophy"></i> ¡Reto completado! +30 XP y 10 gemas', 'success');
+        showToast(`<i class="fas fa-trophy"></i> ¡Reto completado! +${reward.xp} XP y ${reward.gems} gemas`, 'success');
         document.querySelector('.fixed.z-\\[100\\]')?.remove();
         if (typeof window.initGamification === 'function') window.initGamification();
         if (typeof window.loadFeed === 'function') window.loadFeed();
@@ -418,40 +413,24 @@ window.showDailyChestModal = function showDailyChestModal() {
 
 window.openChest = async function openChest(el) {
   const userData = window.userData;
-  const userRole = window.userRole;
-  const currentUser = window.currentUser;
   const _supabase = window._supabase;
   const showToast = window.showToast;
 
-  const today = new Date().toISOString().split('T')[0];
-  const table = userRole === 'estudiante' ? 'students' : 'teachers';
-
-  // Random Reward
-  const rewards = [
-    { xp: 20, gems: 5, msg: "Poquito pero bendito" },
-    { xp: 50, gems: 15, msg: "¡Nada mal!" },
-    { xp: 100, gems: 50, msg: "¡Premio Mayor!", card: "Carta Algoritmo Dorado" }
-  ];
-  const reward = rewards[Math.floor(Math.random() * rewards.length)];
-
-  // Save to DB
-  const newXP = (userData.xp || 0) + reward.xp;
-  const newGems = (userData.gems || 0) + reward.gems;
-
-  const { error } = await _supabase.from(table).update({
-    daily_chest_last_claimed: today,
-    xp: newXP,
-    gems: newGems
-  }).eq('id', currentUser.id);
+  // Premio y chequeo de "ya reclamado hoy" EN SERVIDOR -- antes se elegían
+  // con Math.random() en el navegador y la fecha solo se miraba antes de
+  // mostrar el modal, nunca al escribir (se podía llamar esta función las
+  // veces que quisiera desde la consola).
+  const { data: reward, error } = await _supabase.rpc('claim_daily_chest');
 
   if (error) {
-    if (typeof showToast === 'function') showToast('<i class="fas fa-circle-xmark"></i> Error al reclamar cofre', 'error');
+    if (typeof showToast === 'function') showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
     return;
   }
 
+  const today = new Date().toISOString().split('T')[0];
   userData.daily_chest_last_claimed = today;
-  userData.xp = newXP;
-  userData.gems = newGems;
+  userData.xp = (userData.xp || 0) + reward.xp;
+  userData.gems = (userData.gems || 0) + reward.gems;
 
   if (typeof window.initGamification === 'function') window.initGamification(); // Refresh sidebar UI
 
@@ -727,21 +706,18 @@ window.buyShopItem = async function buyShopItem(name, price) {
     return;
   }
 
-  // Compra genérica: activa un flag permanente en la fila del alumno y
-  // descuenta las gemas -- usado por los cosméticos (Marco Dorado, Gafas).
+  // Compra genérica: precio y flag los decide el SERVIDOR según el nombre
+  // del ítem (antes el precio llegaba como parámetro del cliente, se podía
+  // mandar cualquier número desde la consola).
   const permanentUnlock = async (flagField, ownedMsg, boughtMsg) => {
     if (userData[flagField]) {
       if (typeof showToast === 'function') showToast(ownedMsg, 'info');
       return;
     }
-    const table = userRole === 'estudiante' ? 'students' : 'teachers';
-    const { error } = await _supabase.from(table).update({
-      gems: userData.gems - price,
-      [flagField]: true
-    }).eq('id', currentUser.id);
+    const { data: result, error } = await _supabase.rpc('buy_shop_item', { p_item: name });
 
     if (!error) {
-      userData.gems -= price;
+      userData.gems = result.newGems;
       userData[flagField] = true;
       if (typeof showToast === 'function') showToast(boughtMsg, 'success');
       if (typeof window.openGamificationHub === 'function') window.openGamificationHub();

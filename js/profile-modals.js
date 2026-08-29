@@ -232,47 +232,23 @@ window.uploadProfilePhoto = async function uploadProfilePhoto() {
       .from('profile-photos')
       .getPublicUrl(fileName);
 
-    let table = '';
-    if (window.userRole === 'estudiante') table = 'students';
-    else if (window.userRole === 'docente') table = 'teachers';
-    else if (window.userRole === 'admin') table = 'admins';
-
-    // Update in DB (using 'teachers' specifically for this context if needed, but logic seems generic)
-    // Note: 'admins' table likely doesn't exist based on previous turns, usually admins are in teachers or separate auth logic, 
-    // but the original code had this logic. I will keep it but assuming 'teachers' is the main target as per context.
-
-    // Fix: If admin, we usually don't have a profile photo table unless defined.
-    // Assuming 'teachers' table is correct for the request context (teacher profile)
-
-    const isFirstTime = !window.userData.profile_photo_url;
-    const { error: updateError } = await window._supabase
-      .from(table)
-      .update({ profile_photo_url: urlData.publicUrl })
-      .eq('id', window.currentUser.id);
+    // "Primera foto" y el premio de XP/gemas se deciden EN SERVIDOR --
+    // antes se detectaba mirando window.userData.profile_photo_url en
+    // memoria del cliente, así que repetir la llamada (o subir otra foto)
+    // daba el premio de nuevo cada vez.
+    const { data: result, error: updateError } = await window._supabase
+      .rpc('claim_first_profile_photo_reward', { p_photo_url: urlData.publicUrl });
 
     if (updateError) throw updateError;
+    window.userData.profile_photo_url = urlData.publicUrl;
 
-    // Reward XP and Gems for first photo
-    if (isFirstTime) {
-      const rewardXP = 100;
-      const rewardGems = 25;
-      const newXP = (window.userData.xp || 0) + rewardXP;
-      const newGems = (window.userData.gems || 0) + rewardGems;
-
-      const { error: rewardError } = await window._supabase
-        .from(table)
-        .update({ xp: newXP, gems: newGems })
-        .eq('id', window.currentUser.id);
-
-      if (!rewardError) {
-        window.userData.xp = newXP;
-        window.userData.gems = newGems;
-        showToast(`<i class="fas fa-wand-magic-sparkles"></i> ¡Primer foto! Ganaste ${rewardXP} XP y ${rewardGems} Gemas`, 'success');
-        if (typeof window.initGamification === 'function') window.initGamification();
-      }
+    if (result?.rewarded) {
+      window.userData.xp = (window.userData.xp || 0) + result.xp;
+      window.userData.gems = (window.userData.gems || 0) + result.gems;
+      showToast(`<i class="fas fa-wand-magic-sparkles"></i> ¡Primer foto! Ganaste ${result.xp} XP y ${result.gems} Gemas`, 'success');
+      if (typeof window.initGamification === 'function') window.initGamification();
     }
 
-    window.userData.profile_photo_url = urlData.publicUrl;
     if (typeof window.updateHeaderUI === 'function') window.updateHeaderUI();
 
     showToast('<i class="fas fa-circle-check"></i> Foto de perfil actualizada', 'success');
