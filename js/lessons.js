@@ -553,7 +553,17 @@ window.previewCourseResource = function previewCourseResource(lessonId) {
   } else if (lesson.content_type === 'image') {
     mediaHtml = `<img src="${lesson.content_url}" class="w-full rounded-xl">`;
   } else if (lesson.content_type === 'tinkercad') {
-    mediaHtml = `<iframe class="w-full h-[60vh] rounded-xl border border-slate-200 dark:border-slate-700" src="${lesson.content_url}" allowfullscreen></iframe>`;
+    // Tinkercad manda X-Frame-Options: sameorigin en casi todas sus páginas
+    // (solo el link especial de "Insertar" a veces lo evita, y es difícil
+    // de encontrar en la UI actual) -- en vez de pelear con el iframe, se
+    // abre el diseño en pestaña nueva con el link normal que el docente
+    // ya tiene a mano.
+    mediaHtml = `
+      <div class="w-full rounded-xl border border-slate-200 dark:border-slate-700 p-10 flex flex-col items-center gap-4 text-center">
+        <i class="fas fa-microchip text-4xl text-primary"></i>
+        <p class="text-sm text-slate-500 dark:text-slate-400">Este recurso abre el diseño de Tinkercad en una pestaña nueva.</p>
+        <a href="${lesson.content_url}" target="_blank" rel="noopener" class="btn-primary-tw h-11 px-6 text-xs uppercase font-bold"><i class="fas fa-up-right-from-square"></i> Abrir en Tinkercad</a>
+      </div>`;
   } else if (lesson.content_type === 'scorm' || lesson.content_type === 'html5') {
     // Ver comentario en selectCourseResource() -- srcdoc en vez de src=""
     // evita que Supabase pise el Content-Type a text/plain en la navegación.
@@ -768,7 +778,7 @@ window.openAddResourceModal = function openAddResourceModal(courseId, editLesson
             <option value="h5p">H5P (.zip -- con nota automática)</option>
             <option value="html5">Aplicación HTML5 (.zip -- sin nota automática)</option>
             <option value="quiz">Quiz (preguntas -- con nota automática)</option>
-            <option value="tinkercad">Tinkercad (circuito/diseño 3D embebido)</option>
+            <option value="tinkercad">Tinkercad (abre el diseño en pestaña nueva)</option>
           </select>
         </div>
         <div id="resource-source-mode-wrap">
@@ -1718,7 +1728,17 @@ window.selectCourseResource = function selectCourseResource(index) {
   } else if (lesson.content_type === 'image') {
     mediaHtml = `<img src="${lesson.content_url}" class="w-full rounded-xl">`;
   } else if (lesson.content_type === 'tinkercad') {
-    mediaHtml = `<iframe class="w-full h-[60vh] rounded-xl border border-slate-200 dark:border-slate-700" src="${lesson.content_url}" allowfullscreen></iframe>`;
+    // Tinkercad manda X-Frame-Options: sameorigin en casi todas sus páginas
+    // (solo el link especial de "Insertar" a veces lo evita, y es difícil
+    // de encontrar en la UI actual) -- en vez de pelear con el iframe, se
+    // abre el diseño en pestaña nueva con el link normal que el docente
+    // ya tiene a mano.
+    mediaHtml = `
+      <div class="w-full rounded-xl border border-slate-200 dark:border-slate-700 p-10 flex flex-col items-center gap-4 text-center">
+        <i class="fas fa-microchip text-4xl text-primary"></i>
+        <p class="text-sm text-slate-500 dark:text-slate-400">Este recurso abre el diseño de Tinkercad en una pestaña nueva.</p>
+        <a href="${lesson.content_url}" target="_blank" rel="noopener" class="btn-primary-tw h-11 px-6 text-xs uppercase font-bold"><i class="fas fa-up-right-from-square"></i> Abrir en Tinkercad</a>
+      </div>`;
   } else if (lesson.content_type === 'scorm') {
     // src="" (no srcdoc) hacía una navegación HTTP normal al proxy --
     // Supabase pisa el Content-Type a text/plain + CSP sandbox en CUALQUIER
