@@ -201,6 +201,7 @@ window.sendHangmanChallenge = async function sendHangmanChallenge() {
   window.showToast('<i class="fas fa-circle-check"></i> ¡Reto enviado!', 'success');
   document.querySelector('.fixed.z-\\[210\\]')?.remove();
   window.loadHangmanSection();
+  if (inserted?.id && typeof window.sendDuelPushNotification === 'function') window.sendDuelPushNotification(inserted.id, 'challenge', 'hangman');
 };
 
 window.cancelHangmanDuel = async function cancelHangmanDuel(duelId) {
@@ -233,6 +234,7 @@ window.respondHangmanDuel = async function respondHangmanDuel(duelId, accept) {
     if (!res.ok) throw new Error(result.error || 'Error generando la palabra');
     window.showToast('<i class="fas fa-circle-check"></i> ¡Reto aceptado! Ya podés jugar', 'success');
     window.loadHangmanSection();
+    if (typeof window.sendDuelPushNotification === 'function') window.sendDuelPushNotification(duelId, 'accepted', 'hangman');
   } catch (err) {
     window.showToast('<i class="fas fa-circle-xmark"></i> ' + err.message, 'error');
   }

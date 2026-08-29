@@ -396,14 +396,18 @@ window.sendDuelChallenge = async function sendDuelChallenge() {
   if (inserted?.id) window.sendDuelPushNotification(inserted.id, 'challenge');
 }
 
-window.sendDuelPushNotification = async function sendDuelPushNotification(duelId, type) {
+// Reusado por los 4 desafíos 1v1 (Duelos de trivia, Ahorcado, Contrarreloj,
+// Encontrá el Error) -- "game" le dice a notify-duel en qué tabla buscar
+// (antes esto estaba hardcodeado a student_duels, así que los 3 juegos
+// nuevos nunca mandaban push).
+window.sendDuelPushNotification = async function sendDuelPushNotification(duelId, type, game = 'quiz') {
   try {
     if (!duelId) return;
     const { data: { session } } = await window._supabase.auth.getSession();
     await fetch(`${window.SUPABASE_URL}/functions/v1/notify-duel`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
-      body: JSON.stringify({ duel_id: duelId, type }),
+      body: JSON.stringify({ duel_id: duelId, type, game }),
     });
   } catch (err) {
     console.error('Error enviando push de duelo:', err);

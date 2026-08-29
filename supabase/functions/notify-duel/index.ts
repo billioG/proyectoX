@@ -37,25 +37,41 @@ Deno.serve(async (req) => {
   const { data: { user: caller }, error: authErr } = await callerClient.auth.getUser();
   if (authErr || !caller) return json({ error: 'Invalid token' }, 401);
 
+  // 4 juegos 1v1 comparten esta misma función de notificación -- cada uno
+  // vive en su propia tabla (challenger_id/opponent_id/wager_gems iguales
+  // en las 4, "topic" solo en 3 de ellas). Antes esto estaba hardcodeado a
+  // student_duels, así que Ahorcado/Contrarreloj/Encontrá el Error nunca
+  // mandaban push.
+  const GAME_CONFIG: Record<string, { table: string; label: string; hasTopic: boolean }> = {
+    quiz: { table: 'student_duels', label: 'Desafío de Código', hasTopic: true },
+    hangman: { table: 'student_hangman_duels', label: 'Ahorcado', hasTopic: true },
+    timed_math: { table: 'student_timed_math_duels', label: 'Contrarreloj', hasTopic: false },
+    debug: { table: 'student_debug_duels', label: 'Encontrá el Error', hasTopic: true },
+  };
+
   try {
-    const { duel_id, type } = await req.json();
+    const { duel_id, type, game = 'quiz' } = await req.json();
     if (!duel_id || !['challenge', 'accepted'].includes(type)) return json({ error: 'duel_id y type ("challenge"|"accepted") requeridos' }, 400);
+    const config = GAME_CONFIG[game];
+    if (!config) return json({ error: `game inválido: ${game}` }, 400);
 
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
-    const { data: duel } = await admin.from('student_duels')
-      .select('challenger_id, opponent_id, wager_gems, topic, challenger:students!challenger_id(full_name), opponent:students!opponent_id(full_name)')
+    const selectCols = `challenger_id, opponent_id, wager_gems${config.hasTopic ? ', topic' : ''}, challenger:students!challenger_id(full_name), opponent:students!opponent_id(full_name)`;
+    const { data: duel } = await admin.from(config.table)
+      .select(selectCols)
       .eq('id', duel_id).maybeSingle();
-    if (!duel) return json({ error: 'Duelo no encontrado' }, 404);
+    if (!duel) return json({ error: 'Desafío no encontrado' }, 404);
 
     // Solo un participante real de este duelo puede disparar su propia notificación.
     if (caller.id !== duel.challenger_id && caller.id !== duel.opponent_id) return json({ error: 'No autorizado para este duelo' }, 403);
 
     const challengerName = (Array.isArray(duel.challenger) ? duel.challenger[0] : duel.challenger)?.full_name || 'Alguien';
     const opponentName = (Array.isArray(duel.opponent) ? duel.opponent[0] : duel.opponent)?.full_name || 'Tu rival';
+    const subject = config.hasTopic ? duel.topic : config.label;
 
     const targetId = type === 'challenge' ? duel.opponent_id : duel.challenger_id;
     const payload = type === 'challenge'
-      ? { title: '⚔️ Nuevo Desafío 1v1', body: `${challengerName} te retó por ${duel.wager_gems} gemas -- ${duel.topic}` }
+      ? { title: `⚔️ Nuevo ${config.label}`, body: `${challengerName} te retó por ${duel.wager_gems} gemas -- ${subject}` }
       : { title: '✅ Reto Aceptado', body: `${opponentName} aceptó tu desafío -- ¡ya podés jugar!` };
 
     const { data: subs } = await admin.from('push_subscriptions').select('*').eq('user_id', targetId);

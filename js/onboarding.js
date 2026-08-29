@@ -87,7 +87,7 @@ const STUDENT_TOUR_STEPS = [
   {
     element: '#project-video',
     title: 'Demostración en Video',
-    description: 'Subí un video mostrando tu proyecto funcionando (máx 50MB). Es obligatorio para poder publicar.',
+    description: 'Subí un video mostrando tu proyecto funcionando (máx 150MB). Es obligatorio para poder publicar.',
   },
   {
     element: '#btn-upload-project',

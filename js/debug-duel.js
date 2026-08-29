@@ -178,7 +178,7 @@ window.sendDebugChallenge = async function sendDebugChallenge() {
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
 
-  const { error } = await window._supabase.from('student_debug_duels').insert({
+  const { data: inserted, error } = await window._supabase.from('student_debug_duels').insert({
     challenger_id: window.currentUser.id,
     opponent_id: opponentId,
     wager_gems: wager,
@@ -195,6 +195,7 @@ window.sendDebugChallenge = async function sendDebugChallenge() {
   window.showToast('<i class="fas fa-circle-check"></i> ¡Reto enviado!', 'success');
   document.querySelector('.fixed.z-\\[210\\]')?.remove();
   window.loadDebugSection();
+  if (inserted?.id && typeof window.sendDuelPushNotification === 'function') window.sendDuelPushNotification(inserted.id, 'challenge', 'debug');
 };
 
 window.cancelDebugDuel = async function cancelDebugDuel(duelId) {
@@ -227,6 +228,7 @@ window.respondDebugDuel = async function respondDebugDuel(duelId, accept) {
     if (!res.ok) throw new Error(result.error || 'Error generando los bloques');
     window.showToast('<i class="fas fa-circle-check"></i> ¡Reto aceptado! Ya podés jugar', 'success');
     window.loadDebugSection();
+    if (typeof window.sendDuelPushNotification === 'function') window.sendDuelPushNotification(duelId, 'accepted', 'debug');
   } catch (err) {
     window.showToast('<i class="fas fa-circle-xmark"></i> ' + err.message, 'error');
   }

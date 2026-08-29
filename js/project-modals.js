@@ -284,9 +284,12 @@ window.uploadProject = async function uploadProject() {
     return;
   }
 
-  const MAX_SIZE = 50 * 1024 * 1024;
+  // Subido de 50MB -- feedback de un docente: grabaciones directas del
+  // celular ya pesan más de 50MB para 2 minutos, y pedirles editar/comprimir
+  // antes de poder subir es fricción innecesaria.
+  const MAX_SIZE = 150 * 1024 * 1024;
   if (videoFile.size > MAX_SIZE) {
-    if (typeof showToast === 'function') showToast('<i class="fas fa-circle-xmark"></i> Video muy pesado (Máx 50MB)', 'error');
+    if (typeof showToast === 'function') showToast('<i class="fas fa-circle-xmark"></i> Video muy pesado (Máx 150MB)', 'error');
     return;
   }
 

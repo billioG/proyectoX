@@ -168,7 +168,7 @@ window.sendTimedMathChallenge = async function sendTimedMathChallenge() {
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
 
-  const { error } = await window._supabase.from('student_timed_math_duels').insert({
+  const { data: inserted, error } = await window._supabase.from('student_timed_math_duels').insert({
     challenger_id: window.currentUser.id,
     opponent_id: opponentId,
     wager_gems: wager,
@@ -184,6 +184,7 @@ window.sendTimedMathChallenge = async function sendTimedMathChallenge() {
   window.showToast('<i class="fas fa-circle-check"></i> ¡Reto enviado!', 'success');
   document.querySelector('.fixed.z-\\[210\\]')?.remove();
   window.loadTimedMathSection();
+  if (inserted?.id && typeof window.sendDuelPushNotification === 'function') window.sendDuelPushNotification(inserted.id, 'challenge', 'timed_math');
 };
 
 window.cancelTimedMathDuel = async function cancelTimedMathDuel(duelId) {
@@ -211,6 +212,7 @@ window.respondTimedMathDuel = async function respondTimedMathDuel(duelId, accept
 
   window.showToast('<i class="fas fa-circle-check"></i> ¡Reto aceptado! Ya podés jugar', 'success');
   window.loadTimedMathSection();
+  if (typeof window.sendDuelPushNotification === 'function') window.sendDuelPushNotification(duelId, 'accepted', 'timed_math');
 };
 
 window.openTimedMathGame = async function openTimedMathGame(duelId) {

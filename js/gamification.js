@@ -761,6 +761,9 @@ window.buyShopItem = async function buyShopItem(name, price) {
   }
 }
 
+// Cuenta pendientes de los 4 desafíos 1v1 -- antes solo miraba
+// student_duels, así que retos de Ahorcado/Contrarreloj/Encontrá el Error
+// nunca prendían el punto rojo del sidebar.
 window.updateDuelPendingBadge = async function updateDuelPendingBadge() {
   const badge = document.getElementById('duel-pending-badge');
   if (!badge) return;
@@ -768,10 +771,11 @@ window.updateDuelPendingBadge = async function updateDuelPendingBadge() {
   const currentUser = window.currentUser;
   if (!currentUser) return;
 
-  const { count } = await _supabase.from('student_duels')
-    .select('id', { count: 'exact', head: true })
-    .eq('opponent_id', currentUser.id)
-    .eq('status', 'pending');
+  const tables = ['student_duels', 'student_hangman_duels', 'student_timed_math_duels', 'student_debug_duels'];
+  const counts = await Promise.all(tables.map(table =>
+    _supabase.from(table).select('id', { count: 'exact', head: true }).eq('opponent_id', currentUser.id).eq('status', 'pending')
+  ));
+  const count = counts.reduce((sum, r) => sum + (r.count || 0), 0);
 
   if (count > 0) {
     badge.textContent = count;
