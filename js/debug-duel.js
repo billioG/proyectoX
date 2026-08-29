@@ -17,6 +17,21 @@ window.loadDebugSection = async function loadDebugSection() {
   if (error) { console.error(error); return; }
   window._debugDuelsCache = data || [];
   window.renderDebugSection();
+  window.subscribeDebugRealtime();
+};
+
+// Mismo problema que en duels.js: sin esto el retador se queda viendo
+// "Esperando..." hasta recargar a mano aunque el rival ya haya aceptado.
+window.subscribeDebugRealtime = function subscribeDebugRealtime() {
+  if (window._debugRealtimeChannel) return;
+  const currentUser = window.currentUser;
+  if (!currentUser) return;
+
+  window._debugRealtimeChannel = window._supabase
+    .channel(`debug-live-${currentUser.id}`)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'student_debug_duels', filter: `challenger_id=eq.${currentUser.id}` }, () => window.loadDebugSection())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'student_debug_duels', filter: `opponent_id=eq.${currentUser.id}` }, () => window.loadDebugSection())
+    .subscribe();
 };
 
 window.renderDebugSection = function renderDebugSection() {

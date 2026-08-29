@@ -121,6 +121,31 @@ export function toggleSidebar() {
 }
 window.toggleSidebar = toggleSidebar;
 
+// Antes un clic en una notificación push solo enfocaba/abría la pestaña
+// sin llevar a ningún lado puntual (ej. un reto 1v1 nuevo no abría el
+// Centro de Juego) -- ver service-worker.js (notificationclick, manda
+// postMessage) y auth.js (lee ?open= en la URL para el caso de pestaña
+// nueva). "target" es el mismo string en ambos casos.
+window.routeNotificationTarget = async function routeNotificationTarget(target) {
+    if (!target) return;
+    if (target === 'game-center') {
+        if (typeof window.openGamificationHub !== 'function' && typeof window.loadModule === 'function') {
+            await window.loadModule('feed');
+        }
+        if (typeof window.openGamificationHub === 'function') window.openGamificationHub();
+    } else if (target === 'announcements') {
+        if (typeof window.openAnnouncementsInbox === 'function') window.openAnnouncementsInbox();
+    } else if (target === 'rock-pending') {
+        nav('admin-rocks');
+    }
+};
+
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data?.type === 'PX_NOTIFICATION_CLICK') window.routeNotificationTarget(event.data.target);
+    });
+}
+
 export function nav(view) {
     console.log('📍 Navegando a:', view);
     // Si Chrome descarta la pestaña en segundo plano y recarga la app al

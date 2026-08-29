@@ -2,7 +2,7 @@
 // SERVICE WORKER - PROJECTX PWA
 // ================================================
 
-const CACHE_NAME = 'projectx-v1.0.6';
+const CACHE_NAME = 'projectx-v1.0.28';
 // Rutas RELATIVAS (sin "/" inicial) -- con "/" apuntaban siempre a la raíz
 // del dominio, lo cual rompe el sitio cuando se sirve desde un subpath
 // (ej. billiog.github.io/proyectoX/) porque pedía billiog.github.io/js/...
@@ -130,7 +130,11 @@ self.addEventListener('push', event => {
       body: data.body,
       icon: './icon-192.png',
       badge: './icon-192.png',
-      data: { url: data.url || './', eventId: data.eventId || null },
+      // "target" identifica A DÓNDE llevar dentro de la app al hacer clic
+      // (ver window.routeNotificationTarget en main.js) -- antes esto no
+      // existía y el clic solo enfocaba/abría la pestaña sin navegar a
+      // nada puntual.
+      data: { url: data.url || './', eventId: data.eventId || null, target: data.target || null },
       vibrate: [200, 100, 200],
     })
   );
@@ -138,12 +142,20 @@ self.addEventListener('push', event => {
 
 self.addEventListener('notificationclick', event => {
   event.notification.close();
-  const targetUrl = event.notification.data?.url || './';
+  const target = event.notification.data?.target || null;
+  let targetUrl = event.notification.data?.url || './';
+  if (target) targetUrl += (targetUrl.includes('?') ? '&' : '?') + 'open=' + encodeURIComponent(target);
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
       for (const client of clientList) {
-        if ('focus' in client) return client.focus();
+        if ('focus' in client) {
+          // La pestaña ya está abierta -- no navega a targetUrl (recargar
+          // rompería el estado de la SPA), así que le avisa por mensaje
+          // para que ruteé sin recargar.
+          if (target && 'postMessage' in client) client.postMessage({ type: 'PX_NOTIFICATION_CLICK', target });
+          return client.focus();
+        }
       }
       if (clients.openWindow) return clients.openWindow(targetUrl);
     })

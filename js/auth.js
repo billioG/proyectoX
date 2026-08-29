@@ -409,6 +409,16 @@ export async function handleSuccessfulLogin(user) {
       const hasLastView = lastView && document.getElementById(`view-${lastView}`) && isViewAllowedForRole(lastView, window.userRole);
       nav(hasLastView ? lastView : defaultView);
 
+      // Clic en notificación push con la app cerrada (cold start): el
+      // service worker abre la ventana con "?open=<target>" (ver
+      // service-worker.js/notificationclick) -- acá se lee y ruteá una vez,
+      // limpiando la URL para que un refresh no vuelva a disparar la ruta.
+      const openTarget = new URLSearchParams(location.search).get('open');
+      if (openTarget) {
+        history.replaceState(null, '', location.pathname);
+        if (typeof window.routeNotificationTarget === 'function') window.routeNotificationTarget(openTarget);
+      }
+
       // Resume tras reload forzado (workaround H5P: 2do recurso h5p en la
       // misma sesión de página siempre falla, así que se recarga la página
       // completa y se retoma acá el curso/recurso donde el usuario iba).

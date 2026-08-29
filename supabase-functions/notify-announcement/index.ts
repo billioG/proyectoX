@@ -72,6 +72,7 @@ Deno.serve(async (req) => {
       title: `📢 Nuevo aviso -- ${senderLabel}`,
       body: `${ann.title}: ${String(ann.message || '').slice(0, 120)}`,
       url: '/',
+      target: 'announcements',
     });
 
     let sent = 0, cleaned = 0;

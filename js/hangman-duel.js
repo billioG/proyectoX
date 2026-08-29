@@ -44,6 +44,21 @@ window.loadHangmanSection = async function loadHangmanSection() {
   if (error) { console.error(error); return; }
   window._hangmanDuelsCache = data || [];
   window.renderHangmanSection();
+  window.subscribeHangmanRealtime();
+};
+
+// Mismo problema que en duels.js: sin esto el retador se queda viendo
+// "Esperando..." hasta recargar a mano aunque el rival ya haya aceptado.
+window.subscribeHangmanRealtime = function subscribeHangmanRealtime() {
+  if (window._hangmanRealtimeChannel) return;
+  const currentUser = window.currentUser;
+  if (!currentUser) return;
+
+  window._hangmanRealtimeChannel = window._supabase
+    .channel(`hangman-live-${currentUser.id}`)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'student_hangman_duels', filter: `challenger_id=eq.${currentUser.id}` }, () => window.loadHangmanSection())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'student_hangman_duels', filter: `opponent_id=eq.${currentUser.id}` }, () => window.loadHangmanSection())
+    .subscribe();
 };
 
 window.renderHangmanSection = function renderHangmanSection() {

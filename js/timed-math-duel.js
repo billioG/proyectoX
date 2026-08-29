@@ -18,6 +18,21 @@ window.loadTimedMathSection = async function loadTimedMathSection() {
   if (error) { console.error(error); return; }
   window._timedMathDuelsCache = data || [];
   window.renderTimedMathSection();
+  window.subscribeTimedMathRealtime();
+};
+
+// Mismo problema que en duels.js: sin esto el retador se queda viendo
+// "Esperando..." hasta recargar a mano aunque el rival ya haya aceptado.
+window.subscribeTimedMathRealtime = function subscribeTimedMathRealtime() {
+  if (window._timedMathRealtimeChannel) return;
+  const currentUser = window.currentUser;
+  if (!currentUser) return;
+
+  window._timedMathRealtimeChannel = window._supabase
+    .channel(`timed-math-live-${currentUser.id}`)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'student_timed_math_duels', filter: `challenger_id=eq.${currentUser.id}` }, () => window.loadTimedMathSection())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'student_timed_math_duels', filter: `opponent_id=eq.${currentUser.id}` }, () => window.loadTimedMathSection())
+    .subscribe();
 };
 
 window.renderTimedMathSection = function renderTimedMathSection() {
