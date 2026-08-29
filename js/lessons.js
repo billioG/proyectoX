@@ -3,8 +3,8 @@
  * nota), estilo Platzi: bloqueo secuencial y barra de progreso.
  */
 
-const LESSON_TYPE_ICON = { video: 'fa-video', pdf: 'fa-file-pdf', image: 'fa-image', scorm: 'fa-cube', h5p: 'fa-puzzle-piece', html5: 'fa-window-maximize' };
-const LESSON_TYPE_LABEL = { video: 'Video', pdf: 'PDF', image: 'Imagen', scorm: 'SCORM', h5p: 'H5P', html5: 'Aplicación HTML5', quiz: 'Quiz' };
+const LESSON_TYPE_ICON = { video: 'fa-video', pdf: 'fa-file-pdf', image: 'fa-image', scorm: 'fa-cube', h5p: 'fa-puzzle-piece', html5: 'fa-window-maximize', tinkercad: 'fa-microchip' };
+const LESSON_TYPE_LABEL = { video: 'Video', pdf: 'PDF', image: 'Imagen', scorm: 'SCORM', h5p: 'H5P', html5: 'Aplicación HTML5', quiz: 'Quiz', tinkercad: 'Tinkercad' };
 const LESSON_TYPES_WITH_GRADE = new Set(['scorm', 'h5p', 'quiz']);
 // Subconjunto que sube un .zip (H5P/SCORM/HTML5 genérico) -- el quiz también
 // tiene nota automática pero su UI de carga es un formulario de preguntas,
@@ -245,6 +245,11 @@ window.openCreateCourseModal = async function openCreateCourseModal(editCourseId
           </div>
         </div>
         <p class="text-[0.65rem] text-slate-400 -mt-2"><i class="fas fa-circle-info"></i> Cuánto vale este curso dentro de la nota del bimestre. La plataforma reparte el peso entre sus recursos automáticamente (los que tienen nota real pesan más que los de solo lectura).</p>
+        <div>
+          <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Link de Clase Tinkercad (opcional)</label>
+          <input type="text" id="course-tinkercad-class-url" placeholder="https://www.tinkercad.com/joinclass/..." class="input-field-tw h-11 text-sm" value="${editing ? window.sanitizeAttr(editing.tinkercad_class_url || '') : ''}">
+          <p class="text-[0.65rem] text-slate-400 mt-1">Si lo llenás, los estudiantes de este curso ven un botón para entrar a tu clase de Tinkercad.</p>
+        </div>
       </div>
       <div class="flex gap-3 mt-8">
         <button class="btn-secondary-tw flex-1 h-11 text-xs uppercase font-bold" onclick="this.closest('.fixed').remove()">Cancelar</button>
@@ -264,6 +269,7 @@ window.saveCourse = async function saveCourse(editingId) {
   const tags = (document.getElementById('course-tags')?.value || '').split(',').map(t => t.trim().toLowerCase()).filter(Boolean);
   const bimestre = parseInt(document.getElementById('course-bimestre')?.value) || 1;
   const weight = Math.min(100, Math.max(0, parseInt(document.getElementById('course-weight')?.value) || 0));
+  const tinkercad_class_url = document.getElementById('course-tinkercad-class-url')?.value.trim() || null;
   const classOption = window._courseClassOptions?.[classIndex];
   const btn = document.getElementById('btn-save-course');
 
@@ -288,7 +294,7 @@ window.saveCourse = async function saveCourse(editingId) {
 
   if (editingId) {
     const { error } = await window._supabase.from('courses').update({
-      title, description: description || null, tags, bimestre, weight,
+      title, description: description || null, tags, bimestre, weight, tinkercad_class_url,
       school_code: classOption.school_code, grade: classOption.grade, section: classOption.section,
     }).eq('id', editingId);
     if (error) {
@@ -304,7 +310,7 @@ window.saveCourse = async function saveCourse(editingId) {
   }
 
   const { data, error } = await window._supabase.from('courses').insert({
-    title, description: description || null, tags, bimestre, weight,
+    title, description: description || null, tags, bimestre, weight, tinkercad_class_url,
     school_code: classOption.school_code, grade: classOption.grade, section: classOption.section,
     created_by: window.currentUser.id,
   }).select().single();
@@ -546,6 +552,8 @@ window.previewCourseResource = function previewCourseResource(lessonId) {
     mediaHtml = `<iframe class="w-full h-[60vh] rounded-xl border border-slate-200 dark:border-slate-700" src="${lesson.content_url}"></iframe>`;
   } else if (lesson.content_type === 'image') {
     mediaHtml = `<img src="${lesson.content_url}" class="w-full rounded-xl">`;
+  } else if (lesson.content_type === 'tinkercad') {
+    mediaHtml = `<iframe class="w-full h-[60vh] rounded-xl border border-slate-200 dark:border-slate-700" src="${lesson.content_url}" allowfullscreen></iframe>`;
   } else if (lesson.content_type === 'scorm' || lesson.content_type === 'html5') {
     // Ver comentario en selectCourseResource() -- srcdoc en vez de src=""
     // evita que Supabase pise el Content-Type a text/plain en la navegación.
@@ -760,6 +768,7 @@ window.openAddResourceModal = function openAddResourceModal(courseId, editLesson
             <option value="h5p">H5P (.zip -- con nota automática)</option>
             <option value="html5">Aplicación HTML5 (.zip -- sin nota automática)</option>
             <option value="quiz">Quiz (preguntas -- con nota automática)</option>
+            <option value="tinkercad">Tinkercad (circuito/diseño 3D embebido)</option>
           </select>
         </div>
         <div id="resource-source-mode-wrap">
@@ -1565,6 +1574,10 @@ window.loadStudentCourses = async function loadStudentCourses(container) {
               <div class="h-full bg-primary transition-all" style="width: ${pct}%"></div>
             </div>
           </div>
+          ${c.tinkercad_class_url ? `
+          <a href="${window.sanitizeAttr(c.tinkercad_class_url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="mt-1 flex items-center justify-center gap-1.5 h-9 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-[0.65rem] font-bold uppercase">
+            <i class="fas fa-microchip"></i> Clase de Tinkercad
+          </a>` : ''}
         </div>
       `;
       }).join('')}
@@ -1704,6 +1717,8 @@ window.selectCourseResource = function selectCourseResource(index) {
     mediaHtml = `<iframe class="w-full h-[60vh] rounded-xl border border-slate-200 dark:border-slate-700" src="${lesson.content_url}"></iframe>`;
   } else if (lesson.content_type === 'image') {
     mediaHtml = `<img src="${lesson.content_url}" class="w-full rounded-xl">`;
+  } else if (lesson.content_type === 'tinkercad') {
+    mediaHtml = `<iframe class="w-full h-[60vh] rounded-xl border border-slate-200 dark:border-slate-700" src="${lesson.content_url}" allowfullscreen></iframe>`;
   } else if (lesson.content_type === 'scorm') {
     // src="" (no srcdoc) hacía una navegación HTTP normal al proxy --
     // Supabase pisa el Content-Type a text/plain + CSP sandbox en CUALQUIER
