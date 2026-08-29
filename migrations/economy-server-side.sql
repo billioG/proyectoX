@@ -24,7 +24,10 @@
 -- ------------------------------------------------------------
 revoke update (xp, gems, daily_chest_last_claimed, streak_freeze, has_gold_frame, has_mascot_glasses)
   on public.students from authenticated;
-revoke update (xp, gems, daily_chest_last_claimed, streak_freeze)
+-- teachers no tiene streak_freeze/has_gold_frame/has_mascot_glasses (esos
+-- cosméticos son solo de alumno) -- comprarlos como docente ya fallaba
+-- antes de este cambio igual, no es una regresión nueva.
+revoke update (xp, gems, daily_chest_last_claimed)
   on public.teachers from authenticated;
 
 -- ------------------------------------------------------------
@@ -102,6 +105,13 @@ begin
     v_table := 'teachers';
   else
     raise exception 'Usuario no encontrado';
+  end if;
+
+  -- Los 3 ítems son cosméticos de alumno (streak_freeze/has_gold_frame/
+  -- has_mascot_glasses no existen en teachers) -- ya era así antes de este
+  -- cambio, se deja explícito para no tirar un error crudo de columna.
+  if v_table <> 'students' then
+    raise exception 'La tienda todavía es solo para estudiantes';
   end if;
 
   if p_item = 'Racha Congelada' then
