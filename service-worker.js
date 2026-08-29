@@ -2,7 +2,7 @@
 // SERVICE WORKER - PROJECTX PWA
 // ================================================
 
-const CACHE_NAME = 'projectx-v1.0.35';
+const CACHE_NAME = 'projectx-v1.0.36';
 // Rutas RELATIVAS (sin "/" inicial) -- con "/" apuntaban siempre a la raíz
 // del dominio, lo cual rompe el sitio cuando se sirve desde un subpath
 // (ej. billiog.github.io/proyectoX/) porque pedía billiog.github.io/js/...

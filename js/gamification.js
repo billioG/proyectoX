@@ -647,37 +647,38 @@ window.renderGamificationHubContent = function renderGamificationHubContent(moda
                      </div>
                 </section>
 
-                 <!-- DUELOS -->
-                <section>
-                     <h3 class="text-2xl font-black text-white italic uppercase mb-6 flex items-center gap-3"><i class="fas fa-swords text-rose-500"></i> Desafíos de Código</h3>
-                     <div id="duels-section">
-                        <div class="text-center text-slate-500 text-xs py-6"><i class="fas fa-spinner fa-spin"></i></div>
-                     </div>
-                </section>
+                 <!-- LOS 4 DESAFÍOS 1V1 -- antes cada uno era una sección de ancho
+                      completo apilada, en desktop quedaba una sola columna
+                      angosta desperdiciando el resto de la pantalla. -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-x-8">
+                    <section>
+                         <h3 class="text-2xl font-black text-white italic uppercase mb-6 flex items-center gap-3"><i class="fas fa-swords text-rose-500"></i> Desafíos de Código</h3>
+                         <div id="duels-section">
+                            <div class="text-center text-slate-500 text-xs py-6"><i class="fas fa-spinner fa-spin"></i></div>
+                         </div>
+                    </section>
 
-                 <!-- AHORCADO 1V1 -->
-                <section>
-                     <h3 class="text-2xl font-black text-white italic uppercase mb-6 flex items-center gap-3"><i class="fas fa-spider text-rose-500"></i> Ahorcado 1v1</h3>
-                     <div id="hangman-section">
-                        <div class="text-center text-slate-500 text-xs py-6"><i class="fas fa-spinner fa-spin"></i></div>
-                     </div>
-                </section>
+                    <section>
+                         <h3 class="text-2xl font-black text-white italic uppercase mb-6 flex items-center gap-3"><i class="fas fa-spider text-rose-500"></i> Ahorcado 1v1</h3>
+                         <div id="hangman-section">
+                            <div class="text-center text-slate-500 text-xs py-6"><i class="fas fa-spinner fa-spin"></i></div>
+                         </div>
+                    </section>
 
-                 <!-- CONTRARRELOJ 1V1 -->
-                <section>
-                     <h3 class="text-2xl font-black text-white italic uppercase mb-6 flex items-center gap-3"><i class="fas fa-stopwatch text-rose-500"></i> Contrarreloj 1v1</h3>
-                     <div id="timed-math-section">
-                        <div class="text-center text-slate-500 text-xs py-6"><i class="fas fa-spinner fa-spin"></i></div>
-                     </div>
-                </section>
+                    <section>
+                         <h3 class="text-2xl font-black text-white italic uppercase mb-6 flex items-center gap-3"><i class="fas fa-stopwatch text-rose-500"></i> Contrarreloj 1v1</h3>
+                         <div id="timed-math-section">
+                            <div class="text-center text-slate-500 text-xs py-6"><i class="fas fa-spinner fa-spin"></i></div>
+                         </div>
+                    </section>
 
-                 <!-- ENCONTRÁ EL ERROR 1V1 -->
-                <section>
-                     <h3 class="text-2xl font-black text-white italic uppercase mb-6 flex items-center gap-3"><i class="fas fa-bug text-rose-500"></i> Encontrá el Error 1v1</h3>
-                     <div id="debug-section">
-                        <div class="text-center text-slate-500 text-xs py-6"><i class="fas fa-spinner fa-spin"></i></div>
-                     </div>
-                </section>
+                    <section>
+                         <h3 class="text-2xl font-black text-white italic uppercase mb-6 flex items-center gap-3"><i class="fas fa-bug text-rose-500"></i> Encontrá el Error 1v1</h3>
+                         <div id="debug-section">
+                            <div class="text-center text-slate-500 text-xs py-6"><i class="fas fa-spinner fa-spin"></i></div>
+                         </div>
+                    </section>
+                </div>
 
                  <!-- TORNEOS ENTRE ESTABLECIMIENTOS -->
                 <section>

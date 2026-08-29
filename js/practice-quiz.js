@@ -12,7 +12,7 @@ window.renderPracticeQuizSection = function renderPracticeQuizSection() {
   const topics = window.getDuelTopicPoolForCurrentUser ? window.getDuelTopicPoolForCurrentUser() : [];
   return `
     <p class="text-xs text-slate-400 mb-4">Elegí un tema y repasá solo, a tu ritmo. Ganás XP y gemas por acertar (una vez por tema al día).</p>
-    <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
       ${topics.map(t => `
         <button class="glass-card bg-slate-800/50 border-white/10 hover:border-primary/40 p-4 text-left text-xs font-bold text-white transition-all" onclick="window.startPracticeQuiz('${window.sanitizeAttr ? window.sanitizeAttr(t) : t}')">
           <i class="fas fa-book-open text-primary mb-2 block"></i> ${window.sanitizeInput ? window.sanitizeInput(t) : t}
