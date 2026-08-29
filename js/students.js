@@ -519,6 +519,23 @@ window.openAddStudentModal = async function openAddStudentModal(student = null) 
           </div>
         </div>
 
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Código Personal MINEDUC</label>
+            <input type="text" id="student-codigo-personal" placeholder="Ej: A123BCD" value="${window.sanitizeAttr(student?.codigo_personal || '')}"
+                   class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary/20 transition-all">
+            <p class="text-[0.6rem] text-slate-400 mt-1">Lo exige el SIRE/Cuadro de Resultados Finales -- distinto del CUI.</p>
+          </div>
+          <div>
+            <label class="block text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Sexo *</label>
+            <select id="student-gender" required class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary/20 transition-all">
+              <option value="">...</option>
+              <option value="masculino" ${student?.gender === 'masculino' ? 'selected' : ''}>Masculino</option>
+              <option value="femenino" ${student?.gender === 'femenino' ? 'selected' : ''}>Femenino</option>
+            </select>
+          </div>
+        </div>
+
         <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
            <div>
             <label class="block text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Nivel *</label>
@@ -576,11 +593,13 @@ window.submitStudent = async function submitStudent(e) {
   const cui = document.getElementById('student-cui').value;
   const grade = document.getElementById('student-grade').value;
   const section = document.getElementById('student-section').value;
+  const codigo_personal = document.getElementById('student-codigo-personal').value.trim() || null;
+  const gender = document.getElementById('student-gender').value || null;
 
   try {
     if (id) {
       // Editar: la cuenta de acceso ya existe, solo se tocan los datos.
-      const { error } = await _supabase.from('students').update({ full_name, school_code, cui, grade, section }).eq('id', id);
+      const { error } = await _supabase.from('students').update({ full_name, school_code, cui, grade, section, codigo_personal, gender }).eq('id', id);
       if (error) throw error;
       showToast('<i class="fas fa-circle-check"></i> Alumno actualizado', 'success');
       e.target.closest('.fixed').remove();
@@ -605,7 +624,7 @@ window.submitStudent = async function submitStudent(e) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token || ''}` },
       body: JSON.stringify({
-        students: [{ fullName: full_name, username: finalUsername, email: `${finalUsername}@estudiante.edu.gt`, password, school_code, grade, section, cui }],
+        students: [{ fullName: full_name, username: finalUsername, email: `${finalUsername}@estudiante.edu.gt`, password, school_code, grade, section, cui, gender, codigo_personal }],
       }),
     });
     const result = await res.json();

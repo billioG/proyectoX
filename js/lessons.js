@@ -218,13 +218,18 @@ window.openCreateCourseModal = async function openCreateCourseModal(editCourseId
       <div class="space-y-4">
         <div>
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Clase</label>
-          <select id="course-class" class="input-field-tw h-11 text-sm">
+          <select id="course-class" class="input-field-tw h-11 text-sm" onchange="window.refreshCourseCnbAreaOptions()">
             ${classOptions.map((c, i) => `<option value="${i}" ${i === selectedIndex ? 'selected' : ''}>${window.sanitizeInput(c.schoolName)} · ${window.sanitizeInput(c.grade)} ${window.sanitizeInput(c.section)}</option>`).join('')}
           </select>
         </div>
         <div>
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Título *</label>
           <input type="text" id="course-title" class="input-field-tw h-11 text-sm" value="${editing ? window.sanitizeAttr(editing.title) : ''}">
+        </div>
+        <div>
+          <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Área CNB *</label>
+          <select id="course-cnb-area" class="input-field-tw h-11 text-sm"></select>
+          <p class="text-[0.65rem] text-slate-400 mt-1">Área curricular oficial (CNB) a la que pertenece este curso -- la exige el Cuadro de Resultados Finales del MINEDUC.</p>
         </div>
         <div>
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Descripción</label>
@@ -262,8 +267,24 @@ window.openCreateCourseModal = async function openCreateCourseModal(editCourseId
   `;
   document.body.appendChild(modal);
   window._courseClassOptions = classOptions;
+  window._editingCourseCnbArea = editing?.cnb_area || null;
+  window.refreshCourseCnbAreaOptions();
   if (!editing) attachFormDraftAutosave(modal, 'px_draft_course', ['course-title', 'course-description', 'course-tags']);
 }
+
+// El área depende del NIVEL de la clase elegida (primaria/básico/diversificado
+// tienen listas CNB distintas) -- se recalcula cada vez que cambia el select
+// de clase, preservando la selección guardada si se está editando un curso.
+window.refreshCourseCnbAreaOptions = function refreshCourseCnbAreaOptions() {
+  const classIndex = document.getElementById('course-class')?.value;
+  const classOption = window._courseClassOptions?.[classIndex];
+  const select = document.getElementById('course-cnb-area');
+  if (!select || !classOption) return;
+  const areas = window.getCnbAreasForGrade(classOption.grade);
+  const preserve = window._editingCourseCnbArea;
+  select.innerHTML = areas.map(a => `<option value="${window.sanitizeAttr(a)}" ${a === preserve ? 'selected' : ''}>${window.sanitizeInput(a)}</option>`).join('');
+  window._editingCourseCnbArea = null; // solo se preserva la primera vez
+};
 
 window.saveCourse = async function saveCourse(editingId) {
   const classIndex = document.getElementById('course-class')?.value;
@@ -273,10 +294,12 @@ window.saveCourse = async function saveCourse(editingId) {
   const bimestre = parseInt(document.getElementById('course-bimestre')?.value) || 1;
   const weight = Math.min(100, Math.max(0, parseInt(document.getElementById('course-weight')?.value) || 0));
   const tinkercad_class_url = document.getElementById('course-tinkercad-class-url')?.value.trim() || null;
+  const cnb_area = document.getElementById('course-cnb-area')?.value || null;
   const classOption = window._courseClassOptions?.[classIndex];
   const btn = document.getElementById('btn-save-course');
 
   if (!title) return window.showToast('<i class="fas fa-circle-xmark"></i> Ponele un título', 'error');
+  if (!cnb_area) return window.showToast('<i class="fas fa-circle-xmark"></i> Elegí el área CNB del curso', 'error');
   if (!classOption) return window.showToast('<i class="fas fa-circle-xmark"></i> Elegí una clase', 'error');
 
   // El SIRE no acepta más de 100 puntos por bimestre -- si ya hay otros
@@ -297,7 +320,7 @@ window.saveCourse = async function saveCourse(editingId) {
 
   if (editingId) {
     const { error } = await window._supabase.from('courses').update({
-      title, description: description || null, tags, bimestre, weight, tinkercad_class_url,
+      title, description: description || null, tags, bimestre, weight, tinkercad_class_url, cnb_area,
       school_code: classOption.school_code, grade: classOption.grade, section: classOption.section,
     }).eq('id', editingId);
     if (error) {
@@ -313,7 +336,7 @@ window.saveCourse = async function saveCourse(editingId) {
   }
 
   const { data, error } = await window._supabase.from('courses').insert({
-    title, description: description || null, tags, bimestre, weight, tinkercad_class_url,
+    title, description: description || null, tags, bimestre, weight, tinkercad_class_url, cnb_area,
     school_code: classOption.school_code, grade: classOption.grade, section: classOption.section,
     created_by: window.currentUser.id,
   }).select().single();

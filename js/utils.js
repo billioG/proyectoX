@@ -304,6 +304,41 @@ function getNextGrade(gradeText) {
 }
 window.getNextGrade = getNextGrade;
 
+function getNivelFromGrade(gradeText) {
+  const rank = getGradeRank(gradeText);
+  if (rank <= 6) return 'primaria';
+  if (rank <= 9) return 'basico';
+  return 'diversificado';
+}
+window.getNivelFromGrade = getNivelFromGrade;
+
+// Áreas curriculares oficiales del CNB (Currículo Nacional Base, MINEDUC)
+// por nivel -- necesarias para que el Cuadro de Resultados Finales /
+// Certificado de Estudios tenga las columnas que el MINEDUC exige (no
+// nombres de curso libres que pone el docente, ej. "mBlock").
+const CNB_AREAS_BY_NIVEL = {
+  primaria: [
+    'Comunicación y Lenguaje L1', 'Comunicación y Lenguaje L2', 'Matemáticas',
+    'Medio Social y Natural', 'Ciencias Naturales', 'Ciencias Sociales',
+    'Formación Ciudadana', 'Expresión Artística', 'Educación Física',
+    'Productividad y Desarrollo', 'Tecnologías del Aprendizaje y la Comunicación',
+  ],
+  basico: [
+    'Comunicación y Lenguaje L1 (Idioma Español)', 'Comunicación y Lenguaje L2 (Idioma Extranjero)',
+    'Matemática', 'Ciencias Naturales', 'Ciencias Sociales', 'Formación Ciudadana',
+    'Expresión Artística', 'Educación Física', 'Emprendimiento para la Productividad',
+    'Tecnologías del Aprendizaje y la Comunicación',
+  ],
+  diversificado: [
+    'Idioma Español', 'Idioma Extranjero', 'Matemática', 'Ciencias Naturales', 'Ciencias Sociales',
+    'Filosofía', 'Formación Ciudadana', 'Expresión Artística', 'Educación Física',
+    'Curso Técnico / Especialidad', 'Seminario', 'Práctica Supervisada',
+  ],
+};
+window.getCnbAreasForGrade = function getCnbAreasForGrade(gradeText) {
+  return CNB_AREAS_BY_NIVEL[getNivelFromGrade(gradeText)] || CNB_AREAS_BY_NIVEL.basico;
+};
+
 // Traba simple para no disparar varias generaciones de IA en paralelo --
 // varios alumnos (o el mismo, clickeando rápido en Práctica Solo) pidiendo
 // quizzes a la vez agotaba el límite de tokens por minuto de la cuenta de

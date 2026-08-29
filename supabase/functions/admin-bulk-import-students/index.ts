@@ -23,7 +23,7 @@ const json = (body: unknown, status = 200) =>
 type StudentRow = {
   fullName: string; username: string; email: string; password: string;
   school_code?: string | null; grade?: string | null; section?: string | null;
-  cui?: string | null; gender?: string | null; birth_date?: string | null;
+  cui?: string | null; gender?: string | null; birth_date?: string | null; codigo_personal?: string | null;
 };
 
 Deno.serve(async (req) => {
@@ -93,6 +93,7 @@ Deno.serve(async (req) => {
           cui: s.cui || null,
           gender: s.gender || null,
           birth_date: s.birth_date || null,
+          codigo_personal: s.codigo_personal || null,
           password_generated: password,
         });
 
