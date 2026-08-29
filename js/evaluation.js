@@ -63,14 +63,26 @@ window.renderEvaluationDashboard = function renderEvaluationDashboard(projects, 
   const evaluated = projects.filter(p => hasEvaluation(p) || p.score > 0).length;
   const pending = total - evaluated;
 
+  // Pedido de un docente: poder elegir una clase puntual para ordenar la
+  // calificación, no solo verlas agrupadas -- las opciones salen de las
+  // combinaciones grado+sección que realmente existen en estos proyectos.
+  const classCombos = [...new Set(projects.map(p => `${p.students?.grade || ''}|${p.students?.section || ''}`).filter(k => k !== '|'))]
+    .sort((a, b) => a.localeCompare(b));
+
   container.innerHTML = `
     <div class="glass-card p-6 mb-10 flex flex-col md:flex-row gap-6 items-center">
       <div class="relative grow w-full">
         <i class="fas fa-search absolute left-5 top-1/2 -translate-y-1/2 text-slate-400"></i>
-        <input type="text" id="eval-search-input" placeholder="Buscar por alumno, escuela o proyecto..." 
-               class="input-field-tw pl-14" 
+        <input type="text" id="eval-search-input" placeholder="Buscar por alumno, escuela o proyecto..."
+               class="input-field-tw pl-14"
                oninput="window.debouncedFilter(this.value)">
       </div>
+      ${classCombos.length > 1 ? `
+      <select id="eval-class-filter" class="input-field-tw h-11 text-xs shrink-0 w-full md:w-auto" onchange="window.filterEvaluationProjects(document.getElementById('eval-search-input').value)">
+        <option value="">Todos los grados/secciones</option>
+        ${classCombos.map(c => { const [g, s] = c.split('|'); return `<option value="${window.sanitizeAttr(c)}">${window.sanitizeInput(g)} ${window.sanitizeInput(s)}</option>`; }).join('')}
+      </select>
+      ` : ''}
       <div class="flex gap-3 shrink-0 items-center">
         <label class="flex items-center gap-2 mr-4 cursor-pointer group">
             <div class="relative w-10 h-6 bg-slate-200 dark:bg-slate-700 rounded-full transition-colors group-has-[:checked]:bg-primary">
@@ -107,8 +119,13 @@ window.filterEvaluationProjects = function (val) {
   if (!container || !window.allEvalProjects) return;
 
   const onlyPending = document.getElementById('eval-toggle-pending')?.checked || false;
+  const classFilter = document.getElementById('eval-class-filter')?.value || '';
 
   let filtered = window.allEvalProjects || [];
+
+  if (classFilter) {
+    filtered = filtered.filter(p => `${p.students?.grade || ''}|${p.students?.section || ''}` === classFilter);
+  }
 
   if (query) {
     filtered = filtered.filter(p =>
@@ -218,6 +235,7 @@ window.renderProjectEvalCard = function renderProjectEvalCard(p) {
             <h4 class="text-lg font-black text-slate-800 dark:text-white leading-tight mb-1 truncate">${sanitizeInput(p.title)}</h4>
             <div class="text-xs font-bold text-slate-400 dark:text-slate-500 flex items-center gap-2">
                 <i class="fas fa-user-graduate"></i> <span class="truncate">${p.students?.full_name}</span>
+                ${p.students?.grade ? `<span class="shrink-0 px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[0.55rem] uppercase tracking-widest">${sanitizeInput(p.students.grade)} ${sanitizeInput(p.students.section || '')}</span>` : ''}
             </div>
         </div>
         <div class="${isEvaluated ? 'bg-emerald-500 shadow-emerald-500/20' : 'bg-rose-500 shadow-rose-500/20'} text-white text-xs font-black px-3 py-1.5 rounded-xl shadow-lg">

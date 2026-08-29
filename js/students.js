@@ -422,11 +422,13 @@ window.renderStudentsList = function renderStudentsList(container, students, all
                     <p class="text-[0.55rem] text-slate-400 mt-0.5"><i class="fas fa-clock"></i> ${(() => { if (!s.last_login) return 'Nunca conectó'; const d = new Date(s.last_login.includes('T') ? s.last_login : s.last_login + 'T00:00:00'); return isNaN(d.getTime()) ? 'Nunca conectó' : d.toLocaleDateString('es-GT'); })()}</p>
                   </div>
 
-                  ${window.userRole === 'admin' ? `
+                  ${(window.userRole === 'admin' || window.userRole === 'docente') ? `
                     <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onclick="window.editStudent('${s.id}')" class="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-500 hover:bg-indigo-500 hover:text-white transition-colors flex items-center justify-center">
-                        <i class="fas fa-edit text-[0.6rem]"></i>
-                      </button>
+                      ${window.userRole === 'admin' ? `
+                        <button onclick="window.editStudent('${s.id}')" class="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-500 hover:bg-indigo-500 hover:text-white transition-colors flex items-center justify-center">
+                          <i class="fas fa-edit text-[0.6rem]"></i>
+                        </button>
+                      ` : ''}
                       ${s.status === 'baja' ? `
                         <button onclick="window.toggleStudentBaja('${s.id}', false)" title="Reactivar" class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-500 hover:bg-emerald-500 hover:text-white transition-colors flex items-center justify-center">
                           <i class="fas fa-user-check text-[0.6rem]"></i>
@@ -436,9 +438,11 @@ window.renderStudentsList = function renderStudentsList(container, students, all
                           <i class="fas fa-user-slash text-[0.6rem]"></i>
                         </button>
                       `}
-                      <button onclick="window.deleteStudent('${s.id}')" class="w-7 h-7 rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white transition-colors flex items-center justify-center">
-                        <i class="fas fa-trash-alt text-[0.6rem]"></i>
-                      </button>
+                      ${window.userRole === 'admin' ? `
+                        <button onclick="window.deleteStudent('${s.id}')" class="w-7 h-7 rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white transition-colors flex items-center justify-center">
+                          <i class="fas fa-trash-alt text-[0.6rem]"></i>
+                        </button>
+                      ` : ''}
                     </div>
                   ` : ''}
                 </div>

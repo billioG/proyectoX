@@ -8,6 +8,29 @@
 const MAX_WRONG_GUESSES = 6;
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
+// El ahorcado no tenía ninguna señal visual de los errores -- solo un
+// contador de texto. Dibuja la horca de a partes (cabeza, cuerpo, 2 brazos,
+// 2 piernas) según la cantidad de errores, estilo flat sin gradientes.
+window.renderHangmanFigureSvg = function renderHangmanFigureSvg(wrong) {
+  const parts = [
+    '<circle cx="130" cy="45" r="15" fill="none" stroke="#F87171" stroke-width="4"/>', // cabeza
+    '<line x1="130" y1="60" x2="130" y2="100" stroke="#F87171" stroke-width="4"/>', // cuerpo
+    '<line x1="130" y1="70" x2="110" y2="90" stroke="#F87171" stroke-width="4"/>', // brazo izq
+    '<line x1="130" y1="70" x2="150" y2="90" stroke="#F87171" stroke-width="4"/>', // brazo der
+    '<line x1="130" y1="100" x2="112" y2="130" stroke="#F87171" stroke-width="4"/>', // pierna izq
+    '<line x1="130" y1="100" x2="148" y2="130" stroke="#F87171" stroke-width="4"/>', // pierna der
+  ];
+  return `
+    <svg viewBox="0 0 200 150" class="w-32 h-24 mx-auto">
+      <line x1="20" y1="145" x2="100" y2="145" stroke="#64748B" stroke-width="4"/>
+      <line x1="40" y1="145" x2="40" y2="10" stroke="#64748B" stroke-width="4"/>
+      <line x1="40" y1="10" x2="130" y2="10" stroke="#64748B" stroke-width="4"/>
+      <line x1="130" y1="10" x2="130" y2="30" stroke="#64748B" stroke-width="4"/>
+      ${parts.slice(0, wrong).join('')}
+    </svg>
+  `;
+};
+
 window.loadHangmanSection = async function loadHangmanSection() {
   // "word"/"hint" no viajan al cliente hasta terminar el juego (columna
   // vedada por RLS, ver migrations/student-hangman-duels.sql) -- por eso
@@ -248,7 +271,9 @@ window.openHangmanGame = async function openHangmanGame(duelId) {
   window.renderHangmanGame();
 };
 
-window.renderHangmanGame = function renderHangmanGame() {
+// justWrong dispara un sacudido + flash rojo de feedback inmediato -- antes
+// un error solo cambiaba un número de texto, sin ninguna señal visual.
+window.renderHangmanGame = function renderHangmanGame(justWrong = false) {
   const state = window._activeHangman;
   if (!state) return;
   const sanitizeInput = window.sanitizeInput || ((v) => v);
@@ -258,11 +283,16 @@ window.renderHangmanGame = function renderHangmanGame() {
   modal.id = 'hangman-game-modal';
   modal.className = 'fixed inset-0 z-[220] flex items-center justify-center p-6 bg-slate-950/95 backdrop-blur-md animate-fadeIn';
   modal.innerHTML = `
-    <div class="glass-card w-full max-w-lg p-8 shadow-2xl animate-slideUp bg-slate-900 border border-white/10 text-center">
+    <style>
+      @keyframes hangman-shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)} 40%{transform:translateX(8px)} 60%{transform:translateX(-6px)} 80%{transform:translateX(6px)} }
+      .hangman-shake { animation: hangman-shake 0.4s ease-in-out; }
+    </style>
+    <div class="glass-card w-full max-w-lg p-8 shadow-2xl animate-slideUp bg-slate-900 border ${justWrong ? 'border-rose-500 hangman-shake' : 'border-white/10'} text-center transition-colors">
       <div class="flex justify-between items-center mb-4">
-        <span class="text-[0.6rem] font-black uppercase text-slate-400 tracking-widest">Errores: ${state.wrong} / ${MAX_WRONG_GUESSES}</span>
+        <span class="text-[0.6rem] font-black uppercase ${justWrong ? 'text-rose-400' : 'text-slate-400'} tracking-widest">Errores: ${state.wrong} / ${MAX_WRONG_GUESSES}</span>
         <span class="text-[0.6rem] font-black uppercase text-primary">Ahorcado</span>
       </div>
+      <div id="hangman-figure" class="mx-auto mb-3">${window.renderHangmanFigureSvg(state.wrong)}</div>
       <p class="text-sm text-slate-300 mb-5 italic">"${sanitizeInput(state.hint)}"</p>
       <div class="flex justify-center gap-2 flex-wrap mb-6">
         ${Array.from({ length: state.wordLength }).map((_, i) => `
@@ -309,7 +339,7 @@ window.guessHangmanLetter = async function guessHangmanLetter(letter) {
   if (data.solved || state.wrong >= MAX_WRONG_GUESSES) {
     return window.finishHangmanGame();
   }
-  window.renderHangmanGame();
+  window.renderHangmanGame(!data.correct);
 };
 
 window.finishHangmanGame = async function finishHangmanGame() {
