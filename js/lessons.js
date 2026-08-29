@@ -13,6 +13,9 @@ const LESSON_TYPES_WITH_GRADE = new Set(['scorm', 'h5p', 'quiz']);
 // con "marcar como visto".
 const ZIP_RESOURCE_TYPES = new Set(['scorm', 'h5p', 'html5']);
 const QUIZ_QUESTION_TYPE_LABEL = { mc: 'Opción múltiple', tf: 'Verdadero/Falso', number: 'Número exacto', range: 'Rango (min-max)', text: 'Respuesta abierta (manual)' };
+// Solo avisa en cursos creados desde que existe esta regla -- los que ya
+// existían de antes no se les exige retroactivamente un cuestionario/H5P.
+const GRADED_REQUIREMENT_SINCE = '2026-08-29T00:00:00Z';
 const LESSON_STORAGE_BUCKET = 'course-content';
 
 // h5p-standalone autoalojado (vendor/h5p-standalone/) en vez de CDN jsdelivr
@@ -332,21 +335,18 @@ window.saveCourse = async function saveCourse(editingId) {
 // ================================================
 // CÁLCULO DE NOTA DEL CURSO -- reparto automático de peso
 // ================================================
-// Los recursos con nota real (H5P/SCORM) pesan más que los de solo lectura
-// (video/PDF/imagen, que solo aportan "visto"/"no visto") -- el docente no
-// asigna peso por recurso, la plataforma lo reparte sola.
-const GRADED_WEIGHT_RATIO = 3;
-
+// La nota del curso sale SOLO de las actividades con nota automática
+// (H5P/SCORM/quiz) -- se reparten los puntos del curso en partes iguales
+// entre ellas. Video/PDF/imagen/HTML5/Tinkercad no entran a esta bolsa:
+// solo cuentan para el % de "completado" (visto/no visto), no para la nota.
+// Antes SÍ entraban (con menos peso) y eso diluía la nota real con
+// recursos que ni siquiera se pueden calificar.
 function computeResourceWeights(items) {
   const weights = new Map();
-  if (!items.length) return weights;
   const graded = items.filter(l => LESSON_TYPES_WITH_GRADE.has(l.content_type));
-  const ungraded = items.filter(l => !LESSON_TYPES_WITH_GRADE.has(l.content_type));
-  const totalUnits = graded.length * GRADED_WEIGHT_RATIO + ungraded.length;
-  if (totalUnits === 0) return weights;
-  const unit = 100 / totalUnits;
-  graded.forEach(l => weights.set(l.id, unit * GRADED_WEIGHT_RATIO));
-  ungraded.forEach(l => weights.set(l.id, unit));
+  if (!graded.length) return weights;
+  const unit = 100 / graded.length;
+  graded.forEach(l => weights.set(l.id, unit));
   return weights;
 }
 
@@ -407,7 +407,7 @@ window.openCourseGradesModal = async function openCourseGradesModal(courseId) {
       <details class="mt-3 mb-1 group">
         <summary class="text-[0.65rem] font-bold text-primary uppercase tracking-widest cursor-pointer select-none"><i class="fas fa-circle-info mr-1"></i> ¿Cómo se pondera cada recurso?</summary>
         <div class="mt-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 text-xs space-y-2">
-          <p class="text-slate-500 dark:text-slate-400">Los recursos con nota real (H5P/SCORM/Quiz) pesan <strong>3 veces más</strong> que los de solo lectura (video/PDF/imagen, que solo cuentan "visto"/"no visto"). El peso se reparte automáticamente entre todos los recursos del curso para sumar el ${course.weight ?? 100}% de este curso -- vos no asignás peso por recurso.</p>
+          <p class="text-slate-500 dark:text-slate-400">La nota del curso sale <strong>solo</strong> de los recursos con nota real (H5P/SCORM/Quiz), repartida en partes iguales entre ellos. Los de solo lectura (video/PDF/imagen, Tinkercad) cuentan para el % de "visto" pero no afectan la nota. Si no hay ningún recurso con nota, el curso vale 0 puntos hasta que agregues uno.</p>
           <table class="w-full text-left mt-2">
             <thead><tr class="text-[0.55rem] uppercase text-slate-400 border-b border-slate-200 dark:border-slate-700">
               <th class="py-1 pr-2">Recurso</th><th class="py-1 pr-2">Tipo</th><th class="py-1 text-right">Peso</th>
@@ -495,12 +495,21 @@ window.renderCourseResourcesList = function renderCourseResourcesList() {
   if (!listEl) return;
   const lessons = window._managingCourseLessons || [];
 
+  const course = window._managingCourse;
+  const hasGraded = lessons.some(l => LESSON_TYPES_WITH_GRADE.has(l.content_type));
+  const warnMissingGraded = !hasGraded && course?.created_at >= GRADED_REQUIREMENT_SINCE;
+  const warningHtml = warnMissingGraded ? `
+    <div class="glass-card p-4 mb-3 border border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs flex items-start gap-2">
+      <i class="fas fa-triangle-exclamation mt-0.5"></i>
+      <span>Este curso todavía no tiene ninguna actividad con nota (Quiz, H5P o SCORM) -- vale <strong>0 puntos</strong> hasta que agregues una. Agregá al menos un cuestionario final.</span>
+    </div>` : '';
+
   if (!lessons.length) {
-    listEl.innerHTML = '<div class="glass-card p-8 text-center text-slate-400 text-sm">Todavía no agregaste recursos. Los alumnos verán este curso vacío.</div>';
+    listEl.innerHTML = warningHtml + '<div class="glass-card p-8 text-center text-slate-400 text-sm">Todavía no agregaste recursos. Los alumnos verán este curso vacío.</div>';
     return;
   }
 
-  listEl.innerHTML = lessons.map((l, i) => `
+  listEl.innerHTML = warningHtml + lessons.map((l, i) => `
     <div class="glass-card p-3 flex flex-col sm:flex-row sm:items-center gap-3">
       <div class="flex items-center gap-3 min-w-0">
         <span class="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center text-xs font-black shrink-0">${i + 1}</span>
