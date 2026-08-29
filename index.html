@@ -60,7 +60,7 @@
          index.html pero el navegador puede seguir sirviendo desde caché HTTP
          una versión vieja de un módulo lazy-loaded (ej. pdf-processor.js),
          aunque el tag de versión visible ya muestre la última. -->
-    <script>window.APP_VERSION = 'v1.0.32';</script>
+    <script>window.APP_VERSION = 'v1.0.33';</script>
 
     <!-- Silenciar console.log/info/debug en producción (activar con localStorage.PX_DEBUG='true').
          Va antes de todo lo demás porque los console.log de cada módulo corren
@@ -524,7 +524,7 @@
     <!-- ============================================ -->
     <!-- PANTALLA DE LOGIN -->
     <!-- ============================================ -->
-    <div id="auth-container"
+    <main id="auth-container" role="main"
         class="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-6 sm:p-12 transition-colors duration-500">
         <div class="glass-card w-full max-w-md p-10 transform scale-100 dark:bg-slate-900/40">
             <div class="flex flex-col items-center mb-10">
@@ -534,7 +534,7 @@
                         Q</div>
                     Quetzal <span class="text-primary">LMS</span>
                 </div>
-                <span id="app-version-tag" class="text-[0.65rem] text-slate-400 font-medium mt-1">v1.0.32</span>
+                <span id="app-version-tag" class="text-[0.65rem] text-slate-500 dark:text-slate-400 font-medium mt-1">v1.0.33</span>
             </div>
 
             <div id="login-error"
@@ -558,6 +558,7 @@
                     <input type="password" id="login-password" placeholder="Contraseña"
                         class="w-full pl-12 pr-12 py-3.5 bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all">
                     <button type="button" tabindex="-1" onclick="window.toggleLoginPasswordVisibility()"
+                        aria-label="Mostrar u ocultar contraseña"
                         class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors">
                         <i id="login-password-eye" class="fas fa-eye"></i>
                     </button>
@@ -574,13 +575,13 @@
 
             <div class="login-help mt-10"></div>
         </div>
-    </div>
+    </main>
     <!-- Texto real y VISIBLE (nada oculto -- Google penaliza texto invisible
          hecho solo para SEO) para que la página tenga contenido que indexar.
          Antes la pantalla de login no tenía ni una palabra sobre qué es la
          plataforma, imposible de rankear para "LMS"/"plataforma educativa"
          sin texto relevante en la página. -->
-    <p class="max-w-md mx-auto text-center text-xs text-slate-400 px-6 pb-10 -mt-4">Quetzal LMS es una plataforma educativa (LMS) y sistema de gestión de aprendizaje para escuelas en Guatemala. Cursos en línea, evaluación de proyectos, retos 1v1 entre estudiantes y gamificación (XP, gemas, insignias) para primaria, básico y diversificado.</p>
+    <p class="max-w-md mx-auto text-center text-xs text-slate-500 dark:text-slate-400 px-6 pb-10 -mt-4">Quetzal LMS es una plataforma educativa (LMS) y sistema de gestión de aprendizaje para escuelas en Guatemala. Cursos en línea, evaluación de proyectos, retos 1v1 entre estudiantes y gamificación (XP, gemas, insignias) para primaria, básico y diversificado.</p>
 
     <!-- APLICACIÓN PRINCIPAL -->
     <div id="app-container" class="hidden min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-500">
@@ -591,7 +592,7 @@
                 <div class="text-2xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent transform hover:scale-105 transition-transform leading-none">
                     Quetzal LMS
                 </div>
-                <span class="text-[0.6rem] text-slate-400 font-medium mt-0.5">v1.0.32</span>
+                <span class="text-[0.6rem] text-slate-400 font-medium mt-0.5">v1.0.33</span>
             </div>
 
             <div class="flex items-center gap-4 sm:gap-6">
@@ -1146,7 +1147,7 @@
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
 
     <!-- Punto de Entrada del Sistema -->
-    <script type="module" src="js/app.js?v=1.0.32"></script>
+    <script type="module" src="js/app.js?v=1.0.33"></script>
 
     <meta name="mobile-web-app-capable" content="yes">
 </body>
