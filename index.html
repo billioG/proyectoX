@@ -60,7 +60,7 @@
          index.html pero el navegador puede seguir sirviendo desde caché HTTP
          una versión vieja de un módulo lazy-loaded (ej. pdf-processor.js),
          aunque el tag de versión visible ya muestre la última. -->
-    <script>window.APP_VERSION = 'v1.0.33';</script>
+    <script>window.APP_VERSION = 'v1.0.34';</script>
 
     <!-- Silenciar console.log/info/debug en producción (activar con localStorage.PX_DEBUG='true').
          Va antes de todo lo demás porque los console.log de cada módulo corren
@@ -532,9 +532,9 @@
                     <div
                         class="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center text-white shadow-lg shadow-primary/30">
                         Q</div>
-                    Quetzal <span class="text-primary">LMS</span>
+                    Quetzal <span class="text-primary-dark dark:text-primary">LMS</span>
                 </div>
-                <span id="app-version-tag" class="text-[0.65rem] text-slate-500 dark:text-slate-400 font-medium mt-1">v1.0.33</span>
+                <span id="app-version-tag" class="text-[0.65rem] text-slate-500 dark:text-slate-400 font-medium mt-1">v1.0.34</span>
             </div>
 
             <div id="login-error"
@@ -565,7 +565,7 @@
                 </div>
                 <div class="text-right">
                     <button type="button" onclick="window.openForgotPasswordModal()"
-                        class="text-xs font-bold text-primary hover:underline">¿Olvidaste tu contraseña?</button>
+                        class="text-xs font-bold text-primary-dark dark:text-primary hover:underline">¿Olvidaste tu contraseña?</button>
                 </div>
                 <button id="btn-login"
                     class="w-full bg-primary hover:bg-primary-dark text-white font-bold py-4 rounded-xl shadow-xl shadow-primary/20 transition-all active:scale-[0.98] flex items-center justify-center gap-3 mt-4">
@@ -592,7 +592,7 @@
                 <div class="text-2xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent transform hover:scale-105 transition-transform leading-none">
                     Quetzal LMS
                 </div>
-                <span class="text-[0.6rem] text-slate-400 font-medium mt-0.5">v1.0.33</span>
+                <span class="text-[0.6rem] text-slate-400 font-medium mt-0.5">v1.0.34</span>
             </div>
 
             <div class="flex items-center gap-4 sm:gap-6">
@@ -1147,7 +1147,7 @@
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
 
     <!-- Punto de Entrada del Sistema -->
-    <script type="module" src="js/app.js?v=1.0.33"></script>
+    <script type="module" src="js/app.js?v=1.0.34"></script>
 
     <meta name="mobile-web-app-capable" content="yes">
 </body>

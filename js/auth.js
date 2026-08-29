@@ -254,7 +254,7 @@ function renderMotivationalQuote() {
   const quote = MOTIVATIONAL_QUOTES[Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length)];
   container.innerHTML = `
     <div class="text-center max-w-sm mx-auto px-4">
-      <p class="text-xs italic text-slate-400 dark:text-slate-500 leading-relaxed">"${quote}"</p>
+      <p class="text-xs italic text-slate-500 dark:text-slate-400 leading-relaxed">"${quote}"</p>
     </div>
   `;
 }
