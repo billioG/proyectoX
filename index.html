@@ -4,9 +4,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quetzal LMS - Sistema de Gestión de Proyectos</title>
+    <title>Quetzal LMS | Plataforma Educativa con Gamificación para Escuelas en Guatemala</title>
     <meta name="description"
-        content="Quetzal LMS es una plataforma integral para la gestión, evaluación y seguimiento de proyectos educativos con gamificación integrada.">
+        content="Quetzal LMS es un sistema de gestión de aprendizaje (LMS) para escuelas en Guatemala: cursos, evaluación de proyectos, retos 1v1 y gamificación para motivar a tus estudiantes.">
+    <meta name="keywords" content="LMS, plataforma educativa, sistema de gestión de aprendizaje, educación Guatemala, gamificación educativa, plataforma para docentes, cursos en línea escuela">
+    <link rel="canonical" href="https://clases.yoaprendo.online/">
+
+    <!-- Open Graph / redes sociales -->
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Quetzal LMS">
+    <meta property="og:title" content="Quetzal LMS | Plataforma Educativa con Gamificación para Escuelas en Guatemala">
+    <meta property="og:description" content="Sistema de gestión de aprendizaje (LMS) para escuelas en Guatemala: cursos, evaluación de proyectos, retos 1v1 y gamificación para motivar a tus estudiantes.">
+    <meta property="og:url" content="https://clases.yoaprendo.online/">
+    <meta property="og:image" content="https://clases.yoaprendo.online/icon-192.png">
+    <meta property="og:locale" content="es_GT">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Quetzal LMS | Plataforma Educativa con Gamificación">
+    <meta name="twitter:description" content="LMS para escuelas en Guatemala: cursos, evaluación de proyectos y gamificación.">
+    <meta name="twitter:image" content="https://clases.yoaprendo.online/icon-192.png">
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "EducationalOrganization",
+      "name": "Quetzal LMS",
+      "description": "Plataforma educativa (LMS) con gamificación para escuelas en Guatemala: cursos, evaluación de proyectos y retos 1v1 entre estudiantes.",
+      "url": "https://clases.yoaprendo.online/",
+      "areaServed": "GT",
+      "inLanguage": "es"
+    }
+    </script>
 
     <!-- Estilos -->
     <link rel="stylesheet" href="css/styles.css">
@@ -33,7 +60,7 @@
          index.html pero el navegador puede seguir sirviendo desde caché HTTP
          una versión vieja de un módulo lazy-loaded (ej. pdf-processor.js),
          aunque el tag de versión visible ya muestre la última. -->
-    <script>window.APP_VERSION = 'v1.0.31';</script>
+    <script>window.APP_VERSION = 'v1.0.32';</script>
 
     <!-- Silenciar console.log/info/debug en producción (activar con localStorage.PX_DEBUG='true').
          Va antes de todo lo demás porque los console.log de cada módulo corren
@@ -507,7 +534,7 @@
                         Q</div>
                     Quetzal <span class="text-primary">LMS</span>
                 </div>
-                <span id="app-version-tag" class="text-[0.65rem] text-slate-400 font-medium mt-1">v1.0.31</span>
+                <span id="app-version-tag" class="text-[0.65rem] text-slate-400 font-medium mt-1">v1.0.32</span>
             </div>
 
             <div id="login-error"
@@ -548,6 +575,12 @@
             <div class="login-help mt-10"></div>
         </div>
     </div>
+    <!-- Texto real y VISIBLE (nada oculto -- Google penaliza texto invisible
+         hecho solo para SEO) para que la página tenga contenido que indexar.
+         Antes la pantalla de login no tenía ni una palabra sobre qué es la
+         plataforma, imposible de rankear para "LMS"/"plataforma educativa"
+         sin texto relevante en la página. -->
+    <p class="max-w-md mx-auto text-center text-xs text-slate-400 px-6 pb-10 -mt-4">Quetzal LMS es una plataforma educativa (LMS) y sistema de gestión de aprendizaje para escuelas en Guatemala. Cursos en línea, evaluación de proyectos, retos 1v1 entre estudiantes y gamificación (XP, gemas, insignias) para primaria, básico y diversificado.</p>
 
     <!-- APLICACIÓN PRINCIPAL -->
     <div id="app-container" class="hidden min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-500">
@@ -558,7 +591,7 @@
                 <div class="text-2xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent transform hover:scale-105 transition-transform leading-none">
                     Quetzal LMS
                 </div>
-                <span class="text-[0.6rem] text-slate-400 font-medium mt-0.5">v1.0.31</span>
+                <span class="text-[0.6rem] text-slate-400 font-medium mt-0.5">v1.0.32</span>
             </div>
 
             <div class="flex items-center gap-4 sm:gap-6">
@@ -1113,7 +1146,7 @@
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
 
     <!-- Punto de Entrada del Sistema -->
-    <script type="module" src="js/app.js?v=1.0.31"></script>
+    <script type="module" src="js/app.js?v=1.0.32"></script>
 
     <meta name="mobile-web-app-capable" content="yes">
 </body>

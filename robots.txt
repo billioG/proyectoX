@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://clases.yoaprendo.online/sitemap.xml
