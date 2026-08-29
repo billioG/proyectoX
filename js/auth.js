@@ -338,11 +338,15 @@ export async function handleSuccessfulLogin(user) {
       }
     }
 
-    // Egresado (ver "Promover Ciclo Escolar" en Estudiantes -- admin) --
-    // se conserva la cuenta y su historial, pero ya no puede entrar.
-    if (data?.status === 'egresado') {
+    // Egresado (ver "Promover Ciclo Escolar" en Estudiantes -- admin) o
+    // dado de baja (retiro a mitad de año) -- en ambos casos se conserva
+    // la cuenta y su historial, pero ya no puede entrar.
+    if (data?.status === 'egresado' || data?.status === 'baja') {
       await _supabase.auth.signOut();
-      showToast('<i class="fas fa-graduation-cap"></i> Esta cuenta ya egresó y no tiene acceso. Contactá a tu establecimiento si creés que es un error.', 'error');
+      const msg = data.status === 'egresado'
+        ? 'Esta cuenta ya egresó y no tiene acceso. Contactá a tu establecimiento si creés que es un error.'
+        : 'Esta cuenta fue dada de baja. Contactá a tu establecimiento si creés que es un error.';
+      showToast('<i class="fas fa-graduation-cap"></i> ' + msg, 'error');
       return;
     }
 

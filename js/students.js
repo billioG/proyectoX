@@ -416,15 +416,26 @@ window.renderStudentsList = function renderStudentsList(container, students, all
                     <div class="flex items-center gap-2 mt-1">
                         <span class="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[0.55rem] font-bold text-slate-500 uppercase tracking-widest">${s.grade} ${s.section}</span>
                         <span class="text-[0.6rem] font-mono text-slate-400">@${s.username || 'sin-usuario'}</span>
+                        ${s.status === 'baja' ? '<span class="px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-900/30 text-[0.55rem] font-bold text-rose-500 uppercase tracking-widest">Baja</span>' : ''}
+                        ${s.status === 'egresado' ? '<span class="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/30 text-[0.55rem] font-bold text-amber-600 uppercase tracking-widest">Egresado</span>' : ''}
                     </div>
                     <p class="text-[0.55rem] text-slate-400 mt-0.5"><i class="fas fa-clock"></i> ${(() => { if (!s.last_login) return 'Nunca conectó'; const d = new Date(s.last_login.includes('T') ? s.last_login : s.last_login + 'T00:00:00'); return isNaN(d.getTime()) ? 'Nunca conectó' : d.toLocaleDateString('es-GT'); })()}</p>
                   </div>
-                  
+
                   ${window.userRole === 'admin' ? `
                     <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button onclick="window.editStudent('${s.id}')" class="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-500 hover:bg-indigo-500 hover:text-white transition-colors flex items-center justify-center">
                         <i class="fas fa-edit text-[0.6rem]"></i>
                       </button>
+                      ${s.status === 'baja' ? `
+                        <button onclick="window.toggleStudentBaja('${s.id}', false)" title="Reactivar" class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-500 hover:bg-emerald-500 hover:text-white transition-colors flex items-center justify-center">
+                          <i class="fas fa-user-check text-[0.6rem]"></i>
+                        </button>
+                      ` : `
+                        <button onclick="window.toggleStudentBaja('${s.id}', true)" title="Dar de baja" class="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-500 hover:text-white transition-colors flex items-center justify-center">
+                          <i class="fas fa-user-slash text-[0.6rem]"></i>
+                        </button>
+                      `}
                       <button onclick="window.deleteStudent('${s.id}')" class="w-7 h-7 rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white transition-colors flex items-center justify-center">
                         <i class="fas fa-trash-alt text-[0.6rem]"></i>
                       </button>
@@ -617,6 +628,27 @@ window.editStudent = async function editStudent(id) {
 window.deleteStudent = async function deleteStudent(id) {
   if (!confirm('¿Seguro? Esto también elimina su cuenta de acceso.')) return;
   await window.deleteStudentsBulk([id]);
+}
+
+// "Dar de baja" (retiro a mitad de año) -- se conserva la cuenta y su
+// historial (proyectos, XP, certificados), pero ya no puede loguearse (ver
+// auth.js). Distinto de eliminar, que borra todo, y de egresar (fin de
+// ciclo normal, ver promoteClassToNextGrade).
+window.toggleStudentBaja = async function toggleStudentBaja(id, giveBaja) {
+  const msg = giveBaja
+    ? '¿Dar de baja a este alumno? Se conserva su cuenta y su historial, pero ya no va a poder iniciar sesión.'
+    : '¿Reactivar a este alumno? Va a poder volver a iniciar sesión.';
+  if (!confirm(msg)) return;
+
+  const { error } = await window._supabase.from('students')
+    .update({ status: giveBaja ? 'baja' : 'active' })
+    .eq('id', id);
+
+  if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
+  window.showToast(giveBaja
+    ? '<i class="fas fa-user-slash"></i> Alumno dado de baja'
+    : '<i class="fas fa-user-check"></i> Alumno reactivado', 'success');
+  if (typeof window.loadStudents === 'function') window.loadStudents();
 }
 
 window.toggleSelectAllStudents = function toggleSelectAllStudents(checked) {

@@ -74,9 +74,54 @@ window.processAndRenderFeed = async function processAndRenderFeed(container, all
 }
 
 window.renderStudentRatingPrompt = async function renderStudentRatingPrompt() {
+  const progressHtml = await window.renderCourseProgressBanner();
   const challengeHtml = await window.renderActiveChallengeBanner();
-  if (!challengeHtml) return '';
-  return `<div class="mb-8 animate-slideUp">${challengeHtml}</div>`;
+  let html = '';
+  if (progressHtml) html += `<div class="mb-4 animate-slideUp">${progressHtml}</div>`;
+  if (challengeHtml) html += `<div class="mb-8 animate-slideUp">${challengeHtml}</div>`;
+  return html;
+}
+
+// Pedido de un docente: Inicio solo mostraba el feed de proyectos, sin
+// forma de ver que te falta trabajo en Cursos -- un alumno podía tener un
+// curso al 80% y nunca darse cuenta si no entraba a esa sección aparte.
+window.renderCourseProgressBanner = async function renderCourseProgressBanner() {
+  const _supabase = window._supabase;
+  const currentUser = window.currentUser;
+  const userData = window.userData;
+  if (!userData?.school_code || !userData?.grade || !userData?.section) return '';
+
+  const [{ data: courses }, { data: completions }] = await Promise.all([
+    _supabase.from('courses').select('id, title, lessons(id)')
+      .eq('school_code', userData.school_code).eq('grade', userData.grade).eq('section', userData.section),
+    _supabase.from('lesson_completions').select('lesson_id').eq('student_id', currentUser.id),
+  ]);
+  if (!courses?.length) return '';
+
+  const doneIds = new Set((completions || []).map(c => c.lesson_id));
+  const withProgress = courses.map(c => {
+    const total = (c.lessons || []).length;
+    const done = (c.lessons || []).filter(l => doneIds.has(l.id)).length;
+    return { title: c.title, total, done, pct: total ? Math.round((done / total) * 100) : 100 };
+  }).filter(c => c.total > 0);
+
+  const pending = withProgress.filter(c => c.pct < 100).sort((a, b) => a.pct - b.pct);
+  if (!pending.length) return '';
+
+  const top = pending[0];
+  const extra = pending.length - 1;
+  const sanitizeInput = window.sanitizeInput || ((v) => v);
+
+  return `
+    <div onclick="window.nav('lessons')" class="glass-card p-4 flex items-center gap-4 cursor-pointer hover:border-primary/30 transition-all border-l-4 border-l-amber-500">
+      <div class="w-11 h-11 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-lg shrink-0"><i class="fas fa-book-open"></i></div>
+      <div class="min-w-0 flex-1">
+        <p class="text-xs font-black text-slate-800 dark:text-white uppercase tracking-wide truncate">Trabajo pendiente: ${sanitizeInput(top.title)}</p>
+        <p class="text-[0.65rem] text-slate-400">${top.pct}% completado -- ${top.total - top.done} recurso(s) por hacer${extra > 0 ? ` · +${extra} curso(s) más con trabajo pendiente` : ''}</p>
+      </div>
+      <i class="fas fa-arrow-right text-slate-300"></i>
+    </div>
+  `;
 }
 
 window.renderTeacherManagementPanel = async function renderTeacherManagementPanel() {

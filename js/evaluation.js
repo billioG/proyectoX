@@ -161,11 +161,46 @@ window.renderGroupedProjects = function renderGroupedProjects(projects) {
                   <i class="fas fa-chevron-down text-xs text-slate-400"></i>
               </div>
           </summary>
-          <div class="p-6 pt-0">
-              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  ${grouped[school].projects.map(p => window.renderProjectEvalCard(p)).join('')}
-              </div>
+          <div class="p-6 pt-0 space-y-4">
+              ${window.renderProjectsByClass(grouped[school].projects)}
           </div>
+      </details>
+    `;
+  }).join('');
+}
+
+// Pedido de un docente: antes todos los proyectos de un colegio quedaban
+// mezclados sin importar grado/sección, sin forma de ordenar la
+// calificación por clase. Subagrupa dentro de cada colegio.
+window.renderProjectsByClass = function renderProjectsByClass(projects) {
+  const sanitizeInput = window.sanitizeInput;
+  const byClass = projects.reduce((acc, p) => {
+    const grade = p.students?.grade || 'Sin grado';
+    const section = p.students?.section || '';
+    const key = `${grade}|${section}`;
+    if (!acc[key]) acc[key] = { grade, section, projects: [] };
+    acc[key].projects.push(p);
+    return acc;
+  }, {});
+
+  const keys = Object.keys(byClass).sort((a, b) => a.localeCompare(b));
+  return keys.map(key => {
+    const cg = byClass[key];
+    const pendings = cg.projects.filter(p => !(hasEvaluation(p) || p.score > 0)).length;
+    return `
+      <details class="group/class bg-slate-50 dark:bg-slate-800/30 rounded-2xl" ${pendings > 0 ? 'open' : ''}>
+        <summary class="list-none cursor-pointer px-4 py-3 flex items-center justify-between hover:bg-slate-100 dark:hover:bg-slate-800/50 rounded-2xl transition-colors">
+          <span class="text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-wider">${sanitizeInput(cg.grade)} ${sanitizeInput(cg.section)} <span class="text-slate-400 font-normal normal-case">· ${cg.projects.length} proyecto(s)</span></span>
+          <div class="flex items-center gap-2">
+            ${pendings > 0 ? `<span class="bg-rose-500 text-white text-[0.5rem] font-black px-2 py-0.5 rounded-full">${pendings} PENDIENTES</span>` : ''}
+            <i class="fas fa-chevron-down text-[0.6rem] text-slate-400 group-open/class:rotate-180 transition-transform"></i>
+          </div>
+        </summary>
+        <div class="p-4 pt-3">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            ${cg.projects.map(p => window.renderProjectEvalCard(p)).join('')}
+          </div>
+        </div>
       </details>
     `;
   }).join('');
