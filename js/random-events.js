@@ -64,6 +64,34 @@ window.enableEventNotifications = async function enableEventNotifications() {
   }
 }
 
+// Reinicia la suscripción push de punta a punta -- cancela la del
+// navegador (puede estar corrompida o quedar pareada con una VAPID key
+// vieja si el par se regeneró alguna vez), borra la fila del servidor, y
+// vuelve a pedir permiso y suscribir desde cero. Pedido explícito: cuando
+// las notificaciones dejan de llegar y no hay forma de saber por qué del
+// lado del navegador, esto le da al usuario una forma de "empezar de
+// nuevo" sin tener que tocar la configuración del sistema operativo.
+window.resetPushNotifications = async function resetPushNotifications() {
+  if (!window.isPushSupported()) {
+    return window.showToast('<i class="fas fa-circle-xmark"></i> Tu navegador no soporta notificaciones push', 'error');
+  }
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.getSubscription();
+
+    if (subscription) {
+      const raw = subscription.toJSON();
+      await window._supabase.from('push_subscriptions').delete().eq('endpoint', raw.endpoint);
+      await subscription.unsubscribe();
+    }
+
+    await window.enableEventNotifications();
+  } catch (err) {
+    console.error('Error reiniciando notificaciones:', err);
+    window.showToast('<i class="fas fa-circle-xmark"></i> No se pudo reiniciar: ' + err.message, 'error');
+  }
+}
+
 window.renderEventNotificationToggle = async function renderEventNotificationToggle() {
   const slot = document.getElementById('event-notif-toggle-slot');
   if (!slot) return;
@@ -90,7 +118,10 @@ window.renderEventNotificationToggle = async function renderEventNotificationTog
 
   const label = window.userRole === 'admin' ? 'Notificaciones push' : 'Notificaciones de eventos sorpresa';
   slot.innerHTML = subscription
-    ? `<div class="flex items-center gap-2 text-emerald-500 text-[0.65rem] font-black uppercase tracking-widest"><i class="fas fa-bell"></i> ${label} activas</div>`
+    ? `<div class="flex items-center gap-3">
+         <div class="flex items-center gap-2 text-emerald-500 text-[0.65rem] font-black uppercase tracking-widest"><i class="fas fa-bell"></i> ${label} activas</div>
+         <button onclick="window.resetPushNotifications()" title="Si dejaste de recibir notificaciones, probá reiniciar" class="text-[0.6rem] font-bold text-slate-400 hover:text-primary underline"><i class="fas fa-rotate"></i> Reiniciar</button>
+       </div>`
     : `<button onclick="window.enableEventNotifications()" class="btn-secondary-tw h-10 px-4 text-[0.65rem] uppercase font-bold"><i class="fas fa-bell"></i> Activar ${label.toLowerCase()}</button>`;
 }
 
