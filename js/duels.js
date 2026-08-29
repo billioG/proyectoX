@@ -434,6 +434,7 @@ window.respondDuel = async function respondDuel(duelId, accept) {
     return window.showToast('<i class="fas fa-circle-xmark"></i> No tenés suficientes gemas para aceptar esta apuesta', 'error');
   }
 
+  if (!window.aiGenerationLock.tryAcquire()) return;
   window.showToast('<i class="fas fa-circle-notch fa-spin"></i> Generando preguntas...', 'info');
   try {
     const { data: { session } } = await window._supabase.auth.getSession();
@@ -449,6 +450,8 @@ window.respondDuel = async function respondDuel(duelId, accept) {
     window.sendDuelPushNotification(duelId, 'accepted');
   } catch (err) {
     window.showToast('<i class="fas fa-circle-xmark"></i> ' + err.message, 'error');
+  } finally {
+    window.aiGenerationLock.release();
   }
 }
 

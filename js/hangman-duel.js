@@ -245,6 +245,7 @@ window.respondHangmanDuel = async function respondHangmanDuel(duelId, accept) {
     return window.showToast('<i class="fas fa-circle-xmark"></i> No tenés suficientes gemas para aceptar esta apuesta', 'error');
   }
 
+  if (!window.aiGenerationLock.tryAcquire()) return;
   window.showToast('<i class="fas fa-circle-notch fa-spin"></i> Generando palabra...', 'info');
   try {
     const { data: { session } } = await window._supabase.auth.getSession();
@@ -260,6 +261,8 @@ window.respondHangmanDuel = async function respondHangmanDuel(duelId, accept) {
     if (typeof window.sendDuelPushNotification === 'function') window.sendDuelPushNotification(duelId, 'accepted', 'hangman');
   } catch (err) {
     window.showToast('<i class="fas fa-circle-xmark"></i> ' + err.message, 'error');
+  } finally {
+    window.aiGenerationLock.release();
   }
 };
 
@@ -267,7 +270,7 @@ window.openHangmanGame = async function openHangmanGame(duelId) {
   const { data, error } = await window._supabase.rpc('start_hangman_duel', { p_duel_id: duelId });
   if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
 
-  window._activeHangman = { duelId, hint: data.hint, wordLength: data.wordLength, guessed: [], wrong: 0 };
+  window._activeHangman = { duelId, hint: data.hint, wordLength: data.wordLength, guessed: [], wrong: 0, revealed: {} };
   window.renderHangmanGame();
 };
 
@@ -296,7 +299,7 @@ window.renderHangmanGame = function renderHangmanGame(justWrong = false) {
       <p class="text-sm text-slate-300 mb-5 italic">"${sanitizeInput(state.hint)}"</p>
       <div class="flex justify-center gap-2 flex-wrap mb-6">
         ${Array.from({ length: state.wordLength }).map((_, i) => `
-          <div class="w-8 h-10 rounded-lg bg-white/5 border-b-4 border-primary flex items-center justify-center text-lg font-black text-white" id="hangman-slot-${i}"></div>
+          <div class="w-8 h-10 rounded-lg bg-white/5 border-b-4 border-primary flex items-center justify-center text-lg font-black text-white" id="hangman-slot-${i}">${sanitizeInput(state.revealed[i] || '')}</div>
         `).join('')}
       </div>
       <div class="grid grid-cols-7 gap-1.5 max-w-md mx-auto">
@@ -328,10 +331,10 @@ window.guessHangmanLetter = async function guessHangmanLetter(letter) {
 
   state.guessed = nextGuessed;
   if (data.correct) {
-    (data.positions || []).forEach(i => {
-      const slot = document.getElementById(`hangman-slot-${i}`);
-      if (slot) slot.textContent = letter;
-    });
+    // Se guarda en el estado (no solo en el DOM) porque renderHangmanGame()
+    // reconstruye el modal entero en cada jugada -- si solo se pintaba el
+    // <div> viejo, el siguiente render lo volvía a dejar vacío.
+    (data.positions || []).forEach(i => { state.revealed[i] = letter; });
   } else {
     state.wrong++;
   }

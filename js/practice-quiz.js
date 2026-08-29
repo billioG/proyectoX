@@ -23,6 +23,7 @@ window.renderPracticeQuizSection = function renderPracticeQuizSection() {
 };
 
 window.startPracticeQuiz = async function startPracticeQuiz(topic) {
+  if (!window.aiGenerationLock.tryAcquire()) return;
   window.showToast('<i class="fas fa-circle-notch fa-spin"></i> Generando preguntas...', 'info');
   try {
     // El SELECT sobre esta tabla solo tiene permiso de columnas puntuales
@@ -53,6 +54,8 @@ window.startPracticeQuiz = async function startPracticeQuiz(topic) {
     window.renderPracticeQuizQuestion();
   } catch (err) {
     window.showToast('<i class="fas fa-circle-xmark"></i> ' + err.message, 'error');
+  } finally {
+    window.aiGenerationLock.release();
   }
 };
 

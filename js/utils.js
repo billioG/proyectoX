@@ -304,6 +304,25 @@ function getNextGrade(gradeText) {
 }
 window.getNextGrade = getNextGrade;
 
+// Traba simple para no disparar varias generaciones de IA en paralelo --
+// varios alumnos (o el mismo, clickeando rápido en Práctica Solo) pidiendo
+// quizzes a la vez agotaba el límite de tokens por minuto de la cuenta de
+// Groq compartida, y las respuestas truncadas rompían el parseo de JSON.
+window.aiGenerationLock = {
+  active: false,
+  tryAcquire() {
+    if (this.active) {
+      if (typeof window.showToast === 'function') {
+        window.showToast('<i class="fas fa-hourglass-half"></i> Ya hay una generación en curso -- esperá un momento', 'info');
+      }
+      return false;
+    }
+    this.active = true;
+    return true;
+  },
+  release() { this.active = false; },
+};
+
 // Compatibilidad Legacy
 window.syncSystemConfig = syncSystemConfig;
 window.saveSystemConfig = saveSystemConfig;
