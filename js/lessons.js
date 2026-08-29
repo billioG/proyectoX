@@ -78,6 +78,7 @@ window.loadTeacherCourses = async function loadTeacherCourses(container) {
       <p class="text-xs text-slate-400 grow">Creá cursos con lecciones en orden (video, PDF, imágenes, SCORM/H5P). Los alumnos avanzan paso a paso.</p>
       <button class="btn-secondary-tw h-11 px-6 text-xs uppercase font-bold shrink-0" onclick="window.openSharedCoursesLibrary()"><i class="fas fa-book-bookmark"></i> Biblioteca Compartida</button>
       <button class="btn-secondary-tw h-11 px-6 text-xs uppercase font-bold shrink-0" onclick="window.openExportSireModal()"><i class="fas fa-file-export"></i> Exportar Notas (SIRE)</button>
+      <button class="btn-secondary-tw h-11 px-6 text-xs uppercase font-bold shrink-0" onclick="window.openCuadroFinalModal()"><i class="fas fa-table-list"></i> Cuadro de Resultados</button>
       <button class="btn-primary-tw h-11 px-6 text-xs uppercase font-bold shrink-0" onclick="window.openCreateCourseModal()"><i class="fas fa-plus"></i> Nuevo Curso</button>
     </div>
     <div id="courses-list" class="space-y-3">
@@ -2523,5 +2524,205 @@ window.confirmExportSire = async function confirmExportSire() {
     window.showToast('<i class="fas fa-circle-xmark"></i> ' + err.message, 'error');
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-download"></i> Descargar CSV';
+  }
+}
+
+// ================================================
+// CUADRO DE RESULTADOS FINALES (borrador para cargar en el SIRE)
+// ================================================
+// IMPORTANTE: esto es un BORRADOR de trabajo, no un documento oficial del
+// MINEDUC -- ayuda a calcular notas por ÁREA CNB y quién promueve, para que
+// el docente lo transcriba al sistema oficial (SIRE), igual que el CSV de
+// arriba. No lleva sello/membrete del Ministerio para no confundirse con el
+// documento real que el sistema oficial emite.
+window.openCuadroFinalModal = async function openCuadroFinalModal() {
+  const classOptions = await getClassOptionsForCurrentUser();
+  if (!classOptions.length) return window.showToast('<i class="fas fa-circle-xmark"></i> No tenés clases asignadas todavía', 'error');
+
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-sm animate-fadeIn';
+  modal.innerHTML = `
+    <div class="glass-card w-full max-w-md p-8 shadow-2xl animate-slideUp">
+      <h2 class="text-lg font-bold text-slate-800 dark:text-white uppercase tracking-tighter mb-2"><i class="fas fa-table-list text-primary mr-2"></i> Cuadro de Resultados Finales</h2>
+      <p class="text-xs text-slate-400 mb-6">Borrador de trabajo con notas finales por área CNB y quién promueve -- para transcribir al SIRE. No es el documento oficial del MINEDUC.</p>
+      <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Clase</label>
+      <select id="cuadro-final-class" class="input-field-tw h-11 text-sm mb-6">
+        ${classOptions.map((c, i) => `<option value="${i}">${window.sanitizeInput(c.schoolName)} · ${window.sanitizeInput(c.grade)} ${window.sanitizeInput(c.section)}</option>`).join('')}
+      </select>
+      <div class="flex gap-3">
+        <button class="btn-secondary-tw flex-1 h-11 text-xs uppercase font-bold" onclick="this.closest('.fixed').remove()">Cancelar</button>
+        <button class="btn-primary-tw flex-1 h-11 text-xs uppercase font-bold" id="btn-confirm-cuadro-final" onclick="window.confirmCuadroFinal()"><i class="fas fa-print"></i> Generar</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  window._cuadroFinalClassOptions = classOptions;
+}
+
+window.confirmCuadroFinal = async function confirmCuadroFinal() {
+  const classIndex = document.getElementById('cuadro-final-class')?.value;
+  const classOption = window._cuadroFinalClassOptions?.[classIndex];
+  if (!classOption) return;
+
+  const btn = document.getElementById('btn-confirm-cuadro-final');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+  try {
+    const { school_code, grade, section } = classOption;
+    const _supabase = window._supabase;
+
+    const [{ data: school }, { data: students }, { data: courses }] = await Promise.all([
+      _supabase.from('schools').select('*').eq('code', school_code).maybeSingle(),
+      _supabase.from('students').select('id, full_name, cui, codigo_personal, gender').eq('school_code', school_code).eq('grade', grade).eq('section', section).order('full_name'),
+      _supabase.from('courses').select('*').eq('school_code', school_code).eq('grade', grade).eq('section', section),
+    ]);
+
+    if (!students?.length) throw new Error('No hay alumnos en esa clase');
+    const coursesWithArea = (courses || []).filter(c => c.cnb_area);
+    if (!coursesWithArea.length) throw new Error('Ningún curso de esta clase tiene Área CNB asignada -- editá los cursos y elegí su área');
+
+    const courseIds = coursesWithArea.map(c => c.id);
+    const { data: allLessons } = courseIds.length
+      ? await _supabase.from('lessons').select('*').in('course_id', courseIds)
+      : { data: [] };
+    const lessonIds = (allLessons || []).map(l => l.id);
+    const { data: allCompletions } = lessonIds.length
+      ? await _supabase.from('lesson_completions').select('lesson_id, student_id, score, status').in('lesson_id', lessonIds)
+      : { data: [] };
+
+    const lessonsByCourse = new Map();
+    (allLessons || []).forEach(l => {
+      if (!lessonsByCourse.has(l.course_id)) lessonsByCourse.set(l.course_id, []);
+      lessonsByCourse.get(l.course_id).push(l);
+    });
+    const completionsByStudentLesson = new Map();
+    (allCompletions || []).forEach(c => completionsByStudentLesson.set(`${c.student_id}|${c.lesson_id}`, c));
+
+    // Áreas presentes en esta clase, en el orden oficial del CNB para el
+    // nivel de esta clase (no alfabético -- más fácil de leer/transcribir).
+    const areaOrder = window.getCnbAreasForGrade(grade);
+    const areasPresent = Array.from(new Set(coursesWithArea.map(c => c.cnb_area)))
+      .sort((a, b) => areaOrder.indexOf(a) - areaOrder.indexOf(b));
+
+    const coursesByArea = new Map();
+    coursesWithArea.forEach(c => {
+      if (!coursesByArea.has(c.cnb_area)) coursesByArea.set(c.cnb_area, []);
+      coursesByArea.get(c.cnb_area).push(c);
+    });
+
+    // Nota final del área = suma de puntos ganados / suma de puntos
+    // posibles de TODOS los cursos de esa área (sin importar en qué
+    // bimestre estén) -- normalizado a 0-100 sin asumir que existan los
+    // 4 bimestres completos.
+    const rows = students.map((s, idx) => {
+      const areaScores = areasPresent.map(area => {
+        const areaCourses = coursesByArea.get(area) || [];
+        let earned = 0, possible = 0;
+        areaCourses.forEach(course => {
+          const items = lessonsByCourse.get(course.id) || [];
+          const completionsMap = new Map(items.map(l => [l.id, completionsByStudentLesson.get(`${s.id}|${l.id}`)]).filter(([, v]) => v));
+          const courseGrade = computeCourseGradeForStudent(course, items, completionsMap);
+          earned += courseGrade.points;
+          possible += course.weight ?? 100;
+        });
+        return possible > 0 ? Math.round((earned / possible) * 100) : 0;
+      });
+      const promovido = areaScores.every(sc => sc >= 60);
+      return {
+        no: idx + 1,
+        codigoPersonal: s.codigo_personal || s.cui || '',
+        nombre: s.full_name,
+        gender: s.gender || '',
+        areaScores,
+        promovido,
+      };
+    });
+
+    const resumen = {
+      promM: rows.filter(r => r.promovido && r.gender?.startsWith('m')).length,
+      promF: rows.filter(r => r.promovido && r.gender?.startsWith('f')).length,
+      noPromM: rows.filter(r => !r.promovido && r.gender?.startsWith('m')).length,
+      noPromF: rows.filter(r => !r.promovido && r.gender?.startsWith('f')).length,
+    };
+
+    const sanitizeInput = window.sanitizeInput || ((v) => v);
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <html>
+      <head>
+        <title>Cuadro de Resultados Finales -- ${sanitizeInput(grade)} ${sanitizeInput(section)}</title>
+        <style>
+          body { font-family: Arial, sans-serif; font-size: 11px; color: #111; padding: 24px; }
+          h1 { font-size: 15px; margin: 0 0 4px; }
+          h2 { font-size: 12px; margin: 0 0 16px; font-weight: normal; color: #444; }
+          .disclaimer { background: #fff8e1; border: 1px solid #f0c14b; padding: 8px 12px; margin-bottom: 16px; font-size: 10px; }
+          .meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px 16px; margin-bottom: 16px; font-size: 10px; }
+          .meta b { display: block; color: #555; font-size: 9px; text-transform: uppercase; }
+          table { border-collapse: collapse; width: 100%; margin-bottom: 16px; }
+          th, td { border: 1px solid #999; padding: 4px 6px; text-align: center; }
+          th { background: #f0f0f0; font-size: 9px; text-transform: uppercase; }
+          td.nombre { text-align: left; }
+          .resumen-table { width: auto; }
+          .no-promovido { color: #b91c1c; font-weight: bold; }
+          .promovido { color: #15803d; font-weight: bold; }
+          .firma { margin-top: 60px; text-align: center; font-size: 10px; }
+          .firma div { border-top: 1px solid #333; width: 260px; margin: 0 auto; padding-top: 4px; }
+          @media print { .no-print { display: none; } }
+        </style>
+      </head>
+      <body>
+        <button class="no-print" onclick="window.print()" style="margin-bottom:16px;padding:8px 16px;">Imprimir</button>
+        <h1>BORRADOR -- Cuadro de Resultados Finales</h1>
+        <h2>Uso interno para transcribir al SIRE -- NO es el documento oficial del MINEDUC</h2>
+        <div class="disclaimer">Esta hoja se generó automáticamente a partir de las notas cargadas en el sistema. Verificá los datos antes de cargarlos al SIRE -- la responsabilidad del contenido final es del establecimiento.</div>
+        <div class="meta">
+          <div><b>Centro Educativo</b>${sanitizeInput(school?.name || school_code)}</div>
+          <div><b>Código</b>${sanitizeInput(school_code)}</div>
+          <div><b>Departamento</b>${sanitizeInput(school?.department || '')}</div>
+          <div><b>Municipio</b>${sanitizeInput(school?.municipality || '')}</div>
+          <div><b>Sector / Jornada</b>${sanitizeInput(school?.sector || '')} / ${sanitizeInput(school?.schedule || '')}</div>
+          <div><b>Grado / Sección</b>${sanitizeInput(grade)} / ${sanitizeInput(section)}</div>
+          <div><b>Docente</b>${sanitizeInput(window.userData?.full_name || '')}</div>
+          <div><b>Fecha</b>${new Date().toLocaleDateString('es-GT')}</div>
+        </div>
+        <table class="resumen-table">
+          <thead><tr><th rowspan="2">&nbsp;</th><th colspan="2">Promovidos(as)</th><th colspan="2">No Promovidos(as)</th></tr>
+          <tr><th>M</th><th>F</th><th>M</th><th>F</th></tr></thead>
+          <tbody><tr><td><b>Total</b></td><td>${resumen.promM}</td><td>${resumen.promF}</td><td>${resumen.noPromM}</td><td>${resumen.noPromF}</td></tr></tbody>
+        </table>
+        <table>
+          <thead>
+            <tr>
+              <th rowspan="2">No.</th><th rowspan="2">Código Personal</th><th rowspan="2">Nombre del Estudiante</th>
+              <th colspan="${areasPresent.length}">Áreas</th><th rowspan="2">Resultado</th>
+            </tr>
+            <tr>${areasPresent.map((a, i) => `<th>${i + 1}</th>`).join('')}</tr>
+          </thead>
+          <tbody>
+            ${rows.map(r => `
+              <tr>
+                <td>${r.no}</td>
+                <td>${sanitizeInput(r.codigoPersonal)}</td>
+                <td class="nombre">${sanitizeInput(r.nombre)}</td>
+                ${r.areaScores.map(sc => `<td class="${sc < 60 ? 'no-promovido' : ''}">${sc}</td>`).join('')}
+                <td class="${r.promovido ? 'promovido' : 'no-promovido'}">${r.promovido ? 'PROMOVIDO(A)' : 'NO PROMOVIDO(A)'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        <p style="font-size:9px;color:#555;"><b>Áreas:</b> ${areasPresent.map((a, i) => `${i + 1}. ${sanitizeInput(a)}`).join(' &nbsp;·&nbsp; ')}</p>
+        <div class="firma"><div>${sanitizeInput(window.userData?.full_name || 'Docente')}</div></div>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+
+    window.showToast('<i class="fas fa-circle-check"></i> Cuadro generado', 'success');
+    document.querySelector('.fixed.z-\\[200\\]')?.remove();
+  } catch (err) {
+    window.showToast('<i class="fas fa-circle-xmark"></i> ' + err.message, 'error');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-print"></i> Generar';
   }
 }
