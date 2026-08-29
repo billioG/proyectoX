@@ -1642,12 +1642,55 @@ window.loadStudentCourses = async function loadStudentCourses(container) {
           <a href="${window.sanitizeAttr(c.tinkercad_class_url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="mt-1 flex items-center justify-center gap-1.5 h-9 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-[0.65rem] font-bold uppercase">
             <i class="fas fa-microchip"></i> Clase de Tinkercad
           </a>` : ''}
+          ${window.isCourseDownloadedOffline(c.id) ? `
+          <div class="mt-1 flex items-center justify-center gap-1.5 h-9 rounded-lg bg-emerald-500/10 text-emerald-500 text-[0.65rem] font-bold uppercase">
+            <i class="fas fa-circle-check"></i> Listo offline
+          </div>` : `
+          <button id="btn-download-course-${c.id}" onclick="event.stopPropagation(); window.downloadCourseOffline('${c.id}')" class="mt-1 flex items-center justify-center gap-1.5 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 text-[0.65rem] font-bold uppercase">
+            <i class="fas fa-download"></i> Descargar para offline
+          </button>`}
         </div>
       `;
       }).join('')}
     </div>
   `;
 }
+
+// Precarga los archivos de un curso (video/PDF/imagen/paquete SCORM-H5P) en
+// el caché del service worker para que funcione sin internet -- antes
+// solo se cacheaba lo que el alumno YA había abierto (cache oportunista),
+// sin forma de preparar un curso de antemano para la clase de mañana.
+window.isCourseDownloadedOffline = function isCourseDownloadedOffline(courseId) {
+  const set = JSON.parse(localStorage.getItem('PX_OFFLINE_COURSES') || '[]');
+  return set.includes(courseId);
+};
+
+window.downloadCourseOffline = async function downloadCourseOffline(courseId) {
+  const course = (window._coursesCache || []).find(c => c.id === courseId);
+  if (!course) return;
+  const items = (course.lessons || []).filter(l => l.content_url);
+  const btn = document.getElementById(`btn-download-course-${courseId}`);
+
+  let done = 0;
+  const setProgress = () => { if (btn) btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Descargando ${done}/${items.length}`; };
+  setProgress();
+
+  for (const lesson of items) {
+    try { await fetch(lesson.content_url); } catch (e) { /* un recurso puede fallar (offline a medias) -- se sigue con el resto */ }
+    done++;
+    setProgress();
+  }
+
+  const set = new Set(JSON.parse(localStorage.getItem('PX_OFFLINE_COURSES') || '[]'));
+  set.add(courseId);
+  localStorage.setItem('PX_OFFLINE_COURSES', JSON.stringify([...set]));
+
+  window.showToast('<i class="fas fa-circle-check"></i> Curso listo para usar sin internet', 'success');
+  if (typeof window.loadStudentCourses === 'function') {
+    const container = document.getElementById('lessons-container');
+    if (container) window.loadStudentCourses(container);
+  }
+};
 
 window.openCoursePlayer = function openCoursePlayer(courseId) {
   const course = (window._coursesCache || []).find(c => c.id === courseId);
@@ -2155,10 +2198,8 @@ window.markLessonSeen = async function markLessonSeen(lessonId) {
   const btn = document.getElementById('btn-mark-lesson-seen');
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
 
-  const { error } = await window._supabase.from('lesson_completions').upsert({
-    lesson_id: lessonId,
-    student_id: window.currentUser.id,
-  }, { onConflict: 'lesson_id,student_id' });
+  const payload = { lesson_id: lessonId, student_id: window.currentUser.id };
+  const { queued, error } = await upsertLessonCompletion(payload);
 
   if (error) {
     window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
@@ -2167,7 +2208,9 @@ window.markLessonSeen = async function markLessonSeen(lessonId) {
   }
 
   window._completionsCache.set(lessonId, {});
-  window.showToast('<i class="fas fa-circle-check"></i> ¡Recurso marcado como visto!', 'success');
+  window.showToast(queued
+    ? '<i class="fas fa-cloud-slash"></i> Guardado en este dispositivo -- se sincroniza al reconectar'
+    : '<i class="fas fa-circle-check"></i> ¡Recurso marcado como visto!', 'success');
 
   const { items } = window._activeCourse || {};
   if (items) {
@@ -2190,15 +2233,31 @@ window.markLessonSeen = async function markLessonSeen(lessonId) {
 // por la cadena de window.parent hasta encontrar un objeto `API`
 // (SCORM 1.2) o `API_1484_11` (SCORM 2004). Como el iframe es hijo
 // directo de esta página, alcanza con exponerlos acá.
+// Escribe una completion de lección con resiliencia offline -- antes esto
+// (y markLessonSeen) hacían el upsert directo sin chequear el error: sin
+// conexión, el progreso se perdía en silencio (ni error ni reintento).
+// Ahora, si falla (típicamente por estar offline), se encola en
+// SyncManager y se sincroniza solo al volver la conexión.
+async function upsertLessonCompletion(payload) {
+  const { error } = await window._supabase.from('lesson_completions').upsert(payload, { onConflict: 'lesson_id,student_id' });
+  if (!error) return { queued: false, error: null };
+
+  if (navigator.onLine) return { queued: false, error }; // error real, no de conectividad
+  await window._syncManager?.enqueue('mark_lesson_complete', payload);
+  return { queued: true, error: null };
+}
+
 async function persistLessonScore(lessonId, score, status, rawData) {
-  await window._supabase.from('lesson_completions').upsert({
+  const payload = {
     lesson_id: lessonId,
     student_id: window.currentUser.id,
     score: score === null || isNaN(score) ? null : score,
     status: status || null,
     raw_data: rawData,
     completed_at: new Date().toISOString(),
-  }, { onConflict: 'lesson_id,student_id' });
+  };
+  const { queued } = await upsertLessonCompletion(payload);
+  if (queued) window.showToast('<i class="fas fa-cloud-slash"></i> Nota guardada en este dispositivo -- se sincroniza al reconectar', 'info');
 
   if (window._completionsCache) {
     window._completionsCache.set(lessonId, { score, status });

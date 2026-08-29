@@ -312,6 +312,14 @@ class SyncManager {
                     if (checkinError) throw checkinError;
                     return true;
 
+                // El alumno marcó una lección como vista/completada (o el
+                // runtime SCORM/H5P le puso nota) sin internet -- se guardó
+                // localmente al toque y esto solo reintenta el upsert real.
+                case 'mark_lesson_complete':
+                    const { error: completionError } = await _supabase.from('lesson_completions').upsert(data, { onConflict: 'lesson_id,student_id' });
+                    if (completionError) throw completionError;
+                    return true;
+
                 default:
                     console.warn(`⚠️ Acción no soportada: ${action}`);
                     return true;
