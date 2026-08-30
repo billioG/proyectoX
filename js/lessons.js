@@ -1736,18 +1736,33 @@ window.downloadCourseOffline = async function downloadCourseOffline(courseId) {
   };
   setProgress();
 
-  // "Listo offline" solo si la GRAN MAYORÍA de los archivos realmente
-  // bajaron -- antes se marcaba igual aunque fallaran varios (ej. mitad
-  // del paquete H5P), y el alumno recién se enteraba al quedarse sin
-  // internet y encontrar el curso roto a medias.
-  for (const url of allUrls) {
-    try {
-      const res = await fetch(url);
-      if (res.ok) ok++;
-    } catch (e) { /* sin red a medio camino, sigue con el resto */ }
-    done++;
-    setProgress();
+  // Un paquete H5P trae SU librería completa, y varias piezas de contenido
+  // suelen compartir las mismas librerías (H5P.JoubelUI, FontAwesome, etc.)
+  // -- sin este chequeo se volvían a bajar de red los mismos archivos una y
+  // otra vez por cada lección. Además, bajarlos uno por uno en serie (con
+  // cursos de miles de archivos chicos) tardaba muchísimo por el overhead
+  // de cada request individual -- ahora van 8 en paralelo.
+  const mediaCache = await caches.open('projectx-media-v1');
+  const CONCURRENCY = 8;
+  let cursor = 0;
+
+  async function worker() {
+    while (cursor < allUrls.length) {
+      const url = allUrls[cursor++];
+      try {
+        const cached = await mediaCache.match(url);
+        if (cached) {
+          ok++;
+        } else {
+          const res = await fetch(url);
+          if (res.ok) ok++;
+        }
+      } catch (e) { /* sin red a medio camino, sigue con el resto */ }
+      done++;
+      setProgress();
+    }
   }
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, allUrls.length) }, worker));
 
   const successPct = allUrls.length ? (ok / allUrls.length) * 100 : 100;
   const DOWNLOAD_OK_THRESHOLD = 90;
