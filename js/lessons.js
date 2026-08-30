@@ -1718,8 +1718,20 @@ async function listStorageFilesRecursive(bucket, path) {
 // general de "listo offline" no distinguía esto: un curso con miles de
 // archivos podía superar el 90% de éxito y aun así tener rota la lección
 // que justo perdió su archivo de entrada.
+// Links externos (YouTube, Tinkercad, Drive) NO son nuestros para cachear
+// -- ni se puede (fetch() cross-origin a esos sitios lo bloquea CORS,
+// visto en producción: "blocked by CORS policy" contra tinkercad.com y
+// youtube.com) ni tendría sentido: ese contenido necesita el sitio externo
+// vivo sí o sí, no hay forma de que funcione offline sin importar cuánto
+// se descargue acá.
+function isOwnStorageUrl(url) {
+  try { return new URL(url).hostname === new URL(window.SUPABASE_URL).hostname; }
+  catch { return false; }
+}
+
 async function getCourseOfflineUrls(course) {
-  const simpleLessons = (course.lessons || []).filter(l => l.content_url && !l.content_path);
+  const allSimple = (course.lessons || []).filter(l => l.content_url && !l.content_path);
+  const simpleLessons = allSimple.filter(l => isOwnStorageUrl(l.content_url));
   const packageLessons = (course.lessons || []).filter(l => l.content_path);
 
   const criticalUrls = new Set(simpleLessons.map(l => l.content_url));
@@ -1753,6 +1765,7 @@ window.downloadCourseOffline = async function downloadCourseOffline(courseId) {
 
   if (btn) btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Preparando...';
   const { allUrls, criticalUrls } = await getCourseOfflineUrls(course);
+  const externalCount = (course.lessons || []).filter(l => l.content_url && !l.content_path && !isOwnStorageUrl(l.content_url)).length;
 
   let done = 0, ok = 0;
   const failedCritical = new Set();
@@ -1818,7 +1831,10 @@ window.downloadCourseOffline = async function downloadCourseOffline(courseId) {
   set.add(courseId);
   localStorage.setItem('PX_OFFLINE_COURSES', JSON.stringify([...set]));
 
-  window.showToast('<i class="fas fa-circle-check"></i> Curso listo para usar sin internet', 'success');
+  const externalNote = externalCount > 0
+    ? ` (${externalCount} recurso(s) de YouTube/Tinkercad van a necesitar internet igual, no se pueden descargar)`
+    : '';
+  window.showToast(`<i class="fas fa-circle-check"></i> Curso listo para usar sin internet${externalNote}`, 'success');
   refreshLessonsContainer();
 };
 
