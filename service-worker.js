@@ -2,7 +2,7 @@
 // SERVICE WORKER - PROJECTX PWA
 // ================================================
 
-const CACHE_NAME = 'projectx-v1.0.47';
+const CACHE_NAME = 'projectx-v1.0.48';
 // Caché de archivos de lecciones (video/PDF/imagen/paquetes SCORM-H5P) --
 // separada de CACHE_NAME a propósito: CACHE_NAME se recrea y se BORRA
 // entera en cada deploy (bump de versión) para forzar JS/CSS frescos, pero
@@ -17,6 +17,33 @@ const MEDIA_CACHE_NAME = 'projectx-media-v1';
 // archivo, visible en Network como "Initiator: service-worker.js").
 // Lista corta a propósito: el resto de los archivos se cachean solos en
 // tiempo de ejecución vía el handler `fetch` de abajo (network-first).
+// BUG REAL encontrado en producción: cada bump de versión borra CACHE_NAME
+// entero en "activate", pero los módulos lazy-loaded (loadModule() en
+// main.js, ej. lessons.js) NO estaban en esta lista -- solo se cacheaban
+// "al vuelo" la primera vez que alguien navegaba a esa vista CON internet
+// DESPUÉS del último deploy. Un alumno que descargó un curso para offline
+// pero no volvió a abrir "Cursos" con internet tras el deploy siguiente se
+// encontraba con "error al cargar componentes" al perder la red: el
+// archivo js/lessons.js de la versión nueva nunca había llegado a
+// cachearse. Ahora se precachean TODOS los módulos lazy de MODULE_MAP
+// (main.js) en cada instalación, con el mismo ?v= que usa loadModule() --
+// si no, el request real (con query de versión) no matchea esta entrada.
+const APP_VERSION = CACHE_NAME.replace('projectx-', '');
+const LAZY_MODULES = [
+  'js/admin-attendance.js', 'js/admin-dashboard.js', 'js/admin-evaluations.js',
+  'js/admin-performance.js', 'js/admin-reports.js', 'js/admin-success.js',
+  'js/admin-waivers.js', 'js/attendance-summary-view.js', 'js/attendance.js',
+  'js/badges.js', 'js/bonus-system.js', 'js/certificates.js', 'js/companion.js',
+  'js/coordinator.js', 'js/data/challenges.js', 'js/debug-duel.js', 'js/duels.js',
+  'js/evaluation-modals.js', 'js/evaluation-notifications.js', 'js/evaluation.js',
+  'js/feed-ui.js', 'js/gamification.js', 'js/groups.js', 'js/hangman-duel.js',
+  'js/kpi-engine.js', 'js/lessons.js', 'js/pdf-processor.js', 'js/practice-quiz.js',
+  'js/profile-modals.js', 'js/profile.js', 'js/programs.js', 'js/project-modals.js',
+  'js/projects.js', 'js/ranking.js', 'js/reports.js', 'js/schools.js',
+  'js/students.js', 'js/teachers.js', 'js/team-performance-widget.js',
+  'js/timed-math-duel.js', 'js/tournaments.js',
+];
+
 const urlsToCache = [
   './',
   './index.html',
@@ -24,7 +51,8 @@ const urlsToCache = [
   './manifest.json',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
-  'https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap'
+  'https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap',
+  ...LAZY_MODULES.map(f => `${f}?v=${APP_VERSION}`),
 ];
 
 // Instalación del Service Worker
@@ -35,7 +63,14 @@ self.addEventListener('install', event => {
     caches.open(CACHE_NAME)
       .then(cache => {
         console.log('✅ Caché abierto');
-        return cache.addAll(urlsToCache);
+        // cache.addAll() es todo-o-nada -- si UN solo archivo de la lista
+        // (ahora con 40+ módulos lazy) da 404 o falla la red justo en ese
+        // momento, la instalación entera del Service Worker fallaría y la
+        // app se quedaría SIN ningún soporte offline. Con cache.add() uno
+        // por uno y allSettled, un archivo que falle no tumba al resto.
+        return Promise.allSettled(urlsToCache.map(url => cache.add(url).catch(e => {
+          console.warn('⚠️ No se pudo precachear:', url, e);
+        })));
       })
       .then(() => self.skipWaiting())
   );
