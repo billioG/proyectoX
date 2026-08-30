@@ -1790,7 +1790,17 @@ window.downloadCourseOffline = async function downloadCourseOffline(courseId) {
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
         const res = await fetch(url);
-        if (res.ok) return true;
+        // BUG REAL encontrado en producción: esto solo pedía el archivo y
+        // confiaba en que el fetch handler del Service Worker lo cacheara
+        // de rebote -- pero un <img>/<video> cross-origin sin atributo
+        // crossorigin pide en modo "no-cors" (respuesta opaca, status 0), y
+        // el SW solo cachea si status===200, así que nunca se guardaba nada
+        // real (cache verificado en producción: 0 entries pese a "listo").
+        // Ahora escribe directo al cache acá, sin depender del SW.
+        if (res.ok) {
+          await mediaCache.put(url, res.clone());
+          return true;
+        }
       } catch (e) { /* sigue al siguiente intento */ }
     }
     return false;
