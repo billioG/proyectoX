@@ -1016,6 +1016,13 @@ window.saveResource = async function saveResource(courseId, editingId) {
 
   if (!title) return window.showToast('<i class="fas fa-circle-xmark"></i> Ponele un título', 'error');
   if (!isFileType && !isSingleFileUpload && !content_url) return window.showToast('<i class="fas fa-circle-xmark"></i> Completa la URL', 'error');
+  // Un link de curso se abre embebido (iframe) o directo en la pestaña del
+  // alumno -- sin esto, una cuenta docente comprometida (o un error de
+  // tipeo) podía apuntar a cualquier sitio, incluido uno de phishing
+  // disfrazado de recurso de clase.
+  if (!isFileType && !isSingleFileUpload && content_url && !window.isAllowedContentHost(content_url)) {
+    return window.showToast('<i class="fas fa-circle-xmark"></i> Ese link no es de un sitio permitido (YouTube, Drive, Tinkercad o archivos subidos a la plataforma)', 'error');
+  }
   if (isSingleFileUpload && !singleFile) return window.showToast('<i class="fas fa-circle-xmark"></i> Elegí un archivo', 'error');
   if (isQuiz) {
     const quizErr = validateQuizQuestions(window._quizBuilderQuestions);

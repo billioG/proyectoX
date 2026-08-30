@@ -339,6 +339,29 @@ window.getCnbAreasForGrade = function getCnbAreasForGrade(gradeText) {
   return CNB_AREAS_BY_NIVEL[getNivelFromGrade(gradeText)] || CNB_AREAS_BY_NIVEL.basico;
 };
 
+// Hosts permitidos para un link de recurso de lección (video/PDF/imagen/
+// Tinkercad) -- se embebe en iframe o se abre directo en la pestaña del
+// alumno, así que sin esto una cuenta docente comprometida (o un typo)
+// podía apuntar a cualquier sitio, incluido uno de phishing disfrazado de
+// material de clase. Mismo allowlist server-side en migrations/
+// content-url-allowlist.sql -- esto es solo la primera línea de defensa
+// (mejor UX, avisa antes de guardar); lo que de verdad bloquea es el
+// trigger en la base de datos.
+const ALLOWED_CONTENT_HOSTS = [
+  'vyptkxudkmlpyfosppzh.supabase.co',
+  'youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be',
+  'drive.google.com',
+  'tinkercad.com', 'www.tinkercad.com',
+];
+window.isAllowedContentHost = function isAllowedContentHost(url) {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return ALLOWED_CONTENT_HOSTS.some(h => host === h || host.endsWith('.' + h));
+  } catch {
+    return false;
+  }
+};
+
 // Traba simple para no disparar varias generaciones de IA en paralelo --
 // varios alumnos (o el mismo, clickeando rápido en Práctica Solo) pidiendo
 // quizzes a la vez agotaba el límite de tokens por minuto de la cuenta de

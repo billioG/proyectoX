@@ -26,6 +26,15 @@ const ALLOWED_ORIGINS = new Set([
 
 const GENERIC_ERROR = 'Usuario o contraseña incorrectos';
 
+// Rate limit por IP -- este endpoint es público (necesario, es el login en
+// sí) y valida contra una contraseña de CLASE compartida entre toda una
+// sección, así que sin esto un script podía probar usuarios/contraseñas
+// sin límite. No es por-usuario a propósito: una sección entera comparte
+// contraseña, limitar solo por usuario no frenaría probar esa misma
+// contraseña contra todos los usuarios de la clase.
+const RATE_LIMIT_WINDOW_MIN = 5;
+const RATE_LIMIT_MAX_ATTEMPTS = 10;
+
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin') || '';
   const CORS = {
@@ -38,14 +47,34 @@ Deno.serve(async (req) => {
     new Response(JSON.stringify(body), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
   if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
 
+  const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+  const clientIp = (req.headers.get('x-forwarded-for') || '').split(',')[0].trim() || 'unknown';
+  const now = new Date();
+
+  const { data: rl } = await admin.from('login_rate_limit').select('*').eq('ip', clientIp).maybeSingle();
+  const withinWindow = rl && (now.getTime() - new Date(rl.window_start).getTime()) / 60000 < RATE_LIMIT_WINDOW_MIN;
+
+  if (withinWindow && rl!.attempts >= RATE_LIMIT_MAX_ATTEMPTS) {
+    return json({ error: 'Demasiados intentos -- esperá unos minutos y volvé a intentar' }, 429);
+  }
+
+  async function recordFailure() {
+    if (withinWindow) {
+      await admin.from('login_rate_limit').update({ attempts: rl!.attempts + 1 }).eq('ip', clientIp);
+    } else {
+      await admin.from('login_rate_limit').upsert({ ip: clientIp, attempts: 1, window_start: now.toISOString() });
+    }
+  }
+  async function recordSuccess() {
+    if (rl) await admin.from('login_rate_limit').delete().eq('ip', clientIp);
+  }
+
   try {
     const body = await req.json();
     const username = String(body?.username || '').trim().toLowerCase();
     const password = body?.password ? String(body.password) : '';
 
-    if (!username) return json({ error: GENERIC_ERROR }, 401);
-
-    const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+    if (!username) { await recordFailure(); return json({ error: GENERIC_ERROR }, 401); }
 
     const { data: student } = await admin
       .from('students')
@@ -53,7 +82,7 @@ Deno.serve(async (req) => {
       .eq('username', username)
       .maybeSingle();
 
-    if (!student) return json({ error: GENERIC_ERROR }, 401);
+    if (!student) { await recordFailure(); return json({ error: GENERIC_ERROR }, 401); }
 
     const { data: classRow } = await admin
       .from('class_passwords')
@@ -65,13 +94,13 @@ Deno.serve(async (req) => {
 
     if (classRow) {
       if (classRow.requires_password) {
-        if (!password || password !== classRow.password) return json({ error: GENERIC_ERROR }, 401);
+        if (!password || password !== classRow.password) { await recordFailure(); return json({ error: GENERIC_ERROR }, 401); }
       }
       // requires_password === false -> entra solo con el usuario, sin chequear nada más.
     } else {
       // Sin configuración de clase todavía -- se cae al valor legacy
       // guardado por alumno al momento de importarlo.
-      if (!password || password !== student.password_generated) return json({ error: GENERIC_ERROR }, 401);
+      if (!password || password !== student.password_generated) { await recordFailure(); return json({ error: GENERIC_ERROR }, 401); }
     }
 
     const { data: link, error: linkErr } = await admin.auth.admin.generateLink({
@@ -82,9 +111,11 @@ Deno.serve(async (req) => {
       return json({ error: 'No se pudo iniciar sesión, intenta de nuevo' }, 500);
     }
 
+    await recordSuccess();
     return json({ ok: true, email: student.email, token_hash: link.properties.hashed_token });
 
   } catch (e) {
+    await recordFailure();
     return json({ error: GENERIC_ERROR }, 401);
   }
 });
