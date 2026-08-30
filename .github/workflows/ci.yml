@@ -1,0 +1,84 @@
+name: CI
+
+# Solo verifica -- no compila ni despliega nada, así que no puede romper
+# el sitio (que sigue sirviéndose tal cual desde GitHub Pages). Corre en
+# cada push/PR a main y atrapa errores antes de que lleguen a producción:
+# JS con errores de sintaxis, Edge Functions con errores de tipos, o las
+# dos carpetas espejo de funciones (supabase/ y supabase-functions/)
+# desincronizadas -- exactamente los 3 tipos de bug reales que aparecieron
+# durante el desarrollo de este proyecto.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  syntax-check-client:
+    name: Sintaxis JS (carpeta js/)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: node --check en cada archivo .js
+        run: |
+          set -e
+          fail=0
+          while IFS= read -r -d '' f; do
+            if ! node --check "$f"; then
+              echo "::error file=$f::Error de sintaxis"
+              fail=1
+            fi
+          done < <(find js -name '*.js' -print0)
+          exit $fail
+
+  edge-functions-typecheck:
+    name: Tipos de Edge Functions (Deno)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+      - name: deno check en cada index.ts
+        run: |
+          set -e
+          fail=0
+          for f in supabase/functions/*/index.ts; do
+            echo "Checking $f"
+            if ! deno check "$f"; then
+              echo "::error file=$f::Error de tipos"
+              fail=1
+            fi
+          done
+          exit $fail
+
+  mirrors-in-sync:
+    name: supabase/functions y supabase-functions deben ser idénticos
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Comparar carpetas espejo (byte a byte)
+        run: |
+          fail=0
+          for f in supabase/functions/*/index.ts; do
+            name=$(basename "$(dirname "$f")")
+            other="supabase-functions/$name/index.ts"
+            if [ ! -f "$other" ]; then
+              echo "::error::Falta $other (existe en supabase/functions pero no en supabase-functions)"
+              fail=1
+              continue
+            fi
+            if ! cmp -s "$f" "$other"; then
+              echo "::error file=$f::Quedó desincronizado con $other"
+              fail=1
+            fi
+          done
+          for d in supabase-functions/*/; do
+            name=$(basename "$d")
+            if [ ! -f "supabase/functions/$name/index.ts" ]; then
+              echo "::error::Falta supabase/functions/$name/index.ts (existe en supabase-functions pero no en supabase/functions)"
+              fail=1
+            fi
+          done
+          exit $fail

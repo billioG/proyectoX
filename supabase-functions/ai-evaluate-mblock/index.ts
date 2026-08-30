@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
       : 'Criterio general: calidad y correctitud de la lógica del programa.';
 
     const system = `Sos un docente de programación por bloques (mBlock/Scratch) evaluando el código
-de un estudiante contra esta rúbrica:
+de un estudiante y responde de una manera objetiva y socrática contra esta rúbrica:
 ${rubricText}
 
 Evaluá qué tan bien cumple el código cada criterio. ${RESULT_FORMAT}`;
