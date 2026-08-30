@@ -33,6 +33,16 @@ export async function initAuth() {
   // El listener se registra ANTES que cualquier otra cosa para no perderse
   // el evento PASSWORD_RECOVERY si ya se dispara durante el getSession() de abajo.
   _supabase.auth.onAuthStateChange(async (event, session) => {
+    // BUG REAL en producción: sin internet, cuando el JWT vence y
+    // supabase-js intenta renovarlo solo, el intento de red falla y la
+    // librería dispara SIGNED_OUT -- no es un logout real del usuario, es
+    // un efecto secundario de no poder confirmar la sesión sin red. Tratarlo
+    // como logout real borraba PX_CACHED_* justo cuando el alumno más
+    // necesitaba la sesión offline (se quedaba sin nada: "todavía no estás
+    // asignado a una clase"). Si estamos offline, se ignora por completo --
+    // la sesión cacheada se mantiene intacta hasta que haya red de nuevo.
+    if (event === 'SIGNED_OUT' && !navigator.onLine) return;
+
     if (event === 'SIGNED_OUT') {
       localStorage.removeItem('PX_CACHED_USER');
       localStorage.removeItem('PX_CACHED_USER_DATA');
