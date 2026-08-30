@@ -1746,25 +1746,31 @@ window.downloadCourseOffline = async function downloadCourseOffline(courseId) {
   // Un paquete H5P trae SU librería completa, y varias piezas de contenido
   // suelen compartir las mismas librerías (H5P.JoubelUI, FontAwesome, etc.)
   // -- sin este chequeo se volvían a bajar de red los mismos archivos una y
-  // otra vez por cada lección. Además, bajarlos uno por uno en serie (con
-  // cursos de miles de archivos chicos) tardaba muchísimo por el overhead
-  // de cada request individual -- ahora van 8 en paralelo.
+  // otra vez por cada lección. Cursos con miles de archivos chicos (H5P)
+  // tardaban muchísimo en serie -- ahora van 16 en paralelo, y cada archivo
+  // reintenta hasta 2 veces antes de darse por vencido (conexión de aula
+  // inestable, no hace falta que el alumno reintente todo el curso por un
+  // solo archivo que falló una vez).
   const mediaCache = await caches.open('projectx-media-v1');
-  const CONCURRENCY = 8;
+  const CONCURRENCY = 16;
+  const RETRIES_PER_FILE = 2;
   let cursor = 0;
+
+  async function fetchWithRetry(url) {
+    for (let attempt = 0; attempt <= RETRIES_PER_FILE; attempt++) {
+      try {
+        const res = await fetch(url);
+        if (res.ok) return true;
+      } catch (e) { /* sigue al siguiente intento */ }
+    }
+    return false;
+  }
 
   async function worker() {
     while (cursor < allUrls.length) {
       const url = allUrls[cursor++];
-      try {
-        const cached = await mediaCache.match(url);
-        if (cached) {
-          ok++;
-        } else {
-          const res = await fetch(url);
-          if (res.ok) ok++;
-        }
-      } catch (e) { /* sin red a medio camino, sigue con el resto */ }
+      const cached = await mediaCache.match(url);
+      if (cached || await fetchWithRetry(url)) ok++;
       done++;
       setProgress();
     }

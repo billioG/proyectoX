@@ -104,7 +104,10 @@ export async function initAuth() {
 
     updateHeaderUI();
     setupNavigationUI();
-    nav('feed');
+    // Un alumno offline entra directo a Cursos (lo único realmente útil sin
+    // red -- lo que ya descargó) en vez de "feed", que depende de datos en
+    // vivo que acá no puede tener.
+    nav(cachedRole === 'estudiante' ? 'lessons' : 'feed');
 
     if (typeof window.initOnboarding === 'function') {
       window.initOnboarding();
