@@ -1615,8 +1615,16 @@ window.loadStudentCourses = async function loadStudentCourses(container) {
   window._coursesCache = courses;
   window._completionsCache = completionsByLesson;
 
+  // Si hay progreso encolado (avanzaste/completaste algo sin red), se ofrece
+  // el mismo relevo QR que ya existe para asistencia (KolibriSync) -- el
+  // docente lo escanea con SU teléfono y sube todo cuando llegue a internet.
+  const pendingQueueCount = window._syncManager ? await window._syncManager.getQueueCount() : 0;
+
   container.innerHTML = `
-    ${fromCache ? '<div class="glass-card p-3 mb-4 border border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs flex items-center gap-2"><i class="fas fa-cloud-slash"></i> Sin conexión -- viendo la última versión guardada. El progreso que ya viste offline vuelve a estar disponible; nuevos cursos/recursos aparecen al reconectar.</div>' : ''}
+    ${fromCache ? `<div class="glass-card p-3 mb-4 border border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs flex flex-col sm:flex-row sm:items-center gap-2">
+      <div class="flex items-center gap-2 grow"><i class="fas fa-cloud-slash"></i> Sin conexión -- viendo la última versión guardada. El progreso que ya viste offline vuelve a estar disponible; nuevos cursos/recursos aparecen al reconectar.</div>
+      ${pendingQueueCount > 0 ? `<button onclick="KolibriSync.openSyncCenter()" class="shrink-0 h-8 px-3 rounded-lg bg-amber-500 text-white text-[0.65rem] font-bold uppercase whitespace-nowrap"><i class="fas fa-qrcode"></i> Generar código de entrega (${pendingQueueCount})</button>` : ''}
+    </div>` : ''}
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
       ${courses.map(c => {
         const items = (c.lessons || []).slice().sort((a, b) => a.order_index - b.order_index);

@@ -171,10 +171,16 @@ const KolibriSync = {
             const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
             const code = typeof jsQR !== 'undefined' ? jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "dontInvert" }) : null;
 
-            if (code) {
-                this.handleScannedData(code.data);
-                this.stopScanner();
-                return;
+            // Antes se paraba el escáner después de CADA alumno -- con 20-30
+            // estudiantes en fila el docente tenía que tocar "Escanear" de
+            // nuevo por cada uno. Ahora sigue prendida sola; una pausa corta
+            // evita reprocesar el mismo código si el alumno no la retira a
+            // tiempo (el jsQR de arriba lo detectaría igual de nuevo).
+            if (code && !this.processingCode) {
+                this.processingCode = true;
+                this.handleScannedData(code.data).finally(() => {
+                    setTimeout(() => { this.processingCode = false; }, 1500);
+                });
             }
         }
         requestAnimationFrame(() => this.tickScanner());
