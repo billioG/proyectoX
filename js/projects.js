@@ -231,37 +231,21 @@ window.toggleLike = async function toggleLike(projectId) {
   const userId = currentUser.id;
 
   try {
-    // 1. Verificar si ya existe el like en la BD
-    const { data: existingLike } = await _supabase
-      .from('project_likes')
-      .select('id')
-      .eq('project_id', projectId)
-      .eq('user_id', userId)
-      .maybeSingle();
+    // El conteo de votos lo recalcula el SERVIDOR (count real de
+    // project_likes) -- antes el cliente mandaba el número calculado a
+    // mano, y como RLS deja que el dueño del proyecto actualice su propia
+    // fila, cualquiera podía inflar su propio contador por consola.
+    const { data: result, error } = await _supabase.rpc('toggle_project_like', { p_project_id: projectId });
+    if (error) throw error;
 
-    const { data: project } = await _supabase.from('projects').select('votes').eq('id', projectId).single();
-    if (!project) return;
-
-    let newVotes = project.votes || 0;
-
-    if (existingLike) {
-      // Remover like
-      await _supabase.from('project_likes').delete().eq('id', existingLike.id);
-      newVotes = Math.max(0, newVotes - 1);
-      if (typeof showToast === 'function') showToast('<i class="fas fa-heart-crack"></i> Voto removido', 'default');
-    } else {
-      // Agregar like
-      await _supabase.from('project_likes').insert({ project_id: projectId, user_id: userId });
-      newVotes = newVotes + 1;
-      if (typeof showToast === 'function') showToast('<i class="fas fa-heart"></i>️ ¡Te gusta este proyecto!', 'success');
+    if (typeof showToast === 'function') {
+      showToast(result.liked
+        ? '<i class="fas fa-heart"></i>️ ¡Te gusta este proyecto!'
+        : '<i class="fas fa-heart-crack"></i> Voto removido', result.liked ? 'success' : 'default');
     }
 
-    // Actualizar conteo en proyecto
-    await _supabase.from('projects').update({ votes: newVotes }).eq('id', projectId);
-
-    // Actualizar UI
     const voteEl = document.querySelector(`[data-votes-id="${projectId}"]`);
-    if (voteEl) voteEl.innerText = newVotes;
+    if (voteEl) voteEl.innerText = result.votes;
 
   } catch (err) {
     console.error(err);
