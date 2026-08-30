@@ -1673,18 +1673,53 @@ window.isCourseDownloadedOffline = function isCourseDownloadedOffline(courseId) 
   return set.includes(courseId);
 };
 
+// Lista TODOS los archivos de una carpeta de Storage, recursivo -- .list()
+// del SDK solo devuelve un nivel; un paquete H5P trae carpetas de librería
+// anidadas (H5P.DragText/, que depende de H5P.JoubelUI/, etc.), así que sin
+// esto solo se cacheaba el archivo de entrada y el resto del paquete
+// (JS/CSS/assets de esas librerías) seguía necesitando red.
+async function listStorageFilesRecursive(bucket, path) {
+  const { data, error } = await window._supabase.storage.from(bucket).list(path, { limit: 1000 });
+  if (error || !data) return [];
+  let files = [];
+  for (const item of data) {
+    const itemPath = `${path}/${item.name}`;
+    if (item.id === null) {
+      // "Carpeta" en Storage: el SDK las marca con id null (no son un
+      // archivo real, solo un prefijo con más contenido adentro).
+      files = files.concat(await listStorageFilesRecursive(bucket, itemPath));
+    } else {
+      files.push(itemPath);
+    }
+  }
+  return files;
+}
+
 window.downloadCourseOffline = async function downloadCourseOffline(courseId) {
   const course = (window._coursesCache || []).find(c => c.id === courseId);
   if (!course) return;
-  const items = (course.lessons || []).filter(l => l.content_url);
   const btn = document.getElementById(`btn-download-course-${courseId}`);
 
+  // Recursos simples (video/PDF/imagen) solo necesitan su content_url. Los
+  // paquetes SCORM/H5P/HTML5 (content_path) hay que bajarlos COMPLETOS --
+  // el entry file por sí solo no alcanza para que funcionen offline.
+  const simpleLessons = (course.lessons || []).filter(l => l.content_url && !l.content_path);
+  const packageLessons = (course.lessons || []).filter(l => l.content_path);
+
+  if (btn) btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Preparando...';
+  let packageUrls = [];
+  for (const lesson of packageLessons) {
+    const files = await listStorageFilesRecursive(LESSON_STORAGE_BUCKET, lesson.content_path);
+    packageUrls.push(...files.map(f => window._supabase.storage.from(LESSON_STORAGE_BUCKET).getPublicUrl(f).data.publicUrl));
+  }
+
+  const allUrls = [...simpleLessons.map(l => l.content_url), ...packageUrls];
   let done = 0;
-  const setProgress = () => { if (btn) btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Descargando ${done}/${items.length}`; };
+  const setProgress = () => { if (btn) btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Descargando ${done}/${allUrls.length}`; };
   setProgress();
 
-  for (const lesson of items) {
-    try { await fetch(lesson.content_url); } catch (e) { /* un recurso puede fallar (offline a medias) -- se sigue con el resto */ }
+  for (const url of allUrls) {
+    try { await fetch(url); } catch (e) { /* un recurso puede fallar (offline a medias) -- se sigue con el resto */ }
     done++;
     setProgress();
   }
