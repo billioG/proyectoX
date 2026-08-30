@@ -381,10 +381,12 @@ export async function handleSuccessfulLogin(user) {
     // announcements.js corre 3s después de cargar la página, pero en un
     // login recién hecho (SPA, sin recargar) ese timer ya venció con
     // currentUser todavía undefined -- la campanita se quedaba sin badge
-    // hasta el próximo refresh manual.
-    if (typeof window.loadAnnouncementsUnreadCount === 'function') {
-      window.loadAnnouncementsUnreadCount();
-    }
+    // hasta el próximo refresh manual. refreshAllBadges() de paso pone al
+    // día rocas/evaluar/duelos en el mismo momento -- antes cada uno se
+    // actualizaba en un lugar distinto (boot de app.js, o recién al abrir
+    // un módulo lazy), así que podían quedar desactualizados según por
+    // dónde entrara el usuario.
+    if (typeof window.refreshAllBadges === 'function') window.refreshAllBadges();
 
     // Verificación de cambio de contraseña obligatorio -- no aplica si la
     // clase del alumno está configurada como "sin contraseña" (si no, se le
@@ -463,8 +465,8 @@ export async function handleSuccessfulLogin(user) {
     if (window.userRole === 'estudiante' && typeof checkAllBadges === 'function') {
       checkAllBadges(user.id);
     }
+    // loadTeacherNotifications ya corrió arriba, dentro de refreshAllBadges().
     if (window.userRole === 'docente' || window.userRole === 'admin') {
-      if (typeof loadTeacherNotifications === 'function') loadTeacherNotifications();
       if (typeof loadTeacherSidebarKPIs === 'function') loadTeacherSidebarKPIs();
     }
 

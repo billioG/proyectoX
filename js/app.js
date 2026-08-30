@@ -16,6 +16,7 @@ import './data/quotes.js';
 import './data/challenges.js';
 import './data/student-challenges.js';
 import './kolibri-sync.js';
+import './notification-center.js';
 import './test-accounts-filter.js';
 import './onboarding.js';
 import './birthday-logic.js';
