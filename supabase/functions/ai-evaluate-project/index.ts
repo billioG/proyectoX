@@ -57,33 +57,42 @@ descripción (no puedes ver el video). Da una nota de 0 a 20 en cada criterio:
 Responde ÚNICAMENTE con JSON válido, sin texto adicional, con esta forma exacta:
 {"creativity":N,"clarity":N,"functionality":N,"teamwork":N,"social_impact":N,"feedback":"comentario breve en español, máx 3 frases"}`;
 
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${GROQ_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: GROQ_MODEL,
-        messages: [
-          { role: 'system', content: rubric },
-          { role: 'user', content: `Título: ${String(project.title).slice(0, 300)}\nDescripción: ${String(project.description || '').slice(0, 1500)}` },
-        ],
-        max_tokens: 400,
-        temperature: 0.4,
-        response_format: { type: 'json_object' },
-      }),
-    });
+    // Groq a veces rechaza su propia salida en modo JSON estricto -- es
+    // intermitente. Reintentar 1 vez evita que el docente tenga que volver
+    // a pedir la segunda opinión a mano.
+    let data: any, parsed: any;
+    let lastError = 'La IA no generó una respuesta válida';
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${GROQ_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: GROQ_MODEL,
+          messages: [
+            { role: 'system', content: rubric },
+            { role: 'user', content: `Título: ${String(project.title).slice(0, 300)}\nDescripción: ${String(project.description || '').slice(0, 1500)}` },
+          ],
+          max_tokens: 400,
+          temperature: 0.4,
+          response_format: { type: 'json_object' },
+        }),
+      });
 
-    const data = await res.json();
-    if (data.error) return json({ error: data.error.message }, 500);
+      data = await res.json();
+      if (data.error) { lastError = data.error.message; continue; }
 
-    let parsed;
-    try {
-      parsed = JSON.parse(data.choices?.[0]?.message?.content || '{}');
-    } catch {
-      return json({ error: 'La IA devolvió una respuesta no válida' }, 500);
+      try {
+        parsed = JSON.parse(data.choices?.[0]?.message?.content || '{}');
+        break;
+      } catch {
+        lastError = 'La IA devolvió una respuesta no válida';
+        parsed = null;
+      }
     }
+    if (!parsed) return json({ error: lastError }, 500);
 
     const clamp = (n: unknown) => Math.max(0, Math.min(20, Math.round(Number(n) || 0)));
     const scores = {

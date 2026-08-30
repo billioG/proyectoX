@@ -68,47 +68,58 @@ claramente identificable (no una opinión, un error objetivo de lógica/orden/va
 Responde ÚNICAMENTE con JSON válido, sin texto adicional, con esta forma exacta:
 {"steps":[{"label":"...","isBug":false,"explanation":""},{"label":"...","isBug":true,"explanation":"por qué está mal"}]}`;
 
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${GROQ_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: GROQ_MODEL,
-        messages: [
-          { role: 'system', content: system },
-          { role: 'user', content: `Tema: ${String(duel.topic).slice(0, 200)}` },
-        ],
-        max_tokens: 900,
-        temperature: 0.4,
-        response_format: { type: 'json_object' },
-      }),
-    });
+    // Groq a veces rechaza su propia salida en modo JSON estricto, o genera
+    // 0/2+ bloques marcados como bug (inválido para el juego) -- ambos
+    // casos son intermitentes, no dependen del tema. Reintentar 1 vez evita
+    // que el alumno tenga que tocar "generar" de nuevo a mano.
+    let data: any, steps: any[] = [];
+    let lastError = 'La IA no generó una secuencia válida (probá de nuevo)';
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${GROQ_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: GROQ_MODEL,
+          messages: [
+            { role: 'system', content: system },
+            { role: 'user', content: `Tema: ${String(duel.topic).slice(0, 200)}` },
+          ],
+          max_tokens: 900,
+          temperature: 0.4,
+          response_format: { type: 'json_object' },
+        }),
+      });
 
-    const data = await res.json();
-    if (data.error) return json({ error: data.error.message }, 500);
+      data = await res.json();
+      if (data.error) { lastError = data.error.message; continue; }
 
-    let parsed;
-    try {
-      parsed = JSON.parse(data.choices?.[0]?.message?.content || '{}');
-    } catch {
-      return json({ error: 'La IA devolvió una respuesta no válida' }, 500);
+      let parsed;
+      try {
+        parsed = JSON.parse(data.choices?.[0]?.message?.content || '{}');
+      } catch {
+        lastError = 'La IA devolvió una respuesta no válida';
+        continue;
+      }
+
+      const candidateSteps = (parsed.steps || []).slice(0, 10).map((s: any) => ({
+        label: String(s.label || '').slice(0, 150),
+        isBug: !!s.isBug,
+        explanation: String(s.explanation || '').slice(0, 200),
+      })).filter((s: any) => s.label);
+
+      // Si la IA marcó 0 o más de 1 bloque como bug, no se puede confiar en
+      // el resultado -- mejor reintentar que dejar un desafío sin ganador
+      // posible o con más de una respuesta "correcta".
+      const bugCount = candidateSteps.filter((s: any) => s.isBug).length;
+      if (candidateSteps.length < 3 || bugCount !== 1) continue;
+
+      steps = candidateSteps;
+      break;
     }
-
-    let steps = (parsed.steps || []).slice(0, 10).map((s: any) => ({
-      label: String(s.label || '').slice(0, 150),
-      isBug: !!s.isBug,
-      explanation: String(s.explanation || '').slice(0, 200),
-    })).filter((s: any) => s.label);
-
-    // Si la IA marcó 0 o más de 1 bloque como bug, no se puede confiar en
-    // el resultado -- mejor fallar acá que dejar un desafío sin ganador
-    // posible o con más de una respuesta "correcta".
-    const bugCount = steps.filter((s: any) => s.isBug).length;
-    if (steps.length < 3 || bugCount !== 1) {
-      return json({ error: 'La IA no generó una secuencia válida (probá de nuevo)' }, 500);
-    }
+    if (!steps.length) return json({ error: lastError }, 500);
 
     const serviceClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
     const { error: updateErr } = await serviceClient

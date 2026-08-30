@@ -85,17 +85,21 @@ Deno.serve(async (req) => {
       : 'Criterio general: calidad y correctitud de la lógica del programa.';
 
     const system = `Sos un docente de programación por bloques (mBlock/Scratch) evaluando el código
-de un estudiante contra esta rúbrica:
+de un estudiante y responde de una manera objetiva y socrática contra esta rúbrica:
 ${rubricText}
 
 Evaluá qué tan bien cumple el código cada criterio. ${RESULT_FORMAT}`;
 
-    let res: Response;
-
+    let summary = '';
     if (input_type === 'mblock_file') {
       if (!mblock_base64) return json({ error: 'mblock_base64 requerido' }, 400);
-      const summary = await summarizeMblockFile(mblock_base64);
-      res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      summary = await summarizeMblockFile(mblock_base64);
+    } else if (!image_base64) {
+      return json({ error: 'image_base64 requerido' }, 400);
+    }
+
+    const callGroq = () => input_type === 'mblock_file'
+      ? fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_API_KEY}` },
         body: JSON.stringify({
@@ -108,10 +112,8 @@ Evaluá qué tan bien cumple el código cada criterio. ${RESULT_FORMAT}`;
           temperature: 0.4,
           response_format: { type: 'json_object' },
         }),
-      });
-    } else {
-      if (!image_base64) return json({ error: 'image_base64 requerido' }, 400);
-      res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      })
+      : fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_API_KEY}` },
         body: JSON.stringify({
@@ -131,17 +133,26 @@ Evaluá qué tan bien cumple el código cada criterio. ${RESULT_FORMAT}`;
           response_format: { type: 'json_object' },
         }),
       });
-    }
 
-    const data = await res.json();
-    if (data.error) return json({ error: data.error.message }, 500);
+    // Groq a veces rechaza su propia salida en modo JSON estricto -- es
+    // intermitente, no depende del contenido. Reintentar 1 vez evita que
+    // el docente tenga que volver a evaluar a mano.
+    let data: any, parsed: any;
+    let lastError = 'La IA no generó una respuesta válida';
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      const res = await callGroq();
+      data = await res.json();
+      if (data.error) { lastError = data.error.message; continue; }
 
-    let parsed;
-    try {
-      parsed = JSON.parse(data.choices?.[0]?.message?.content || '{}');
-    } catch {
-      return json({ error: 'La IA devolvió una respuesta no válida' }, 500);
+      try {
+        parsed = JSON.parse(data.choices?.[0]?.message?.content || '{}');
+        break;
+      } catch {
+        lastError = 'La IA devolvió una respuesta no válida';
+        parsed = null;
+      }
     }
+    if (!parsed) return json({ error: lastError }, 500);
 
     const score = Math.max(0, Math.min(100, Math.round(Number(parsed.score) || 0)));
     const feedback = String(parsed.feedback || '').slice(0, 1000);

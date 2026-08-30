@@ -47,31 +47,40 @@ estudiantes de educación básica/diversificado en Guatemala. Exactamente ${n} p
 adicional, con esta forma exacta:
 {"questions":[{"question":"...","options":["...","...","...","..."],"correctIndex":0}]}`;
 
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_API_KEY}` },
-      body: JSON.stringify({
-        model: GROQ_MODEL,
-        messages: [
-          { role: 'system', content: system },
-          { role: 'user', content: `Tema: ${event.topic}` },
-        ],
-        max_tokens: 1800,
-        temperature: 0.7,
-        response_format: { type: 'json_object' },
-      }),
-    });
-    const data = await res.json();
-    if (data.error) throw new Error(data.error.message);
+    // Groq a veces rechaza su propia salida en modo JSON estricto -- es
+    // intermitente, no depende del tema. Acá importa MÁS que en los demás
+    // generadores: este evento es un disparo único de cron, si falla queda
+    // marcado 'completed' abajo y nadie más lo puede reintentar a mano.
+    let data: any, questions: any[] = [];
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_API_KEY}` },
+        body: JSON.stringify({
+          model: GROQ_MODEL,
+          messages: [
+            { role: 'system', content: system },
+            { role: 'user', content: `Tema: ${event.topic}` },
+          ],
+          max_tokens: 1800,
+          temperature: 0.7,
+          response_format: { type: 'json_object' },
+        }),
+      });
+      data = await res.json();
+      if (data.error) continue;
 
-    let parsed;
-    try { parsed = JSON.parse(data.choices?.[0]?.message?.content || '{}'); } catch { parsed = {}; }
+      let parsed;
+      try { parsed = JSON.parse(data.choices?.[0]?.message?.content || '{}'); } catch { parsed = {}; }
 
-    const questions = (parsed.questions || []).slice(0, n).map((q: any) => ({
-      question: String(q.question || ''),
-      options: Array.isArray(q.options) ? q.options.slice(0, 4).map(String) : [],
-      correctIndex: Math.min(3, Math.max(0, parseInt(q.correctIndex) || 0)),
-    })).filter((q: any) => q.question && q.options.length === 4);
+      const candidateQuestions = (parsed.questions || []).slice(0, n).map((q: any) => ({
+        question: String(q.question || ''),
+        options: Array.isArray(q.options) ? q.options.slice(0, 4).map(String) : [],
+        correctIndex: Math.min(3, Math.max(0, parseInt(q.correctIndex) || 0)),
+      })).filter((q: any) => q.question && q.options.length === 4);
+
+      if (candidateQuestions.length) { questions = candidateQuestions; break; }
+    }
 
     if (!questions.length) throw new Error('La IA no generó preguntas válidas');
 
