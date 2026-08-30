@@ -2,7 +2,7 @@
 // SERVICE WORKER - PROJECTX PWA
 // ================================================
 
-const CACHE_NAME = 'projectx-v1.0.56';
+const CACHE_NAME = 'projectx-v1.0.57';
 // Caché de archivos de lecciones (video/PDF/imagen/paquetes SCORM-H5P) --
 // separada de CACHE_NAME a propósito: CACHE_NAME se recrea y se BORRA
 // entera en cada deploy (bump de versión) para forzar JS/CSS frescos, pero
@@ -109,9 +109,19 @@ self.addEventListener('install', event => {
         // momento, la instalación entera del Service Worker fallaría y la
         // app se quedaría SIN ningún soporte offline. Con cache.add() uno
         // por uno y allSettled, un archivo que falle no tumba al resto.
-        return Promise.allSettled(urlsToCache.map(url => cache.add(url).catch(e => {
-          console.warn('⚠️ No se pudo precachear:', url, e);
-        })));
+        //
+        // cdn.tailwindcss.com no manda header CORS -- pedirlo en modo
+        // "cors" (lo que hace cache.add(url) con una URL de texto) tira
+        // error de CORS y nunca se precachea. En modo "no-cors" la
+        // respuesta llega "opaca" (no se puede inspeccionar), pero sirve
+        // igual para ejecutar el script -- es como lo carga <script src>
+        // de por sí, sin atributo crossorigin.
+        return Promise.allSettled(urlsToCache.map(url => {
+          const req = url.includes('cdn.tailwindcss.com') ? new Request(url, { mode: 'no-cors' }) : url;
+          return cache.add(req).catch(e => {
+            console.warn('⚠️ No se pudo precachear:', url, e);
+          });
+        }));
       })
       .then(() => self.skipWaiting())
   );

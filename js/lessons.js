@@ -1710,16 +1710,34 @@ async function listStorageFilesRecursive(bucket, path) {
 // entry file por sí solo no alcanza para que funcionen offline. Compartida
 // entre descargar y liberar espacio para que ambas vean EXACTAMENTE los
 // mismos archivos.
+//
+// También separa cuáles son "críticos": el archivo de entrada de cada
+// lección (h5p.json para H5P, o el content_url directo para video/PDF/
+// SCORM/HTML5) -- si ESE puntual falla, la lección entera no arranca
+// aunque el 99% del resto de la librería sí haya bajado bien. El umbral
+// general de "listo offline" no distinguía esto: un curso con miles de
+// archivos podía superar el 90% de éxito y aun así tener rota la lección
+// que justo perdió su archivo de entrada.
 async function getCourseOfflineUrls(course) {
   const simpleLessons = (course.lessons || []).filter(l => l.content_url && !l.content_path);
   const packageLessons = (course.lessons || []).filter(l => l.content_path);
 
+  const criticalUrls = new Set(simpleLessons.map(l => l.content_url));
   let packageUrls = [];
   for (const lesson of packageLessons) {
     const files = await listStorageFilesRecursive(LESSON_STORAGE_BUCKET, lesson.content_path);
-    packageUrls.push(...files.map(f => window._supabase.storage.from(LESSON_STORAGE_BUCKET).getPublicUrl(f).data.publicUrl));
+    const urls = files.map(f => window._supabase.storage.from(LESSON_STORAGE_BUCKET).getPublicUrl(f).data.publicUrl);
+    packageUrls.push(...urls);
+
+    if (lesson.content_type === 'h5p') {
+      const entryUrl = urls.find(u => u.endsWith('/h5p.json'));
+      if (entryUrl) criticalUrls.add(entryUrl);
+    } else if (lesson.content_url) {
+      criticalUrls.add(lesson.content_url);
+    }
   }
-  return [...simpleLessons.map(l => l.content_url), ...packageUrls];
+
+  return { allUrls: [...simpleLessons.map(l => l.content_url), ...packageUrls], criticalUrls };
 }
 
 function refreshLessonsContainer() {
@@ -1734,9 +1752,10 @@ window.downloadCourseOffline = async function downloadCourseOffline(courseId) {
   const btn = document.getElementById(`btn-download-course-${courseId}`);
 
   if (btn) btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Preparando...';
-  const allUrls = await getCourseOfflineUrls(course);
+  const { allUrls, criticalUrls } = await getCourseOfflineUrls(course);
 
   let done = 0, ok = 0;
+  const failedCritical = new Set();
   const setProgress = () => {
     const pct = allUrls.length ? Math.round((done / allUrls.length) * 100) : 100;
     if (btn) btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Descargando ${pct}% (${done}/${allUrls.length})`;
@@ -1747,17 +1766,15 @@ window.downloadCourseOffline = async function downloadCourseOffline(courseId) {
   // suelen compartir las mismas librerías (H5P.JoubelUI, FontAwesome, etc.)
   // -- sin este chequeo se volvían a bajar de red los mismos archivos una y
   // otra vez por cada lección. Cursos con miles de archivos chicos (H5P)
-  // tardaban muchísimo en serie -- ahora van 16 en paralelo, y cada archivo
-  // reintenta hasta 2 veces antes de darse por vencido (conexión de aula
-  // inestable, no hace falta que el alumno reintente todo el curso por un
-  // solo archivo que falló una vez).
+  // tardaban muchísimo en serie -- ahora van 16 en paralelo. Los archivos
+  // CRÍTICOS (h5p.json, content_url) reintentan más veces -- perder uno de
+  // esos rompe la lección entera aunque el resto de la librería sí baje.
   const mediaCache = await caches.open('projectx-media-v1');
   const CONCURRENCY = 16;
-  const RETRIES_PER_FILE = 2;
   let cursor = 0;
 
-  async function fetchWithRetry(url) {
-    for (let attempt = 0; attempt <= RETRIES_PER_FILE; attempt++) {
+  async function fetchWithRetry(url, retries) {
+    for (let attempt = 0; attempt <= retries; attempt++) {
       try {
         const res = await fetch(url);
         if (res.ok) return true;
@@ -1769,8 +1786,13 @@ window.downloadCourseOffline = async function downloadCourseOffline(courseId) {
   async function worker() {
     while (cursor < allUrls.length) {
       const url = allUrls[cursor++];
+      const isCritical = criticalUrls.has(url);
       const cached = await mediaCache.match(url);
-      if (cached || await fetchWithRetry(url)) ok++;
+      if (cached || await fetchWithRetry(url, isCritical ? 5 : 2)) {
+        ok++;
+      } else if (isCritical) {
+        failedCritical.add(url);
+      }
       done++;
       setProgress();
     }
@@ -1780,8 +1802,14 @@ window.downloadCourseOffline = async function downloadCourseOffline(courseId) {
   const successPct = allUrls.length ? (ok / allUrls.length) * 100 : 100;
   const DOWNLOAD_OK_THRESHOLD = 90;
 
-  if (successPct < DOWNLOAD_OK_THRESHOLD) {
-    window.showToast(`<i class="fas fa-triangle-exclamation"></i> Solo se descargaron ${ok}/${allUrls.length} archivos -- probá de nuevo con mejor señal antes de confiar en que funcione offline`, 'error');
+  // Un curso puede superar el 90% general y AUN ASÍ tener rota una lección
+  // puntual si justo el archivo de entrada de ESA lección falló -- por eso
+  // failedCritical bloquea "listo offline" sin importar el % general.
+  if (successPct < DOWNLOAD_OK_THRESHOLD || failedCritical.size > 0) {
+    const msg = failedCritical.size > 0
+      ? `No se pudieron descargar ${failedCritical.size} recurso(s) clave -- esas lecciones no van a funcionar offline. Probá de nuevo con mejor señal.`
+      : `Solo se descargaron ${ok}/${allUrls.length} archivos -- probá de nuevo con mejor señal antes de confiar en que funcione offline.`;
+    window.showToast(`<i class="fas fa-triangle-exclamation"></i> ${msg}`, 'error');
     if (btn) btn.innerHTML = '<i class="fas fa-download"></i> Reintentar descarga';
     return;
   }
@@ -1806,7 +1834,7 @@ window.clearCourseOffline = async function clearCourseOffline(courseId) {
   if (btn) btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
 
   try {
-    const urls = await getCourseOfflineUrls(course);
+    const { allUrls: urls } = await getCourseOfflineUrls(course);
     // 'projectx-media-v1' tiene que ser el MISMO nombre que MEDIA_CACHE_NAME
     // en service-worker.js -- no hay forma de importar esa constante desde
     // acá (contextos de ejecución separados), así que si algún día cambia
