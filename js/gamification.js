@@ -344,13 +344,10 @@ window.doubleXPMultiplier = 1;
 
 window.updateLoginStreak = async function updateLoginStreak() {
   const userData = window.userData;
-  const userRole = window.userRole;
-  const currentUser = window.currentUser;
   const _supabase = window._supabase;
   const showToast = window.showToast;
 
   if (!userData) return;
-  const table = userRole === 'estudiante' ? 'students' : 'teachers';
   const today = new Date().toISOString().split('T')[0];
   const lastLogin = userData.last_login;
 
@@ -362,37 +359,23 @@ window.updateLoginStreak = async function updateLoginStreak() {
 
   if (lastLogin === today) return;
 
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = yesterday.toISOString().split('T')[0];
-
-  let currentStreak = userData.streak || 0;
-  let newStreak = 1;
-  let freezeUsed = false;
-
-  if (lastLogin === yesterdayStr) {
-    newStreak = currentStreak + 1;
-    if (typeof showToast === 'function') showToast(`<i class="fas fa-fire"></i> ¡Racha de ${newStreak} días! Sigue así.`, 'info');
-  } else if (lastLogin) {
-    // Check for streak freeze
-    if (userData.streak_freeze) {
-      newStreak = currentStreak;
-      freezeUsed = true;
+  // La racha se calcula y escribe EN SERVIDOR (fecha real de la base, no
+  // la del reloj del dispositivo) -- antes el cliente calculaba el nuevo
+  // valor y lo escribía directo, se podía falsificar por consola
+  // (update({streak: 999})).
+  const { data: result, error } = await _supabase.rpc('touch_daily_login');
+  if (!error && result?.changed) {
+    if (result.freezeUsed) {
       if (typeof showToast === 'function') showToast('<i class="fas fa-cube"></i> ¡Tu Racha fue salvada por un Hielo!', 'info');
-    } else {
-      newStreak = 1;
+      userData.streak_freeze = false;
+    } else if (result.streak > (userData.streak || 0)) {
+      if (typeof showToast === 'function') showToast(`<i class="fas fa-fire"></i> ¡Racha de ${result.streak} días! Sigue así.`, 'info');
+    } else if (lastLogin) {
       if (typeof showToast === 'function') showToast('<i class="fas fa-face-sad-tear"></i> Racha perdida. ¡Empieza de nuevo!', 'warning');
     }
-  }
 
-  const updateData = { last_login: today, streak: newStreak };
-  if (freezeUsed) updateData.streak_freeze = false;
-
-  const { error } = await _supabase.from(table).update(updateData).eq('id', currentUser.id);
-  if (!error) {
-    userData.last_login = today;
-    userData.streak = newStreak;
-    if (freezeUsed) userData.streak_freeze = false;
+    userData.last_login = result.lastLogin;
+    userData.streak = result.streak;
   }
 }
 
