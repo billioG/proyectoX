@@ -29,7 +29,11 @@ window.loadAnnouncementsUnreadCount = async function loadAnnouncementsUnreadCoun
 
   const pendingSurveys = typeof window.getPendingSurveys === 'function' ? await window.getPendingSurveys() : [];
   const { data: unreadCommentNotifs } = await _supabase.from('comment_notifications').select('id').eq('read', false);
-  const unread = unreadAnnouncements + pendingSurveys.length + (unreadCommentNotifs?.length || 0);
+  // Retos 1v1 pendientes ahora también suman al total de la campana -- antes
+  // "te retaron" solo prendía el punto rojo del botón Centro de Juego, que
+  // el alumno no siempre asocia con "tengo una notificación nueva".
+  const pendingChallenges = await getPendingChallengeCards();
+  const unread = unreadAnnouncements + pendingSurveys.length + (unreadCommentNotifs?.length || 0) + pendingChallenges.length;
 
   if (unread > 0) {
     badge.textContent = unread;
@@ -37,6 +41,33 @@ window.loadAnnouncementsUnreadCount = async function loadAnnouncementsUnreadCoun
   } else {
     badge.style.display = 'none';
   }
+}
+
+// Compartida entre el badge de la campana y el inbox -- junta los retos
+// 1v1 pendientes de los 4 juegos (antes cada uno vivía SOLO como punto
+// rojo en el botón Centro de Juego, sin entrada acá).
+const CHALLENGE_TABLES = [
+  { table: 'student_duels', game: 'quiz', label: 'Desafío de Código', hasTopic: true },
+  { table: 'student_hangman_duels', game: 'hangman', label: 'Ahorcado', hasTopic: true },
+  { table: 'student_timed_math_duels', game: 'timed_math', label: 'Contrarreloj', hasTopic: false },
+  { table: 'student_debug_duels', game: 'debug', label: 'Encontrá el Error', hasTopic: true },
+];
+
+async function getPendingChallengeCards() {
+  if (window.userRole !== 'estudiante' || !window.currentUser) return [];
+  const _supabase = window._supabase;
+
+  const results = await Promise.all(CHALLENGE_TABLES.map(t =>
+    _supabase.from(t.table)
+      .select(`id, wager_gems, created_at${t.hasTopic ? ', topic' : ''}, challenger:students!challenger_id(full_name)`)
+      .eq('opponent_id', window.currentUser.id).eq('status', 'pending')
+  ));
+
+  const rows = [];
+  results.forEach((res, i) => {
+    (res.data || []).forEach(d => rows.push({ ...d, ...CHALLENGE_TABLES[i] }));
+  });
+  return rows.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 }
 
 window.openAnnouncementsInbox = async function openAnnouncementsInbox() {
@@ -68,12 +99,28 @@ window.openAnnouncementsInbox = async function openAnnouncementsInbox() {
   `;
   document.body.appendChild(modal);
 
-  const [{ data: announcements, error }, pendingSurveys, adminSurveys, { data: commentNotifs }] = await Promise.all([
+  const [{ data: announcements, error }, pendingSurveys, adminSurveys, { data: commentNotifs }, pendingChallenges] = await Promise.all([
     _supabase.from('announcements').select('id, title, message, sender_id, sender_role, created_at').order('created_at', { ascending: false }).limit(50),
     typeof window.getPendingSurveys === 'function' ? window.getPendingSurveys() : Promise.resolve([]),
     window.userRole === 'admin' ? _supabase.from('surveys').select('id, title, created_at').order('created_at', { ascending: false }).limit(10) : Promise.resolve({ data: [] }),
     _supabase.from('comment_notifications').select('id, type, actor_name, content_preview, lesson_id, read, created_at').order('created_at', { ascending: false }).limit(30),
+    getPendingChallengeCards(),
   ]);
+
+  const challengeCards = (pendingChallenges || []).map(c => {
+    const challengerName = (Array.isArray(c.challenger) ? c.challenger[0] : c.challenger)?.full_name || 'Alguien';
+    const subject = c.hasTopic ? c.topic : c.label;
+    return `
+    <div class="p-4 rounded-xl border-2 border-rose-400/40 bg-rose-500/5 cursor-pointer hover:border-rose-500/60 transition-colors" onclick="this.closest('.fixed').remove(); window.routeNotificationTarget('game-center')">
+      <div class="flex items-center gap-2 mb-1">
+        <i class="fas fa-swords text-rose-500"></i>
+        <h4 class="text-sm font-bold text-slate-800 dark:text-white">${sanitizeInput(challengerName)} te retó a ${sanitizeInput(c.label)}</h4>
+        <span class="w-2 h-2 rounded-full bg-rose-500 ml-auto shrink-0"></span>
+      </div>
+      <p class="text-xs text-slate-500 dark:text-slate-400 pl-6">${sanitizeInput(subject)} · ${c.wager_gems} gemas en juego</p>
+    </div>
+  `;
+  }).join('');
 
   const unreadCommentIds = (commentNotifs || []).filter(n => !n.read).map(n => n.id);
   if (unreadCommentIds.length) {
@@ -142,7 +189,7 @@ window.openAnnouncementsInbox = async function openAnnouncementsInbox() {
     ? `<p class="text-[0.6rem] font-black uppercase text-slate-400 tracking-widest mt-4 mb-1">Mis Encuestas</p>${adminSurveyCards}`
     : '';
 
-  listEl.innerHTML = commentNotifCards + surveyCards + announcementCards + adminSurveysBlock
+  listEl.innerHTML = challengeCards + commentNotifCards + surveyCards + announcementCards + adminSurveysBlock
     || '<p class="text-slate-400 text-sm text-center py-10">Todavía no tenés avisos.</p>';
 
   // Marcar todos como leídos al abrir la bandeja.
