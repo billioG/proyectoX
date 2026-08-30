@@ -194,6 +194,25 @@ window.calculateStudentXP = async function calculateStudentXP(studentId) {
   }
 }
 
+// Antes el "Tu Rango" del sidebar decía siempre "Novato Élite" sin importar
+// el nivel real -- la UI no reflejaba ningún progreso de rango.
+const RANK_TITLES = [
+  { minLevel: 1, title: 'Novato' },
+  { minLevel: 3, title: 'Aprendiz' },
+  { minLevel: 5, title: 'Explorador' },
+  { minLevel: 8, title: 'Innovador' },
+  { minLevel: 11, title: 'Ingeniero' },
+  { minLevel: 15, title: 'Maestro' },
+  { minLevel: 20, title: 'Leyenda' },
+];
+function getRankTitle(level) {
+  let title = RANK_TITLES[0].title;
+  for (const r of RANK_TITLES) {
+    if (level >= r.minLevel) title = r.title;
+  }
+  return title;
+}
+
 window.renderGamificationSidebar = function renderGamificationSidebar(level, totalXP, progress, xpInLevel) {
   const sidebar = document.getElementById('sidebar');
   if (!sidebar) return;
@@ -216,7 +235,7 @@ window.renderGamificationSidebar = function renderGamificationSidebar(level, tot
           </div>
           <div>
             <div class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest leading-none mb-1">Tu Rango</div>
-            <div class="text-xs font-bold text-slate-800 dark:text-white uppercase tracking-tight">Novato Élite</div>
+            <div class="text-xs font-bold text-slate-800 dark:text-white uppercase tracking-tight">${getRankTitle(level)}</div>
           </div>
         </div>
         <div class="flex flex-col items-end">
@@ -441,7 +460,7 @@ window.openChest = async function openChest(el) {
              <div class="text-5xl font-black text-white drop-shadow-lg">+${reward.xp} XP</div>
              <div class="text-3xl font-black text-cyan-400 drop-shadow-lg">+${reward.gems} GEMS</div>
              <p class="text-amber-200 font-bold uppercase tracking-widest mt-2">${reward.msg}</p>
-             <button onclick="location.reload()" class="mt-8 px-8 py-3 bg-white text-amber-600 rounded-full font-black uppercase tracking-widest hover:scale-105 transition-transform shadow-xl">Recoger y Seguir</button>
+             <button onclick="this.closest('.fixed').remove()" class="mt-8 px-8 py-3 bg-white text-amber-600 rounded-full font-black uppercase tracking-widest hover:scale-105 transition-transform shadow-xl">Recoger y Seguir</button>
         </div>
     `;
   el.onclick = null;
