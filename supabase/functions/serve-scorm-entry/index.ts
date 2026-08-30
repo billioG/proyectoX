@@ -14,13 +14,21 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const BUCKET = 'course-content';
 
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, content-type',
-  'Access-Control-Allow-Methods': 'GET, OPTIONS',
-};
+// Antes Access-Control-Allow-Origin: '*' -- cualquier sitio podía llamar
+// esta función desde el navegador de un usuario logueado. Se restringe a
+// los dominios reales donde corre la app (GitHub Pages + dominio propio).
+const ALLOWED_ORIGINS = new Set([
+  'https://clases.yoaprendo.online',
+  'https://billiog.github.io',
+]);
 
 Deno.serve(async (req) => {
+  const origin = req.headers.get('origin') || '';
+  const CORS = {
+    'Access-Control-Allow-Origin': ALLOWED_ORIGINS.has(origin) ? origin : 'https://clases.yoaprendo.online',
+    'Access-Control-Allow-Headers': 'authorization, content-type',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+  };
   if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
 
   const url = new URL(req.url);

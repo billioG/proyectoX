@@ -1729,17 +1729,33 @@ window.downloadCourseOffline = async function downloadCourseOffline(courseId) {
   if (btn) btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Preparando...';
   const allUrls = await getCourseOfflineUrls(course);
 
-  let done = 0;
+  let done = 0, ok = 0;
   const setProgress = () => {
     const pct = allUrls.length ? Math.round((done / allUrls.length) * 100) : 100;
     if (btn) btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Descargando ${pct}% (${done}/${allUrls.length})`;
   };
   setProgress();
 
+  // "Listo offline" solo si la GRAN MAYORÍA de los archivos realmente
+  // bajaron -- antes se marcaba igual aunque fallaran varios (ej. mitad
+  // del paquete H5P), y el alumno recién se enteraba al quedarse sin
+  // internet y encontrar el curso roto a medias.
   for (const url of allUrls) {
-    try { await fetch(url); } catch (e) { /* un recurso puede fallar (offline a medias) -- se sigue con el resto */ }
+    try {
+      const res = await fetch(url);
+      if (res.ok) ok++;
+    } catch (e) { /* sin red a medio camino, sigue con el resto */ }
     done++;
     setProgress();
+  }
+
+  const successPct = allUrls.length ? (ok / allUrls.length) * 100 : 100;
+  const DOWNLOAD_OK_THRESHOLD = 90;
+
+  if (successPct < DOWNLOAD_OK_THRESHOLD) {
+    window.showToast(`<i class="fas fa-triangle-exclamation"></i> Solo se descargaron ${ok}/${allUrls.length} archivos -- probá de nuevo con mejor señal antes de confiar en que funcione offline`, 'error');
+    if (btn) btn.innerHTML = '<i class="fas fa-download"></i> Reintentar descarga';
+    return;
   }
 
   const set = new Set(JSON.parse(localStorage.getItem('PX_OFFLINE_COURSES') || '[]'));

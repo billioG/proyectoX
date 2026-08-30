@@ -12,16 +12,24 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
-
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
+// Antes Access-Control-Allow-Origin: '*' -- cualquier sitio podía llamar
+// esta función desde el navegador de un usuario logueado. Se restringe a
+// los dominios reales donde corre la app (GitHub Pages + dominio propio).
+const ALLOWED_ORIGINS = new Set([
+  'https://clases.yoaprendo.online',
+  'https://billiog.github.io',
+]);
 
 Deno.serve(async (req) => {
+  const origin = req.headers.get('origin') || '';
+  const CORS = {
+    'Access-Control-Allow-Origin': ALLOWED_ORIGINS.has(origin) ? origin : 'https://clases.yoaprendo.online',
+    'Access-Control-Allow-Headers': 'authorization, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  };
+
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
   if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
 
   // 1. Verificar que el caller es un admin autenticado real

@@ -16,14 +16,13 @@ const GROQ_TEXT_MODEL = 'openai/gpt-oss-20b';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_ANON = Deno.env.get('SUPABASE_ANON_KEY')!;
 
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
-
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
+// Antes Access-Control-Allow-Origin: '*' -- cualquier sitio podía llamar
+// esta función desde el navegador de un usuario logueado. Se restringe a
+// los dominios reales donde corre la app (GitHub Pages + dominio propio).
+const ALLOWED_ORIGINS = new Set([
+  'https://clases.yoaprendo.online',
+  'https://billiog.github.io',
+]);
 
 const RESULT_FORMAT = `Responde ÚNICAMENTE con JSON válido, sin texto adicional, con esta forma exacta:
 {"score": N (0-100), "feedback": "comentario general en español, máx 3 frases", "criteria_feedback": [{"criterion": "...", "met": true|false, "comment": "..."}]}`;
@@ -65,6 +64,15 @@ async function summarizeMblockFile(base64: string): Promise<string> {
 }
 
 Deno.serve(async (req) => {
+  const origin = req.headers.get('origin') || '';
+  const CORS = {
+    'Access-Control-Allow-Origin': ALLOWED_ORIGINS.has(origin) ? origin : 'https://clases.yoaprendo.online',
+    'Access-Control-Allow-Headers': 'authorization, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  };
+
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
   if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
 
   const authHeader = req.headers.get('Authorization');

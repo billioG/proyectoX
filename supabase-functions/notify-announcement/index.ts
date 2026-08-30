@@ -17,16 +17,24 @@ const VAPID_SUBJECT = Deno.env.get('VAPID_SUBJECT') || 'mailto:soporte@quetzallm
 
 webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
-
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
+// Antes Access-Control-Allow-Origin: '*' -- cualquier sitio podía llamar
+// esta función desde el navegador de un usuario logueado. Se restringe a
+// los dominios reales donde corre la app (GitHub Pages + dominio propio).
+const ALLOWED_ORIGINS = new Set([
+  'https://clases.yoaprendo.online',
+  'https://billiog.github.io',
+]);
 
 Deno.serve(async (req) => {
+  const origin = req.headers.get('origin') || '';
+  const CORS = {
+    'Access-Control-Allow-Origin': ALLOWED_ORIGINS.has(origin) ? origin : 'https://clases.yoaprendo.online',
+    'Access-Control-Allow-Headers': 'authorization, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  };
+
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
   if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
 
   const authHeader = req.headers.get('Authorization');
