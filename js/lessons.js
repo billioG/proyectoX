@@ -1651,8 +1651,11 @@ window.loadStudentCourses = async function loadStudentCourses(container) {
             <i class="fas fa-microchip"></i> Clase de Tinkercad
           </a>` : ''}
           ${window.isCourseDownloadedOffline(c.id) ? `
-          <div class="mt-1 flex items-center justify-center gap-1.5 h-9 rounded-lg bg-emerald-500/10 text-emerald-500 text-[0.65rem] font-bold uppercase">
-            <i class="fas fa-circle-check"></i> Listo offline
+          <div class="mt-1 flex items-center gap-1.5">
+            <div class="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-lg bg-emerald-500/10 text-emerald-500 text-[0.65rem] font-bold uppercase">
+              <i class="fas fa-circle-check"></i> Listo offline
+            </div>
+            <button id="btn-clear-course-${c.id}" onclick="event.stopPropagation(); window.clearCourseOffline('${c.id}')" title="Liberar espacio offline" class="w-9 h-9 shrink-0 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-rose-500/10 hover:text-rose-500 text-slate-400"><i class="fas fa-trash-alt text-xs"></i></button>
           </div>` : `
           <button id="btn-download-course-${c.id}" onclick="event.stopPropagation(); window.downloadCourseOffline('${c.id}')" class="mt-1 flex items-center justify-center gap-1.5 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 text-[0.65rem] font-bold uppercase">
             <i class="fas fa-download"></i> Descargar para offline
@@ -1695,27 +1698,42 @@ async function listStorageFilesRecursive(bucket, path) {
   return files;
 }
 
-window.downloadCourseOffline = async function downloadCourseOffline(courseId) {
-  const course = (window._coursesCache || []).find(c => c.id === courseId);
-  if (!course) return;
-  const btn = document.getElementById(`btn-download-course-${courseId}`);
-
-  // Recursos simples (video/PDF/imagen) solo necesitan su content_url. Los
-  // paquetes SCORM/H5P/HTML5 (content_path) hay que bajarlos COMPLETOS --
-  // el entry file por sí solo no alcanza para que funcionen offline.
+// Recursos simples (video/PDF/imagen) solo necesitan su content_url. Los
+// paquetes SCORM/H5P/HTML5 (content_path) hay que bajarlos COMPLETOS -- el
+// entry file por sí solo no alcanza para que funcionen offline. Compartida
+// entre descargar y liberar espacio para que ambas vean EXACTAMENTE los
+// mismos archivos.
+async function getCourseOfflineUrls(course) {
   const simpleLessons = (course.lessons || []).filter(l => l.content_url && !l.content_path);
   const packageLessons = (course.lessons || []).filter(l => l.content_path);
 
-  if (btn) btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Preparando...';
   let packageUrls = [];
   for (const lesson of packageLessons) {
     const files = await listStorageFilesRecursive(LESSON_STORAGE_BUCKET, lesson.content_path);
     packageUrls.push(...files.map(f => window._supabase.storage.from(LESSON_STORAGE_BUCKET).getPublicUrl(f).data.publicUrl));
   }
+  return [...simpleLessons.map(l => l.content_url), ...packageUrls];
+}
 
-  const allUrls = [...simpleLessons.map(l => l.content_url), ...packageUrls];
+function refreshLessonsContainer() {
+  if (typeof window.loadStudentCourses !== 'function') return;
+  const container = document.getElementById('lessons-container');
+  if (container) window.loadStudentCourses(container);
+}
+
+window.downloadCourseOffline = async function downloadCourseOffline(courseId) {
+  const course = (window._coursesCache || []).find(c => c.id === courseId);
+  if (!course) return;
+  const btn = document.getElementById(`btn-download-course-${courseId}`);
+
+  if (btn) btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Preparando...';
+  const allUrls = await getCourseOfflineUrls(course);
+
   let done = 0;
-  const setProgress = () => { if (btn) btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Descargando ${done}/${allUrls.length}`; };
+  const setProgress = () => {
+    const pct = allUrls.length ? Math.round((done / allUrls.length) * 100) : 100;
+    if (btn) btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Descargando ${pct}% (${done}/${allUrls.length})`;
+  };
   setProgress();
 
   for (const url of allUrls) {
@@ -1729,10 +1747,36 @@ window.downloadCourseOffline = async function downloadCourseOffline(courseId) {
   localStorage.setItem('PX_OFFLINE_COURSES', JSON.stringify([...set]));
 
   window.showToast('<i class="fas fa-circle-check"></i> Curso listo para usar sin internet', 'success');
-  if (typeof window.loadStudentCourses === 'function') {
-    const container = document.getElementById('lessons-container');
-    if (container) window.loadStudentCourses(container);
-  }
+  refreshLessonsContainer();
+};
+
+// "Liberar espacio offline" -- en tablets escolares (poco storage) un
+// alumno puede haber descargado varios cursos a lo largo del año sin
+// forma de sacarlos del caché salvo borrando datos del navegador entero.
+window.clearCourseOffline = async function clearCourseOffline(courseId) {
+  const course = (window._coursesCache || []).find(c => c.id === courseId);
+  if (!course) return;
+  if (!confirm('¿Borrar la copia offline de este curso? Vas a necesitar internet de nuevo para verlo hasta que lo descargues otra vez.')) return;
+
+  const btn = document.getElementById(`btn-clear-course-${courseId}`);
+  if (btn) btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+  try {
+    const urls = await getCourseOfflineUrls(course);
+    // 'projectx-media-v1' tiene que ser el MISMO nombre que MEDIA_CACHE_NAME
+    // en service-worker.js -- no hay forma de importar esa constante desde
+    // acá (contextos de ejecución separados), así que si algún día cambia
+    // ahí, hay que actualizar este string también.
+    const cache = await caches.open('projectx-media-v1');
+    await Promise.all(urls.map(url => cache.delete(url)));
+  } catch (e) { /* si el navegador no tiene ese caché (ej. Cache API no soportada), no hay nada que borrar */ }
+
+  const set = new Set(JSON.parse(localStorage.getItem('PX_OFFLINE_COURSES') || '[]'));
+  set.delete(courseId);
+  localStorage.setItem('PX_OFFLINE_COURSES', JSON.stringify([...set]));
+
+  window.showToast('<i class="fas fa-circle-check"></i> Espacio offline liberado', 'success');
+  refreshLessonsContainer();
 };
 
 window.openCoursePlayer = function openCoursePlayer(courseId) {

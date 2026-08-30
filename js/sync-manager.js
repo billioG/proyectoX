@@ -321,8 +321,14 @@ class SyncManager {
                     return true;
 
                 default:
-                    console.warn(`⚠️ Acción no soportada: ${action}`);
-                    return true;
+                    // Antes esto devolvía true, así que processQueue() BORRABA
+                    // la acción como si hubiera sincronizado bien -- pérdida
+                    // silenciosa de datos si un dispositivo tenía una versión
+                    // de la app más vieja/nueva que no reconocía ese tipo de
+                    // acción (ej. relevo QR entre un teléfono actualizado y
+                    // otro no). Se deja en la cola para reintentar después.
+                    console.warn(`⚠️ Acción no soportada todavía, se mantiene en cola: ${action}`);
+                    return false;
             }
         } catch (err) {
             console.error(`Ocurrió un error al ejecutar ${action}:`, err);
