@@ -2,7 +2,7 @@
 // SERVICE WORKER - PROJECTX PWA
 // ================================================
 
-const CACHE_NAME = 'projectx-v1.0.55';
+const CACHE_NAME = 'projectx-v1.0.56';
 // Caché de archivos de lecciones (video/PDF/imagen/paquetes SCORM-H5P) --
 // separada de CACHE_NAME a propósito: CACHE_NAME se recrea y se BORRA
 // entera en cada deploy (bump de versión) para forzar JS/CSS frescos, pero
@@ -44,15 +44,56 @@ const LAZY_MODULES = [
   'js/timed-math-duel.js', 'js/tournaments.js',
 ];
 
+// BUG REAL #2: la lista de arriba solo cubre los módulos LAZY (loadModule()
+// dinámico) -- pero app.js y todo lo que importa de forma ESTÁTICA (sin
+// ?v=, se resuelve en el mismo momento en que el navegador carga app.js)
+// nunca se precacheaba. Un alumno offline se encontraba con la app entera
+// sin arrancar (JS core ausente = HTML crudo sin estilos ni funciones).
+const EAGER_MODULES = [
+  'js/main.js', 'js/auth.js', 'js/sync-manager.js', 'js/config.js',
+  'js/data/badges.js', 'js/badges.js', 'js/data/quotes.js', 'js/data/challenges.js',
+  'js/data/student-challenges.js', 'js/kolibri-sync.js', 'js/notification-center.js',
+  'js/test-accounts-filter.js', 'js/onboarding.js', 'js/birthday-logic.js',
+  'js/teacher-rocks.js', 'js/admin-rocks.js', 'js/rocks-notifications.js',
+  'js/project-modals.js', 'js/ai-service.js', 'js/mascot-widget.js',
+  'js/random-events.js', 'js/announcements.js', 'js/surveys.js',
+  'js/activity-tracker.js', 'js/admin-dashboard.js', 'js/teachers.js',
+  'js/students.js', 'js/schools.js', 'js/ranking.js', 'js/bonus-system.js',
+  'js/admin-success.js', 'js/evaluation.js', 'js/admin-evaluations.js',
+  'js/attendance.js', 'js/groups.js', 'js/gamification.js', 'js/profile.js',
+  'js/feed-ui.js', 'js/utils.js', 'js/qrcode.min.js',
+];
+
 const urlsToCache = [
   './',
   './index.html',
   './css/styles.css',
   './manifest.json',
-  'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
-  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
-  'https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap',
+  `js/app.js?v=${APP_VERSION}`,
+  ...EAGER_MODULES,
   ...LAZY_MODULES.map(f => `${f}?v=${APP_VERSION}`),
+  // CDNs de las que depende el arranque de la app -- antes solo se
+  // cacheaban 3, el resto (Tailwind, la fuente real que usa el sitio,
+  // JSZip, driver.js, pdf.js, jsQR, confetti) se perdían offline.
+  'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
+  'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-solid-900.woff2',
+  'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-solid-900.ttf',
+  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
+  'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js',
+  // La fuente real que usa index.html es Inter, no Poppins -- estaba mal
+  // desde que se agregó esta lista, así que nunca hacía caché-hit.
+  'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap',
+  'https://cdn.jsdelivr.net/npm/driver.js@1/dist/driver.css',
+  'https://cdn.jsdelivr.net/npm/driver.js@1/dist/driver.js.iife.js',
+  'https://cdn.tailwindcss.com',
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
+  'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js',
+  'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js',
+  'https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js',
+  'vendor/h5p-standalone/main.bundle.js',
+  'vendor/h5p-standalone/frame.bundle.js',
+  'vendor/h5p-standalone/styles/h5p.css',
 ];
 
 // Instalación del Service Worker
