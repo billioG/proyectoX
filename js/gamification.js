@@ -426,6 +426,13 @@ window.openChest = async function openChest(el) {
 
   if (error) {
     if (typeof showToast === 'function') showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
+    // Si no se cierra acá, el modal queda atrapado: el cofre sigue con
+    // onclick=openChest y el usuario lo vuelve a tocar creyendo que no
+    // pasó nada, disparando el mismo RPC (que siempre va a fallar, ej. ya
+    // reclamado hoy) en loop -- confirmado en producción (9 POST 400
+    // seguidos al mismo claim_daily_chest).
+    const modal = el.closest('.fixed');
+    if (modal) modal.remove();
     return;
   }
 
