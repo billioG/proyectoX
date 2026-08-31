@@ -2,7 +2,7 @@
 // SERVICE WORKER - PROJECTX PWA
 // ================================================
 
-const CACHE_NAME = 'projectx-v1.0.60';
+const CACHE_NAME = 'projectx-v1.0.61';
 // Caché de archivos de lecciones (video/PDF/imagen/paquetes SCORM-H5P) --
 // separada de CACHE_NAME a propósito: CACHE_NAME se recrea y se BORRA
 // entera en cada deploy (bump de versión) para forzar JS/CSS frescos, pero
@@ -96,32 +96,46 @@ const urlsToCache = [
   'vendor/h5p-standalone/styles/h5p.css',
 ];
 
+// Sin estos, la app ni siquiera arranca offline (JS core / estilos
+// ausentes = pantalla en blanco o HTML crudo). Se reintentan varias veces
+// en el install -- un deploy que coincide con WiFi inestable de escuela no
+// debería dejarlos afuera del precache.
+const CRITICAL_SHELL_URLS = [
+  './index.html',
+  `js/app.js?v=${APP_VERSION}`,
+  './css/styles.css',
+  'https://cdn.tailwindcss.com',
+];
+
+async function cacheWithRetry(cache, url, retries) {
+  const req = url.includes('cdn.tailwindcss.com') ? new Request(url, { mode: 'no-cors' }) : url;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try { await cache.add(req); return true; } catch (e) { /* reintenta */ }
+  }
+  console.warn('⚠️ No se pudo precachear tras reintentos:', url);
+  return false;
+}
+
 // Instalación del Service Worker
 self.addEventListener('install', event => {
   console.log('📦 Service Worker: Instalando v1.0.3...');
 
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => {
+      .then(async cache => {
         console.log('✅ Caché abierto');
         // cache.addAll() es todo-o-nada -- si UN solo archivo de la lista
         // (ahora con 40+ módulos lazy) da 404 o falla la red justo en ese
         // momento, la instalación entera del Service Worker fallaría y la
         // app se quedaría SIN ningún soporte offline. Con cache.add() uno
         // por uno y allSettled, un archivo que falle no tumba al resto.
-        //
-        // cdn.tailwindcss.com no manda header CORS -- pedirlo en modo
-        // "cors" (lo que hace cache.add(url) con una URL de texto) tira
-        // error de CORS y nunca se precachea. En modo "no-cors" la
-        // respuesta llega "opaca" (no se puede inspeccionar), pero sirve
-        // igual para ejecutar el script -- es como lo carga <script src>
-        // de por sí, sin atributo crossorigin.
-        return Promise.allSettled(urlsToCache.map(url => {
-          const req = url.includes('cdn.tailwindcss.com') ? new Request(url, { mode: 'no-cors' }) : url;
-          return cache.add(req).catch(e => {
-            console.warn('⚠️ No se pudo precachear:', url, e);
-          });
-        }));
+        const rest = urlsToCache.filter(u => !CRITICAL_SHELL_URLS.includes(u));
+        await Promise.allSettled(rest.map(url => cacheWithRetry(cache, url, 0)));
+        // Los críticos van con reintentos y DESPUÉS de los demás -- si la
+        // red estaba flojeando al momento del deploy, esto les da más
+        // chances antes de que "activate" borre el cache viejo (que sí los
+        // tenía todos) confiando en que estos ya están.
+        await Promise.allSettled(CRITICAL_SHELL_URLS.map(url => cacheWithRetry(cache, url, 3)));
       })
       .then(() => self.skipWaiting())
   );
@@ -132,16 +146,30 @@ self.addEventListener('activate', event => {
   console.log('🔄 Service Worker: Activando...');
 
   event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheName !== CACHE_NAME && cacheName !== MEDIA_CACHE_NAME) {
-            console.log('🗑️ Eliminando caché antigua:', cacheName);
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    }).then(() => self.clients.claim())
+    (async () => {
+      const newCache = await caches.open(CACHE_NAME);
+      const matches = await Promise.all(CRITICAL_SHELL_URLS.map(u => newCache.match(u)));
+      const newCacheComplete = matches.every(Boolean);
+      if (!newCacheComplete) {
+        console.warn('⚠️ Cache nuevo incompleto (faltan archivos críticos del app shell) -- se conserva el cache anterior como respaldo hasta que se complete.');
+      }
+
+      const cacheNames = await caches.keys();
+      await Promise.all(cacheNames.map(cacheName => {
+        if (cacheName === CACHE_NAME || cacheName === MEDIA_CACHE_NAME) return;
+        // BUG REAL en producción: esto borraba el cache de la versión
+        // anterior SIEMPRE, aunque el precache de la nueva hubiera fallado
+        // en archivos críticos (app.js, tailwind) por conexión inestable
+        // durante el deploy -- el alumno se quedaba sin red de respaldo
+        // para esos archivos justo cuando más la necesitaba (modo avión).
+        // Ahora solo se borra si el cache nuevo realmente quedó completo.
+        if (!newCacheComplete) return;
+        console.log('🗑️ Eliminando caché antigua:', cacheName);
+        return caches.delete(cacheName);
+      }));
+
+      await self.clients.claim();
+    })()
   );
 });
 
