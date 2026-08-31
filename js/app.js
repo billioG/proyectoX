@@ -77,8 +77,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 4. Registrar Service Worker si aplica
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('./service-worker.js')
-            .then(r => console.log('✅ Service Worker:', r.scope))
+        // BUG REAL en producción: sin "updateViaCache: 'none'", el navegador
+        // puede chequear si hay una versión nueva de service-worker.js
+        // comparando contra una copia vieja servida desde SU PROPIO caché
+        // HTTP -- nunca detecta el cambio real, y el SW (con todos los fixes
+        // de este archivo) nunca se instala en el dispositivo aunque el
+        // resto de la app (index.html, app.js) sí se actualice. Con esto,
+        // el navegador SIEMPRE pide service-worker.js fresco por red para
+        // comparar. registration.update() fuerza el chequeo de una vez,
+        // sin esperar al intervalo automático del navegador (horas).
+        navigator.serviceWorker.register('./service-worker.js', { updateViaCache: 'none' })
+            .then(r => {
+                console.log('✅ Service Worker:', r.scope);
+                r.update().catch(() => {});
+            })
             .catch(e => console.error('❌ Service Worker:', e));
     }
 
