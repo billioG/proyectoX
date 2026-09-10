@@ -529,7 +529,7 @@ window.openGamificationHub = async function openGamificationHub() {
   // nunca "feed"/"perfil" (ej. el estudiante aterriza en Cursos por
   // default) -- duels.js/tournaments.js son lazy y si no están cargados
   // sus secciones se quedan pegadas en el spinner para siempre.
-  if ((typeof window.loadDuelsSection !== 'function' || typeof window.loadHangmanSection !== 'function' || typeof window.loadTimedMathSection !== 'function' || typeof window.loadDebugSection !== 'function' || typeof window.loadTournamentsSection !== 'function') && typeof window.loadModule === 'function') {
+  if ((typeof window.loadDuelsSection !== 'function' || typeof window.loadHangmanSection !== 'function' || typeof window.loadTimedMathSection !== 'function' || typeof window.loadDebugSection !== 'function' || typeof window.loadSpellingSection !== 'function' || typeof window.loadTournamentsSection !== 'function') && typeof window.loadModule === 'function') {
     await window.loadModule('profile');
   }
 
@@ -627,15 +627,7 @@ window.renderGamificationHubContent = function renderGamificationHubContent(moda
                     </div>
                 </section>
                 
-                 <!-- PRÁCTICA SOLO -->
-                <section>
-                     <h3 class="text-2xl font-black text-white italic uppercase mb-6 flex items-center gap-3"><i class="fas fa-brain text-cyan-400"></i> Práctica Solo</h3>
-                     <div id="practice-quiz-section">
-                        ${typeof window.renderPracticeQuizSection === 'function' ? window.renderPracticeQuizSection() : '<div class="text-center text-slate-500 text-xs py-6"><i class="fas fa-spinner fa-spin"></i></div>'}
-                     </div>
-                </section>
-
-                 <!-- LOS 4 DESAFÍOS 1V1 -- antes cada uno era una sección de ancho
+                 <!-- LOS 5 DESAFÍOS 1V1 -- antes cada uno era una sección de ancho
                       completo apilada, en desktop quedaba una sola columna
                       angosta desperdiciando el resto de la pantalla. -->
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-x-8">
@@ -666,6 +658,13 @@ window.renderGamificationHubContent = function renderGamificationHubContent(moda
                             <div class="text-center text-slate-500 text-xs py-6"><i class="fas fa-spinner fa-spin"></i></div>
                          </div>
                     </section>
+
+                    <section>
+                         <h3 class="text-2xl font-black text-white italic uppercase mb-6 flex items-center gap-3"><i class="fas fa-spell-check text-rose-500"></i> Ortografía 1v1</h3>
+                         <div id="spelling-section">
+                            <div class="text-center text-slate-500 text-xs py-6"><i class="fas fa-spinner fa-spin"></i></div>
+                         </div>
+                    </section>
                 </div>
 
                  <!-- TORNEOS ENTRE ESTABLECIMIENTOS -->
@@ -683,6 +682,7 @@ window.renderGamificationHubContent = function renderGamificationHubContent(moda
   if (typeof window.loadHangmanSection === 'function') window.loadHangmanSection();
   if (typeof window.loadTimedMathSection === 'function') window.loadTimedMathSection();
   if (typeof window.loadDebugSection === 'function') window.loadDebugSection();
+  if (typeof window.loadSpellingSection === 'function') window.loadSpellingSection();
   if (typeof window.loadTournamentsSection === 'function') window.loadTournamentsSection();
 }
 

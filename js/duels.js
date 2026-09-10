@@ -286,15 +286,15 @@ const DUEL_TOPIC_POOL_FULL = [
   { name: 'Funciones, métodos y objetos en programación', minRank: 7 },
 ];
 
-// Filtra el pool completo al grado del alumno actual -- se usa tanto acá
-// (Duelos) como en practice-quiz.js (Práctica Solo).
+// Filtra el pool completo al grado del alumno actual -- se usa en los 5
+// desafíos 1v1 (Duelos, Ahorcado, Contrarreloj, Encontrá el Error, Ortografía).
 function getDuelTopicPoolForCurrentUser() {
   const rank = window.getGradeRank ? window.getGradeRank(window.userData?.grade) : 99;
   return DUEL_TOPIC_POOL_FULL.filter(t => t.minRank <= rank).map(t => t.name);
 }
-// Otros módulos (ej. practice-quiz.js) reusan este mismo pool de temas --
-// duels.js se carga como módulo ES, así que un const de acá no es visible
-// afuera sin exponerlo explícitamente.
+// Otros módulos reusan este mismo pool de temas -- duels.js se carga como
+// módulo ES, así que un const de acá no es visible afuera sin exponerlo
+// explícitamente.
 window.getDuelTopicPoolForCurrentUser = getDuelTopicPoolForCurrentUser;
 
 function computeDuelQuestionCount(wager) {
@@ -396,10 +396,10 @@ window.sendDuelChallenge = async function sendDuelChallenge() {
   if (inserted?.id) window.sendDuelPushNotification(inserted.id, 'challenge');
 }
 
-// Reusado por los 4 desafíos 1v1 (Duelos de trivia, Ahorcado, Contrarreloj,
-// Encontrá el Error) -- "game" le dice a notify-duel en qué tabla buscar
-// (antes esto estaba hardcodeado a student_duels, así que los 3 juegos
-// nuevos nunca mandaban push).
+// Reusado por los 5 desafíos 1v1 (Duelos de trivia, Ahorcado, Contrarreloj,
+// Encontrá el Error, Ortografía) -- "game" le dice a notify-duel en qué
+// tabla buscar (antes esto estaba hardcodeado a student_duels, así que los
+// juegos nuevos nunca mandaban push).
 window.sendDuelPushNotification = async function sendDuelPushNotification(duelId, type, game = 'quiz') {
   try {
     if (!duelId) return;

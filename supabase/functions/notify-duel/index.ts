@@ -45,16 +45,17 @@ Deno.serve(async (req) => {
   const { data: { user: caller }, error: authErr } = await callerClient.auth.getUser();
   if (authErr || !caller) return json({ error: 'Invalid token' }, 401);
 
-  // 4 juegos 1v1 comparten esta misma función de notificación -- cada uno
+  // 5 juegos 1v1 comparten esta misma función de notificación -- cada uno
   // vive en su propia tabla (challenger_id/opponent_id/wager_gems iguales
-  // en las 4, "topic" solo en 3 de ellas). Antes esto estaba hardcodeado a
-  // student_duels, así que Ahorcado/Contrarreloj/Encontrá el Error nunca
-  // mandaban push.
+  // en las 5, "topic" solo en 4 de ellas). Antes esto estaba hardcodeado a
+  // student_duels, así que Ahorcado/Contrarreloj/Encontrá el Error/Ortografía
+  // nunca mandaban push.
   const GAME_CONFIG: Record<string, { table: string; label: string; hasTopic: boolean }> = {
     quiz: { table: 'student_duels', label: 'Desafío de Código', hasTopic: true },
     hangman: { table: 'student_hangman_duels', label: 'Ahorcado', hasTopic: true },
     timed_math: { table: 'student_timed_math_duels', label: 'Contrarreloj', hasTopic: false },
     debug: { table: 'student_debug_duels', label: 'Encontrá el Error', hasTopic: true },
+    spelling: { table: 'student_spelling_duels', label: 'Ortografía', hasTopic: true },
   };
 
   try {

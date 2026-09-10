@@ -363,9 +363,9 @@ window.isAllowedContentHost = function isAllowedContentHost(url) {
 };
 
 // Traba simple para no disparar varias generaciones de IA en paralelo --
-// varios alumnos (o el mismo, clickeando rápido en Práctica Solo) pidiendo
-// quizzes a la vez agotaba el límite de tokens por minuto de la cuenta de
-// Groq compartida, y las respuestas truncadas rompían el parseo de JSON.
+// varios alumnos (o el mismo, clickeando rápido) pidiendo palabras/quizzes
+// a la vez agotaba el límite de tokens por minuto de la cuenta de Groq
+// compartida, y las respuestas truncadas rompían el parseo de JSON.
 window.aiGenerationLock = {
   active: false,
   tryAcquire() {
