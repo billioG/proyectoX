@@ -76,7 +76,7 @@ esta forma exacta:
     // docente/alumno tenga que volver a intentar a mano.
     let data: any, parsed: any;
     let lastError = 'La IA no generó una respuesta válida';
-    for (let attempt = 1; attempt <= 2; attempt++) {
+    for (let attempt = 1; attempt <= 3; attempt++) {
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: {
