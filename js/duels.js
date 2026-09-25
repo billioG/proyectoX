@@ -471,10 +471,9 @@ window.openDuelQuiz = async function openDuelQuiz(duelId) {
   duel.questions = questions;
   window._activeDuel = { duel, index: 0, selections: [] };
 
-  if (typeof window.getCompanionStage === 'function' && typeof window.ensureCompanionStyles === 'function') {
+  if (typeof window.loadMyCompanion === 'function') {
     window.ensureCompanionStyles();
-    const { data: me } = await window._supabase.from('students').select('gems_earned_total').eq('id', window.currentUser.id).maybeSingle();
-    window._myCompanionStageIndex = window.getCompanionStage(me?.gems_earned_total).stageIndex;
+    await window.loadMyCompanion();
   }
 
   window.renderDuelQuizQuestion();

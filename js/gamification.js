@@ -565,6 +565,12 @@ window.openGamificationHub = async function openGamificationHub() {
     console.error(err);
     if (typeof window.renderGamificationHubContent === 'function') window.renderGamificationHubContent(modal, []);
   }
+
+  // Primera vez: elegir mascota inicial antes de jugar (estilo Pokémon).
+  if (window.userRole === 'estudiante' && typeof window.loadMyCompanion === 'function') {
+    const companion = await window.loadMyCompanion();
+    if (companion && !companion.species) window.openStarterPicker();
+  }
 }
 
 window.renderGamificationHubContent = function renderGamificationHubContent(modal, topStudents) {
