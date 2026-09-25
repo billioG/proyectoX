@@ -53,62 +53,16 @@ const ActivityTracker = {
         this.interval = null;
     },
 
-    // window.userData de un docente es la fila cruda de `teachers` (sin
-    // join) -- nunca tuvo `teacher_assignments`, así que este chequeo
-    // siempre caía a null y CADA docente quedaba agrupado bajo el bucket
-    // genérico "GENERAL" en vez de su establecimiento real. Se resuelve
-    // una vez por sesión y se cachea.
-    _teacherSchoolCode: undefined,
-    async resolveTeacherSchoolCode(teacherId) {
-        if (this._teacherSchoolCode !== undefined) return this._teacherSchoolCode;
-        const { data } = await window._supabase.from('teacher_assignments').select('school_code').eq('teacher_id', teacherId).limit(1).maybeSingle();
-        this._teacherSchoolCode = data?.school_code || null;
-        return this._teacherSchoolCode;
-    },
-
+    // Rol, escuela, fecha y los +30s los decide el servidor -- antes el
+    // cliente escribía total_seconds directo y se podía inflar.
     async sendHeartbeat() {
         const user = window.currentUser;
         if (typeof window._supabase === 'undefined' || !user) return;
         if (!this.isReallyActive()) return;
 
         try {
-            const role = window.userRole || 'estudiante';
-            const dataUser = window.userData;
-            let schoolCode = null;
-
-            if (role === 'estudiante') {
-                schoolCode = dataUser?.school_code || null;
-            } else if (role === 'docente') {
-                schoolCode = await this.resolveTeacherSchoolCode(user.id);
-            }
-
-            const today = new Date().toISOString().split('T')[0];
-            const safeSchoolCode = schoolCode || 'GENERAL';
-
-            const { data, error } = await window._supabase
-                .from('active_time_tracking')
-                .select('total_seconds')
-                .eq('user_id', user.id)
-                .eq('school_code', safeSchoolCode)
-                .eq('activity_date', today)
-                .maybeSingle();
-
+            const { error } = await window._supabase.rpc('record_active_heartbeat');
             if (error) throw error;
-
-            const currentTotal = data ? data.total_seconds : 0;
-            const newTotal = currentTotal + this.heartbeatSeconds;
-
-            await window._supabase
-                .from('active_time_tracking')
-                .upsert({
-                    user_id: user.id,
-                    school_code: safeSchoolCode,
-                    role: role,
-                    activity_date: today,
-                    total_seconds: newTotal,
-                    last_heartbeat: new Date().toISOString()
-                }, { onConflict: 'user_id, school_code, activity_date' });
-
         } catch (err) {
             // El heartbeat es "best effort" -- corre cada 30s solo, así que
             // un fallo de red transitorio (conexión cerrada, timeout) no
