@@ -2,7 +2,7 @@
 // SERVICE WORKER - PROJECTX PWA
 // ================================================
 
-const CACHE_NAME = 'projectx-v1.0.64';
+const CACHE_NAME = 'projectx-v1.0.65';
 // Caché de archivos de lecciones (video/PDF/imagen/paquetes SCORM-H5P) --
 // separada de CACHE_NAME a propósito: CACHE_NAME se recrea y se BORRA
 // entera en cada deploy (bump de versión) para forzar JS/CSS frescos, pero
@@ -87,7 +87,6 @@ const urlsToCache = [
   'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap',
   'https://cdn.jsdelivr.net/npm/driver.js@1/dist/driver.css',
   'https://cdn.jsdelivr.net/npm/driver.js@1/dist/driver.js.iife.js',
-  'https://cdn.tailwindcss.com',
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
   'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js',
   'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js',
@@ -106,13 +105,12 @@ const CRITICAL_SHELL_URLS = [
   './index.html',
   `js/app.js?v=${APP_VERSION}`,
   './css/styles.css',
-  'https://cdn.tailwindcss.com',
+  './css/tailwind.css',
 ];
 
 async function cacheWithRetry(cache, url, retries) {
-  const req = url.includes('cdn.tailwindcss.com') ? new Request(url, { mode: 'no-cors' }) : url;
   for (let attempt = 0; attempt <= retries; attempt++) {
-    try { await cache.add(req); return true; } catch (e) { /* reintenta */ }
+    try { await cache.add(url); return true; } catch (e) { /* reintenta */ }
   }
   console.warn('⚠️ No se pudo precachear tras reintentos:', url);
   return false;

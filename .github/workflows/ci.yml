@@ -82,3 +82,16 @@ jobs:
             fi
           done
           exit $fail
+
+  tailwind-css-up-to-date:
+    name: css/tailwind.css compilado al día
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Recompilar y comparar
+        run: |
+          npx -y tailwindcss@3.4.17 -c tailwind.config.js -i css/tailwind.src.css -o /tmp/tailwind.css --minify
+          if ! cmp -s /tmp/tailwind.css css/tailwind.css; then
+            echo "::error file=css/tailwind.css::Desactualizado -- faltan clases nuevas. Correr: npx -y tailwindcss@3.4.17 -c tailwind.config.js -i css/tailwind.src.css -o css/tailwind.css --minify"
+            exit 1
+          fi
