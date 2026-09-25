@@ -76,7 +76,13 @@ esta forma exacta:
     // docente/alumno tenga que volver a intentar a mano.
     let data: any, parsed: any;
     let lastError = 'La IA no generó una respuesta válida';
+    // gpt-oss-20b razona antes de responder y ese razonamiento cuenta
+    // contra max_tokens -- con 300 el JSON salía cortado y Groq lo
+    // rechazaba siempre ("Failed to validate JSON"). Razonamiento bajo +
+    // más margen. El último intento va sin modo JSON estricto y extrae el
+    // objeto del texto, por si el validador de Groq sigue rechazando.
     for (let attempt = 1; attempt <= 3; attempt++) {
+      const strictJson = attempt < 3;
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -89,9 +95,10 @@ esta forma exacta:
             { role: 'system', content: system },
             { role: 'user', content: `Tema: ${String(duel.topic).slice(0, 200)}` },
           ],
-          max_tokens: 300,
+          max_tokens: 1500,
           temperature: 0.5,
-          response_format: { type: 'json_object' },
+          reasoning_effort: 'low',
+          ...(strictJson ? { response_format: { type: 'json_object' } } : {}),
         }),
       });
 
@@ -99,7 +106,9 @@ esta forma exacta:
       if (data.error) { lastError = data.error.message; continue; }
 
       try {
-        parsed = JSON.parse(data.choices?.[0]?.message?.content || '{}');
+        const content = data.choices?.[0]?.message?.content || '';
+        const match = content.match(/\{[\s\S]*\}/);
+        parsed = JSON.parse(match ? match[0] : content);
         break;
       } catch {
         lastError = 'La IA devolvió una respuesta no válida';
