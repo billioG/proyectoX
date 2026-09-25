@@ -43,6 +43,7 @@ window.loadHangmanSection = async function loadHangmanSection() {
 
   if (error) { console.error(error); return; }
   window._hangmanDuelsCache = data || [];
+  await window.hydratePlayedSet('student_hangman_results', window._hangmanDuelsCache, '_myHangmanPlayed');
   window.renderHangmanSection();
   window.subscribeHangmanRealtime();
 };

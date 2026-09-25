@@ -17,6 +17,7 @@ window.loadTimedMathSection = async function loadTimedMathSection() {
 
   if (error) { console.error(error); return; }
   window._timedMathDuelsCache = data || [];
+  await window.hydratePlayedSet('student_timed_math_results', window._timedMathDuelsCache, '_myTimedMathPlayed');
   window.renderTimedMathSection();
   window.subscribeTimedMathRealtime();
 };

@@ -348,7 +348,7 @@ window.updateLoginStreak = async function updateLoginStreak() {
   const showToast = window.showToast;
 
   if (!userData) return;
-  const today = new Date().toISOString().split('T')[0];
+  const today = guatemalaToday();
   const lastLogin = userData.last_login;
 
   // Se guarda ANTES de sobreescribir last_login más abajo -- la mascota
@@ -382,10 +382,16 @@ window.updateLoginStreak = async function updateLoginStreak() {
 // ==========================================
 // 2. DAILY CHESTS (COFRES)
 // ==========================================
+// Mismo "día" que usa el servidor (America/Guatemala) -- con toISOString()
+// (UTC) el día cambiaba a las 18:00 hora local.
+function guatemalaToday() {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Guatemala' });
+}
+
 window.checkDailyChest = function checkDailyChest() {
   const userData = window.userData;
   if (!userData) return;
-  const today = new Date().toISOString().split('T')[0];
+  const today = guatemalaToday();
   const lastChest = userData.daily_chest_last_claimed;
 
   if (lastChest !== today) {
@@ -433,10 +439,14 @@ window.openChest = async function openChest(el) {
     // seguidos al mismo claim_daily_chest).
     const modal = el.closest('.fixed');
     if (modal) modal.remove();
+    // userData en caché (ej. sesión offline o reclamado en otro dispositivo)
+    // puede decir que no se reclamó -- se corrige acá para no volver a
+    // mostrar el modal en esta sesión.
+    if (error.message?.includes('Ya reclamaste')) userData.daily_chest_last_claimed = guatemalaToday();
     return;
   }
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = guatemalaToday();
   userData.daily_chest_last_claimed = today;
   userData.xp = (userData.xp || 0) + reward.xp;
   userData.gems = (userData.gems || 0) + reward.gems;

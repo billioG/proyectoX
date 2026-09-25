@@ -15,6 +15,7 @@ window.loadSpellingSection = async function loadSpellingSection() {
 
   if (error) { console.error(error); return; }
   window._spellingDuelsCache = data || [];
+  await window.hydratePlayedSet('student_spelling_results', window._spellingDuelsCache, '_mySpellingPlayed');
   window.renderSpellingSection();
   window.subscribeSpellingRealtime();
 };

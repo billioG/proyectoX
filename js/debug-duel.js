@@ -16,6 +16,7 @@ window.loadDebugSection = async function loadDebugSection() {
 
   if (error) { console.error(error); return; }
   window._debugDuelsCache = data || [];
+  await window.hydratePlayedSet('student_debug_results', window._debugDuelsCache, '_myDebugPlayed');
   window.renderDebugSection();
   window.subscribeDebugRealtime();
 };
