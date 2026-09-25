@@ -12,20 +12,20 @@ const STAGE_GROWTH = [0, 1, 2, 3, 3, 3];
 
 // ---------- piezas comunes ----------
 function eyePair(lx, rx, y, r) {
-  return [lx, rx].map(x => `
+  return [lx, rx].map(x => `<g class="cp-eye">
     <circle cx="${x}" cy="${y}" r="${r}" fill="#fff"/>
     <circle cx="${x + (x < 150 ? 3 : -3)}" cy="${y + 1}" r="${r * 0.6}" fill="#1E293B" class="companion-eye"/>
-    <circle cx="${x + (x < 150 ? 6 : 0)}" cy="${y - 3}" r="${r * 0.22}" fill="#fff"/>`).join('');
+    <circle cx="${x + (x < 150 ? 6 : 0)}" cy="${y - 3}" r="${r * 0.22}" fill="#fff"/></g>`).join('');
 }
 
 function egg(c) {
-  return `
+  return `<g class="cp-egg">
     <ellipse cx="150" cy="170" rx="80" ry="100" fill="${c.shell}" stroke="${c.stroke}" stroke-width="5"/>
     <circle cx="112" cy="95" r="9" fill="${c.spot}"/><circle cx="186" cy="118" r="7" fill="${c.spot}"/>
     <circle cx="128" cy="222" r="10" fill="${c.spot}"/><circle cx="190" cy="215" r="6" fill="${c.spot}"/>
     <circle cx="160" cy="80" r="5" fill="${c.spot}"/>
     ${eyePair(128, 172, 160, 11)}
-    <path class="companion-mouth" d="M138 186 Q150 195 162 186" stroke="#3E2723" stroke-width="3" fill="none" stroke-linecap="round"/>`;
+    <path class="companion-mouth" d="M138 186 Q150 195 162 186" stroke="#3E2723" stroke-width="3" fill="none" stroke-linecap="round"/></g>`;
 }
 
 function aura(color) {
@@ -45,13 +45,13 @@ function sparkles() {
 
 // ---------- QUETZAL ----------
 function quetzalTail(len) {
-  if (len === 'short') return `
+  if (len === 'short') return `<g class="cp-tail">
     <path d="M 185 300 C 170 350 130 380 125 420 C 145 420 185 370 195 300 Z" fill="#009624"/>
-    <path d="M 215 300 C 230 350 270 380 275 420 C 255 420 215 370 205 300 Z" fill="#00C853"/>`;
-  if (len === 'long') return `
+    <path d="M 215 300 C 230 350 270 380 275 420 C 255 420 215 370 205 300 Z" fill="#00C853"/></g>`;
+  if (len === 'long') return `<g class="cp-tail">
     <path d="M 185 300 C 160 380 90 410 80 480 C 105 480 180 400 195 300 Z" fill="#009624"/>
     <path d="M 215 300 C 240 380 310 410 320 480 C 295 480 220 400 205 300 Z" fill="#00C853"/>
-    <path d="M 200 300 C 200 380 195 430 200 490 C 210 430 205 380 205 300 Z" fill="#00E676"/>`;
+    <path d="M 200 300 C 200 380 195 430 200 490 C 210 430 205 380 205 300 Z" fill="#00E676"/></g>`;
   return '';
 }
 
@@ -61,12 +61,12 @@ function quetzalBody() {
     <rect x="110" y="100" width="180" height="230" rx="90" fill="#00C853"/>
     <path d="M 170 105 C 170 70 190 65 200 65 C 210 65 230 70 230 105 Z" fill="#5CF29D"/>
     <path d="M 182 100 C 182 78 193 72 200 72 C 207 72 218 78 218 100 Z" fill="#00C853"/>
-    <path d="M 110 180 C 65 200 60 265 115 275 C 108 240 115 200 110 180 Z" fill="#009624"/>
-    <path d="M 290 180 C 335 200 340 265 285 275 C 292 240 285 200 290 180 Z" fill="#009624"/>
+    <path class="cp-wing-l" d="M 110 180 C 65 200 60 265 115 275 C 108 240 115 200 110 180 Z" fill="#009624"/>
+    <path class="cp-wing-r" d="M 290 180 C 335 200 340 265 285 275 C 292 240 285 200 290 180 Z" fill="#009624"/>
     <path d="M 135 195 C 135 295 265 295 265 195 C 265 180 135 180 135 195 Z" fill="#FF3D00"/>
     <path d="M 148 205 C 148 285 252 285 252 205 C 252 193 148 193 148 205 Z" fill="#FF5252"/>
-    <circle cx="160" cy="158" r="28" fill="#FFFFFF"/><circle cx="166" cy="158" r="15" fill="#1E293B" class="companion-eye"/>
-    <circle cx="240" cy="158" r="28" fill="#FFFFFF"/><circle cx="234" cy="158" r="15" fill="#1E293B" class="companion-eye"/>
+    <g class="cp-eye"><circle cx="160" cy="158" r="28" fill="#FFFFFF"/><circle cx="166" cy="158" r="15" fill="#1E293B" class="companion-eye"/></g>
+    <g class="cp-eye"><circle cx="240" cy="158" r="28" fill="#FFFFFF"/><circle cx="234" cy="158" r="15" fill="#1E293B" class="companion-eye"/></g>
     <path d="M 182 168 Q 200 162 218 168 C 218 195 200 218 200 218 C 200 218 182 195 182 168 Z" fill="#FFC107"/>`;
 }
 
@@ -89,7 +89,7 @@ function rosettes(list) {
 function jaguar(g) {
   const sc = [0.62, 0.8, 0.95][g - 1];
   const tail = g >= 2
-    ? `<path d="M205 240 C 258 248 270 200 246 178" stroke="#F5A623" stroke-width="16" fill="none" stroke-linecap="round"/><circle cx="246" cy="178" r="9" fill="#4E342E"/>`
+    ? `<g class="cp-tail cp-tail-j"><path d="M205 240 C 258 248 270 200 246 178" stroke="#F5A623" stroke-width="16" fill="none" stroke-linecap="round"/><circle cx="246" cy="178" r="9" fill="#4E342E"/></g>`
     : '';
   const bodySpots = g >= 2 ? rosettes([[116, 205, 7], [184, 200, 8], [122, 247, 6], [180, 250, 7]]) : '';
   const headSpots = g >= 3 ? rosettes([[106, 88, 6], [194, 88, 6], [150, 70, 7], [128, 72, 4], [172, 72, 4]]) : rosettes([[150, 72, 6]]);
@@ -102,8 +102,8 @@ function jaguar(g) {
     <ellipse cx="150" cy="232" rx="38" ry="36" fill="#FFE0B2"/>
     ${bodySpots}
     <ellipse cx="112" cy="272" rx="22" ry="13" fill="#F5A623"/><ellipse cx="188" cy="272" rx="22" ry="13" fill="#F5A623"/>
-    <circle cx="96" cy="68" r="24" fill="#F5A623"/><circle cx="96" cy="68" r="12" fill="#6D4C41"/>
-    <circle cx="204" cy="68" r="24" fill="#F5A623"/><circle cx="204" cy="68" r="12" fill="#6D4C41"/>
+    <g class="cp-ear-l"><circle cx="96" cy="68" r="24" fill="#F5A623"/><circle cx="96" cy="68" r="12" fill="#6D4C41"/></g>
+    <g class="cp-ear-r"><circle cx="204" cy="68" r="24" fill="#F5A623"/><circle cx="204" cy="68" r="12" fill="#6D4C41"/></g>
     <circle cx="150" cy="125" r="72" fill="#F5A623"/>
     ${headSpots}
     <ellipse cx="150" cy="152" rx="36" ry="25" fill="#FFE0B2"/>
@@ -131,16 +131,18 @@ function tortuga(g) {
   if (g >= 3) pattern += hex(124, 136, 13, '#4DB6AC', '#004D40') + hex(176, 136, 13, '#4DB6AC', '#004D40');
   const rim = g >= 3 ? '#FFB300' : '#00695C';
   return `<g transform="translate(150 170) scale(${sc}) translate(-150 -170)">
-    <ellipse cx="72" cy="232" rx="32" ry="14" fill="#7CB342" transform="rotate(-25 72 232)"/>
-    <ellipse cx="228" cy="232" rx="32" ry="14" fill="#7CB342" transform="rotate(25 228 232)"/>
+    <g class="cp-flip-l"><ellipse cx="72" cy="232" rx="32" ry="14" fill="#7CB342" transform="rotate(-25 72 232)"/></g>
+    <g class="cp-flip-r"><ellipse cx="228" cy="232" rx="32" ry="14" fill="#7CB342" transform="rotate(25 228 232)"/></g>
     <ellipse cx="98" cy="272" rx="22" ry="12" fill="#7CB342"/><ellipse cx="202" cy="272" rx="22" ry="12" fill="#7CB342"/>
     <path d="M58 225 C 58 96, 242 96, 242 225 Z" fill="#00897B"/>
     ${pattern}
     <ellipse cx="150" cy="226" rx="98" ry="13" fill="${rim}"/>
-    <circle cx="150" cy="218" r="44" fill="#9CCC65"/>
-    <circle cx="120" cy="232" r="7" fill="#F48FB1" opacity=".7"/><circle cx="180" cy="232" r="7" fill="#F48FB1" opacity=".7"/>
-    ${eyePair(132, 168, 208, 14)}
-    <path d="M138 236 Q150 246 162 236" stroke="#33691E" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <g class="cp-head">
+      <circle cx="150" cy="218" r="44" fill="#9CCC65"/>
+      <circle cx="120" cy="232" r="7" fill="#F48FB1" opacity=".7"/><circle cx="180" cy="232" r="7" fill="#F48FB1" opacity=".7"/>
+      ${eyePair(132, 168, 208, 14)}
+      <path d="M138 236 Q150 246 162 236" stroke="#33691E" stroke-width="3" fill="none" stroke-linecap="round"/>
+    </g>
   </g>`;
 }
 
@@ -177,7 +179,7 @@ function companionSvgInner(species, stageIndex) {
   const sp = COMPANION_SPECIES[species] || COMPANION_SPECIES.quetzal;
   const growth = STAGE_GROWTH[stageIndex] ?? 0;
   if (growth === 0) return egg(sp.egg);
-  let svg = sp.draw(growth);
+  let svg = `<g class="cp-body">${sp.draw(growth)}</g>`;
   if (stageIndex === 4) svg = aura(sp.color) + svg;
   if (stageIndex === 5) svg = aura('#FFD54F') + svg + crown() + sparkles();
   return svg;
@@ -215,6 +217,66 @@ window.ensureCompanionStyles = function ensureCompanionStyles() {
     @keyframes companion-hatch { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-10deg); } 75% { transform: rotate(10deg); } }
     .companion-flash { animation: companion-flash .25s steps(2) infinite; }
     @keyframes companion-flash { 0% { filter: brightness(1); } 100% { filter: brightness(0) invert(1); } }
+    /* --- movimientos naturales (se suman con cada etapa) --- */
+    .cp-svg { transform-origin: 50% 90%; }
+    .cp-svg .cp-eye { transform-box: fill-box; transform-origin: center; animation: cp-blink 4.3s infinite; }
+    @keyframes cp-blink { 0%, 93%, 100% { transform: scaleY(1); } 96% { transform: scaleY(.1); } }
+    .cp-svg .cp-body { transform-box: fill-box; transform-origin: 50% 100%; animation: cp-breathe 3.2s ease-in-out infinite; }
+    @keyframes cp-breathe { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.025, .975); } }
+    .cp-svg .cp-egg { transform-box: fill-box; transform-origin: 50% 100%; animation: cp-egg-wobble 5s ease-in-out infinite; }
+    @keyframes cp-egg-wobble { 0%, 80%, 100% { transform: rotate(0); } 84% { transform: rotate(-6deg); } 88% { transform: rotate(6deg); } 92% { transform: rotate(-3deg); } }
+    .cp-svg .cp-wing-l, .cp-svg .cp-wing-r, .cp-svg .cp-tail, .cp-svg .cp-ear-l, .cp-svg .cp-ear-r,
+    .cp-svg .cp-flip-l, .cp-svg .cp-flip-r, .cp-svg .cp-head { transform-box: fill-box; }
+    .cp-svg .cp-wing-l { transform-origin: 100% 15%; }
+    .cp-svg .cp-wing-r { transform-origin: 0% 15%; }
+    .cp-svg .cp-tail { transform-origin: 50% 0%; }
+    .cp-svg .cp-tail-j { transform-origin: 0% 90%; }
+    .cp-svg .cp-ear-l, .cp-svg .cp-ear-r { transform-origin: 50% 100%; }
+    .cp-svg .cp-flip-l { transform-origin: 100% 50%; }
+    .cp-svg .cp-flip-r { transform-origin: 0% 50%; }
+    .cp-svg .cp-head { transform-origin: 50% 100%; }
+    .cp-g2 .cp-wing-l, .cp-g3 .cp-wing-l { animation: cp-flap-l 3s ease-in-out infinite; }
+    .cp-g2 .cp-wing-r, .cp-g3 .cp-wing-r { animation: cp-flap-r 3s ease-in-out infinite; }
+    @keyframes cp-flap-l { 0%, 70%, 100% { transform: rotate(0); } 78% { transform: rotate(18deg); } 86% { transform: rotate(-4deg); } 92% { transform: rotate(14deg); } }
+    @keyframes cp-flap-r { 0%, 70%, 100% { transform: rotate(0); } 78% { transform: rotate(-18deg); } 86% { transform: rotate(4deg); } 92% { transform: rotate(-14deg); } }
+    .cp-g2 .cp-tail, .cp-g3 .cp-tail { animation: cp-sway 2.8s ease-in-out infinite; }
+    @keyframes cp-sway { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
+    .cp-g2 .cp-tail-j, .cp-g3 .cp-tail-j { animation: cp-wag 1.6s ease-in-out infinite; }
+    @keyframes cp-wag { 0%, 100% { transform: rotate(-8deg); } 50% { transform: rotate(10deg); } }
+    .cp-g3 .cp-ear-l { animation: cp-twitch 5.5s ease-in-out infinite; }
+    .cp-g3 .cp-ear-r { animation: cp-twitch 5.5s ease-in-out 2.7s infinite; }
+    @keyframes cp-twitch { 0%, 88%, 100% { transform: rotate(0); } 91% { transform: rotate(-14deg); } 95% { transform: rotate(8deg); } }
+    .cp-g2 .cp-flip-l, .cp-g3 .cp-flip-l { animation: cp-paddle-l 2.4s ease-in-out infinite; }
+    .cp-g2 .cp-flip-r, .cp-g3 .cp-flip-r { animation: cp-paddle-r 2.4s ease-in-out infinite; }
+    @keyframes cp-paddle-l { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(14deg); } }
+    @keyframes cp-paddle-r { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-14deg); } }
+    .cp-g3 .cp-head { animation: cp-peek 6s ease-in-out infinite; }
+    @keyframes cp-peek { 0%, 80%, 100% { transform: rotate(0) translateY(0); } 85% { transform: rotate(-8deg) translateY(-4px); } 92% { transform: rotate(8deg) translateY(-4px); } }
+
+    /* --- emotes al tocar --- */
+    .cp-svg.cp-emote-hop { animation: cp-hop .7s cubic-bezier(.3,1.6,.5,1) 2 !important; }
+    @keyframes cp-hop { 0%, 100% { transform: translateY(0) scale(1, 1); } 20% { transform: translateY(0) scale(1.15, .85); } 55% { transform: translateY(-38px) scale(.92, 1.1); } }
+    .cp-svg.cp-emote-wiggle { animation: cp-wiggle .3s ease-in-out 4 !important; }
+    @keyframes cp-wiggle { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-12deg); } 75% { transform: rotate(12deg); } }
+    .cp-svg.cp-emote-spin { animation: cp-spin .9s cubic-bezier(.5,0,.3,1) !important; }
+    @keyframes cp-spin { 0% { transform: rotateY(0) translateY(0); } 50% { transform: rotateY(180deg) translateY(-20px); } 100% { transform: rotateY(360deg) translateY(0); } }
+    .cp-svg.cp-emote-dance { animation: cp-dance 1.5s ease-in-out !important; }
+    @keyframes cp-dance { 0%, 100% { transform: translateX(0) rotate(0); } 15% { transform: translateX(-14px) rotate(-10deg) translateY(-8px); } 30% { transform: translateX(0) rotate(0); } 45% { transform: translateX(14px) rotate(10deg) translateY(-8px); } 60% { transform: translateX(0) rotate(0); } 80% { transform: translateY(-18px) scale(1.08); } }
+    .cp-svg.cp-emote-fly { animation: cp-fly 1.7s ease-in-out !important; }
+    .cp-svg.cp-emote-fly .cp-wing-l, .cp-svg.cp-emote-fly .cp-wing-r { animation-duration: .18s !important; }
+    @keyframes cp-fly { 0%, 100% { transform: translateY(0); } 30% { transform: translateY(-50px) rotate(-6deg); } 60% { transform: translateY(-40px) rotate(6deg); } }
+    .cp-svg.cp-emote-roar { animation: cp-roar 1.2s ease-out !important; }
+    @keyframes cp-roar { 0% { transform: scale(1); } 20% { transform: scale(.92); } 35% { transform: scale(1.22) rotate(-2deg); } 45% { transform: scale(1.2) rotate(2deg); } 55% { transform: scale(1.22) rotate(-2deg); } 100% { transform: scale(1); } }
+    .cp-svg.cp-emote-shell .cp-head { animation: cp-shell 1.5s ease-in-out !important; }
+    @keyframes cp-shell { 0%, 100% { transform: scale(1) translateY(0); } 25%, 65% { transform: scale(.2) translateY(-60px); } 80% { transform: scale(1.15) translateY(0); } }
+    .cp-svg.cp-emote-legend { animation: cp-legend 1.5s ease-out !important; }
+    @keyframes cp-legend { 0% { filter: drop-shadow(0 0 0 #FFD54F); transform: scale(1); } 40% { filter: drop-shadow(0 0 22px #FFD54F) brightness(1.25); transform: scale(1.15) translateY(-12px); } 100% { filter: drop-shadow(0 0 0 #FFD54F); transform: scale(1); } }
+    .cp-svg.cp-emote-wobble { animation: cp-wiggle .22s ease-in-out 4 !important; }
+    .cp-bubble { position: absolute; top: -6%; right: -4%; font-size: 1.6rem; pointer-events: none; animation: cp-bubble 1.2s ease-out forwards; }
+    @keyframes cp-bubble { 0% { transform: translateY(8px) scale(.3); opacity: 0; } 25% { transform: translateY(0) scale(1.15); opacity: 1; } 100% { transform: translateY(-28px) scale(1); opacity: 0; } }
+    .cp-emote-chip { display:inline-flex; align-items:center; gap:.3rem; padding:.25rem .6rem; border-radius:9999px; font-size:.65rem; font-weight:800; }
+    @media (prefers-reduced-motion: reduce) { .cp-svg, .cp-svg * { animation: none !important; } }
+
     .cp-grid { display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:.75rem; }
     @media (max-width: 520px) { .cp-grid { grid-template-columns: 1fr; } }
     .cp-card { background: rgba(255,255,255,.06); border: 2px solid rgba(255,255,255,.1); border-radius: 1.25rem; padding: 1rem; cursor: pointer;
@@ -228,9 +290,81 @@ window.ensureCompanionStyles = function ensureCompanionStyles() {
   document.head.appendChild(style);
 };
 
+// Las clases cp-g{n} habilitan los movimientos naturales de cada etapa
+// (ver ensureCompanionStyles); tocar la mascota dispara un emote.
 window.renderCompanionSvg = function renderCompanionSvg(stageIndex, extraClass = 'companion-idle', species = window._myCompanionSpecies || 'quetzal') {
-  return `<svg viewBox="0 0 300 300" class="${extraClass}" style="width:100%; height:100%; overflow:visible;">${companionSvgInner(species, stageIndex)}</svg>`;
+  const growth = STAGE_GROWTH[stageIndex] ?? 0;
+  return `<svg viewBox="0 0 300 300" class="cp-svg cp-g${growth} ${extraClass}" data-stage="${stageIndex}" data-species="${species}"
+    onclick="window.playCompanionEmote(this)" style="width:100%; height:100%; overflow:visible; cursor:pointer;">${companionSvgInner(species, stageIndex)}</svg>`;
 };
+
+// Emotes: se desbloquean al evolucionar (estilo Free Fire).
+const SPECIAL_EMOTE = {
+  quetzal: { id: 'fly', label: 'Vuelo', bubble: '🪶' },
+  jaguar: { id: 'roar', label: 'Rugido', bubble: '💢' },
+  tortuga: { id: 'shell', label: 'Caparazón', bubble: '🛡️' },
+};
+
+function emotesFor(species) {
+  const special = SPECIAL_EMOTE[species] || SPECIAL_EMOTE.quetzal;
+  return [
+    { id: 'hop', label: 'Salto', bubble: '✨', minStage: 1 },
+    { id: 'wiggle', label: 'Alegría', bubble: '💚', minStage: 1 },
+    { id: 'spin', label: 'Giro', bubble: '🌀', minStage: 2 },
+    { id: 'dance', label: 'Baile', bubble: '🎵', minStage: 3 },
+    { ...special, minStage: 4 },
+    { id: 'legend', label: 'Aura Legendaria', bubble: '👑', minStage: 5 },
+  ];
+}
+window.getCompanionEmotes = emotesFor;
+
+const EMOTE_MS = { hop: 1400, wiggle: 1200, spin: 900, dance: 1500, fly: 1700, roar: 1200, shell: 1500, legend: 1500, wobble: 900 };
+
+window.playCompanionEmote = function playCompanionEmote(svg) {
+  if (!svg || svg.dataset.emoting) return;
+  const stage = parseInt(svg.dataset.stage || '0', 10);
+  const species = svg.dataset.species || 'quetzal';
+  let emote;
+  if (stage === 0) {
+    emote = { id: 'wobble', bubble: '❔' };
+  } else {
+    const pool = emotesFor(species).filter(e => e.minStage <= stage);
+    const last = svg.dataset.lastEmote;
+    const options = pool.length > 1 ? pool.filter(e => e.id !== last) : pool;
+    emote = options[Math.floor(Math.random() * options.length)];
+  }
+  svg.dataset.emoting = '1';
+  svg.dataset.lastEmote = emote.id;
+  svg.classList.add(`cp-emote-${emote.id}`);
+
+  const host = svg.parentElement;
+  let bubble = null;
+  if (host) {
+    if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
+    bubble = document.createElement('span');
+    bubble.className = 'cp-bubble';
+    bubble.textContent = emote.bubble;
+    host.appendChild(bubble);
+  }
+  if (navigator.vibrate && navigator.userActivation?.isActive) navigator.vibrate(30);
+
+  setTimeout(() => {
+    svg.classList.remove(`cp-emote-${emote.id}`);
+    delete svg.dataset.emoting;
+    bubble?.remove();
+  }, EMOTE_MS[emote.id] || 1200);
+};
+
+// Emote automático cada tanto -- la mascota se ve viva aunque nadie la toque.
+function startAutoEmotes(container) {
+  if (container._cpAutoEmote) clearInterval(container._cpAutoEmote);
+  const id = container._cpAutoEmote = setInterval(() => {
+    const svg = container.querySelector('.cp-svg');
+    if (!svg || !document.body.contains(container)) return clearInterval(id);
+    if (document.hidden) return;
+    window.playCompanionEmote(svg);
+  }, 9000);
+}
 
 // Carga especie + etapa del alumno actual y las deja en globals para que
 // duelos/arena las usen. Si la etapa subió desde la última vez que se
@@ -393,6 +527,12 @@ window.renderCompanionCard = async function renderCompanionCard(containerId, stu
   }
 
   const { stageIndex, stage, next, total, progress } = window.getCompanionStage(student?.gems_earned_total, species);
+  const emoteChips = emotesFor(species).map(e => {
+    const unlocked = e.minStage <= stageIndex;
+    return unlocked
+      ? `<span class="cp-emote-chip bg-primary/10 text-primary-dark dark:text-primary">${e.bubble} ${e.label}</span>`
+      : `<span class="cp-emote-chip bg-slate-100 dark:bg-slate-800 text-slate-400" title="Se desbloquea en: ${COMPANION_SPECIES[species].names[e.minStage]}"><i class="fas fa-lock"></i> ${e.label}</span>`;
+  }).join('');
   container.innerHTML = `
     <div class="glass-card p-8 flex flex-col sm:flex-row items-center gap-8 animate-slideUp">
       <div class="w-32 h-32 shrink-0">${window.renderCompanionSvg(stageIndex, 'companion-idle', species)}</div>
@@ -407,8 +547,13 @@ window.renderCompanionCard = async function renderCompanionCard(containerId, stu
         ` : `
           <p class="text-xs text-amber-500 font-bold uppercase tracking-widest"><i class="fas fa-crown"></i> ¡Evolución máxima alcanzada! (${total} gemas ganadas en total)</p>
         `}
+        <div class="mt-4">
+          <div class="text-[0.6rem] font-black uppercase tracking-widest text-slate-400 mb-2">Emotes ${isMe ? '-- tocá tu mascota' : ''}</div>
+          <div class="flex flex-wrap gap-1.5">${emoteChips}</div>
+        </div>
       </div>
     </div>`;
+  startAutoEmotes(container);
 };
 
 console.log('✅ companion.js cargado');
