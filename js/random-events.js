@@ -23,16 +23,50 @@ window.isPushSupported = function isPushSupported() {
 // silenciosa (ver renderEventNotificationToggle) cuando el navegador cree
 // seguir suscripto pero el servidor perdió esa fila (ej. se limpió
 // push_subscriptions a mano).
+// Vía RPC: el servidor deduce el rol y reasigna el endpoint al usuario
+// actual (tablets compartidas -- un navegador = un endpoint).
 window.syncPushSubscription = async function syncPushSubscription(subscription) {
   const raw = subscription.toJSON();
-  const { error } = await window._supabase.from('push_subscriptions').upsert({
-    user_id: window.currentUser.id,
-    role: window.userRole || 'estudiante',
-    endpoint: raw.endpoint,
-    p256dh: raw.keys.p256dh,
-    auth: raw.keys.auth,
-  }, { onConflict: 'endpoint' });
+  const { error } = await window._supabase.rpc('register_push_subscription', {
+    p_endpoint: raw.endpoint,
+    p_p256dh: raw.keys.p256dh,
+    p_auth: raw.keys.auth,
+  });
   if (error) throw error;
+}
+
+// Al iniciar sesión: si el permiso ya está dado, deja la suscripción de
+// este navegador a nombre de quien entró. Antes solo se re-sincronizaba al
+// abrir la pantalla con el botón de notificaciones -- en una tablet
+// compartida los push seguían llegando al alumno anterior, y si el
+// navegador rotaba la suscripción no se guardaba la nueva.
+window.autoSyncPushOnLogin = async function autoSyncPushOnLogin() {
+  try {
+    if (!window.isPushSupported() || Notification.permission !== 'granted' || !window.currentUser) return;
+    const registration = await navigator.serviceWorker.ready;
+    let subscription = await registration.pushManager.getSubscription();
+    if (!subscription) {
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      });
+    }
+    await window.syncPushSubscription(subscription);
+  } catch (err) {
+    console.error('Error sincronizando push al iniciar sesión:', err);
+  }
+}
+
+// Al cerrar sesión: la tablet deja de recibir push de esta cuenta.
+window.unregisterPushOnLogout = async function unregisterPushOnLogout() {
+  try {
+    if (!window.isPushSupported()) return;
+    const registration = await navigator.serviceWorker.getRegistration();
+    const subscription = registration ? await registration.pushManager.getSubscription() : null;
+    if (subscription) await window._supabase.rpc('unregister_push_subscription', { p_endpoint: subscription.endpoint });
+  } catch (err) {
+    console.error('Error desvinculando push al cerrar sesión:', err);
+  }
 }
 
 window.enableEventNotifications = async function enableEventNotifications() {
@@ -80,8 +114,7 @@ window.resetPushNotifications = async function resetPushNotifications() {
     const subscription = await registration.pushManager.getSubscription();
 
     if (subscription) {
-      const raw = subscription.toJSON();
-      await window._supabase.from('push_subscriptions').delete().eq('endpoint', raw.endpoint);
+      await window._supabase.rpc('unregister_push_subscription', { p_endpoint: subscription.endpoint });
       await subscription.unsubscribe();
     }
 

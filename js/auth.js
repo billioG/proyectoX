@@ -400,6 +400,7 @@ export async function handleSuccessfulLogin(user) {
     // un módulo lazy), así que podían quedar desactualizados según por
     // dónde entrara el usuario.
     if (typeof window.refreshAllBadges === 'function') window.refreshAllBadges();
+    if (typeof window.autoSyncPushOnLogin === 'function') window.autoSyncPushOnLogin();
 
     // Verificación de cambio de contraseña obligatorio -- no aplica si la
     // clase del alumno está configurada como "sin contraseña" (si no, se le
@@ -625,6 +626,7 @@ async function handleMandatoryPasswordChange() {
 }
 
 export async function logout() {
+  if (typeof window.unregisterPushOnLogout === 'function') await window.unregisterPushOnLogout();
   localStorage.removeItem('PX_CACHED_USER');
   localStorage.removeItem('PX_CACHED_USER_DATA');
   localStorage.removeItem('PX_CACHED_ROLE');
