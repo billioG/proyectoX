@@ -8,7 +8,7 @@
 
 window.loadSpellingSection = async function loadSpellingSection() {
   const { data, error } = await window._supabase.from('student_spelling_duels')
-    .select('id, challenger_id, opponent_id, wager_gems, topic, status, winner_id, created_at, resolved_at, challenger:students!challenger_id(full_name), opponent:students!opponent_id(full_name)')
+    .select('id, challenger_id, opponent_id, wager_gems, topic, status, winner_id, created_at, resolved_at, challenger:students!challenger_id(full_name, profile_photo_url), opponent:students!opponent_id(full_name, profile_photo_url)')
     .or(`challenger_id.eq.${window.currentUser.id},opponent_id.eq.${window.currentUser.id}`)
     .order('created_at', { ascending: false })
     .limit(10);
@@ -39,15 +39,14 @@ window.renderSpellingSection = function renderSpellingSection() {
   const duels = window._spellingDuelsCache || [];
   const sanitizeInput = window.sanitizeInput || ((v) => v);
 
-  const createBtnHtml = `
-    <div class="glass-card p-6 text-center border-dashed border-2 border-white/10 bg-transparent hover:border-white/20 transition-all cursor-pointer group mb-4" onclick="window.openCreateSpellingModal()">
-        <div class="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
-            <i class="fas fa-plus text-lg text-white/40 group-hover:text-white/70 transition-colors"></i>
-        </div>
-        <p class="text-xs font-black text-white uppercase tracking-widest">Crear Ortografía 1v1</p>
-        <p class="text-[0.6rem] font-bold text-slate-500 mt-1">Apuesta gemas -- gana quien la escribe bien más rápido</p>
-    </div>
-  `;
+  const createBtnHtml = window.GameArena.heroHtml({
+    title: 'Ortografía 1v1',
+    subtitle: 'Te damos una pista, escribís la palabra con sus tildes. Gana quien acierta más rápido.',
+    icon: 'fa-spell-check',
+    c1: '#7c3aed',
+    c2: '#db2777',
+    onclick: 'window.openCreateSpellingModal()',
+  });
 
   if (!duels.length) {
     container.innerHTML = createBtnHtml;
@@ -90,9 +89,11 @@ window.renderSpellingSection = function renderSpellingSection() {
       actionHtml = `<button class="h-8 px-3 rounded-lg bg-white/10 text-white text-[0.6rem] font-black uppercase" onclick="window.showSpellingReview('${d.id}')"><i class="fas fa-list-check"></i> Revisar</button>`;
     }
 
+    const rival = isChallenger ? d.opponent : d.challenger;
     return `
       <div class="glass-card p-4 flex items-center justify-between gap-3 bg-white/5 border-white/5">
-        <div class="min-w-0">
+        ${window.GameArena.avatarHtml(rival?.full_name, rival?.profile_photo_url, 'ga-mini-avatar')}
+        <div class="min-w-0 flex-1">
           <div class="text-xs font-bold text-white truncate">vs ${sanitizeInput(opponentName)}</div>
           <div class="text-[0.6rem] text-slate-500 truncate">${sanitizeInput(d.topic)}</div>
           ${statusHtml}
@@ -252,7 +253,21 @@ window.respondSpellingDuel = async function respondSpellingDuel(duelId, accept) 
   }
 };
 
+const SPELLING_ACCENT_KEYS = ['á', 'é', 'í', 'ó', 'ú', 'ñ', 'ü'];
+
 window.openSpellingGame = async function openSpellingGame(duelId) {
+  const duel = (window._spellingDuelsCache || []).find(d => d.id === duelId);
+  const rival = duel?.challenger_id === window.currentUser.id ? duel?.opponent : duel?.challenger;
+
+  // VS + cuenta regresiva ANTES de start_spelling_duel -- el reloj del
+  // servidor arranca recién cuando aparece la pista.
+  await window.GameArena.versus({
+    title: 'Ortografía 1v1',
+    me: { name: window.userData?.full_name, photo: window.userData?.profile_photo_url },
+    rival: { name: rival?.full_name, photo: rival?.profile_photo_url },
+    wager: duel?.wager_gems || 0,
+  });
+
   const { data, error } = await window._supabase.rpc('start_spelling_duel', { p_duel_id: duelId });
   if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
 
@@ -260,61 +275,114 @@ window.openSpellingGame = async function openSpellingGame(duelId) {
   window.renderSpellingGame();
 };
 
-window.renderSpellingGame = function renderSpellingGame(justWrong = false) {
+window.renderSpellingGame = function renderSpellingGame() {
   const state = window._activeSpelling;
   if (!state) return;
   const sanitizeInput = window.sanitizeInput || ((v) => v);
+  window.GameArena.ensureStyles();
 
   document.getElementById('spelling-game-modal')?.remove();
   const modal = document.createElement('div');
   modal.id = 'spelling-game-modal';
-  modal.className = 'fixed inset-0 z-[220] flex items-center justify-center p-6 bg-slate-950/95 backdrop-blur-md animate-fadeIn';
+  modal.className = 'ga-overlay';
   modal.innerHTML = `
-    <style>
-      @keyframes spelling-shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)} 40%{transform:translateX(8px)} 60%{transform:translateX(-6px)} 80%{transform:translateX(6px)} }
-      .spelling-shake { animation: spelling-shake 0.4s ease-in-out; }
-    </style>
-    <div class="glass-card w-full max-w-lg p-8 shadow-2xl animate-slideUp bg-slate-900 border ${justWrong ? 'border-rose-500 spelling-shake' : 'border-white/10'} text-center transition-colors">
-      <div class="flex justify-between items-center mb-4">
-        <span class="text-[0.6rem] font-black uppercase text-slate-400 tracking-widest">Una sola oportunidad</span>
-        <span class="text-[0.6rem] font-black uppercase text-primary">Ortografía</span>
+    <div class="ga-panel"><div class="ga-card" id="spelling-card">
+      <div class="ga-topbar">
+        <span class="ga-chip"><i class="fas fa-spell-check"></i> Ortografía</span>
+        <span class="ga-clock" id="spelling-clock">0.0s</span>
       </div>
-      <div class="w-14 h-14 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4">
-        <i class="fas fa-spell-check text-2xl text-rose-400"></i>
+      <div style="font-size:3rem;margin-bottom:.25rem">📝</div>
+      <p style="font-size:.65rem;font-weight:900;letter-spacing:.2em;text-transform:uppercase;color:#a5b4fc;margin-bottom:.5rem">Pista</p>
+      <p style="font-size:1.15rem;font-weight:700;line-height:1.45;margin-bottom:1.5rem">"${sanitizeInput(state.hint)}"</p>
+      <input type="text" id="spelling-answer-input" class="ga-input" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
+        placeholder="Escribí la palabra" onkeydown="if(event.key==='Enter') window.submitSpellingAnswer()">
+      <div class="ga-keys">
+        ${SPELLING_ACCENT_KEYS.map(k => `<button type="button" class="ga-key" onmousedown="event.preventDefault()" onclick="window.insertSpellingChar('${k}')">${k}</button>`).join('')}
       </div>
-      <p class="text-sm text-slate-300 mb-6 italic">"${sanitizeInput(state.hint)}"</p>
-      <input type="text" id="spelling-answer-input" autocomplete="off" autocapitalize="off" spellcheck="false"
-        class="input-field-tw h-12 text-center text-lg font-bold w-full mb-6" placeholder="Escribí la palabra..."
-        onkeypress="if(event.key==='Enter') window.submitSpellingAnswer()">
-      <button class="btn-primary-tw w-full h-11 text-xs uppercase font-bold" onclick="window.submitSpellingAnswer()"><i class="fas fa-paper-plane"></i> Enviar</button>
-    </div>
+      <p style="font-size:.7rem;color:#94a3b8;margin:1rem 0 1.25rem"><i class="fas fa-circle-info"></i> Una sola oportunidad -- ¡cuidá las tildes!</p>
+      <button class="ga-btn" id="spelling-submit" onclick="window.submitSpellingAnswer()"><i class="fas fa-check"></i> ¡Listo!</button>
+    </div></div>
   `;
   document.body.appendChild(modal);
+  state.stopClock = window.GameArena.startStopwatch(document.getElementById('spelling-clock'));
   document.getElementById('spelling-answer-input')?.focus();
 };
+
+// Teclado de tildes/ñ -- en computadora escribirlas es incómodo y el juego
+// se trata justamente de eso. Inserta donde está el cursor.
+window.insertSpellingChar = function insertSpellingChar(ch) {
+  const input = document.getElementById('spelling-answer-input');
+  if (!input) return;
+  const start = input.selectionStart ?? input.value.length;
+  const end = input.selectionEnd ?? input.value.length;
+  input.value = input.value.slice(0, start) + ch + input.value.slice(end);
+  input.setSelectionRange(start + ch.length, start + ch.length);
+  input.focus();
+};
+
+// Palabra correcta con las letras que no coinciden marcadas -- para que el
+// alumno vea exactamente dónde se equivocó (una tilde, una b/v, etc.).
+function spellingDiffHtml(answer, correct) {
+  const s = window.sanitizeInput || ((v) => v);
+  const a = answer.toLowerCase();
+  const c = correct.toLowerCase();
+  return [...correct].map((ch, i) => {
+    const bad = a[i] !== c[i];
+    return `<span style="display:inline-block;min-width:1.6rem;padding:.2rem .15rem;margin:.1rem;border-radius:.5rem;font-weight:900;font-size:1.4rem;
+      background:${bad ? 'rgba(244,63,94,.25)' : 'rgba(74,222,128,.15)'};color:${bad ? '#fb7185' : '#86efac'};
+      ${bad ? 'text-decoration:underline wavy;' : ''}">${s(ch)}</span>`;
+  }).join('');
+}
 
 window.submitSpellingAnswer = async function submitSpellingAnswer() {
   const state = window._activeSpelling;
   if (!state) return;
   const input = document.getElementById('spelling-answer-input');
   const answer = (input?.value || '').trim();
-  if (!answer) return window.showToast('<i class="fas fa-circle-xmark"></i> Escribí una respuesta', 'error');
+  if (!answer) {
+    window.GameArena.feedback(input, false);
+    return;
+  }
 
-  document.getElementById('spelling-game-modal')?.remove();
+  const btn = document.getElementById('spelling-submit');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+  if (state.stopClock) state.stopClock();
 
   const { data: result, error } = await window._supabase.rpc('submit_spelling_answer', {
     p_duel_id: state.duelId,
     p_answer: answer,
   });
   window._activeSpelling = null;
-  if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
+  if (error) {
+    document.getElementById('spelling-game-modal')?.remove();
+    return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
+  }
 
   window._mySpellingPlayed = window._mySpellingPlayed || new Set();
   window._mySpellingPlayed.add(state.duelId);
 
-  window.showToast(result.correct
-    ? `<i class="fas fa-circle-check"></i> ¡Bien escrita! Esperá a que tu rival termine.`
-    : `<i class="fas fa-circle-xmark"></i> No era así (era "${result.word}"). Esperá a que tu rival termine.`, result.correct ? 'success' : 'info');
+  window.GameArena.feedback(document.getElementById('spelling-card'), result.correct);
+  await new Promise(r => setTimeout(r, 600));
+  document.getElementById('spelling-game-modal')?.remove();
+
+  const s = window.sanitizeInput || ((v) => v);
+  const seconds = (result.time_ms / 1000).toFixed(1);
+  await window.GameArena.result(result.correct
+    ? {
+        ok: true,
+        title: '¡Perfecta!',
+        subtitle: 'La escribiste bien. Cuando tu rival juegue, se define quién ganó.',
+        detailHtml: `<div style="font-size:1.6rem;font-weight:900;margin:.5rem 0">${s(result.word)}</div>
+          <div style="font-size:.8rem;color:#facc15;font-weight:800"><i class="fas fa-stopwatch"></i> ${seconds}s</div>`,
+      }
+    : {
+        ok: false,
+        title: 'Casi...',
+        subtitle: 'Así se escribe:',
+        detailHtml: `<div style="margin:.5rem 0">${spellingDiffHtml(answer, result.word)}</div>
+          <div style="font-size:.8rem;color:#94a3b8;margin-top:.5rem">Escribiste: <b style="color:#e2e8f0">${s(answer)}</b></div>`,
+      });
+
   window.loadSpellingSection();
 };
 
