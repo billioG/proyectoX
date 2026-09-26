@@ -339,6 +339,11 @@ window.openSendAnnouncementModal = async function openSendAnnouncementModal() {
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Mensaje</label>
           <textarea id="ann-message" class="input-field-tw text-sm" rows="4" placeholder="Escribí el aviso..."></textarea>
         </div>
+        ${isAdmin ? '' : `
+        <label class="flex items-start gap-3 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 cursor-pointer">
+          <input type="checkbox" id="ann-guardians" class="w-5 h-5 mt-0.5">
+          <span class="text-xs text-slate-600 dark:text-slate-300"><b>También avisar a los padres</b><br>Por notificación si la activaron en su portal, o por SMS. Mantenelo corto (menos de 160 letras para que entre en un SMS).</span>
+        </label>`}
       </div>
       <div class="flex gap-3 mt-8">
         <button class="btn-secondary-tw flex-1 h-11 text-xs uppercase font-bold" onclick="this.closest('.fixed').remove()">Cancelar</button>
@@ -391,6 +396,28 @@ window.sendAnnouncement = async function sendAnnouncement(classOptions) {
   // -- el destinatario solo se enteraba si tenía la pestaña abierta en ese
   // momento y veía el punto rojo en la campana.
   if (inserted?.id) window.sendAnnouncementPush(inserted.id);
+
+  // Padres de la clase (migrations/guardians.sql + notify-guardians).
+  if (!isAdmin && document.getElementById('ann-guardians')?.checked && payload.school_code) {
+    const text = `${title}: ${message}`.slice(0, 300);
+    const { data: counts, error: gErr } = await window._supabase.rpc('enqueue_class_guardian_message', {
+      p_school_code: payload.school_code, p_grade: payload.grade, p_section: payload.section, p_text: text,
+    });
+    if (gErr) {
+      window.showToast('<i class="fas fa-triangle-exclamation"></i> Aviso enviado a alumnos, pero no a padres: ' + gErr.message, 'warning');
+    } else {
+      const total = (counts?.push || 0) + (counts?.sms || 0);
+      if (total) {
+        const { data: { session } } = await window._supabase.auth.getSession();
+        fetch(`${window.SUPABASE_URL}/functions/v1/notify-guardians`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token || ''}` },
+          body: '{}',
+        }).catch(err => console.error('Error enviando avisos a padres:', err));
+      }
+      window.showToast(`<i class="fas fa-people-roof"></i> Padres: ${counts?.push || 0} por notificación, ${counts?.sms || 0} por SMS${counts?.none ? `, ${counts.none} sin contacto` : ''}`, 'info');
+    }
+  }
 
   window.showToast('<i class="fas fa-circle-check"></i> Aviso enviado', 'success');
   document.getElementById('send-announcement-modal')?.remove();

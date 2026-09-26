@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#00C853">
+  <title>Portal de padres · Quetzal LMS</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon-192.png">
+  <style>
+    :root { --g: #00C853; --ink: #0f172a; --muted: #64748b; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; background: #f1f5f9; color: var(--ink); }
+    header { background: var(--g); color: #fff; padding: 1.5rem 1.25rem 3.5rem; }
+    header h1 { margin: 0; font-size: 1.35rem; }
+    header p { margin: .25rem 0 0; opacity: .9; font-size: .9rem; }
+    main { max-width: 32rem; margin: -2.5rem auto 2rem; padding: 0 1rem; }
+    .card { background: #fff; border-radius: 1.25rem; padding: 1.25rem; box-shadow: 0 6px 24px rgba(15,23,42,.08); margin-bottom: 1rem; }
+    .btn { width: 100%; border: 0; border-radius: .9rem; height: 3.25rem; font-size: 1rem; font-weight: 800; color: #fff; background: var(--g); cursor: pointer; }
+    .btn.off { background: #e2e8f0; color: #475569; }
+    .btn:disabled { opacity: .6; }
+    .muted { color: var(--muted); font-size: .85rem; line-height: 1.45; }
+    .ok { color: #047857; font-weight: 800; }
+    .msg { border-top: 1px solid #e2e8f0; padding: .75rem 0; font-size: .92rem; }
+    .msg small { display: block; color: var(--muted); font-size: .72rem; margin-bottom: .2rem; }
+    .steps { margin: .5rem 0 0; padding-left: 1.2rem; color: var(--muted); font-size: .85rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>📚 Portal de padres</h1>
+    <p id="subtitle">Cargando…</p>
+  </header>
+  <main>
+    <div class="card" id="activate-card" hidden>
+      <p style="margin-top:0"><b id="hello">Hola</b></p>
+      <p class="muted">Activá las notificaciones para recibir en este teléfono los avisos de la escuela. Si no las activás, te seguirán llegando por mensaje de texto (SMS) si el docente registró tu número.</p>
+      <p id="status" class="muted"></p>
+      <button class="btn" id="btn-toggle">🔔 Activar avisos en este teléfono</button>
+      <ol class="steps" id="ios-help" hidden>
+        <li>En iPhone: tocá el botón Compartir de Safari.</li>
+        <li>Elegí "Agregar a pantalla de inicio".</li>
+        <li>Abrí el portal desde ese ícono y activá los avisos.</li>
+      </ol>
+    </div>
+    <div class="card" id="inbox-card" hidden>
+      <b>Últimos avisos</b>
+      <div id="inbox"></div>
+    </div>
+    <div class="card" id="error-card" hidden>
+      <p id="error" style="margin:0"></p>
+    </div>
+  </main>
+
+  <script type="module">
+    // Mismos valores públicos que js/config.js (acá sin la librería de
+    // Supabase: el portal es liviano para teléfonos modestos).
+    const SUPABASE_URL = 'https://vyptkxudkmlpyfosppzh.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5cHRreHVka21scHlmb3NwcHpoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NTExMTIsImV4cCI6MjA4NDMyNzExMn0._tD_y_ZRniaembs5LKSDUmIjvLDmiXwWoq4uVBAqgy4';
+    const VAPID_PUBLIC_KEY = 'BJ54zvFlMHOEFJgGfloVcjQv_bJKNVxqGkjQ9q1h82QRRVWeWtK87pgAO_twu-FrPK08tYkAukdMwEYjHJX3a_E';
+    const params = new URLSearchParams(location.search);
+    const token = params.get('t') || localStorage.getItem('PX_GUARDIAN_TOKEN') || '';
+    const $ = (id) => document.getElementById(id);
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    async function api(body) {
+      let res;
+      try {
+        res = await fetch(`${SUPABASE_URL}/functions/v1/guardian-portal`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY },
+          body: JSON.stringify({ token, ...body }),
+        });
+      } catch {
+        throw new Error('Sin conexión a internet. Revisá tu señal e intentá de nuevo.');
+      }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'No se pudo conectar');
+      return data;
+    }
+
+    function showError(msg) {
+      $('subtitle').textContent = 'Quetzal LMS';
+      $('error').textContent = msg;
+      $('error-card').hidden = false;
+    }
+
+    const toKey = (b64) => {
+      const pad = '='.repeat((4 - b64.length % 4) % 4);
+      const raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
+      return Uint8Array.from(raw, c => c.charCodeAt(0));
+    };
+
+    async function currentSub() {
+      if (!('serviceWorker' in navigator)) return null;
+      const reg = await navigator.serviceWorker.ready;
+      return reg.pushManager.getSubscription();
+    }
+
+    async function render() {
+      const supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+      const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+      const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+      const btn = $('btn-toggle');
+      if (!supported) {
+        $('status').textContent = isIos && !standalone
+          ? 'En iPhone primero hay que agregar el portal a la pantalla de inicio:'
+          : 'Este teléfono no permite notificaciones desde el navegador. Te llegarán por SMS.';
+        $('ios-help').hidden = !(isIos && !standalone);
+        btn.hidden = true;
+        return;
+      }
+      const sub = await currentSub();
+      if (sub && Notification.permission === 'granted') {
+        $('status').innerHTML = '<span class="ok">✅ Avisos activados en este teléfono.</span>';
+        btn.textContent = 'Desactivar avisos';
+        btn.className = 'btn off';
+      } else if (Notification.permission === 'denied') {
+        $('status').textContent = 'Las notificaciones están bloqueadas para esta página. Activalas en la configuración del navegador (ícono del candado) y volvé a intentar.';
+        btn.textContent = '🔔 Activar avisos en este teléfono';
+        btn.className = 'btn';
+      } else {
+        $('status').textContent = '';
+        btn.textContent = '🔔 Activar avisos en este teléfono';
+        btn.className = 'btn';
+      }
+    }
+
+    async function toggle() {
+      const btn = $('btn-toggle');
+      btn.disabled = true;
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.getSubscription();
+        if (sub && Notification.permission === 'granted') {
+          await api({ action: 'unsubscribe', endpoint: sub.endpoint });
+          await sub.unsubscribe();
+        } else {
+          const perm = await Notification.requestPermission();
+          if (perm !== 'granted') throw new Error('Sin permiso no se pueden mandar avisos. Te llegarán por SMS.');
+          const newSub = sub || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: toKey(VAPID_PUBLIC_KEY) });
+          await api({ action: 'subscribe', subscription: newSub.toJSON() });
+          reg.showNotification('📚 ¡Listo!', { body: 'Así te van a llegar los avisos de la escuela.', icon: 'icon-192.png' });
+        }
+      } catch (e) {
+        alert(e.message || e);
+      } finally {
+        btn.disabled = false;
+        render();
+      }
+    }
+
+    (async () => {
+      if (!/^[0-9a-f]{32}$/.test(token)) return showError('Este enlace no es válido. Pedile al docente el enlace del Portal de padres.');
+      localStorage.setItem('PX_GUARDIAN_TOKEN', token);
+      if ('serviceWorker' in navigator) navigator.serviceWorker.register('./service-worker.js', { updateViaCache: 'none' }).catch(() => {});
+      try {
+        const info = await api({ action: 'info' });
+        $('subtitle').textContent = `${info.student}${info.school ? ' · ' + info.school : ''}`;
+        $('hello').textContent = `Hola, ${info.guardian}`;
+        $('activate-card').hidden = false;
+        $('btn-toggle').onclick = toggle;
+        if (info.messages?.length) {
+          $('inbox').innerHTML = info.messages.map(m => `<div class="msg"><small>${esc(new Date(m.created_at).toLocaleString('es-GT', { dateStyle: 'medium', timeStyle: 'short' }))}</small>${esc(m.message)}</div>`).join('');
+          $('inbox-card').hidden = false;
+        }
+        render();
+      } catch (e) {
+        showError(e.message);
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -424,6 +424,9 @@ window.renderStudentsList = function renderStudentsList(container, students, all
 
                   ${(window.userRole === 'admin' || window.userRole === 'docente') ? `
                     <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onclick="window.openGuardiansModal('${s.id}', '${window.sanitizeAttr(s.full_name || '')}')" title="Padres / encargados" class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white transition-colors flex items-center justify-center">
+                        <i class="fas fa-people-roof text-[0.6rem]"></i>
+                      </button>
                       ${window.userRole === 'admin' ? `
                         <button onclick="window.editStudent('${s.id}')" class="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-500 hover:bg-indigo-500 hover:text-white transition-colors flex items-center justify-center">
                           <i class="fas fa-edit text-[0.6rem]"></i>
@@ -1053,6 +1056,184 @@ window.submitTeacherAddStudents = async function submitTeacherAddStudents() {
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-check"></i> Crear cuentas';
   }
+};
+
+// ================================================
+// PADRES DE FAMILIA: registro y avisos (SMS / notificaciones)
+// Ver migrations/guardians.sql y las edge functions notify-guardians y
+// guardian-portal. Cada padre tiene un enlace personal al Portal de
+// padres (padres.html) donde activa las notificaciones en su teléfono;
+// si no lo hace, los avisos le llegan por SMS desde el celular del proyecto.
+// ================================================
+const RELATIONS = ['Madre', 'Padre', 'Encargado/a', 'Abuelo/a', 'Tío/a', 'Hermano/a', 'Otro'];
+
+function normalizeGtPhone(raw) {
+  const digits = String(raw || '').replace(/[^\d+]/g, '');
+  if (!digits) return null;
+  if (digits.startsWith('+')) return /^\+\d{8,15}$/.test(digits) ? digits : undefined;
+  if (/^\d{8}$/.test(digits)) return '+502' + digits;
+  if (/^502\d{8}$/.test(digits)) return '+' + digits;
+  return undefined;
+}
+
+window.guardianPortalUrl = function guardianPortalUrl(token) {
+  const base = location.href.split('#')[0].split('?')[0];
+  return new URL('padres.html', base).href + '?t=' + token;
+};
+
+// Procesa la cola de avisos que encoló este usuario (push o SMS).
+window.flushGuardianNotifications = async function flushGuardianNotifications() {
+  const { data: { session } } = await window._supabase.auth.getSession();
+  const res = await fetch(`${window.SUPABASE_URL}/functions/v1/notify-guardians`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token || ''}` },
+    body: '{}',
+  });
+  return res.json().catch(() => ({}));
+};
+
+window.openGuardiansModal = async function openGuardiansModal(studentId, studentName) {
+  const s = window.sanitizeInput;
+  const [{ data: guardians, error }, { data: subs }, { data: history }] = await Promise.all([
+    window._supabase.from('student_guardians').select('*').eq('student_id', studentId).order('created_at'),
+    window._supabase.from('guardian_push_subscriptions').select('guardian_id'),
+    window._supabase.from('guardian_notifications').select('channel, message, status, error, created_at')
+      .eq('student_id', studentId).order('created_at', { ascending: false }).limit(8),
+  ]);
+  if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + (/relation|does not exist/.test(error.message) ? 'Falta correr migrations/guardians.sql' : error.message), 'error');
+  const withPush = new Set((subs || []).map(x => x.guardian_id));
+  window._guardiansCtx = { studentId, studentName, guardians: guardians || [] };
+  const first = String(studentName || '').trim().split(/\s+/)[0];
+
+  document.getElementById('guardians-modal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'guardians-modal';
+  modal.className = 'fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn';
+  modal.innerHTML = `
+    <div class="glass-card w-full max-w-lg max-h-[90vh] overflow-y-auto custom-scrollbar p-6 bg-white dark:bg-slate-900 shadow-2xl animate-slideUp">
+      <div class="flex justify-between items-start mb-4">
+        <div>
+          <h2 class="text-lg font-black uppercase tracking-tight text-slate-800 dark:text-white"><i class="fas fa-people-roof text-emerald-500 mr-2"></i> Padres de ${s(first)}</h2>
+          <p class="text-xs text-slate-400 mt-1">Reciben avisos por notificación (si la activan en su portal) o por SMS.</p>
+        </div>
+        <button onclick="this.closest('.fixed').remove()" class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500"><i class="fas fa-times"></i></button>
+      </div>
+
+      <div class="space-y-3 mb-5">
+        ${(guardians || []).map(g => {
+          const link = window.guardianPortalUrl(g.portal_token);
+          const wa = g.phone ? `https://wa.me/${g.phone.replace('+', '')}?text=${encodeURIComponent(`Hola ${g.name}, para recibir los avisos de ${first} de la escuela entrá a este enlace y tocá "Activar avisos": ${link}`)}` : '';
+          return `
+          <div class="rounded-2xl border border-slate-100 dark:border-slate-800 p-3">
+            <div class="flex justify-between gap-2">
+              <div>
+                <div class="text-sm font-black text-slate-800 dark:text-white">${s(g.name)} <span class="text-[0.65rem] font-bold text-slate-400">${s(g.relation || '')}</span></div>
+                <div class="text-xs text-slate-500 font-mono">${s(g.phone || 'sin teléfono')}</div>
+              </div>
+              <div class="flex flex-col items-end gap-1">
+                ${withPush.has(g.id) ? '<span class="text-[0.6rem] font-black text-emerald-500 uppercase">🔔 Notificaciones activas</span>' : '<span class="text-[0.6rem] font-black text-slate-400 uppercase">Sin notificaciones</span>'}
+                ${g.phone ? `<label class="text-[0.6rem] font-bold text-slate-500 flex items-center gap-1"><input type="checkbox" ${g.sms_enabled ? 'checked' : ''} onchange="window.toggleGuardianSms('${g.id}', this.checked)"> SMS</label>` : ''}
+              </div>
+            </div>
+            <div class="flex flex-wrap gap-1.5 mt-2">
+              ${g.phone ? `<button class="h-8 px-3 rounded-lg bg-emerald-50 text-emerald-700 text-[0.6rem] font-black uppercase" onclick="window.sendGuardianPortalSms('${g.id}', this)"><i class="fas fa-comment-sms"></i> Enviar enlace por SMS</button>` : ''}
+              ${wa ? `<a class="h-8 px-3 rounded-lg bg-green-50 text-green-700 text-[0.6rem] font-black uppercase inline-flex items-center gap-1" href="${wa}" target="_blank" rel="noopener"><i class="fab fa-whatsapp"></i> Por WhatsApp</a>` : ''}
+              <button class="h-8 px-3 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[0.6rem] font-black uppercase" onclick="navigator.clipboard.writeText('${link}').then(() => window.showToast('<i class=&quot;fas fa-copy&quot;></i> Enlace copiado', 'success'))"><i class="fas fa-link"></i> Copiar enlace</button>
+              <button class="h-8 px-3 rounded-lg bg-indigo-50 text-indigo-600 text-[0.6rem] font-black uppercase" onclick="window.promptGuardianMessage('${g.id}', '${window.sanitizeAttr(g.name)}')"><i class="fas fa-paper-plane"></i> Mensaje</button>
+              <button class="h-8 px-3 rounded-lg text-rose-500 text-[0.6rem] font-black uppercase" onclick="window.deleteGuardian('${g.id}')"><i class="fas fa-trash"></i></button>
+            </div>
+          </div>`;
+        }).join('') || '<p class="text-xs text-slate-400">Todavía no hay padres registrados.</p>'}
+      </div>
+
+      <div class="rounded-2xl bg-slate-50 dark:bg-slate-800/50 p-4 space-y-2">
+        <p class="text-[0.65rem] font-black uppercase tracking-widest text-slate-400">Agregar padre o encargado</p>
+        <input id="gd-name" maxlength="80" class="input-field-tw h-10 text-sm" placeholder="Nombre (ej. María Pérez)">
+        <div class="grid grid-cols-2 gap-2">
+          <select id="gd-relation" class="input-field-tw h-10 text-sm">${RELATIONS.map(r => `<option>${r}</option>`).join('')}</select>
+          <input id="gd-phone" inputmode="tel" class="input-field-tw h-10 text-sm" placeholder="Teléfono (8 dígitos)">
+        </div>
+        <button class="btn-primary-tw w-full h-10 text-xs uppercase font-bold" onclick="window.addGuardian(this)"><i class="fas fa-plus"></i> Agregar</button>
+      </div>
+
+      ${(history || []).length ? `
+      <div class="mt-5">
+        <p class="text-[0.65rem] font-black uppercase tracking-widest text-slate-400 mb-2">Últimos avisos</p>
+        ${history.map(h => `<div class="text-xs py-1.5 border-t border-slate-100 dark:border-slate-800 flex gap-2">
+          <span>${h.channel === 'push' ? '🔔' : '💬'}</span>
+          <span class="grow text-slate-600 dark:text-slate-300">${s(h.message)}</span>
+          <span class="shrink-0 font-bold ${h.status === 'sent' ? 'text-emerald-500' : h.status === 'failed' ? 'text-rose-500' : 'text-slate-400'}" title="${s(h.error || '')}">${h.status === 'sent' ? 'Enviado' : h.status === 'failed' ? 'Falló' : 'Pendiente'}</span>
+        </div>`).join('')}
+      </div>` : ''}
+    </div>`;
+  document.body.appendChild(modal);
+};
+
+function reopenGuardians() {
+  const c = window._guardiansCtx;
+  if (c) window.openGuardiansModal(c.studentId, c.studentName);
+}
+
+window.addGuardian = async function addGuardian(btn) {
+  const name = document.getElementById('gd-name').value.trim();
+  const relation = document.getElementById('gd-relation').value;
+  const phone = normalizeGtPhone(document.getElementById('gd-phone').value);
+  if (name.length < 2) return window.showToast('<i class="fas fa-circle-xmark"></i> Escribí el nombre', 'error');
+  if (phone === undefined) return window.showToast('<i class="fas fa-circle-xmark"></i> Teléfono inválido: 8 dígitos (ej. 5555 1234)', 'error');
+  btn.disabled = true;
+  const { error } = await window._supabase.from('student_guardians').insert({
+    student_id: window._guardiansCtx.studentId, name, relation, phone, created_by: window.currentUser.id,
+  });
+  btn.disabled = false;
+  if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
+  reopenGuardians();
+};
+
+window.toggleGuardianSms = async function toggleGuardianSms(id, on) {
+  const { error } = await window._supabase.from('student_guardians').update({ sms_enabled: on }).eq('id', id);
+  if (error) window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
+};
+
+window.deleteGuardian = async function deleteGuardian(id) {
+  if (!confirm('¿Quitar a este padre/encargado? Dejará de recibir avisos.')) return;
+  const { error } = await window._supabase.from('student_guardians').delete().eq('id', id);
+  if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
+  reopenGuardians();
+};
+
+async function enqueueAndSend(guardianId, text, channel = null) {
+  const { data: ch, error } = await window._supabase.rpc('enqueue_guardian_notification', { p_guardian: guardianId, p_text: text, p_channel: channel });
+  if (error) throw error;
+  if (!ch) throw new Error('Este padre no tiene teléfono ni notificaciones activadas');
+  const r = await window.flushGuardianNotifications();
+  if (r.failed) throw new Error('No se pudo enviar: revisá que el celular de SMS esté encendido y con la app abierta');
+  return ch;
+}
+
+window.sendGuardianPortalSms = async function sendGuardianPortalSms(id, btn) {
+  const g = window._guardiansCtx.guardians.find(x => x.id === id);
+  const first = String(window._guardiansCtx.studentName || '').trim().split(/\s+/)[0];
+  btn.disabled = true;
+  try {
+    await enqueueAndSend(id, `Avisos de ${first}: entre a ${window.guardianPortalUrl(g.portal_token)} y toque Activar avisos.`, 'sms');
+    window.showToast('<i class="fas fa-circle-check"></i> SMS enviado', 'success');
+  } catch (e) {
+    window.showToast('<i class="fas fa-circle-xmark"></i> ' + (e.message || e), 'error');
+  }
+  btn.disabled = false;
+  reopenGuardians();
+};
+
+window.promptGuardianMessage = async function promptGuardianMessage(id, name) {
+  const text = prompt(`Mensaje para ${name} (máximo 300 caracteres; por SMS conviene menos de 160):`);
+  if (!text || !text.trim()) return;
+  try {
+    const ch = await enqueueAndSend(id, text.trim().slice(0, 300));
+    window.showToast(`<i class="fas fa-circle-check"></i> Enviado por ${ch === 'push' ? 'notificación' : 'SMS'}`, 'success');
+  } catch (e) {
+    window.showToast('<i class="fas fa-circle-xmark"></i> ' + (e.message || e), 'error');
+  }
+  reopenGuardians();
 };
 
 console.log('✅ students.js cargado (Versión ES Module)');

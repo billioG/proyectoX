@@ -2,7 +2,7 @@
 // SERVICE WORKER - PROJECTX PWA
 // ================================================
 
-const CACHE_NAME = 'projectx-v1.0.97';
+const CACHE_NAME = 'projectx-v1.0.98';
 // Caché de archivos de lecciones (video/PDF/imagen/paquetes SCORM-H5P) --
 // separada de CACHE_NAME a propósito: CACHE_NAME se recrea y se BORRA
 // entera en cada deploy (bump de versión) para forzar JS/CSS frescos, pero
@@ -285,6 +285,11 @@ self.addEventListener('notificationclick', event => {
   // eso abría la raíz de GitHub (404) con la app cerrada. El scope del SW
   // siempre es la raíz real de la app en cualquiera de los 2 dominios.
   let targetUrl = self.registration.scope;
+  // Avisos a padres: abren el Portal de padres, no la app de alumnos.
+  if (target === 'padres') {
+    event.waitUntil(clients.openWindow(new URL('padres.html', self.registration.scope).href));
+    return;
+  }
   if (target) targetUrl += (targetUrl.includes('?') ? '&' : '?') + 'open=' + encodeURIComponent(target);
 
   event.waitUntil(
