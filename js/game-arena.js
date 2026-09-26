@@ -73,6 +73,13 @@ const GA_STYLES = `
 .ga-quick-btn i{font-size:1.3rem;color:#facc15}
 .ga-quick-btn:hover{background:rgba(250,204,21,.15)}
 .ga-quick-btn:active{transform:scale(.93)}
+.ga-online{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem;margin-top:.75rem;font-size:.72rem}
+.ga-online-label{font-weight:900;color:#4ade80;display:inline-flex;align-items:center;gap:.35rem;margin-right:.2rem}
+.ga-online-empty{color:#94a3b8;font-weight:700}
+.ga-online-chip{display:inline-flex;align-items:center;gap:.35rem;padding:.35rem .7rem;border-radius:9999px;border:1px solid rgba(74,222,128,.35);background:rgba(74,222,128,.08);color:#fff;font-weight:800;font-size:.72rem;cursor:pointer}
+.ga-online-chip:hover{background:rgba(74,222,128,.2)}
+.ga-dot{width:.5rem;height:.5rem;border-radius:9999px;background:#4ade80;box-shadow:0 0 0 0 rgba(74,222,128,.7);animation:ga-pulse 1.6s infinite}
+@keyframes ga-pulse{70%{box-shadow:0 0 0 .4rem rgba(74,222,128,0)}100%{box-shadow:0 0 0 0 rgba(74,222,128,0)}}
 .ga-record{margin-top:1rem;font-size:.8rem;font-weight:800;color:#cbd5e1}
 .ga-mascot{width:9rem;height:9rem;margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:4rem}
 @keyframes ga-fade{from{opacity:0}to{opacity:1}}
@@ -184,8 +191,11 @@ window.GameArena = {
     // Evita retar a alguien con quien ya tenés un reto pendiente de este juego.
     const busy = new Set((window[this.GAMES[game].cache] || []).filter(d => d.status === 'pending' || d.status === 'active')
       .map(d => (d.challenger_id === window.currentUser.id ? d.opponent_id : d.challenger_id)));
-    const pool = classmates.filter(c => !busy.has(c.id));
-    const pick = (pool.length ? pool : classmates)[Math.floor(Math.random() * (pool.length || classmates.length))];
+    const free = classmates.filter(c => !busy.has(c.id));
+    // Primero alguien conectado: así el reto se juega ya y no queda esperando.
+    const online = free.filter(c => this.isOnline(c.id));
+    const pool = online.length ? online : (free.length ? free : classmates);
+    const pick = pool[Math.floor(Math.random() * pool.length)];
     const id = await this.createChallenge(game, { opponentId: pick.id, wager: 10 });
     if (id) window.showToast(`<i class="fas fa-bolt"></i> ¡Retaste a ${(window.sanitizeInput || (v => v))(pick.full_name)} a ${this.GAMES[game].label}!`, 'success');
   },
@@ -200,7 +210,99 @@ window.GameArena = {
         : 'un toque: rival y tema de tu clase al azar, 10 💎'}</span></div>
       <div class="ga-quick-row">${Object.entries(this.GAMES).map(([key, g]) =>
         `<button class="ga-quick-btn" onclick="window.GameArena.quickChallenge('${key}')"><i class="fas ${g.icon}"></i><span>${g.label}</span></button>`).join('')}</div>
+      <div class="ga-online" id="ga-online">${this.onlineHtml()}</div>
     </div>`;
+  },
+
+  // ---- Quién está conectado ahora (Realtime Presence: sin tablas ni SQL).
+  // Un canal por clase; "conectado" = tiene la app abierta y visible.
+  _presence: null,
+  _classmateNames: {},
+
+  syncPresence() {
+    const u = window.userData;
+    if (this._presence || window.userRole !== 'estudiante' || !u?.grade || window.isNodeSession || !window._supabase?.channel || !window.currentUser) return;
+    const room = `online-${u.school_code}-${u.grade}-${u.section}`.normalize('NFD').replace(/[^\w-]/g, '_');
+    const ch = window._supabase.channel(room, { config: { presence: { key: window.currentUser.id } } });
+    this._presence = ch;
+    window._onlineIds = new Set();
+    ch.on('presence', { event: 'sync' }, () => {
+      window._onlineIds = new Set(Object.keys(ch.presenceState()).filter(id => id !== window.currentUser?.id));
+      this.refreshOnline();
+    }).subscribe((status) => {
+      if (status === 'SUBSCRIBED' && !document.hidden) ch.track({ at: Date.now() });
+    });
+    document.addEventListener('visibilitychange', () => {
+      if (!this._presence) return;
+      if (document.hidden) this._presence.untrack();
+      else this._presence.track({ at: Date.now() });
+    });
+    this.loadClassmateNames();
+  },
+
+  async loadClassmateNames() {
+    const u = window.userData;
+    const { data } = await window._supabase.from('students').select('id, full_name')
+      .eq('school_code', u.school_code).eq('grade', u.grade).eq('section', u.section)
+      .neq('id', window.currentUser.id);
+    (data || []).forEach(c => { this._classmateNames[c.id] = c.full_name; });
+    this.refreshOnline();
+  },
+
+  isOnline(id) {
+    return !!window._onlineIds?.has(id);
+  },
+
+  onlineHtml() {
+    const s = window.sanitizeInput || ((v) => v);
+    const ids = [...(window._onlineIds || [])].filter(id => this._classmateNames[id]);
+    if (!ids.length) return '<span class="ga-online-empty"><i class="fas fa-user-clock"></i> Ningún compañero conectado ahora -- igual podés retar: le llega cuando entre.</span>';
+    return `<span class="ga-online-label"><span class="ga-dot"></span> ${ids.length} conectado${ids.length > 1 ? 's' : ''} · tocá para retar</span>`
+      + ids.map(id => `<button class="ga-online-chip" onclick="window.GameArena.openChallengeFor('${id}')"><span class="ga-dot"></span>${s(this._classmateNames[id])}</button>`).join('');
+  },
+
+  // Refresca la barra y los selectores de rival que estén abiertos.
+  refreshOnline() {
+    const box = document.getElementById('ga-online');
+    if (box) box.innerHTML = this.onlineHtml();
+    document.querySelectorAll('select[data-ga-opponents] option').forEach(o => {
+      o.textContent = (this.isOnline(o.value) ? '🟢 ' : '') + o.dataset.name;
+    });
+  },
+
+  // <option>s de rival: conectados primero y con 🟢.
+  opponentOptionsHtml(classmates) {
+    const s = window.sanitizeInput || ((v) => v);
+    classmates.forEach(c => { this._classmateNames[c.id] = c.full_name; });
+    const sorted = [...classmates].sort((a, b) => this.isOnline(b.id) - this.isOnline(a.id));
+    return sorted.map(c => `<option value="${c.id}" data-name="${s(c.full_name)}">${this.isOnline(c.id) ? '🟢 ' : ''}${s(c.full_name)}</option>`).join('');
+  },
+
+  // Tocar a un compañero conectado: elegís el juego y sale el reto (10 💎).
+  openChallengeFor(id) {
+    const s = window.sanitizeInput || ((v) => v);
+    const name = this._classmateNames[id] || 'tu compañero';
+    document.getElementById('ga-challenge-for')?.remove();
+    const modal = document.createElement('div');
+    modal.id = 'ga-challenge-for';
+    modal.className = 'fixed inset-0 z-[210] flex items-center justify-center p-6 bg-slate-950/90 backdrop-blur-sm animate-fadeIn';
+    modal.innerHTML = `
+      <div class="glass-card w-full max-w-md p-6 shadow-2xl animate-slideUp bg-slate-900 border border-white/10">
+        <h2 class="text-lg font-bold text-white mb-1"><i class="fas fa-swords text-rose-500 mr-2"></i> Retar a ${s(name)}</h2>
+        <p class="text-xs text-slate-400 mb-4">${this.isOnline(id) ? '🟢 Está conectado ahora' : 'Le llega cuando entre'} · apuesta 10 💎</p>
+        <div class="ga-quick-row">${Object.entries(this.GAMES).map(([key, g]) =>
+          `<button class="ga-quick-btn" data-game="${key}"><i class="fas ${g.icon}"></i><span>${g.label}</span></button>`).join('')}</div>
+        <button class="w-full mt-4 py-2 text-xs font-bold text-slate-400" data-close>Cancelar</button>
+      </div>`;
+    document.body.appendChild(modal);
+    modal.querySelector('[data-close]').onclick = () => modal.remove();
+    modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+    modal.querySelectorAll('[data-game]').forEach(btn => btn.onclick = async () => {
+      modal.remove();
+      const game = btn.dataset.game;
+      const ok = await this.createChallenge(game, { opponentId: id, wager: 10 });
+      if (ok) window.showToast(`<i class="fas fa-bolt"></i> ¡Retaste a ${s(name)} a ${this.GAMES[game].label}!`, 'success');
+    });
   },
 
   // Historial cara a cara contra cada rival (sumando los 5 juegos).

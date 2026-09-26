@@ -59,6 +59,8 @@ const ActivityTracker = {
         const user = window.currentUser;
         if (typeof window._supabase === 'undefined' || !user) return;
         if (!this.isReallyActive()) return;
+        // Punto verde de "conectado" para los retos 1v1 (idempotente).
+        window.GameArena?.syncPresence?.();
 
         try {
             const { error } = await window._supabase.rpc('record_active_heartbeat');

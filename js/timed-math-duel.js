@@ -152,8 +152,8 @@ window.openCreateTimedMathModal = async function openCreateTimedMathModal() {
       <div class="space-y-4">
         <div>
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Rival</label>
-          <select id="timed-math-opponent" class="input-field-tw h-11 text-sm">
-            ${classmates.map(c => `<option value="${c.id}">${window.sanitizeInput(c.full_name)}</option>`).join('')}
+          <select id="timed-math-opponent" data-ga-opponents class="input-field-tw h-11 text-sm">
+            ${window.GameArena.opponentOptionsHtml(classmates)}
           </select>
         </div>
         <div>
