@@ -9,7 +9,7 @@ const BLOCK_COLORS = ['bg-indigo-600', 'bg-emerald-600', 'bg-amber-600', 'bg-ros
 
 window.loadDebugSection = async function loadDebugSection() {
   const { data, error } = await window._supabase.from('student_debug_duels')
-    .select('id, challenger_id, opponent_id, wager_gems, topic, status, winner_id, created_at, resolved_at, challenger:students!challenger_id(full_name), opponent:students!opponent_id(full_name)')
+    .select(`id, challenger_id, opponent_id, wager_gems, topic, status, winner_id, created_at, resolved_at, challenger:students!challenger_id(${window.GameArena.STUDENT_JOIN}), opponent:students!opponent_id(${window.GameArena.STUDENT_JOIN})`)
     .or(`challenger_id.eq.${window.currentUser.id},opponent_id.eq.${window.currentUser.id}`)
     .order('created_at', { ascending: false })
     .limit(10);
@@ -42,15 +42,14 @@ window.renderDebugSection = function renderDebugSection() {
   const duels = window._debugDuelsCache || [];
   const sanitizeInput = window.sanitizeInput || ((v) => v);
 
-  const createBtnHtml = `
-    <div class="glass-card p-6 text-center border-dashed border-2 border-white/10 bg-transparent hover:border-white/20 transition-all cursor-pointer group mb-4" onclick="window.openCreateDebugModal()">
-        <div class="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
-            <i class="fas fa-plus text-lg text-white/40 group-hover:text-white/70 transition-colors"></i>
-        </div>
-        <p class="text-xs font-black text-white uppercase tracking-widest">Crear "Encontrá el Error" 1v1</p>
-        <p class="text-[0.6rem] font-bold text-slate-500 mt-1">Bloques de programación -- gana quien encuentra el error primero</p>
-    </div>
-  `;
+  const createBtnHtml = window.GameArena.heroHtml({
+    title: 'Encontrá el Error 1v1',
+    subtitle: 'Un programa en bloques tiene un error. Gana quien lo encuentra primero.',
+    icon: 'fa-bug',
+    c1: '#059669',
+    c2: '#0284c7',
+    onclick: 'window.openCreateDebugModal()',
+  });
 
   if (!duels.length) {
     container.innerHTML = createBtnHtml;
@@ -95,7 +94,8 @@ window.renderDebugSection = function renderDebugSection() {
 
     return `
       <div class="glass-card p-4 flex items-center justify-between gap-3 bg-white/5 border-white/5">
-        <div class="min-w-0">
+        ${window.GameArena.rivalMiniHtml(d)}
+        <div class="min-w-0 flex-1">
           <div class="text-xs font-bold text-white truncate">vs ${sanitizeInput(opponentName)}</div>
           <div class="text-[0.6rem] text-slate-500 truncate">${sanitizeInput(d.topic)}</div>
           ${statusHtml}
@@ -254,10 +254,14 @@ window.respondDebugDuel = async function respondDebugDuel(duelId, accept) {
 };
 
 window.openDebugGame = async function openDebugGame(duelId) {
+  const duel = (window._debugDuelsCache || []).find(d => d.id === duelId);
+  // VS antes de start_debug_duel -- el reloj del servidor arranca después.
+  await window.GameArena.versus({ title: 'Encontrá el Error 1v1', ...(await window.GameArena.fightersFor(duel)) });
+
   const { data, error } = await window._supabase.rpc('start_debug_duel', { p_duel_id: duelId });
   if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
 
-  window._activeDebug = { duelId, labels: data.labels || [] };
+  window._activeDebug = { duelId, labels: data.labels || [], topic: duel?.topic || '' };
   window.renderDebugGame();
 };
 
@@ -265,47 +269,74 @@ window.renderDebugGame = function renderDebugGame() {
   const state = window._activeDebug;
   if (!state) return;
   const sanitizeInput = window.sanitizeInput || ((v) => v);
+  window.GameArena.ensureStyles();
 
   document.getElementById('debug-game-modal')?.remove();
   const modal = document.createElement('div');
   modal.id = 'debug-game-modal';
-  modal.className = 'fixed inset-0 z-[220] flex items-center justify-center p-6 bg-slate-950/95 backdrop-blur-md animate-fadeIn';
+  modal.className = 'ga-overlay';
   modal.innerHTML = `
-    <div class="glass-card w-full max-w-md p-6 shadow-2xl animate-slideUp bg-slate-900 border border-white/10">
-      <h3 class="text-sm font-black text-white uppercase tracking-widest mb-1 text-center"><i class="fas fa-bug text-rose-500"></i> Encontrá el bloque con el error</h3>
-      <p class="text-[0.65rem] text-slate-400 text-center mb-5">Tocá el bloque que está mal</p>
-      <div class="space-y-2">
+    <div class="ga-panel"><div class="ga-card" id="debug-card">
+      <div class="ga-topbar">
+        <span class="ga-chip"><i class="fas fa-bug"></i> Encontrá el Error</span>
+        <span class="ga-clock" id="debug-clock">0.0s</span>
+      </div>
+      <p style="font-size:.95rem;font-weight:800;margin-bottom:.25rem">¿Qué bloque está mal?</p>
+      <p style="font-size:.7rem;color:#94a3b8;margin-bottom:1rem">${sanitizeInput(state.topic)} · Una sola oportunidad</p>
+      <div class="space-y-2" style="text-align:left">
         ${state.labels.map((label, i) => `
-          <button class="w-full text-left p-4 rounded-xl ${BLOCK_COLORS[i % BLOCK_COLORS.length]} text-white text-sm font-bold shadow-lg hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-3" onclick="window.selectDebugBlock(${i})">
+          <button id="debug-block-${i}" class="debug-block w-full text-left p-4 rounded-xl ${BLOCK_COLORS[i % BLOCK_COLORS.length]} text-white text-sm font-bold shadow-lg hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-3" onclick="window.selectDebugBlock(${i})">
             <span class="w-6 h-6 rounded-full bg-black/20 flex items-center justify-center text-[0.65rem] shrink-0">${i + 1}</span>
             ${sanitizeInput(label)}
           </button>
         `).join('')}
       </div>
-    </div>
+    </div></div>
   `;
   document.body.appendChild(modal);
+  state.stopClock = window.GameArena.startStopwatch(document.getElementById('debug-clock'));
 };
 
 window.selectDebugBlock = async function selectDebugBlock(index) {
   const state = window._activeDebug;
-  if (!state) return;
-  document.getElementById('debug-game-modal')?.remove();
-  window._activeDebug = null;
+  if (!state || state.busy) return;
+  state.busy = true;
+  if (state.stopClock) state.stopClock();
+  document.querySelectorAll('.debug-block').forEach(b => { b.disabled = true; });
 
   const { data: result, error } = await window._supabase.rpc('submit_debug_result', {
     p_duel_id: state.duelId,
     p_selected_index: index,
   });
-  if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
+  window._activeDebug = null;
+  if (error) {
+    document.getElementById('debug-game-modal')?.remove();
+    return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
+  }
 
   window._myDebugPlayed = window._myDebugPlayed || new Set();
   window._myDebugPlayed.add(state.duelId);
 
-  window.showToast(result.correct
-    ? `<i class="fas fa-circle-check"></i> ¡Encontraste el error! Esperá a que tu rival termine.`
-    : `<i class="fas fa-circle-xmark"></i> No era ese (era el bloque ${result.bug_index + 1}: ${result.explanation}). Esperá a que tu rival termine.`,
-    result.correct ? 'success' : 'info');
+  // Marca el elegido y el correcto antes de pasar al resultado.
+  document.querySelectorAll('.debug-block').forEach((b, i) => {
+    if (i === result.bug_index) b.style.outline = '4px solid #4ade80';
+    else if (i === index) b.style.outline = '4px solid #f43f5e';
+    else b.style.opacity = '.35';
+  });
+  window.GameArena.feedback(document.getElementById('debug-card'), result.correct);
+  await new Promise(r => setTimeout(r, 1200));
+  document.getElementById('debug-game-modal')?.remove();
+
+  const s = window.sanitizeInput || ((v) => v);
+  await window.GameArena.result({
+    ok: result.correct,
+    title: result.correct ? '¡Bug encontrado!' : 'Se te escapó',
+    subtitle: result.correct
+      ? 'Cuando tu rival juegue, se define quién ganó.'
+      : `El error estaba en el bloque ${result.bug_index + 1}:`,
+    detailHtml: `<div style="font-size:.85rem;color:#e2e8f0;background:rgba(255,255,255,.06);border-radius:.8rem;padding:.75rem;text-align:left">
+      <i class="fas fa-lightbulb" style="color:#facc15"></i> ${s(result.explanation || '')}</div>`,
+  });
   window.loadDebugSection();
 };
 

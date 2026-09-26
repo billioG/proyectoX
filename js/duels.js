@@ -10,7 +10,7 @@ window.loadDuelsSection = async function loadDuelsSection() {
   const currentUser = window.currentUser;
 
   const { data: duels } = await _supabase.from('student_duels')
-    .select('id, challenger_id, opponent_id, wager_gems, topic, question_count, status, winner_id, created_at, resolved_at, challenger:students!challenger_id(full_name), opponent:students!opponent_id(full_name)')
+    .select(`id, challenger_id, opponent_id, wager_gems, topic, question_count, status, winner_id, created_at, resolved_at, challenger:students!challenger_id(${window.GameArena.STUDENT_JOIN}), opponent:students!opponent_id(${window.GameArena.STUDENT_JOIN})`)
     .or(`challenger_id.eq.${currentUser.id},opponent_id.eq.${currentUser.id}`)
     .order('created_at', { ascending: false })
     .limit(10);
@@ -160,15 +160,14 @@ window.renderDuelsSection = function renderDuelsSection() {
   const duels = window._duelsCache || [];
   const sanitizeInput = window.sanitizeInput || ((v) => v);
 
-  const createBtnHtml = `
-    <div class="glass-card p-6 text-center border-dashed border-2 border-white/10 bg-transparent hover:border-white/20 transition-all cursor-pointer group mb-4" onclick="window.openCreateDuelModal()">
-        <div class="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
-            <i class="fas fa-plus text-lg text-white/40 group-hover:text-white/70 transition-colors"></i>
-        </div>
-        <p class="text-xs font-black text-white uppercase tracking-widest">Crear Desafío 1v1</p>
-        <p class="text-[0.6rem] font-bold text-slate-500 mt-1">Apuesta gemas y gana XP extra</p>
-    </div>
-  `;
+  const createBtnHtml = window.GameArena.heroHtml({
+    title: 'Desafío de Código 1v1',
+    subtitle: 'Quiz de preguntas sobre el tema que elijas. Gana quien acierta más.',
+    icon: 'fa-code',
+    c1: '#2563eb',
+    c2: '#9333ea',
+    onclick: 'window.openCreateDuelModal()',
+  });
 
   if (!duels.length) {
     container.innerHTML = createBtnHtml;
@@ -213,7 +212,8 @@ window.renderDuelsSection = function renderDuelsSection() {
 
     return `
       <div class="glass-card p-4 flex items-center justify-between gap-3 bg-white/5 border-white/5">
-        <div class="min-w-0">
+        ${window.GameArena.rivalMiniHtml(d)}
+        <div class="min-w-0 flex-1">
           <div class="text-xs font-bold text-white truncate">vs ${sanitizeInput(opponentName)}</div>
           <div class="text-[0.6rem] text-slate-500 truncate">${sanitizeInput(d.topic)}</div>
           ${statusHtml}
@@ -469,66 +469,96 @@ window.openDuelQuiz = async function openDuelQuiz(duelId) {
   if (qErr || !questions?.length) return window.showToast('<i class="fas fa-circle-xmark"></i> No se pudo cargar el quiz', 'error');
 
   duel.questions = questions;
+
+  const cached = (window._duelsCache || []).find(d => d.id === duelId);
+  await window.GameArena.versus({ title: 'Desafío de Código 1v1', ...(await window.GameArena.fightersFor(cached || duel)) });
+
   window._activeDuel = { duel, index: 0, selections: [] };
-
-  if (typeof window.loadMyCompanion === 'function') {
-    window.ensureCompanionStyles();
-    await window.loadMyCompanion();
-  }
-
   window.renderDuelQuizQuestion();
 }
+
+// Colores y formas por opción (estilo Kahoot) -- se reconoce la respuesta
+// de un vistazo sin leer todo de nuevo.
+const DUEL_OPTION_STYLES = [
+  { bg: '#e11d48', shadow: '#9f1239', icon: '▲' },
+  { bg: '#2563eb', shadow: '#1e3a8a', icon: '◆' },
+  { bg: '#d97706', shadow: '#92400e', icon: '●' },
+  { bg: '#059669', shadow: '#065f46', icon: '■' },
+];
 
 window.renderDuelQuizQuestion = function renderDuelQuizQuestion() {
   const state = window._activeDuel;
   if (!state) return;
-  const { duel, index } = state;
-  const q = duel.questions[index];
+  window.GameArena.ensureStyles();
   const sanitizeInput = window.sanitizeInput || ((v) => v);
 
-  document.getElementById('duel-quiz-modal')?.remove();
-  const modal = document.createElement('div');
-  modal.id = 'duel-quiz-modal';
-  modal.className = 'fixed inset-0 z-[220] flex items-center justify-center p-6 bg-slate-950/95 backdrop-blur-md animate-fadeIn';
-  modal.innerHTML = `
-    <div class="glass-card w-full max-w-lg p-8 shadow-2xl animate-slideUp bg-slate-900 border border-white/10">
-      <div class="flex justify-between items-center mb-4">
-        <span class="text-[0.6rem] font-black uppercase text-slate-400 tracking-widest">Pregunta ${index + 1} / ${duel.questions.length}</span>
-        <span class="text-[0.6rem] font-black uppercase text-primary">${duel.topic}</span>
-      </div>
-      ${typeof window.renderCompanionSvg === 'function' ? `<div class="w-16 h-16 mx-auto mb-4">${window.renderCompanionSvg(window._myCompanionStageIndex || 0)}</div>` : ''}
-      <h3 class="text-lg font-bold text-white mb-6">${sanitizeInput(q.question)}</h3>
-      <div class="space-y-3">
-        ${q.options.map((opt, i) => `
-          <button class="w-full text-left p-4 rounded-xl bg-white/5 hover:bg-primary/20 border border-white/10 hover:border-primary/40 text-sm text-white transition-all" onclick="window.selectDuelAnswer(${i})">
-            ${sanitizeInput(opt)}
-          </button>
-        `).join('')}
-      </div>
-    </div>
-  `;
-  document.body.appendChild(modal);
+  if (!document.getElementById('duel-quiz-modal')) {
+    const modal = document.createElement('div');
+    modal.id = 'duel-quiz-modal';
+    modal.className = 'ga-overlay';
+    modal.innerHTML = `
+      <div class="ga-panel"><div class="ga-card" id="duel-quiz-card">
+        <div class="ga-topbar">
+          <span class="ga-chip"><i class="fas fa-code"></i> ${sanitizeInput(state.duel.topic)}</span>
+          <span class="ga-clock" id="duel-quiz-clock">0.0s</span>
+        </div>
+        <div id="duel-quiz-dots" style="display:flex;gap:.3rem;justify-content:center;margin-bottom:1rem"></div>
+        <div id="duel-quiz-body"></div>
+      </div></div>`;
+    document.body.appendChild(modal);
+    state.stopClock = window.GameArena.startStopwatch(document.getElementById('duel-quiz-clock'));
+  }
+
+  const { duel, index } = state;
+  const q = duel.questions[index];
+  document.getElementById('duel-quiz-dots').innerHTML = duel.questions.map((_, i) =>
+    `<span style="width:.55rem;height:.55rem;border-radius:9999px;background:${i < index ? '#818cf8' : i === index ? '#facc15' : 'rgba(255,255,255,.15)'}"></span>`).join('');
+  const body = document.getElementById('duel-quiz-body');
+  body.innerHTML = `
+    <p style="font-size:.65rem;font-weight:900;letter-spacing:.2em;text-transform:uppercase;color:#a5b4fc;margin-bottom:.4rem">Pregunta ${index + 1} de ${duel.questions.length}</p>
+    <h3 style="font-size:1.1rem;font-weight:800;line-height:1.4;margin-bottom:1.25rem">${sanitizeInput(q.question)}</h3>
+    <div style="display:grid;gap:.6rem;text-align:left">
+      ${q.options.map((opt, i) => {
+        const st = DUEL_OPTION_STYLES[i % DUEL_OPTION_STYLES.length];
+        return `<button class="duel-opt" style="display:flex;align-items:center;gap:.75rem;width:100%;padding:.9rem 1rem;border:0;border-radius:1rem;cursor:pointer;
+          background:${st.bg};box-shadow:0 5px 0 ${st.shadow};color:#fff;font-weight:800;font-size:.9rem;transition:transform .1s"
+          onclick="window.selectDuelAnswer(${i}, this)">
+          <span style="font-size:1.1rem;opacity:.85">${st.icon}</span><span>${sanitizeInput(opt)}</span></button>`;
+      }).join('')}
+    </div>`;
+  body.style.animation = 'none';
+  void body.offsetWidth;
+  body.style.animation = 'ga-rise .3s cubic-bezier(.2,1.2,.4,1)';
 }
 
-window.selectDuelAnswer = function selectDuelAnswer(optionIndex) {
+window.selectDuelAnswer = function selectDuelAnswer(optionIndex, btn) {
   const state = window._activeDuel;
-  if (!state) return;
+  if (!state || state.busy) return;
+  state.busy = true;
   state.selections.push(optionIndex);
-  state.index++;
 
-  if (state.index < state.duel.questions.length) {
-    window.renderDuelQuizQuestion();
-  } else {
-    window.submitDuelAnswers();
-  }
+  // El acierto recién lo sabe el servidor al final -- acá solo se confirma
+  // visualmente la elección y se pasa a la siguiente.
+  document.querySelectorAll('.duel-opt').forEach(b => { if (b !== btn) b.style.opacity = '.3'; });
+  if (btn) btn.style.transform = 'scale(1.03)';
+  if (navigator.vibrate) navigator.vibrate(25);
+
+  setTimeout(() => {
+    state.busy = false;
+    state.index++;
+    if (state.index < state.duel.questions.length) {
+      window.renderDuelQuizQuestion();
+    } else {
+      window.submitDuelAnswers();
+    }
+  }, 350);
 }
 
 window.submitDuelAnswers = async function submitDuelAnswers() {
   const state = window._activeDuel;
   if (!state) return;
   const { duel, selections } = state;
-
-  document.getElementById('duel-quiz-modal')?.remove();
+  if (state.stopClock) state.stopClock();
 
   // El score se calcula EN SERVIDOR (RPC) comparando contra el correctIndex
   // real -- el cliente nunca lo tuvo, así que no puede falsificar el score.
@@ -538,9 +568,17 @@ window.submitDuelAnswers = async function submitDuelAnswers() {
   });
 
   window._activeDuel = null;
+  document.getElementById('duel-quiz-modal')?.remove();
 
   if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
 
-  window.showToast(`<i class="fas fa-circle-check"></i> ¡Respondiste! ${score}/${duel.questions.length} correctas. Esperá a que tu rival termine.`, 'success');
+  const total = duel.questions.length;
+  const good = score >= Math.ceil(total / 2);
+  await window.GameArena.result({
+    ok: good,
+    title: score === total ? '¡Perfecto!' : good ? '¡Bien hecho!' : 'Seguí practicando',
+    subtitle: 'Cuando tu rival juegue, se define quién ganó. Después podés revisar tus respuestas.',
+    detailHtml: `<div style="font-size:2.4rem;font-weight:900;margin:.25rem 0">${score}<span style="font-size:1.2rem;color:#94a3b8"> / ${total}</span></div>`,
+  });
   window.loadDuelsSection();
 }

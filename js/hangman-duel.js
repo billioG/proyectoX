@@ -36,7 +36,7 @@ window.loadHangmanSection = async function loadHangmanSection() {
   // vedada por RLS, ver migrations/student-hangman-duels.sql) -- por eso
   // el select pide columnas puntuales en vez de "*".
   const { data, error } = await window._supabase.from('student_hangman_duels')
-    .select('id, challenger_id, opponent_id, wager_gems, topic, status, winner_id, created_at, resolved_at, challenger:students!challenger_id(full_name), opponent:students!opponent_id(full_name)')
+    .select(`id, challenger_id, opponent_id, wager_gems, topic, status, winner_id, created_at, resolved_at, challenger:students!challenger_id(${window.GameArena.STUDENT_JOIN}), opponent:students!opponent_id(${window.GameArena.STUDENT_JOIN})`)
     .or(`challenger_id.eq.${window.currentUser.id},opponent_id.eq.${window.currentUser.id}`)
     .order('created_at', { ascending: false })
     .limit(10);
@@ -69,15 +69,14 @@ window.renderHangmanSection = function renderHangmanSection() {
   const duels = window._hangmanDuelsCache || [];
   const sanitizeInput = window.sanitizeInput || ((v) => v);
 
-  const createBtnHtml = `
-    <div class="glass-card p-6 text-center border-dashed border-2 border-white/10 bg-transparent hover:border-white/20 transition-all cursor-pointer group mb-4" onclick="window.openCreateHangmanModal()">
-        <div class="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
-            <i class="fas fa-plus text-lg text-white/40 group-hover:text-white/70 transition-colors"></i>
-        </div>
-        <p class="text-xs font-black text-white uppercase tracking-widest">Crear Ahorcado 1v1</p>
-        <p class="text-[0.6rem] font-bold text-slate-500 mt-1">Apuesta gemas -- gana quien adivina más rápido</p>
-    </div>
-  `;
+  const createBtnHtml = window.GameArena.heroHtml({
+    title: 'Ahorcado 1v1',
+    subtitle: 'Adiviná la palabra letra por letra antes de quedarte sin vidas. Gana el más rápido.',
+    icon: 'fa-spider',
+    c1: '#e11d48',
+    c2: '#7c3aed',
+    onclick: 'window.openCreateHangmanModal()',
+  });
 
   if (!duels.length) {
     container.innerHTML = createBtnHtml;
@@ -122,7 +121,8 @@ window.renderHangmanSection = function renderHangmanSection() {
 
     return `
       <div class="glass-card p-4 flex items-center justify-between gap-3 bg-white/5 border-white/5">
-        <div class="min-w-0">
+        ${window.GameArena.rivalMiniHtml(d)}
+        <div class="min-w-0 flex-1">
           <div class="text-xs font-bold text-white truncate">vs ${sanitizeInput(opponentName)}</div>
           <div class="text-[0.6rem] text-slate-500 truncate">${sanitizeInput(d.topic)}</div>
           ${statusHtml}
@@ -283,50 +283,66 @@ window.respondHangmanDuel = async function respondHangmanDuel(duelId, accept) {
 };
 
 window.openHangmanGame = async function openHangmanGame(duelId) {
+  const duel = (window._hangmanDuelsCache || []).find(d => d.id === duelId);
+  // VS antes de start_hangman_duel -- el reloj del servidor arranca después.
+  await window.GameArena.versus({ title: 'Ahorcado 1v1', ...(await window.GameArena.fightersFor(duel)) });
+
   const { data, error } = await window._supabase.rpc('start_hangman_duel', { p_duel_id: duelId });
   if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
 
-  window._activeHangman = { duelId, hint: data.hint, wordLength: data.wordLength, guessed: [], wrong: 0, revealed: {} };
+  window._activeHangman = { duelId, hint: data.hint, wordLength: data.wordLength, guessed: [], hits: new Set(), wrong: 0, revealed: {}, busy: false };
   window.renderHangmanGame();
 };
 
-// justWrong dispara un sacudido + flash rojo de feedback inmediato -- antes
-// un error solo cambiaba un número de texto, sin ninguna señal visual.
-window.renderHangmanGame = function renderHangmanGame(justWrong = false) {
+// Se arma una sola vez; cada jugada solo actualiza las partes (antes se
+// reconstruía el modal entero y se reiniciaban animaciones y reloj).
+window.renderHangmanGame = function renderHangmanGame() {
   const state = window._activeHangman;
   if (!state) return;
   const sanitizeInput = window.sanitizeInput || ((v) => v);
+  window.GameArena.ensureStyles();
 
   document.getElementById('hangman-game-modal')?.remove();
   const modal = document.createElement('div');
   modal.id = 'hangman-game-modal';
-  modal.className = 'fixed inset-0 z-[220] flex items-center justify-center p-6 bg-slate-950/95 backdrop-blur-md animate-fadeIn';
+  modal.className = 'ga-overlay';
   modal.innerHTML = `
-    <style>
-      @keyframes hangman-shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)} 40%{transform:translateX(8px)} 60%{transform:translateX(-6px)} 80%{transform:translateX(6px)} }
-      .hangman-shake { animation: hangman-shake 0.4s ease-in-out; }
-    </style>
-    <div class="glass-card w-full max-w-lg p-8 shadow-2xl animate-slideUp bg-slate-900 border ${justWrong ? 'border-rose-500 hangman-shake' : 'border-white/10'} text-center transition-colors">
-      <div class="flex justify-between items-center mb-4">
-        <span class="text-[0.6rem] font-black uppercase ${justWrong ? 'text-rose-400' : 'text-slate-400'} tracking-widest">Errores: ${state.wrong} / ${MAX_WRONG_GUESSES}</span>
-        <span class="text-[0.6rem] font-black uppercase text-primary">Ahorcado</span>
+    <div class="ga-panel"><div class="ga-card" id="hangman-card">
+      <div class="ga-topbar">
+        <span class="ga-chip"><i class="fas fa-spider"></i> Ahorcado</span>
+        <span class="ga-clock" id="hangman-clock">0.0s</span>
       </div>
-      <div id="hangman-figure" class="mx-auto mb-3">${window.renderHangmanFigureSvg(state.wrong)}</div>
-      <p class="text-sm text-slate-300 mb-5 italic">"${sanitizeInput(state.hint)}"</p>
-      <div class="flex justify-center gap-2 flex-wrap mb-6">
-        ${Array.from({ length: state.wordLength }).map((_, i) => `
-          <div class="w-8 h-10 rounded-lg bg-white/5 border-b-4 border-primary flex items-center justify-center text-lg font-black text-white" id="hangman-slot-${i}">${sanitizeInput(state.revealed[i] || '')}</div>
-        `).join('')}
+      <div id="hangman-lives" style="font-size:1.1rem;letter-spacing:.15em;margin-bottom:.25rem"></div>
+      <div id="hangman-figure" style="margin-bottom:.5rem"></div>
+      <p style="font-size:1rem;font-weight:700;line-height:1.4;margin-bottom:1rem">"${sanitizeInput(state.hint)}"</p>
+      <div id="hangman-slots" style="display:flex;justify-content:center;gap:.35rem;flex-wrap:wrap;margin-bottom:1rem"></div>
+      <div class="ga-keys" id="hangman-keys">
+        ${ALPHABET.map(l => `<button type="button" class="ga-key" style="min-width:2.25rem;height:2.4rem;font-size:.9rem" data-letter="${l}" onclick="window.guessHangmanLetter('${l}')">${l}</button>`).join('')}
       </div>
-      <div class="grid grid-cols-7 gap-1.5 max-w-md mx-auto">
-        ${ALPHABET.map(letter => `
-          <button class="h-9 rounded-lg text-xs font-black uppercase transition-all ${state.guessed.includes(letter) ? 'bg-white/5 text-slate-600 cursor-not-allowed' : 'bg-white/10 hover:bg-primary text-white'}"
-            ${state.guessed.includes(letter) ? 'disabled' : ''} onclick="window.guessHangmanLetter('${letter}')">${letter}</button>
-        `).join('')}
-      </div>
-    </div>
+    </div></div>
   `;
   document.body.appendChild(modal);
+  state.stopClock = window.GameArena.startStopwatch(document.getElementById('hangman-clock'));
+  window.updateHangmanGame();
+};
+
+window.updateHangmanGame = function updateHangmanGame() {
+  const state = window._activeHangman;
+  if (!state) return;
+  const s = window.sanitizeInput || ((v) => v);
+  document.getElementById('hangman-figure').innerHTML = window.renderHangmanFigureSvg(state.wrong);
+  document.getElementById('hangman-lives').textContent = '❤️'.repeat(MAX_WRONG_GUESSES - state.wrong) + '🖤'.repeat(state.wrong);
+  document.getElementById('hangman-slots').innerHTML = Array.from({ length: state.wordLength }).map((_, i) => `
+    <div style="width:2.1rem;height:2.6rem;border-radius:.6rem;background:rgba(255,255,255,.06);border-bottom:4px solid ${state.revealed[i] ? '#4ade80' : '#818cf8'};
+      display:flex;align-items:center;justify-content:center;font-size:1.25rem;font-weight:900">${s(state.revealed[i] || '')}</div>`).join('');
+  document.querySelectorAll('#hangman-keys .ga-key').forEach(btn => {
+    const l = btn.dataset.letter;
+    if (!state.guessed.includes(l)) return;
+    btn.disabled = true;
+    btn.style.cursor = 'default';
+    btn.style.background = state.hits.has(l) ? 'rgba(74,222,128,.3)' : 'rgba(244,63,94,.25)';
+    btn.style.color = state.hits.has(l) ? '#bbf7d0' : '#fda4af';
+  });
 };
 
 // La palabra real nunca llegó al cliente -- no se puede saber acá si una
@@ -337,48 +353,58 @@ window.renderHangmanGame = function renderHangmanGame(justWrong = false) {
 // intento va al servidor vía una versión liviana de verificación.
 window.guessHangmanLetter = async function guessHangmanLetter(letter) {
   const state = window._activeHangman;
-  if (!state || state.guessed.includes(letter)) return;
+  if (!state || state.busy || state.guessed.includes(letter)) return;
+  state.busy = true;
 
   const nextGuessed = [...state.guessed, letter];
   const { data, error } = await window._supabase.rpc('check_hangman_letter', {
     p_duel_id: state.duelId, p_letter: letter, p_guessed_letters: nextGuessed,
   });
+  state.busy = false;
   if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
 
   state.guessed = nextGuessed;
   if (data.correct) {
-    // Se guarda en el estado (no solo en el DOM) porque renderHangmanGame()
-    // reconstruye el modal entero en cada jugada -- si solo se pintaba el
-    // <div> viejo, el siguiente render lo volvía a dejar vacío.
+    state.hits.add(letter);
     (data.positions || []).forEach(i => { state.revealed[i] = letter; });
   } else {
     state.wrong++;
   }
+  window.GameArena.feedback(document.getElementById('hangman-card'), data.correct);
+  window.updateHangmanGame();
 
   if (data.solved || state.wrong >= MAX_WRONG_GUESSES) {
     return window.finishHangmanGame();
   }
-  window.renderHangmanGame(!data.correct);
 };
 
 window.finishHangmanGame = async function finishHangmanGame() {
   const state = window._activeHangman;
   if (!state) return;
-  document.getElementById('hangman-game-modal')?.remove();
+  if (state.stopClock) state.stopClock();
 
   const { data: result, error } = await window._supabase.rpc('submit_hangman_result', {
     p_duel_id: state.duelId,
     p_guessed_letters: state.guessed,
   });
   window._activeHangman = null;
+  await new Promise(r => setTimeout(r, 600));
+  document.getElementById('hangman-game-modal')?.remove();
   if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
 
   window._myHangmanPlayed = window._myHangmanPlayed || new Set();
   window._myHangmanPlayed.add(state.duelId);
 
-  window.showToast(result.solved
-    ? `<i class="fas fa-circle-check"></i> ¡La adivinaste! Esperá a que tu rival termine.`
-    : `<i class="fas fa-circle-xmark"></i> No la lograste (era "${result.word}"). Esperá a que tu rival termine.`, result.solved ? 'success' : 'info');
+  const s = window.sanitizeInput || ((v) => v);
+  await window.GameArena.result({
+    ok: result.solved,
+    title: result.solved ? '¡Adivinada!' : '¡Te ahorcaron!',
+    subtitle: result.solved
+      ? 'Cuando tu rival juegue, se define quién ganó.'
+      : 'La palabra era:',
+    detailHtml: `<div style="font-size:1.7rem;font-weight:900;letter-spacing:.12em;margin:.5rem 0">${s(result.word)}</div>
+      <div style="font-size:.8rem;color:#facc15;font-weight:800"><i class="fas fa-stopwatch"></i> ${(result.time_ms / 1000).toFixed(1)}s · ${result.wrong_guesses} error(es)</div>`,
+  });
   window.loadHangmanSection();
 };
 

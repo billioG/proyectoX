@@ -8,7 +8,7 @@
 
 window.loadSpellingSection = async function loadSpellingSection() {
   const { data, error } = await window._supabase.from('student_spelling_duels')
-    .select('id, challenger_id, opponent_id, wager_gems, topic, status, winner_id, created_at, resolved_at, challenger:students!challenger_id(full_name, profile_photo_url, companion_species, gems_earned_total, companion_equipped), opponent:students!opponent_id(full_name, profile_photo_url, companion_species, gems_earned_total, companion_equipped)')
+    .select(`id, challenger_id, opponent_id, wager_gems, topic, status, winner_id, created_at, resolved_at, challenger:students!challenger_id(${window.GameArena.STUDENT_JOIN}), opponent:students!opponent_id(${window.GameArena.STUDENT_JOIN})`)
     .or(`challenger_id.eq.${window.currentUser.id},opponent_id.eq.${window.currentUser.id}`)
     .order('created_at', { ascending: false })
     .limit(10);
@@ -257,24 +257,10 @@ const SPELLING_ACCENT_KEYS = ['á', 'é', 'í', 'ó', 'ú', 'ñ', 'ü'];
 
 window.openSpellingGame = async function openSpellingGame(duelId) {
   const duel = (window._spellingDuelsCache || []).find(d => d.id === duelId);
-  const rival = duel?.challenger_id === window.currentUser.id ? duel?.opponent : duel?.challenger;
 
   // VS + cuenta regresiva ANTES de start_spelling_duel -- el reloj del
   // servidor arranca recién cuando aparece la pista.
-  if (typeof window.loadMyCompanion === 'function' && window._myCompanionSpecies === undefined) await window.loadMyCompanion();
-  const rivalCompanion = rival?.companion_species && typeof window.getCompanionStage === 'function'
-    ? { species: rival.companion_species, stage: window.getCompanionStage(rival.gems_earned_total, rival.companion_species).stageIndex, equipped: rival.companion_equipped }
-    : null;
-  const myCompanion = window._myCompanionSpecies
-    ? { species: window._myCompanionSpecies, stage: window._myCompanionStageIndex || 0, equipped: window._myCompanionEquipped }
-    : null;
-
-  await window.GameArena.versus({
-    title: 'Ortografía 1v1',
-    me: { name: window.userData?.full_name, photo: window.userData?.profile_photo_url, companion: myCompanion },
-    rival: { name: rival?.full_name, photo: rival?.profile_photo_url, companion: rivalCompanion },
-    wager: duel?.wager_gems || 0,
-  });
+  await window.GameArena.versus({ title: 'Ortografía 1v1', ...(await window.GameArena.fightersFor(duel)) });
 
   const { data, error } = await window._supabase.rpc('start_spelling_duel', { p_duel_id: duelId });
   if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');

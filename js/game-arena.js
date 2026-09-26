@@ -122,9 +122,36 @@ window.GameArena = {
       </div>`;
   },
 
+  // Columnas de students para el join de challenger/opponent en cada juego.
+  STUDENT_JOIN: 'full_name, profile_photo_url, companion_species, gems_earned_total, companion_equipped',
+
+  // Jugadores de un duelo listos para versus() (con su mascota si tienen).
+  async fightersFor(duel) {
+    if (typeof window.loadMyCompanion === 'function' && window._myCompanionSpecies === undefined) await window.loadMyCompanion();
+    const rival = duel?.challenger_id === window.currentUser.id ? duel?.opponent : duel?.challenger;
+    const rivalCompanion = rival?.companion_species && typeof window.getCompanionStage === 'function'
+      ? { species: rival.companion_species, stage: window.getCompanionStage(rival.gems_earned_total, rival.companion_species).stageIndex, equipped: rival.companion_equipped }
+      : null;
+    const myCompanion = window._myCompanionSpecies
+      ? { species: window._myCompanionSpecies, stage: window._myCompanionStageIndex || 0, equipped: window._myCompanionEquipped }
+      : null;
+    return {
+      me: { name: window.userData?.full_name, photo: window.userData?.profile_photo_url, companion: myCompanion },
+      rival: { name: rival?.full_name, photo: rival?.profile_photo_url, companion: rivalCompanion },
+      wager: duel?.wager_gems || 0,
+    };
+  },
+
+  // Avatar chico del rival para las tarjetas de la lista.
+  rivalMiniHtml(duel) {
+    const rival = duel.challenger_id === window.currentUser.id ? duel.opponent : duel.challenger;
+    return this.avatarHtml(rival?.full_name, rival?.profile_photo_url, 'ga-mini-avatar');
+  },
+
   // Mascota del jugador en el VS (si tiene); si no, foto/inicial.
   fighterHtml(p) {
     if (p.companion?.species && typeof window.renderCompanionSvg === 'function') {
+      window.ensureCompanionStyles?.();
       const { species, stage, equipped } = p.companion;
       return `<div class="ga-fighter">${window.renderCompanionSvg(stage, 'companion-idle', species, equipped || {})}</div>`;
     }

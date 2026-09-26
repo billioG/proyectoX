@@ -10,7 +10,7 @@ const MATH_TIME_LIMIT_SECONDS = 60;
 
 window.loadTimedMathSection = async function loadTimedMathSection() {
   const { data, error } = await window._supabase.from('student_timed_math_duels')
-    .select('id, challenger_id, opponent_id, wager_gems, problem_count, status, winner_id, created_at, resolved_at, challenger:students!challenger_id(full_name), opponent:students!opponent_id(full_name)')
+    .select(`id, challenger_id, opponent_id, wager_gems, problem_count, status, winner_id, created_at, resolved_at, challenger:students!challenger_id(${window.GameArena.STUDENT_JOIN}), opponent:students!opponent_id(${window.GameArena.STUDENT_JOIN})`)
     .or(`challenger_id.eq.${window.currentUser.id},opponent_id.eq.${window.currentUser.id}`)
     .order('created_at', { ascending: false })
     .limit(10);
@@ -43,15 +43,14 @@ window.renderTimedMathSection = function renderTimedMathSection() {
   const duels = window._timedMathDuelsCache || [];
   const sanitizeInput = window.sanitizeInput || ((v) => v);
 
-  const createBtnHtml = `
-    <div class="glass-card p-6 text-center border-dashed border-2 border-white/10 bg-transparent hover:border-white/20 transition-all cursor-pointer group mb-4" onclick="window.openCreateTimedMathModal()">
-        <div class="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
-            <i class="fas fa-plus text-lg text-white/40 group-hover:text-white/70 transition-colors"></i>
-        </div>
-        <p class="text-xs font-black text-white uppercase tracking-widest">Crear Contrarreloj 1v1</p>
-        <p class="text-[0.6rem] font-bold text-slate-500 mt-1">${MATH_TIME_LIMIT_SECONDS}s para resolver la mayor cantidad posible</p>
-    </div>
-  `;
+  const createBtnHtml = window.GameArena.heroHtml({
+    title: 'Contrarreloj 1v1',
+    subtitle: `${MATH_TIME_LIMIT_SECONDS} segundos, 10 operaciones. Gana quien acierta más.`,
+    icon: 'fa-stopwatch',
+    c1: '#f97316',
+    c2: '#dc2626',
+    onclick: 'window.openCreateTimedMathModal()',
+  });
 
   if (!duels.length) {
     container.innerHTML = createBtnHtml;
@@ -96,7 +95,8 @@ window.renderTimedMathSection = function renderTimedMathSection() {
 
     return `
       <div class="glass-card p-4 flex items-center justify-between gap-3 bg-white/5 border-white/5">
-        <div class="min-w-0">
+        ${window.GameArena.rivalMiniHtml(d)}
+        <div class="min-w-0 flex-1">
           <div class="text-xs font-bold text-white truncate">vs ${sanitizeInput(opponentName)}</div>
           <div class="text-[0.6rem] text-slate-500 truncate">${d.problem_count} operaciones</div>
           ${statusHtml}
@@ -232,6 +232,10 @@ window.respondTimedMathDuel = async function respondTimedMathDuel(duelId, accept
 };
 
 window.openTimedMathGame = async function openTimedMathGame(duelId) {
+  const duel = (window._timedMathDuelsCache || []).find(d => d.id === duelId);
+  // VS antes de start_timed_math_duel -- el reloj del servidor arranca después.
+  await window.GameArena.versus({ title: 'Contrarreloj 1v1', ...(await window.GameArena.fightersFor(duel)) });
+
   const { data, error } = await window._supabase.rpc('start_timed_math_duel', { p_duel_id: duelId });
   if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
 
@@ -248,38 +252,77 @@ window.tickTimedMathClock = function tickTimedMathClock() {
   if (!state) return;
   state.secondsLeft--;
   const el = document.getElementById('timed-math-clock');
+  const bar = document.getElementById('timed-math-bar');
   if (el) el.textContent = `${state.secondsLeft}s`;
+  if (bar) {
+    bar.style.width = `${(state.secondsLeft / MATH_TIME_LIMIT_SECONDS) * 100}%`;
+    if (state.secondsLeft <= 10) bar.style.background = 'linear-gradient(90deg,#ef4444,#f97316)';
+  }
+  if (state.secondsLeft <= 10 && state.secondsLeft > 0 && navigator.vibrate) navigator.vibrate(30);
   if (state.secondsLeft <= 0) {
     window.finishTimedMathGame();
   }
 };
 
+const MATH_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '-', '0', '⌫'];
+
+// Se arma una sola vez; cada operación solo cambia el texto. Teclado
+// numérico propio (inputmode="none"): en celular el teclado del sistema
+// tapaba media pantalla y hacía perder segundos.
 window.renderTimedMathGame = function renderTimedMathGame() {
   const state = window._activeTimedMath;
   if (!state) return;
-  const sanitizeInput = window.sanitizeInput || ((v) => v);
-  const q = state.questions[state.index];
+  window.GameArena.ensureStyles();
 
   document.getElementById('timed-math-modal')?.remove();
   const modal = document.createElement('div');
   modal.id = 'timed-math-modal';
-  modal.className = 'fixed inset-0 z-[220] flex items-center justify-center p-6 bg-slate-950/95 backdrop-blur-md animate-fadeIn';
+  modal.className = 'ga-overlay';
   modal.innerHTML = `
-    <div class="glass-card w-full max-w-md p-8 shadow-2xl animate-slideUp bg-slate-900 border border-white/10 text-center">
-      <div class="flex justify-between items-center mb-4">
-        <span class="text-[0.6rem] font-black uppercase text-slate-400 tracking-widest">Operación ${state.index + 1} / ${state.questions.length}</span>
-        <span id="timed-math-clock" class="text-sm font-black text-rose-400"><i class="fas fa-stopwatch"></i> ${state.secondsLeft}s</span>
+    <div class="ga-panel"><div class="ga-card" id="timed-math-card">
+      <div class="ga-topbar">
+        <span class="ga-chip" id="timed-math-progress"></span>
+        <span class="ga-clock" id="timed-math-clock">${state.secondsLeft}s</span>
       </div>
-      <h3 class="text-3xl font-black text-white mb-6">${sanitizeInput(String(q))}</h3>
-      <input type="number" id="timed-math-answer-input" class="input-field-tw h-14 text-2xl text-center font-black mb-4" placeholder="?" autofocus
+      <div style="height:.6rem;border-radius:9999px;background:rgba(255,255,255,.1);overflow:hidden;margin-bottom:1.5rem">
+        <div id="timed-math-bar" style="height:100%;width:100%;border-radius:9999px;background:linear-gradient(90deg,#facc15,#22c55e);transition:width 1s linear"></div>
+      </div>
+      <div id="timed-math-question" style="font-size:2.6rem;font-weight:900;margin-bottom:1rem"></div>
+      <input type="text" inputmode="none" id="timed-math-answer-input" class="ga-input" placeholder="?" autocomplete="off"
         onkeydown="if(event.key==='Enter') window.submitTimedMathAnswer()">
-      <button class="btn-primary-tw w-full h-12 text-xs uppercase font-bold" onclick="window.submitTimedMathAnswer()">
-        ${state.index + 1 < state.questions.length ? 'Siguiente' : 'Terminar'} <i class="fas fa-arrow-right"></i>
-      </button>
-    </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.45rem;margin:.9rem 0">
+        ${MATH_KEYS.map(k => `<button type="button" class="ga-key" style="height:3rem;font-size:1.3rem" onmousedown="event.preventDefault()" onclick="window.pressTimedMathKey('${k}')">${k}</button>`).join('')}
+      </div>
+      <button class="ga-btn" id="timed-math-next" onclick="window.submitTimedMathAnswer()"></button>
+    </div></div>
   `;
   document.body.appendChild(modal);
-  document.getElementById('timed-math-answer-input')?.focus();
+  window.updateTimedMathQuestion();
+};
+
+window.updateTimedMathQuestion = function updateTimedMathQuestion() {
+  const state = window._activeTimedMath;
+  if (!state) return;
+  const q = document.getElementById('timed-math-question');
+  q.textContent = String(state.questions[state.index]);
+  q.style.animation = 'none';
+  void q.offsetWidth;
+  q.style.animation = 'ga-pop .35s cubic-bezier(.2,1.6,.4,1)';
+  document.getElementById('timed-math-progress').innerHTML = `<i class="fas fa-calculator"></i> ${state.index + 1} / ${state.questions.length}`;
+  document.getElementById('timed-math-next').innerHTML = state.index + 1 < state.questions.length
+    ? 'Siguiente <i class="fas fa-arrow-right"></i>'
+    : '<i class="fas fa-flag-checkered"></i> Terminar';
+  const input = document.getElementById('timed-math-answer-input');
+  input.value = '';
+  input.focus();
+};
+
+window.pressTimedMathKey = function pressTimedMathKey(k) {
+  const input = document.getElementById('timed-math-answer-input');
+  if (!input) return;
+  if (k === '⌫') input.value = input.value.slice(0, -1);
+  else if (k === '-') input.value = input.value.startsWith('-') ? input.value.slice(1) : '-' + input.value;
+  else if (input.value.length < 8) input.value += k;
 };
 
 window.submitTimedMathAnswer = function submitTimedMathAnswer() {
@@ -290,7 +333,7 @@ window.submitTimedMathAnswer = function submitTimedMathAnswer() {
   state.index++;
 
   if (state.index < state.questions.length) {
-    window.renderTimedMathGame();
+    window.updateTimedMathQuestion();
   } else {
     window.finishTimedMathGame();
   }
@@ -300,7 +343,6 @@ window.finishTimedMathGame = async function finishTimedMathGame() {
   const state = window._activeTimedMath;
   if (!state) return;
   clearInterval(state.timerId);
-  document.getElementById('timed-math-modal')?.remove();
   window._activeTimedMath = null;
 
   // Si se acabó el tiempo antes de responder todas, las que faltan quedan
@@ -309,12 +351,20 @@ window.finishTimedMathGame = async function finishTimedMathGame() {
     p_duel_id: state.duelId,
     p_answers: state.answers,
   });
+  document.getElementById('timed-math-modal')?.remove();
   if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
 
   window._myTimedMathPlayed = window._myTimedMathPlayed || new Set();
   window._myTimedMathPlayed.add(state.duelId);
 
-  window.showToast(`<i class="fas fa-circle-check"></i> ${result.score}/${result.total} correctas en ${(result.time_ms / 1000).toFixed(1)}s. Esperá a que tu rival termine.`, 'success');
+  const good = result.score >= Math.ceil(result.total / 2);
+  await window.GameArena.result({
+    ok: good,
+    title: result.score === result.total ? '¡Perfecto!' : good ? '¡Bien hecho!' : 'Seguí practicando',
+    subtitle: 'Cuando tu rival juegue, se define quién ganó.',
+    detailHtml: `<div style="font-size:2.4rem;font-weight:900;margin:.25rem 0">${result.score}<span style="font-size:1.2rem;color:#94a3b8"> / ${result.total}</span></div>
+      <div style="font-size:.8rem;color:#facc15;font-weight:800"><i class="fas fa-stopwatch"></i> ${(result.time_ms / 1000).toFixed(1)}s</div>`,
+  });
   window.loadTimedMathSection();
 };
 
