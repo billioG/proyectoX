@@ -372,6 +372,9 @@ window.isAllowedContentHost = function isAllowedContentHost(url) {
 // visible aunque ya hubieras jugado.
 window.hydratePlayedSet = async function hydratePlayedSet(resultsTable, duels, setName) {
   window[setName] = window[setName] || new Set();
+  // Cada recarga de una sección de juego puede venir de un duelo que se
+  // acaba de cerrar en el servidor: pone al día las gemas en pantalla.
+  window.refreshMyWalletSoon?.();
   const activeIds = (duels || []).filter(d => d.status === 'active').map(d => d.id);
   if (!activeIds.length || !window.currentUser) return;
   const { data, error } = await window._supabase.rpc('get_my_played_duel_ids', { p_ids: activeIds });

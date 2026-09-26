@@ -657,7 +657,7 @@ window.renderWardrobe = function renderWardrobe() {
   card.innerHTML = `
     <div class="ga-topbar">
       <span class="ga-chip"><i class="fas fa-shirt"></i> Vestidor</span>
-      <span class="ga-chip" style="color:#67e8f9"><i class="fas fa-gem"></i> ${window.userData?.gems ?? 0}</span>
+      <span class="ga-chip" style="color:#67e8f9"><i class="fas fa-gem"></i> <span data-my-gems>${window.userData?.gems ?? 0}</span></span>
     </div>
     <div class="wd-preview">${window.renderCompanionSvg(stage, 'companion-idle', species)}</div>
     <div style="font-weight:900;font-size:1rem">${s(names[stage])}</div>

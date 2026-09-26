@@ -84,9 +84,19 @@ consejo práctico para aprender o recordar este tema.`;
     // to validate JSON") o el content viene truncado/mal formado --
     // intermitente, no depende del tema. Reintentar 1 vez evita que el
     // docente/alumno tenga que volver a intentar a mano.
+    // Variedad: con el mismo tema (ej. el tema de la semana) la IA devolvía
+    // casi siempre la misma palabra. Se le pasan las que ya salieron y, si
+    // igual repite, se reintenta.
+    const { data: recent } = await serviceClientRead.from('student_hangman_duels')
+      .select('word').eq('topic', duel.topic).not('word', 'is', null)
+      .order('created_at', { ascending: false }).limit(60);
+    const used = [...new Set((recent || []).map((r: any) => normalizeWord(String(r.word))))];
+    const userMsg = `Tema: ${String(duel.topic).slice(0, 200)}`
+      + (used.length ? `\nEstas palabras YA salieron, elegí OTRA distinta: ${used.join(', ')}` : '');
+
     let data: any, parsed: any;
     let lastError = 'La IA no generó una respuesta válida';
-    for (let attempt = 1; attempt <= 2; attempt++) {
+    for (let attempt = 1; attempt <= 3; attempt++) {
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -97,13 +107,13 @@ consejo práctico para aprender o recordar este tema.`;
           model: GROQ_MODEL,
           messages: [
             { role: 'system', content: system },
-            { role: 'user', content: `Tema: ${String(duel.topic).slice(0, 200)}` },
+            { role: 'user', content: userMsg },
           ],
           // gpt-oss razona antes de responder y eso cuenta contra el límite --
           // con 300 el JSON salía cortado ("Failed to validate JSON").
           max_tokens: 1500,
           reasoning_effort: 'low',
-          temperature: 0.5,
+          temperature: 0.8,
           response_format: { type: 'json_object' },
         }),
       });
@@ -113,6 +123,7 @@ consejo práctico para aprender o recordar este tema.`;
 
       try {
         parsed = JSON.parse(data.choices?.[0]?.message?.content || '{}');
+        if (attempt < 3 && used.includes(normalizeWord(String(parsed.word || '')))) { parsed = null; continue; }
         break;
       } catch {
         lastError = 'La IA devolvió una respuesta no válida';

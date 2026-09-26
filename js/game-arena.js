@@ -340,6 +340,7 @@ window.GameArena = {
   // notify-duel avisa a los dos (una sola vez); si no, no hace nada.
   notifyResult(game, duelId) {
     if (typeof window.sendDuelPushNotification === 'function') window.sendDuelPushNotification(duelId, 'result', game);
+    window.refreshMyWalletSoon?.();
   },
 
   // Columnas de students para el join de challenger/opponent en cada juego.

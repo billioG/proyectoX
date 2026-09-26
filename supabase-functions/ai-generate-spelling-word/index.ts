@@ -86,6 +86,15 @@ escribí en su lugar la regla ortográfica que ayuda a escribirla bien.`;
     // rechazaba siempre ("Failed to validate JSON"). Razonamiento bajo +
     // más margen. El último intento va sin modo JSON estricto y extrae el
     // objeto del texto, por si el validador de Groq sigue rechazando.
+    // Variedad: con el mismo tema (ej. el tema de la semana) la IA devolvía
+    // casi siempre la misma palabra. Se le pasan las que ya salieron.
+    const { data: recent } = await serviceClientRead.from('student_spelling_duels')
+      .select('word').eq('topic', duel.topic).not('word', 'is', null)
+      .order('created_at', { ascending: false }).limit(60);
+    const used = [...new Set((recent || []).map((r: any) => normalizeWord(String(r.word))))];
+    const userMsg = `Tema: ${String(duel.topic).slice(0, 200)}`
+      + (used.length ? `\nEstas palabras YA salieron, elegí OTRA distinta: ${used.join(', ')}` : '');
+
     for (let attempt = 1; attempt <= 3; attempt++) {
       const strictJson = attempt < 3;
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -98,10 +107,10 @@ escribí en su lugar la regla ortográfica que ayuda a escribirla bien.`;
           model: GROQ_MODEL,
           messages: [
             { role: 'system', content: system },
-            { role: 'user', content: `Tema: ${String(duel.topic).slice(0, 200)}` },
+            { role: 'user', content: userMsg },
           ],
           max_tokens: 1500,
-          temperature: 0.5,
+          temperature: 0.8,
           reasoning_effort: 'low',
           ...(strictJson ? { response_format: { type: 'json_object' } } : {}),
         }),
@@ -114,6 +123,7 @@ escribí en su lugar la regla ortográfica que ayuda a escribirla bien.`;
         const content = data.choices?.[0]?.message?.content || '';
         const match = content.match(/\{[\s\S]*\}/);
         parsed = JSON.parse(match ? match[0] : content);
+        if (attempt < 3 && used.includes(normalizeWord(String(parsed.word || '')))) { parsed = null; continue; }
         break;
       } catch {
         lastError = 'La IA devolvió una respuesta no válida';

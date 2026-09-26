@@ -93,6 +93,18 @@ para aprender o recordar este tema.`;
     // intermitente, no depende del tema. Reintentar 1 vez antes de fallar
     // le ahorra al alumno tener que tocar "generar" de nuevo a mano (que
     // era el único remedio real: la segunda vez casi siempre funciona).
+    // Variedad: con el mismo tema (ej. el tema de la semana) y temperatura
+    // baja salían casi las mismas preguntas en cada duelo. Se le pasan las
+    // que ya salieron y un enfoque al azar.
+    const { data: recent } = await serviceClientRead.from('student_duels')
+      .select('questions').eq('topic', duel.topic).not('questions', 'is', null)
+      .order('created_at', { ascending: false }).limit(8);
+    const usedQs = [...new Set((recent || []).flatMap((r: any) => (r.questions || []).map((q: any) => String(q.question || '').slice(0, 110))))].slice(0, 40);
+    const angles = ['ejemplos de la vida diaria en Guatemala', 'vocabulario y definiciones', 'causas y consecuencias', 'datos y cifras seguras', 'aplicaciones prácticas', 'personajes, inventores o descubrimientos', 'comparaciones y diferencias', 'situaciones para resolver'];
+    const angle = angles[Math.floor(Math.random() * angles.length)];
+    const userMsg = `Tema: ${String(duel.topic).slice(0, 200)}\nEnfoque sugerido para esta ronda: ${angle}.`
+      + (usedQs.length ? `\nEstas preguntas YA salieron en otros duelos, NO las repitas ni las reformules:\n- ${usedQs.join('\n- ')}` : '');
+
     let data: any, parsed: any;
     let lastError = 'La IA no generó una respuesta válida';
     for (let attempt = 1; attempt <= 2; attempt++) {
@@ -106,7 +118,7 @@ para aprender o recordar este tema.`;
           model: GROQ_MODEL,
           messages: [
             { role: 'system', content: system },
-            { role: 'user', content: `Tema: ${String(duel.topic).slice(0, 200)}` },
+            { role: 'user', content: userMsg },
           ],
           max_tokens: 3000,
           reasoning_effort: 'low',

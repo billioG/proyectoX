@@ -74,9 +74,13 @@ window.initGamification = async function initGamification() {
         if (!xpData) return;
         if (typeof window.renderGamificationSidebar === 'function') window.renderGamificationSidebar(xpData.level, xpData.totalXP, xpData.levelProgress, xpData.xpInLevel);
         if (typeof window.checkBadgeCelebrations === 'function') window.checkBadgeCelebrations(xpData.earnedBadges);
-        if (typeof window.checkDailyChest === 'function') window.checkDailyChest();
         if (typeof window.updateDuelPendingBadge === 'function') window.updateDuelPendingBadge();
       });
+      // Fuera del callback: si el cálculo de XP fallaba, el cofre no
+      // aparecía nunca ("al entrar no me dieron las gemas"). Antes de
+      // decidir se lee el estado real (userData puede venir de caché).
+      await window.refreshMyWallet();
+      window.checkDailyChest();
 
     } else if (userRole === 'docente') {
       // Antes solo se actualizaba last_login/streak para estudiantes -- por
@@ -388,9 +392,28 @@ function guatemalaToday() {
   return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Guatemala' });
 }
 
+// Gemas/XP/cofre reales desde la base. Los premios de los duelos se
+// reparten EN SERVIDOR cuando juega el segundo, y el número en pantalla
+// quedaba viejo hasta volver a iniciar sesión ("no me sumó las gemas").
+let _walletTimer = null;
+window.refreshMyWallet = async function refreshMyWallet() {
+  const u = window.userData;
+  if (window.userRole !== 'estudiante' || !u || !window.currentUser || window.isNodeSession || !navigator.onLine) return;
+  const { data } = await window._supabase.from('students')
+    .select('gems, xp, daily_chest_last_claimed').eq('id', window.currentUser.id).maybeSingle();
+  if (!data) return;
+  Object.assign(u, data);
+  document.querySelectorAll('[data-my-gems]').forEach(el => { el.textContent = data.gems ?? 0; });
+};
+// Versión agrupada para llamar seguido (cada recarga de sección de juego).
+window.refreshMyWalletSoon = function refreshMyWalletSoon() {
+  clearTimeout(_walletTimer);
+  _walletTimer = setTimeout(() => window.refreshMyWallet(), 1200);
+};
+
 window.checkDailyChest = function checkDailyChest() {
   const userData = window.userData;
-  if (!userData) return;
+  if (!userData || window.userRole !== 'estudiante') return;
   const today = guatemalaToday();
   const lastChest = userData.daily_chest_last_claimed;
 
@@ -402,9 +425,13 @@ window.checkDailyChest = function checkDailyChest() {
 }
 
 window.showDailyChestModal = function showDailyChestModal() {
+  // Una sola vez (antes podían quedar dos cofres apilados).
+  if (document.getElementById('daily-chest-modal')) return;
   const modal = document.createElement('div');
-  modal.className = 'fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md animate-fadeIn';
-  modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+  modal.id = 'daily-chest-modal';
+  // Por encima del onboarding, y sin cerrar al tocar afuera: los chicos
+  // tocaban el fondo, el cofre desaparecía y se quedaban sin premio.
+  modal.className = 'fixed inset-0 z-[260] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md animate-fadeIn';
 
   modal.innerHTML = `
         <div class="flex flex-col items-center animate-bounce-in">
@@ -542,6 +569,7 @@ window.openGamificationHub = async function openGamificationHub() {
   if ((typeof window.loadDuelsSection !== 'function' || typeof window.loadHangmanSection !== 'function' || typeof window.loadTimedMathSection !== 'function' || typeof window.loadDebugSection !== 'function' || typeof window.loadSpellingSection !== 'function' || typeof window.loadTournamentsSection !== 'function') && typeof window.loadModule === 'function') {
     await window.loadModule('profile');
   }
+  await window.refreshMyWallet?.().catch(() => {});
 
   const _supabase = window._supabase;
   const fetchWithCache = window.fetchWithCache;
@@ -588,7 +616,7 @@ window.renderGamificationHubContent = function renderGamificationHubContent(moda
                  ${activeHappyHour ? '<div class="px-3 py-1 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg text-xs font-bold uppercase animate-pulse"><i class="fas fa-bolt"></i> Happy Hour x2</div>' : ''}
                  <div class="flex items-center gap-2 px-3 py-1.5 bg-slate-800 rounded-lg border border-slate-700">
                     <i class="fas fa-gem text-cyan-400"></i>
-                    <span class="text-sm font-bold text-white">${userData?.gems || 0}</span>
+                    <span class="text-sm font-bold text-white" data-my-gems>${userData?.gems || 0}</span>
                  </div>
              </div>
         </div>

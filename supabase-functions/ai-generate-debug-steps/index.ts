@@ -85,6 +85,18 @@ consejo práctico para encontrar errores en un programa.`;
     // 0/2+ bloques marcados como bug (inválido para el juego) -- ambos
     // casos son intermitentes, no dependen del tema. Reintentar 1 vez evita
     // que el alumno tenga que tocar "generar" de nuevo a mano.
+    // Variedad: con el mismo tema (ej. el tema de la semana) la IA armaba
+    // casi siempre el mismo programa. Se le pasan los errores que ya salieron
+    // y un tipo de error al azar.
+    const { data: recent } = await serviceClientRead.from('student_debug_duels')
+      .select('steps').eq('topic', duel.topic).not('steps', 'is', null)
+      .order('created_at', { ascending: false }).limit(15);
+    const usedBugs = [...new Set((recent || []).flatMap((r: any) => (r.steps || []).filter((s: any) => s.isBug).map((s: any) => String(s.label).slice(0, 80))))];
+    const bugKinds = ['un número que no tiene sentido', 'una condición invertida', 'un bloque en el orden equivocado', 'un bucle que repite una cantidad incorrecta', 'un valor que nunca se actualiza', 'una dirección o ángulo equivocado'];
+    const bugKind = bugKinds[Math.floor(Math.random() * bugKinds.length)];
+    const userMsg = `Tema: ${String(duel.topic).slice(0, 200)}\nEsta vez el error tiene que ser: ${bugKind}.`
+      + (usedBugs.length ? `\nEstos errores YA salieron en otros retos, hacé un programa distinto:\n- ${usedBugs.join('\n- ')}` : '');
+
     let data: any, steps: any[] = [];
     let fact = '';
     let lastError = 'La IA no generó una secuencia válida (probá de nuevo)';
@@ -99,11 +111,11 @@ consejo práctico para encontrar errores en un programa.`;
           model: GROQ_MODEL,
           messages: [
             { role: 'system', content: system },
-            { role: 'user', content: `Tema: ${String(duel.topic).slice(0, 200)}` },
+            { role: 'user', content: userMsg },
           ],
           max_tokens: 2000,
           reasoning_effort: 'low',
-          temperature: 0.4,
+          temperature: 0.6,
           response_format: { type: 'json_object' },
         }),
       });
