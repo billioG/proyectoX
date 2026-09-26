@@ -396,7 +396,7 @@ window.finishHangmanGame = async function finishHangmanGame() {
   window.GameArena.notifyResult('hangman', state.duelId);
 
   const s = window.sanitizeInput || ((v) => v);
-  await window.GameArena.result({
+  await window.GameArena.resultWithFact('hangman', state.duelId, {
     ok: result.solved,
     title: result.solved ? '¡Adivinada!' : '¡Te ahorcaron!',
     subtitle: result.solved

@@ -359,7 +359,7 @@ window.finishTimedMathGame = async function finishTimedMathGame() {
   window.GameArena.notifyResult('timed_math', state.duelId);
 
   const good = result.score >= Math.ceil(result.total / 2);
-  await window.GameArena.result({
+  await window.GameArena.resultWithFact('timed_math', state.duelId, {
     ok: good,
     title: result.score === result.total ? '¡Perfecto!' : good ? '¡Bien hecho!' : 'Seguí practicando',
     subtitle: 'Cuando tu rival juegue, se define quién ganó.',

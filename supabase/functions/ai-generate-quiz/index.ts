@@ -81,7 +81,12 @@ MUY IMPORTANTE -- exactitud de los datos:
   segura en vez de arriesgar un dato dudoso.
 
 Responde ÚNICAMENTE con JSON válido, sin texto adicional, con esta forma exacta:
-{"questions":[{"question":"...","options":["...","...","...","..."],"correctIndex":0}]}`;
+{"questions":[{"question":"...","options":["...","...","...","..."],"correctIndex":0}],"fact":"..."}
+
+El campo "fact" es UN dato curioso y educativo sobre el tema (1 o 2 oraciones, máximo
+220 caracteres) que le deje un aprendizaje al estudiante. Tiene que ser verdadero y
+verificable; si no estás seguro de un dato, escribí en su lugar un consejo práctico
+para aprender o recordar este tema.`;
 
     // Groq a veces rechaza su propia salida en modo JSON estricto ("Failed
     // to validate JSON") o el content viene truncado/mal formado -- es
@@ -103,7 +108,8 @@ Responde ÚNICAMENTE con JSON válido, sin texto adicional, con esta forma exact
             { role: 'system', content: system },
             { role: 'user', content: `Tema: ${String(duel.topic).slice(0, 200)}` },
           ],
-          max_tokens: 1500,
+          max_tokens: 3000,
+          reasoning_effort: 'low',
           // Bajado de 0.7 -- menos "creatividad" implica menos hechos
           // inventados/mezclados en preguntas de cultura general e historia.
           temperature: 0.3,
@@ -138,6 +144,11 @@ Responde ÚNICAMENTE con JSON válido, sin texto adicional, con esta forma exact
       .update({ questions, status: 'active' })
       .eq('id', duel_id);
     if (updateErr) return json({ error: updateErr.message }, 500);
+
+    // Dato para el "¿Sabías que?" del resultado -- solo se entrega después
+    // de jugar, vía get_duel_fact (ver migrations/duel-facts.sql).
+    const factText = String(parsed.fact || '').trim().slice(0, 300);
+    if (factText) await serviceClient.from('duel_facts').upsert({ game: 'quiz', duel_id, fact: factText });
 
     return json({ ok: true, count: questions.length });
   } catch (e) {

@@ -334,8 +334,38 @@ window.GameArena = {
     if (navigator.vibrate) navigator.vibrate(ok ? 60 : [80, 60, 80]);
   },
 
+  // "¿Sabías que?" del duelo: lo generó la IA con el contenido y el
+  // servidor solo lo entrega si ya jugaste. Contrarreloj no usa IA: trucos
+  // de cálculo mental fijos.
+  MATH_TIPS: [
+    'Para multiplicar por 5, multiplicá por 10 y dividí entre 2: 5 × 48 = 480 ÷ 2 = 240.',
+    'Para multiplicar por 9, multiplicá por 10 y restá el número: 9 × 7 = 70 − 7 = 63.',
+    'Para multiplicar por 11 un número de dos cifras, sumá sus cifras y ponelas en el medio: 11 × 36 = 3(3+6)6 = 396.',
+    'Un número es divisible entre 3 si la suma de sus cifras lo es: 471 → 4+7+1 = 12 → sí.',
+    'Para sumar 99, sumá 100 y restá 1: 245 + 99 = 345 − 1 = 344.',
+    'El cuadrado de un número que termina en 5: multiplicá la decena por la siguiente y agregá 25. 35² = 3×4 = 12 → 1225.',
+    'Restar es sumar hacia arriba: 1000 − 387 → de 387 a 400 son 13, de 400 a 1000 son 600 → 613.',
+    'Multiplicar por 4 es duplicar dos veces: 4 × 23 = 46 → 92.',
+    'Los mayas usaban base 20 y fueron de los primeros en usar el cero.',
+    'Dividir entre 5 es multiplicar por 2 y dividir entre 10: 135 ÷ 5 = 270 ÷ 10 = 27.',
+  ],
+
+  async factFor(game, duelId) {
+    if (game === 'timed_math') return this.MATH_TIPS[Math.floor(Math.random() * this.MATH_TIPS.length)];
+    try {
+      const { data } = await window._supabase.rpc('get_duel_fact', { p_game: game, p_duel_id: duelId });
+      return data || null;
+    } catch {
+      return null;
+    }
+  },
+
+  async resultWithFact(game, duelId, opts) {
+    return this.result({ ...opts, fact: await this.factFor(game, duelId) });
+  },
+
   // Pantalla de resultado con la mascota. Se resuelve al tocar "Continuar".
-  result({ ok, title, subtitle, detailHtml = '' }) {
+  result({ ok, title, subtitle, detailHtml = '', fact = null }) {
     this.ensureStyles();
     if (typeof window.ensureCompanionStyles === 'function') window.ensureCompanionStyles();
     const s = window.sanitizeInput || ((v) => v);
@@ -352,6 +382,10 @@ window.GameArena = {
           <div class="ga-result-title ${ok ? 'win' : 'lose'}">${s(title)}</div>
           <p style="color:#cbd5e1;font-size:.9rem;margin-bottom:1rem">${s(subtitle)}</p>
           ${detailHtml}
+          ${fact ? `<div style="margin-top:1.1rem;text-align:left;padding:.8rem .9rem;border-radius:1rem;background:rgba(250,204,21,.08);border:1px solid rgba(250,204,21,.3)">
+            <div style="font-size:.62rem;font-weight:900;letter-spacing:.15em;text-transform:uppercase;color:#facc15;margin-bottom:.3rem">💡 ¿Sabías que?</div>
+            <div style="font-size:.82rem;line-height:1.45;color:#e2e8f0">${s(fact)}</div>
+          </div>` : ''}
           <button class="ga-btn" style="margin-top:1.5rem">Continuar <i class="fas fa-arrow-right"></i></button>
         </div></div>`;
       overlay.querySelector('.ga-btn').onclick = () => { overlay.remove(); resolve(); };

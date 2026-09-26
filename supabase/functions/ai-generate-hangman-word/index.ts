@@ -73,7 +73,12 @@ para un estudiante de ${grade} en Guatemala -- sin tildes ni ñ, entre 4 y 12 le
 una sola palabra (sin espacios ni guiones). También escribí una pista corta (una
 oración) que ayude a adivinarla sin decirla directamente. Responde ÚNICAMENTE con
 JSON válido, sin texto adicional, con esta forma exacta:
-{"word":"...","hint":"..."}`;
+{"word":"...","hint":"...","fact":"..."}
+
+El campo "fact" es UN dato curioso y educativo sobre la palabra o el tema (1 o 2
+oraciones, máximo 220 caracteres) que le deje un aprendizaje al estudiante. Tiene que
+ser verdadero y verificable; si no estás seguro de un dato, escribí en su lugar un
+consejo práctico para aprender o recordar este tema.`;
 
     // Groq a veces rechaza su propia salida en modo JSON estricto ("Failed
     // to validate JSON") o el content viene truncado/mal formado --
@@ -94,7 +99,10 @@ JSON válido, sin texto adicional, con esta forma exacta:
             { role: 'system', content: system },
             { role: 'user', content: `Tema: ${String(duel.topic).slice(0, 200)}` },
           ],
-          max_tokens: 300,
+          // gpt-oss razona antes de responder y eso cuenta contra el límite --
+          // con 300 el JSON salía cortado ("Failed to validate JSON").
+          max_tokens: 1500,
+          reasoning_effort: 'low',
           temperature: 0.5,
           response_format: { type: 'json_object' },
         }),
@@ -125,6 +133,11 @@ JSON válido, sin texto adicional, con esta forma exacta:
       .update({ word, hint, status: 'active' })
       .eq('id', duel_id);
     if (updateErr) return json({ error: updateErr.message }, 500);
+
+    // Dato para el "¿Sabías que?" del resultado -- solo se entrega después
+    // de jugar, vía get_duel_fact (ver migrations/duel-facts.sql).
+    const factText = String(parsed.fact || '').trim().slice(0, 300);
+    if (factText) await serviceClient.from('duel_facts').upsert({ game: 'hangman', duel_id, fact: factText });
 
     return json({ ok: true });
   } catch (e) {

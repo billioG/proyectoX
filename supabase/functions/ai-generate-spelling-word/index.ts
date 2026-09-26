@@ -68,7 +68,12 @@ y 14 letras, una sola palabra (sin espacios ni guiones). También escribí una p
 corta (una oración, SIN mencionar la palabra ni deletrearla) que ayude a saber a qué
 palabra se refiere. Responde ÚNICAMENTE con JSON válido, sin texto adicional, con
 esta forma exacta:
-{"word":"...","hint":"..."}`;
+{"word":"...","hint":"...","fact":"..."}
+
+El campo "fact" es UN dato curioso y educativo sobre la palabra (su origen, una regla
+ortográfica que la explica, o un dato del tema), en 1 o 2 oraciones, máximo 220
+caracteres. Tiene que ser verdadero y verificable; si no estás seguro de un dato,
+escribí en su lugar la regla ortográfica que ayuda a escribirla bien.`;
 
     // Groq a veces rechaza su propia salida en modo JSON estricto ("Failed
     // to validate JSON") o el content viene truncado/mal formado --
@@ -129,6 +134,11 @@ esta forma exacta:
       .update({ word, hint, status: 'active' })
       .eq('id', duel_id);
     if (updateErr) return json({ error: updateErr.message }, 500);
+
+    // Dato para el "¿Sabías que?" del resultado -- solo se entrega después
+    // de jugar, vía get_duel_fact (ver migrations/duel-facts.sql).
+    const factText = String(parsed.fact || '').trim().slice(0, 300);
+    if (factText) await serviceClient.from('duel_facts').upsert({ game: 'spelling', duel_id, fact: factText });
 
     return json({ ok: true });
   } catch (e) {

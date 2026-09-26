@@ -620,7 +620,7 @@ window.submitDuelAnswers = async function submitDuelAnswers() {
 
   const total = duel.questions.length;
   const good = score >= Math.ceil(total / 2);
-  await window.GameArena.result({
+  await window.GameArena.resultWithFact('quiz', duel.id, {
     ok: good,
     title: score === total ? '¡Perfecto!' : good ? '¡Bien hecho!' : 'Seguí practicando',
     subtitle: 'Cuando tu rival juegue, se define quién ganó. Después podés revisar tus respuestas.',

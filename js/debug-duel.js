@@ -328,7 +328,7 @@ window.selectDebugBlock = async function selectDebugBlock(index) {
   document.getElementById('debug-game-modal')?.remove();
 
   const s = window.sanitizeInput || ((v) => v);
-  await window.GameArena.result({
+  await window.GameArena.resultWithFact('debug', state.duelId, {
     ok: result.correct,
     title: result.correct ? '¡Bug encontrado!' : 'Se te escapó',
     subtitle: result.correct

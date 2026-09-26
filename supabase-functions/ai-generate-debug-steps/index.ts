@@ -74,13 +74,19 @@ MUY IMPORTANTE: revisá vos mismo que haya UN SOLO bloque con el error, y que se
 claramente identificable (no una opinión, un error objetivo de lógica/orden/valor).
 
 Responde ÚNICAMENTE con JSON válido, sin texto adicional, con esta forma exacta:
-{"steps":[{"label":"...","isBug":false,"explanation":""},{"label":"...","isBug":true,"explanation":"por qué está mal"}]}`;
+{"steps":[{"label":"...","isBug":false,"explanation":""},{"label":"...","isBug":true,"explanation":"por qué está mal"}],"fact":"..."}
+
+El campo "fact" es UN dato curioso y educativo sobre programación o el tema (1 o 2
+oraciones, máximo 220 caracteres) que le deje un aprendizaje al estudiante. Tiene que
+ser verdadero y verificable; si no estás seguro de un dato, escribí en su lugar un
+consejo práctico para encontrar errores en un programa.`;
 
     // Groq a veces rechaza su propia salida en modo JSON estricto, o genera
     // 0/2+ bloques marcados como bug (inválido para el juego) -- ambos
     // casos son intermitentes, no dependen del tema. Reintentar 1 vez evita
     // que el alumno tenga que tocar "generar" de nuevo a mano.
     let data: any, steps: any[] = [];
+    let fact = '';
     let lastError = 'La IA no generó una secuencia válida (probá de nuevo)';
     for (let attempt = 1; attempt <= 2; attempt++) {
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -95,7 +101,8 @@ Responde ÚNICAMENTE con JSON válido, sin texto adicional, con esta forma exact
             { role: 'system', content: system },
             { role: 'user', content: `Tema: ${String(duel.topic).slice(0, 200)}` },
           ],
-          max_tokens: 900,
+          max_tokens: 2000,
+          reasoning_effort: 'low',
           temperature: 0.4,
           response_format: { type: 'json_object' },
         }),
@@ -125,6 +132,7 @@ Responde ÚNICAMENTE con JSON válido, sin texto adicional, con esta forma exact
       if (candidateSteps.length < 3 || bugCount !== 1) continue;
 
       steps = candidateSteps;
+      fact = String(parsed.fact || '');
       break;
     }
     if (!steps.length) return json({ error: lastError }, 500);
@@ -135,6 +143,11 @@ Responde ÚNICAMENTE con JSON válido, sin texto adicional, con esta forma exact
       .update({ steps, status: 'active' })
       .eq('id', duel_id);
     if (updateErr) return json({ error: updateErr.message }, 500);
+
+    // Dato para el "¿Sabías que?" del resultado -- solo se entrega después
+    // de jugar, vía get_duel_fact (ver migrations/duel-facts.sql).
+    const factText = fact.trim().slice(0, 300);
+    if (factText) await serviceClient.from('duel_facts').upsert({ game: 'debug', duel_id, fact: factText });
 
     return json({ ok: true });
   } catch (e) {

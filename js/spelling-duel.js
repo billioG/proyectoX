@@ -361,7 +361,7 @@ window.submitSpellingAnswer = async function submitSpellingAnswer() {
 
   const s = window.sanitizeInput || ((v) => v);
   const seconds = (result.time_ms / 1000).toFixed(1);
-  await window.GameArena.result(result.correct
+  await window.GameArena.resultWithFact('spelling', state.duelId, result.correct
     ? {
         ok: true,
         title: '¡Perfecta!',
