@@ -229,6 +229,112 @@ function manati(g) {
   </g>`;
 }
 
+// ---------- GUACAMAYA ROJA ----------
+function guacamaya(g) {
+  const sc = [0.62, 0.8, 0.95][g - 1];
+  const tail = g >= 2
+    ? `<g class="cp-tail"><path d="M138 258 L128 ${g >= 3 ? 330 : 312} L150 ${g >= 3 ? 342 : 322} L172 ${g >= 3 ? 330 : 312} L162 258 Z" fill="#D32F2F"/>
+       ${g >= 3 ? '<path d="M132 318 L128 330 L150 342 L172 330 L168 318 Q150 326 132 318 Z" fill="#1E88E5"/>' : ''}</g>`
+    : '';
+  const crest = g >= 3 ? `<path d="M138 70 Q142 44 152 38 Q150 56 156 68 Q164 50 176 48 Q166 62 164 74 Z" fill="#C62828"/>` : '';
+  const wing = (cx, cls) => `<g class="${cls}"><ellipse cx="${cx}" cy="204" rx="22" ry="50" fill="#FDD835"/>
+    <ellipse cx="${cx}" cy="226" rx="15" ry="32" fill="#1E88E5"/></g>`;
+  return `<g transform="translate(150 170) scale(${sc}) translate(-150 -170)">
+    ${tail}
+    ${wing(92, 'cp-wing-l')}${wing(208, 'cp-wing-r')}
+    <ellipse cx="150" cy="200" rx="60" ry="74" fill="#E53935"/>
+    <ellipse cx="150" cy="212" rx="36" ry="44" fill="#EF5350"/>
+    <ellipse cx="126" cy="274" rx="13" ry="7" fill="#616161"/><ellipse cx="174" cy="274" rx="13" ry="7" fill="#616161"/>
+    ${crest}
+    <circle cx="150" cy="120" r="54" fill="#E53935"/>
+    <ellipse cx="124" cy="118" rx="22" ry="20" fill="#FFFFFF"/><ellipse cx="176" cy="118" rx="22" ry="20" fill="#FFFFFF"/>
+    ${eyePair(124, 176, 116, 10)}
+    <path d="M136 132 Q150 120 164 132 Q168 158 150 172 Q158 150 136 132 Z" fill="#F5F5F5"/>
+    <path d="M140 142 Q150 150 160 142 Q156 160 150 162 Q144 158 140 142 Z" fill="#212121"/>
+  </g>`;
+}
+
+// ---------- DANTA (tapir) ----------
+// Las crías nacen con rayas y manchas blancas que se borran al crecer.
+function danta(g) {
+  const sc = [0.62, 0.8, 0.95][g - 1];
+  const body = g >= 3 ? '#4E342E' : '#6D4C41';
+  const stripes = g <= 2
+    ? `<g opacity="${g === 1 ? 0.9 : 0.4}" stroke="#FFF8E1" stroke-width="5" fill="none" stroke-linecap="round">
+        <path d="M92 200 Q120 192 150 200 Q180 208 208 200"/><path d="M86 222 Q118 214 150 222 Q182 230 214 222"/>
+        <path d="M94 244 Q122 238 150 244 Q178 250 206 244"/></g>
+       <g fill="#FFF8E1" opacity="${g === 1 ? 0.9 : 0.4}"><circle cx="112" cy="182" r="4"/><circle cx="186" cy="184" r="4"/><circle cx="150" cy="262" r="4"/></g>`
+    : '';
+  return `<g transform="translate(150 170) scale(${sc}) translate(-150 -170)">
+    <ellipse cx="150" cy="214" rx="76" ry="58" fill="${body}"/>
+    ${stripes}
+    <ellipse cx="110" cy="268" rx="18" ry="14" fill="#3E2723"/><ellipse cx="190" cy="268" rx="18" ry="14" fill="#3E2723"/>
+    <g class="cp-ear-l"><circle cx="104" cy="92" r="16" fill="${body}" stroke="#EEEEEE" stroke-width="4"/></g>
+    <g class="cp-ear-r"><circle cx="196" cy="92" r="16" fill="${body}" stroke="#EEEEEE" stroke-width="4"/></g>
+    <ellipse cx="150" cy="130" rx="54" ry="48" fill="${body}"/>
+    <circle cx="116" cy="146" r="7" fill="#F48FB1" opacity=".5"/><circle cx="184" cy="146" r="7" fill="#F48FB1" opacity=".5"/>
+    <path d="M130 148 Q150 140 170 148 Q168 186 150 194 Q132 186 130 148 Z" fill="#3E2723"/>
+    <circle cx="144" cy="186" r="3" fill="#1B0F0A"/><circle cx="156" cy="186" r="3" fill="#1B0F0A"/>
+    ${eyePair(126, 174, 120, 10)}
+  </g>`;
+}
+
+// ---------- PIZOTE ----------
+function pizote(g) {
+  const sc = [0.62, 0.8, 0.95][g - 1];
+  const tail = g >= 2
+    ? `<g class="cp-tail cp-tail-j"><path d="M188 236 C 232 204 234 144 216 ${g >= 3 ? 92 : 112}" stroke="#8D6E63" stroke-width="14" fill="none" stroke-linecap="round"/>
+       <path d="M188 236 C 232 204 234 144 216 ${g >= 3 ? 92 : 112}" stroke="#4E342E" stroke-width="14" fill="none" stroke-dasharray="9 11"/></g>`
+    : '';
+  const mask = g >= 3 ? `<path d="M110 108 Q150 96 190 108 L186 124 Q150 114 114 124 Z" fill="#5D4037"/>` : '';
+  return `<g transform="translate(150 170) scale(${sc}) translate(-150 -170)">
+    ${tail}
+    <ellipse cx="150" cy="218" rx="60" ry="52" fill="#A1887F"/>
+    <ellipse cx="150" cy="230" rx="34" ry="32" fill="#D7CCC8"/>
+    <ellipse cx="120" cy="268" rx="16" ry="10" fill="#5D4037"/><ellipse cx="180" cy="268" rx="16" ry="10" fill="#5D4037"/>
+    <g class="cp-ear-l"><circle cx="114" cy="82" r="12" fill="#A1887F"/><circle cx="114" cy="82" r="6" fill="#5D4037"/></g>
+    <g class="cp-ear-r"><circle cx="186" cy="82" r="12" fill="#A1887F"/><circle cx="186" cy="82" r="6" fill="#5D4037"/></g>
+    <circle cx="150" cy="118" r="48" fill="#A1887F"/>
+    ${mask}
+    <ellipse cx="126" cy="126" rx="12" ry="7" fill="#EFEBE9"/><ellipse cx="174" cy="126" rx="12" ry="7" fill="#EFEBE9"/>
+    <path d="M132 128 Q150 118 168 128 L156 178 Q150 184 144 178 Z" fill="#8D6E63"/>
+    <path d="M150 132 L150 170" stroke="#EFEBE9" stroke-width="4" stroke-linecap="round"/>
+    <ellipse cx="150" cy="178" rx="9" ry="6" fill="#212121"/>
+    ${eyePair(128, 172, 110, 10)}
+  </g>`;
+}
+
+// ---------- ARMADILLO ----------
+function armadillo(g) {
+  const sc = [0.62, 0.8, 0.95][g - 1];
+  // Bandas de la coraza: cada línea arranca justo en el borde del domo.
+  const bands = Array.from({ length: 5 + g }, (_, i) => {
+    const x = 96 + (108 / (4 + g)) * i;
+    const top = 230 - 93 * Math.sqrt(Math.max(0, 1 - ((x - 150) / 88) ** 2)) + 6;
+    return `<path d="M${x.toFixed(1)} ${top.toFixed(1)} Q${(x + 6).toFixed(1)} 180 ${x.toFixed(1)} 228" stroke="#6D4C41" stroke-width="4" fill="none"/>`;
+  }).join('');
+  const tail = g >= 2
+    ? `<g class="cp-tail cp-tail-j"><path d="M204 250 C 236 256 250 244 258 228" stroke="#8D6E63" stroke-width="11" fill="none" stroke-linecap="round"/>
+       <path d="M204 250 C 236 256 250 244 258 228" stroke="#6D4C41" stroke-width="11" fill="none" stroke-dasharray="5 7"/></g>`
+    : '';
+  const rim = g >= 3 ? '#FFB300' : '#8D6E63';
+  return `<g transform="translate(150 170) scale(${sc}) translate(-150 -170)">
+    ${tail}
+    <ellipse cx="98" cy="266" rx="18" ry="11" fill="#8D6E63"/><ellipse cx="202" cy="266" rx="18" ry="11" fill="#8D6E63"/>
+    <path d="M62 230 C 62 106, 238 106, 238 230 Z" fill="#A1887F"/>
+    ${bands}
+    <ellipse cx="150" cy="230" rx="90" ry="11" fill="${rim}"/>
+    <g class="cp-head">
+      <g class="cp-ear-l"><ellipse cx="120" cy="172" rx="10" ry="22" fill="#BCAAA4" transform="rotate(-20 120 172)"/></g>
+      <g class="cp-ear-r"><ellipse cx="180" cy="172" rx="10" ry="22" fill="#BCAAA4" transform="rotate(20 180 172)"/></g>
+      <circle cx="150" cy="210" r="40" fill="#BCAAA4"/>
+      <ellipse cx="150" cy="238" rx="14" ry="20" fill="#A1887F"/>
+      <circle cx="150" cy="252" r="6" fill="#5D4037"/>
+      ${eyePair(134, 166, 204, 9)}
+    </g>
+  </g>`;
+}
+
 // ---------- catálogo ----------
 const COMPANION_SPECIES = {
   quetzal: {
@@ -279,6 +385,38 @@ const COMPANION_SPECIES = {
     names: ['Huevo de Manatí', 'Manatí Bebé', 'Manatincito', 'Manatí', 'Manatí Guardián', 'Manatí Ancestral'],
     draw: manati,
   },
+  guacamaya: {
+    label: 'Guacamaya',
+    desc: 'Brillante y parlanchina. Pinta el cielo de Petén.',
+    color: '#E53935',
+    egg: { shell: '#FFEBEE', stroke: '#E53935', spot: '#1E88E5' },
+    names: ['Huevo de Guacamaya', 'Pichón de Guacamaya', 'Guacamayita', 'Guacamaya', 'Guacamaya Guardiana', 'Guacamaya Escarlata'],
+    draw: guacamaya,
+  },
+  danta: {
+    label: 'Danta',
+    desc: 'Grande y pacífica. Jardinera de la selva.',
+    color: '#6D4C41',
+    egg: { shell: '#EFEBE9', stroke: '#4E342E', spot: '#FFF8E1' },
+    names: ['Huevo de Danta', 'Dantita Sandía', 'Danta Joven', 'Danta', 'Danta Guardiana', 'Danta Ancestral'],
+    draw: danta,
+  },
+  pizote: {
+    label: 'Pizote',
+    desc: 'Curioso y explorador. Nunca deja de olfatear.',
+    color: '#EF6C00',
+    egg: { shell: '#FFF3E0', stroke: '#EF6C00', spot: '#8D6E63' },
+    names: ['Huevo de Pizote', 'Pizotito', 'Pizote Joven', 'Pizote', 'Pizote Guardián', 'Rey Pizote'],
+    draw: pizote,
+  },
+  armadillo: {
+    label: 'Armadillo',
+    desc: 'Blindado y cavador. Su coraza lo protege.',
+    color: '#7E57C2',
+    egg: { shell: '#EDE7F6', stroke: '#7E57C2', spot: '#A1887F' },
+    names: ['Huevo de Armadillo', 'Armadillito', 'Armadillo Joven', 'Armadillo', 'Armadillo Guardián', 'Armadillo Blindado'],
+    draw: armadillo,
+  },
 };
 
 // Ficha "Quetzadex": datos REALES de cada animal (fauna de Guatemala) --
@@ -320,6 +458,30 @@ const COMPANION_DEX = {
     weight: 'Entre 400 y 550 kg', habitat: 'Río Dulce y lago de Izabal', food: 'Herbívoro: plantas acuáticas', status: 'Vulnerable',
     fact: 'Aunque vive en el agua, sus parientes más cercanos son los elefantes.',
   },
+  guacamaya: {
+    num: 7, sci: 'Ara macao', types: [['Aire', '#29B6F6'], ['Selva', '#2E7D32']],
+    about: 'La guacamaya roja es una de las aves más coloridas de América. En Guatemala vive en la selva de Petén y quedan pocas: por eso se protegen sus nidos.',
+    weight: 'Alrededor de 1 kg', habitat: 'Selva de Petén (Reserva de la Biosfera Maya)', food: 'Semillas, frutas y nueces', status: 'Preocupación menor (amenazada en Guatemala)',
+    fact: 'Usa su pico fuerte como una tercera pata para trepar por las ramas.',
+  },
+  danta: {
+    num: 8, sci: 'Tapirus bairdii', types: [['Selva', '#2E7D32'], ['Agua', '#1E88E5']],
+    about: 'La danta o tapir es el mamífero terrestre más grande de Centroamérica. Con su trompa corta agarra hojas y frutas, y al caminar siembra semillas por toda la selva.',
+    weight: 'Entre 150 y 300 kg', habitat: 'Selvas y humedales de Petén', food: 'Hojas, frutas y brotes', status: 'En peligro',
+    fact: 'Las crías nacen con rayas y manchas blancas, como una sandía, que desaparecen al crecer.',
+  },
+  pizote: {
+    num: 9, sci: 'Nasua narica', types: [['Selva', '#2E7D32'], ['Tierra', '#8D6E63']],
+    about: 'El pizote es pariente del mapache. Camina con su larga cola levantada, y las hembras andan en grupos grandes con sus crías.',
+    weight: 'Entre 4 y 6 kg', habitat: 'Bosques de casi todo el país', food: 'Omnívoro: insectos, frutas y lagartijas', status: 'Preocupación menor',
+    fact: 'Usa su hocico largo y flexible para oler y escarbar insectos bajo la tierra.',
+  },
+  armadillo: {
+    num: 10, sci: 'Dasypus novemcinctus', types: [['Tierra', '#8D6E63'], ['Coraza', '#7E57C2']],
+    about: 'El armadillo (en Guatemala también "armado") tiene una coraza de placas de hueso cubiertas de piel dura. Es un excelente cavador.',
+    weight: 'Entre 3 y 6 kg', habitat: 'Bosques y potreros de todo el país', food: 'Insectos, hormigas y lombrices', status: 'Preocupación menor',
+    fact: 'Casi siempre nacen cuatrillizos idénticos: ¡cuatro crías iguales!',
+  },
 };
 window.COMPANION_DEX = COMPANION_DEX;
 const EGG_PRICE = 150;
@@ -360,6 +522,26 @@ const ANCHORS = {
     2: { top: [150, 95], eyes: [150, 127], back: [150, 198], hw: 99 },
     3: { top: [150, 81], eyes: [150, 118], back: [150, 203], hw: 118 },
   },
+  guacamaya: {
+    1: { top: [150, 106], eyes: [150, 136], back: [150, 188], hw: 67 },
+    2: { top: [150, 87], eyes: [150, 127], back: [150, 194], hw: 86 },
+    3: { top: [150, 71], eyes: [150, 119], back: [150, 198], hw: 103 },
+  },
+  danta: {
+    1: { top: [150, 117], eyes: [150, 139], back: [150, 197], hw: 67 },
+    2: { top: [150, 101], eyes: [150, 130], back: [150, 205], hw: 86 },
+    3: { top: [150, 88], eyes: [150, 122], back: [150, 212], hw: 103 },
+  },
+  pizote: {
+    1: { top: [150, 108], eyes: [150, 133], back: [150, 200], hw: 60 },
+    2: { top: [150, 90], eyes: [150, 122], back: [150, 208], hw: 77 },
+    3: { top: [150, 75], eyes: [150, 113], back: [150, 216], hw: 91 },
+  },
+  armadillo: {
+    1: { top: [150, 170], eyes: [150, 191], back: [150, 170], hw: 50 },
+    2: { top: [150, 170], eyes: [150, 197], back: [150, 170], hw: 64 },
+    3: { top: [150, 170], eyes: [150, 202], back: [150, 170], hw: 76 },
+  },
 };
 
 // Dibujados en unidades donde 100 = ancho de la cabeza, centrados en su
@@ -389,6 +571,34 @@ const COSMETIC_ART = {
     <circle cx="-66" cy="-34" r="10" fill="#FFD54F"/><circle cx="66" cy="-34" r="10" fill="#FFD54F"/>
     <circle cx="-54" cy="40" r="7" fill="#F48FB1"/><circle cx="54" cy="40" r="7" fill="#F48FB1"/>`,
   capa_heroe: `<path d="M-42 -58 L42 -58 L78 72 Q0 92 -78 72 Z" fill="#E53935"/><path d="M-42 -58 L42 -58 L36 -44 L-36 -44 Z" fill="#B71C1C"/>`,
+  // --- cabeza ---
+  gorro_lana: `<path d="M-46 6 C -46 -46, 46 -46, 46 6 Z" fill="#E91E63"/><path d="M-30 -24 L-24 -8 M-10 -32 L-6 -12 M10 -32 L6 -12 M30 -24 L24 -8" stroke="#F48FB1" stroke-width="4" stroke-linecap="round"/>
+    <rect x="-48" y="-6" width="96" height="16" rx="7" fill="#C2185B"/><circle cx="0" cy="-44" r="11" fill="#F8BBD0"/>`,
+  casco_ingeniero: `<path d="M-48 6 C -48 -50, 48 -50, 48 6 Z" fill="#FDD835"/><rect x="-62" y="0" width="124" height="10" rx="5" fill="#F9A825"/>
+    <rect x="-6" y="-46" width="12" height="46" rx="4" fill="#FBC02D"/><path d="M-20 -14 L20 -14" stroke="#F57F17" stroke-width="3"/>`,
+  gorro_graduacion: `<path d="M-32 -12 L-32 6 Q0 18 32 6 L32 -12 L0 0 Z" fill="#37474F"/><path d="M-62 -24 L0 -46 L62 -24 L0 -2 Z" fill="#212121"/>
+    <path d="M0 -24 L48 -16 L48 12" stroke="#FFD54F" stroke-width="3" fill="none"/><circle cx="48" cy="15" r="5" fill="#FFD54F"/><circle cx="0" cy="-24" r="4" fill="#FFD54F"/>`,
+  tocado_maya: `<path d="M-34 -4 C -58 -56 -50 -88 -36 -96 C -32 -60 -26 -30 -22 -4 Z" fill="#00C853"/>
+    <path d="M34 -4 C 58 -56 50 -88 36 -96 C 32 -60 26 -30 22 -4 Z" fill="#00C853"/>
+    <path d="M-8 -4 C -12 -72 -2 -112 6 -116 C 12 -72 10 -30 8 -4 Z" fill="#00E676"/>
+    <rect x="-48" y="-8" width="96" height="16" rx="7" fill="#FFB300"/>
+    <circle cx="-28" cy="0" r="5" fill="#26A69A"/><circle cx="28" cy="0" r="5" fill="#26A69A"/><circle cx="0" cy="0" r="8" fill="#E53935" stroke="#FFD54F" stroke-width="3"/>`,
+  // --- cara ---
+  bigote: `<path d="M0 30 C -10 21 -34 21 -46 35 C -30 30 -16 39 0 34 C 16 39 30 30 46 35 C 34 21 10 21 0 30 Z" fill="#3E2723"/>`,
+  lentes_corazon: `${[-22, 22].map(x => `<path d="M${x} 11 C ${x - 22} -3, ${x - 12} -21, ${x} -8 C ${x + 12} -21, ${x + 22} -3, ${x} 11 Z" fill="#FF4081" opacity=".92" stroke="#C2185B" stroke-width="2.5"/>`).join('')}
+    <path d="M-5 -2 Q0 -6 5 -2" stroke="#C2185B" stroke-width="3" fill="none"/>`,
+  lentes_vr: `<path d="M-50 0 L-64 -4 M50 0 L64 -4" stroke="#37474F" stroke-width="6" stroke-linecap="round"/>
+    <rect x="-50" y="-18" width="100" height="36" rx="12" fill="#37474F"/><rect x="-42" y="-11" width="84" height="22" rx="8" fill="#26C6DA" opacity=".85"/>
+    <path d="M-34 -5 L-20 -5" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".7"/>`,
+  // --- espalda ---
+  mochila: `<rect x="-84" y="-40" width="46" height="66" rx="13" fill="#1E88E5"/><rect x="-78" y="-4" width="34" height="22" rx="6" fill="#1565C0"/>
+    <path d="M-72 -40 Q-61 -56 -50 -40" stroke="#0D47A1" stroke-width="5" fill="none"/>`,
+  alas_angel: `<path d="M-8 -26 C -60 -96 -128 -46 -96 4 C -120 30 -74 58 -8 20 Z" fill="#FFFFFF" stroke="#CFD8DC" stroke-width="4"/>
+    <path d="M8 -26 C 60 -96 128 -46 96 4 C 120 30 74 58 8 20 Z" fill="#FFFFFF" stroke="#CFD8DC" stroke-width="4"/>
+    <path d="M-40 -30 Q-70 -20 -80 0 M40 -30 Q70 -20 80 0" stroke="#E0E0E0" stroke-width="3" fill="none"/>`,
+  jetpack: `${[-1, 1].map(s => `<rect x="${s < 0 ? -90 : 64}" y="-52" width="26" height="72" rx="12" fill="#B0BEC5" stroke="#546E7A" stroke-width="3"/>
+    <path d="M${s * 77} 22 Q${s * 77 - 8} 46 ${s * 77} 62 Q${s * 77 + 8} 46 ${s * 77} 22 Z" fill="#FF9800"/><path d="M${s * 77} 24 Q${s * 77 - 4} 38 ${s * 77} 48 Q${s * 77 + 4} 38 ${s * 77} 24 Z" fill="#FFEB3B"/>`).join('')}
+    <rect x="-64" y="-30" width="128" height="14" rx="6" fill="#78909C"/>`,
   capa_legendaria: `<path d="M-44 -60 L44 -60 L84 76 Q0 98 -84 76 Z" fill="#6A1B9A"/><path d="M-44 -60 L44 -60 L38 -44 L-38 -44 Z" fill="#FFD54F"/>
     <path d="M0 0 l5 12 l13 1 l-10 8 l3 13 l-11 -7 l-11 7 l3 -13 l-10 -8 l13 -1 Z" fill="#FFD54F"/>
     <circle cx="-40" cy="40" r="4" fill="#FFD54F"/><circle cx="44" cy="30" r="3" fill="#FFD54F"/><circle cx="-20" cy="66" r="3" fill="#FFD54F"/>`,
@@ -399,6 +609,8 @@ const SKIN_FILTERS = {
   skin_sombra: 'brightness(.55) saturate(.5) contrast(1.25) drop-shadow(0 0 8px #a855f7)',
   skin_oro: 'sepia(1) saturate(3.2) hue-rotate(-12deg) brightness(1.08) drop-shadow(0 0 8px #fbbf24)',
   skin_galaxia: 'hue-rotate(245deg) saturate(1.8) brightness(.95) drop-shadow(0 0 10px #818cf8)',
+  skin_hielo: 'hue-rotate(160deg) saturate(.6) brightness(1.25) drop-shadow(0 0 8px #7dd3fc)',
+  skin_arcoiris: 'hue-rotate(95deg) saturate(2.2) drop-shadow(0 0 8px #f472b6)',
 };
 
 function placeCosmetic(itemId, point, hw, cls) {
@@ -511,6 +723,8 @@ window.ensureCompanionStyles = function ensureCompanionStyles() {
     .cp-svg.cp-emote-wobble { animation: cp-wiggle .22s ease-in-out 4 !important; }
     .cp-svg.cp-emote-swim { animation: cp-swim 1.6s ease-in-out !important; }
     .cp-svg.cp-emote-swim .cp-flip-l, .cp-svg.cp-emote-swim .cp-flip-r, .cp-svg.cp-emote-swim .cp-tail { animation-duration: .4s !important; }
+    .cp-svg.cp-emote-sniff { animation: cp-sniff 1.4s ease-in-out !important; }
+    @keyframes cp-sniff { 0%, 100% { transform: translateY(0) rotate(0); } 15%, 45%, 75% { transform: translateY(6px) rotate(-4deg); } 30%, 60%, 90% { transform: translateY(2px) rotate(4deg); } }
     @keyframes cp-swim { 0%, 100% { transform: translate(0, 0) rotate(0); } 25% { transform: translate(-16px, -12px) rotate(-8deg); } 50% { transform: translate(0, -20px) rotate(0); } 75% { transform: translate(16px, -12px) rotate(8deg); } }
 
     /* --- Quetzadex (ficha estilo Pokédex) --- */
@@ -608,6 +822,10 @@ const SPECIAL_EMOTE = {
   tucan: { id: 'fly', label: 'Vuelo Tropical', bubble: '🌈' },
   saraguate: { id: 'roar', label: 'Aullido', bubble: '📣' },
   manati: { id: 'swim', label: 'Nado', bubble: '🫧' },
+  guacamaya: { id: 'fly', label: 'Vuelo Escarlata', bubble: '🪶' },
+  danta: { id: 'swim', label: 'Chapuzón', bubble: '💦' },
+  pizote: { id: 'sniff', label: 'Olfateo', bubble: '👃' },
+  armadillo: { id: 'shell', label: 'Coraza', bubble: '🛡️' },
 };
 
 function emotesFor(species) {
@@ -623,7 +841,7 @@ function emotesFor(species) {
 }
 window.getCompanionEmotes = emotesFor;
 
-const EMOTE_MS = { hop: 1400, wiggle: 1200, spin: 900, dance: 1500, fly: 1700, roar: 1200, shell: 1500, swim: 1600, legend: 1500, wobble: 900 };
+const EMOTE_MS = { hop: 1400, wiggle: 1200, spin: 900, dance: 1500, fly: 1700, roar: 1200, shell: 1500, swim: 1600, sniff: 1400, legend: 1500, wobble: 900 };
 
 window.playCompanionEmote = function playCompanionEmote(svg) {
   if (!svg || svg.dataset.emoting) return;
@@ -821,7 +1039,7 @@ async function loadOwnedCompanions() {
   return own;
 }
 
-const DEX_BG = { quetzal: '🪶', jaguar: '🐾', tortuga: '🌊', tucan: '🌈', saraguate: '🌳', manati: '🫧' };
+const DEX_BG = { quetzal: '🪶', jaguar: '🐾', tortuga: '🌊', tucan: '🌈', saraguate: '🌳', manati: '🫧', guacamaya: '🦜', danta: '🌿', pizote: '🍂', armadillo: '🪨' };
 
 window.openQuetzadex = async function openQuetzadex() {
   if (window._myCompanionSpecies === undefined) await window.loadMyCompanion();
@@ -906,6 +1124,58 @@ window.openDexCard = function openDexCard(species, mode = 'collection') {
         <div class="dex-evo">${evo}</div>
         <div class="dex-actions">${actions}</div>
       </div>
+    </div>`);
+  overlay.classList.add('dex-overlay');
+
+  // Video del animal (si el admin cargó uno en companion_videos).
+  loadCompanionVideos().then(videos => {
+    const v = videos[species];
+    const box = overlay.querySelector('.dex-actions');
+    if (!v || !box) return;
+    const btn = document.createElement('button');
+    btn.className = 'dex-btn';
+    btn.style.background = '#0f172a';
+    btn.innerHTML = `<i class="fas fa-play"></i> Ver video${v.title ? ': ' + (window.sanitizeInput || (x => x))(v.title) : ''}`;
+    btn.onclick = () => window.openCompanionVideo(species);
+    box.prepend(btn);
+  });
+};
+
+// ---------- videos por especie ----------
+// Tabla companion_videos (migrations/companion-more.sql): una fila por
+// especie con URL de YouTube o de un .mp4 (ej. en Supabase Storage).
+let _videosPromise = null;
+function loadCompanionVideos() {
+  if (!_videosPromise) {
+    _videosPromise = window._supabase.from('companion_videos').select('species, url, title, credit')
+      .then(({ data, error }) => {
+        if (error) { _videosPromise = null; return {}; }
+        return Object.fromEntries((data || []).map(v => [v.species, v]));
+      });
+  }
+  return _videosPromise;
+}
+
+function youtubeId(url) {
+  const m = String(url).match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([\w-]{11})/);
+  return m ? m[1] : null;
+}
+
+window.openCompanionVideo = async function openCompanionVideo(species) {
+  const v = (await loadCompanionVideos())[species];
+  if (!v) return;
+  const s = window.sanitizeInput || (x => x);
+  const yt = youtubeId(v.url);
+  const player = yt
+    ? `<iframe src="https://www.youtube-nocookie.com/embed/${yt}?rel=0&modestbranding=1" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen style="width:100%;aspect-ratio:16/9;border:0;border-radius:1rem"></iframe>`
+    : `<video src="${s(v.url)}" controls playsinline style="width:100%;border-radius:1rem;background:#000"></video>`;
+  const overlay = companionOverlay(`
+    <div class="ga-card">
+      <div class="ga-topbar"><span class="ga-chip"><i class="fas fa-film"></i> ${s(COMPANION_SPECIES[species]?.label || '')}</span></div>
+      ${player}
+      ${v.title ? `<p style="font-weight:900;margin:.75rem 0 0">${s(v.title)}</p>` : ''}
+      ${v.credit ? `<p style="color:#94a3b8;font-size:.7rem;margin:.25rem 0 0">Fuente: ${s(v.credit)}</p>` : ''}
+      <button class="ga-btn" style="margin-top:1rem" onclick="this.closest('.ga-overlay').remove()">Cerrar</button>
     </div>`);
   overlay.classList.add('dex-overlay');
 };
