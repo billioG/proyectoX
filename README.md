@@ -31,6 +31,7 @@ En producción: [clases.yoaprendo.online](https://clases.yoaprendo.online)
 | [docs/MIGRATIONS.md](docs/MIGRATIONS.md) | Base de datos: orden de migraciones y reglas |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Reglas para colaborar y publicar versiones |
 | [CHANGELOG.md](CHANGELOG.md) | Historial de cambios |
+| [PENDIENTES.md](PENDIENTES.md) | Tareas abiertas y pasos manuales pendientes |
 | [docs/METRICAS_ADMIN.md](docs/METRICAS_ADMIN.md) | Cómo se calculan las métricas del panel de administración |
 | [MANUAL_DE_USUARIO.md](MANUAL_DE_USUARIO.md) | Uso para docentes y administración |
 | [school-node/README.md](school-node/README.md) | Instalar el nodo escolar en una Raspberry Pi |
