@@ -63,6 +63,17 @@ const GA_STYLES = `
 .ga-mini-avatar{width:2.5rem;height:2.5rem;border-radius:9999px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:900;color:#fff;
   background:linear-gradient(135deg,#f97316,#ef4444);overflow:hidden}
 .ga-mini-avatar img{width:100%;height:100%;object-fit:cover}
+.ga-quick{margin-bottom:2rem;padding:1rem;border-radius:1.5rem;background:rgba(250,204,21,.06);border:1px solid rgba(250,204,21,.25)}
+.ga-quick-title{font-weight:900;font-style:italic;text-transform:uppercase;color:#facc15;font-size:1rem;margin-bottom:.75rem}
+.ga-quick-title span{display:block;font-style:normal;text-transform:none;font-weight:700;font-size:.7rem;color:#94a3b8}
+.ga-quick-row{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.5rem}
+@media (max-width:520px){.ga-quick-row{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.ga-quick-btn{display:flex;flex-direction:column;align-items:center;gap:.35rem;padding:.75rem .25rem;border-radius:1rem;border:0;cursor:pointer;color:#fff;
+  background:rgba(255,255,255,.07);transition:transform .1s,background .15s;font-weight:800;font-size:.62rem;line-height:1.15}
+.ga-quick-btn i{font-size:1.3rem;color:#facc15}
+.ga-quick-btn:hover{background:rgba(250,204,21,.15)}
+.ga-quick-btn:active{transform:scale(.93)}
+.ga-record{margin-top:1rem;font-size:.8rem;font-weight:800;color:#cbd5e1}
 .ga-mascot{width:9rem;height:9rem;margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:4rem}
 @keyframes ga-fade{from{opacity:0}to{opacity:1}}
 @keyframes ga-spin{to{transform:rotate(360deg)}}
@@ -122,6 +133,108 @@ window.GameArena = {
       </div>`;
   },
 
+  // Datos de cada juego 1v1 para crear retos genéricos (revancha, rápido).
+  GAMES: {
+    quiz: { table: 'student_duels', label: 'Desafío de Código', icon: 'fa-code', cache: '_duelsCache', reload: 'loadDuelsSection', topic: true },
+    hangman: { table: 'student_hangman_duels', label: 'Ahorcado', icon: 'fa-spider', cache: '_hangmanDuelsCache', reload: 'loadHangmanSection', topic: true },
+    timed_math: { table: 'student_timed_math_duels', label: 'Contrarreloj', icon: 'fa-stopwatch', cache: '_timedMathDuelsCache', reload: 'loadTimedMathSection', topic: false },
+    debug: { table: 'student_debug_duels', label: 'Encontrá el Error', icon: 'fa-bug', cache: '_debugDuelsCache', reload: 'loadDebugSection', topic: true },
+    spelling: { table: 'student_spelling_duels', label: 'Ortografía', icon: 'fa-spell-check', cache: '_spellingDuelsCache', reload: 'loadSpellingSection', topic: true },
+  },
+
+  async createChallenge(game, { opponentId, wager, topic }) {
+    const g = this.GAMES[game];
+    const gems = window.userData?.gems ?? 0;
+    const safeWager = Math.max(0, Math.min(wager ?? 10, gems));
+    const pool = window.getDuelTopicPoolForCurrentUser ? window.getDuelTopicPoolForCurrentUser() : [];
+    const row = { challenger_id: window.currentUser.id, opponent_id: opponentId, wager_gems: safeWager };
+    if (g.topic) row.topic = topic || pool[Math.floor(Math.random() * pool.length)] || 'Cultura general';
+    if (game === 'quiz') row.question_count = window.computeDuelQuestionCount ? window.computeDuelQuestionCount(safeWager) : 5;
+
+    const { data, error } = await window._supabase.from(g.table).insert(row).select('id').single();
+    if (error) {
+      window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
+      return null;
+    }
+    if (typeof window.sendDuelPushNotification === 'function') window.sendDuelPushNotification(data.id, 'challenge', game);
+    if (typeof window[g.reload] === 'function') window[g.reload]();
+    return data.id;
+  },
+
+  // Revancha: mismo juego, mismo rival, misma apuesta (topeada a tus gemas).
+  async rematch(game, duelId) {
+    const g = this.GAMES[game];
+    const d = (window[g.cache] || []).find(x => x.id === duelId);
+    if (!d) return;
+    const opponentId = d.challenger_id === window.currentUser.id ? d.opponent_id : d.challenger_id;
+    const rival = d.challenger_id === window.currentUser.id ? d.opponent : d.challenger;
+    const id = await this.createChallenge(game, { opponentId, wager: d.wager_gems, topic: d.topic });
+    if (id) window.showToast(`<i class="fas fa-swords"></i> ¡Revancha enviada a ${(window.sanitizeInput || (v => v))(rival?.full_name || 'tu rival')}!`, 'success');
+  },
+
+  // Reto rápido: un toque -- compañero al azar, tema al azar, 10 gemas.
+  async quickChallenge(game) {
+    const u = window.userData;
+    const { data: classmates } = await window._supabase.from('students')
+      .select('id, full_name')
+      .eq('school_code', u.school_code).eq('grade', u.grade).eq('section', u.section)
+      .neq('id', window.currentUser.id);
+    if (!classmates?.length) return window.showToast('<i class="fas fa-circle-xmark"></i> No hay compañeros en tu clase para retar', 'error');
+    // Evita retar a alguien con quien ya tenés un reto pendiente de este juego.
+    const busy = new Set((window[this.GAMES[game].cache] || []).filter(d => d.status === 'pending' || d.status === 'active')
+      .map(d => (d.challenger_id === window.currentUser.id ? d.opponent_id : d.challenger_id)));
+    const pool = classmates.filter(c => !busy.has(c.id));
+    const pick = (pool.length ? pool : classmates)[Math.floor(Math.random() * (pool.length || classmates.length))];
+    const id = await this.createChallenge(game, { opponentId: pick.id, wager: 10 });
+    if (id) window.showToast(`<i class="fas fa-bolt"></i> ¡Retaste a ${(window.sanitizeInput || (v => v))(pick.full_name)} a ${this.GAMES[game].label}!`, 'success');
+  },
+
+  quickStripHtml() {
+    this.ensureStyles();
+    return `<div class="ga-quick">
+      <div class="ga-quick-title"><i class="fas fa-bolt"></i> Reto rápido <span>un toque: rival y tema al azar, 10 💎</span></div>
+      <div class="ga-quick-row">${Object.entries(this.GAMES).map(([key, g]) =>
+        `<button class="ga-quick-btn" onclick="window.GameArena.quickChallenge('${key}')"><i class="fas ${g.icon}"></i><span>${g.label}</span></button>`).join('')}</div>
+    </div>`;
+  },
+
+  // Historial cara a cara contra cada rival (sumando los 5 juegos).
+  async loadRivalries() {
+    const { data } = await window._supabase.rpc('get_my_rivalries');
+    window._rivalries = data || {};
+    return window._rivalries;
+  },
+
+  recordFor(rivalId) {
+    const r = window._rivalries?.[rivalId];
+    return r ? { w: r.w, l: r.l, t: r.t } : null;
+  },
+
+  recordChipHtml(duel) {
+    const rivalId = duel.challenger_id === window.currentUser.id ? duel.opponent_id : duel.challenger_id;
+    const r = this.recordFor(rivalId);
+    if (!r || (r.w + r.l + r.t) === 0) return '';
+    const color = r.w > r.l ? '#4ade80' : r.w < r.l ? '#fb7185' : '#cbd5e1';
+    return `<span style="display:inline-block;margin-left:.35rem;padding:.05rem .45rem;border-radius:9999px;background:rgba(255,255,255,.08);color:${color};font-size:.6rem;font-weight:900">${r.w}-${r.l}${r.t ? `-${r.t}` : ''}</span>`;
+  },
+
+  // Arriba (a la vista): pendientes, en curso y los terminados en las
+  // últimas 24h -- así se ve el resultado y la revancha sin abrir el historial.
+  isOnTop(d) {
+    if (d.status === 'pending' || d.status === 'active') return true;
+    return d.status === 'completed' && d.resolved_at && (Date.now() - new Date(d.resolved_at).getTime()) < 86400000;
+  },
+
+  rematchBtnHtml(game, duel) {
+    return `<button class="h-8 px-3 rounded-lg text-white text-[0.6rem] font-black uppercase mr-2" style="background:linear-gradient(135deg,#f97316,#dc2626)" onclick="window.GameArena.rematch('${game}', '${duel.id}')"><i class="fas fa-rotate-right"></i> Revancha</button>`;
+  },
+
+  // Lo llama cada juego al terminar: si con esa jugada se cerró el duelo,
+  // notify-duel avisa a los dos (una sola vez); si no, no hace nada.
+  notifyResult(game, duelId) {
+    if (typeof window.sendDuelPushNotification === 'function') window.sendDuelPushNotification(duelId, 'result', game);
+  },
+
   // Columnas de students para el join de challenger/opponent en cada juego.
   STUDENT_JOIN: 'full_name, profile_photo_url, companion_species, gems_earned_total, companion_equipped',
 
@@ -135,10 +248,13 @@ window.GameArena = {
     const myCompanion = window._myCompanionSpecies
       ? { species: window._myCompanionSpecies, stage: window._myCompanionStageIndex || 0, equipped: window._myCompanionEquipped }
       : null;
+    const rivalId = duel?.challenger_id === window.currentUser.id ? duel?.opponent_id : duel?.challenger_id;
+    if (!window._rivalries) await this.loadRivalries().catch(() => {});
     return {
       me: { name: window.userData?.full_name, photo: window.userData?.profile_photo_url, companion: myCompanion },
       rival: { name: rival?.full_name, photo: rival?.profile_photo_url, companion: rivalCompanion },
       wager: duel?.wager_gems || 0,
+      record: this.recordFor(rivalId),
     };
   },
 
@@ -160,7 +276,7 @@ window.GameArena = {
 
   // Pantalla VS + 3-2-1. Se resuelve cuando termina (antes de arrancar el
   // reloj del servidor, así la animación no le cuenta tiempo al alumno).
-  async versus({ title, me, rival, wager }) {
+  async versus({ title, me, rival, wager, record }) {
     this.ensureStyles();
     const s = window.sanitizeInput || ((v) => v);
     const overlay = document.createElement('div');
@@ -174,6 +290,9 @@ window.GameArena = {
           <div class="ga-player right">${this.fighterHtml(rival)}<div class="ga-name">${s(rival.name || 'Rival')}</div></div>
         </div>
         ${wager > 0 ? `<div class="ga-wager"><i class="fas fa-gem"></i> ${wager} gemas en juego</div>` : ''}
+        ${record && (record.w + record.l + record.t) > 0
+          ? `<div class="ga-record">Historial: Vos <b style="color:#4ade80">${record.w}</b> - <b style="color:#fb7185">${record.l}</b> ${s(rival.name?.split(' ')[0] || 'Rival')}${record.t ? ` · ${record.t} empate(s)` : ''}</div>`
+          : `<div class="ga-record">Primer duelo entre ustedes</div>`}
       </div>`;
     document.body.appendChild(overlay);
     // Cada mascota "saluda" con un emote al entrar al ring.

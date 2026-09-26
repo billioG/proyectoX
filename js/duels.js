@@ -207,7 +207,7 @@ window.renderDuelsSection = function renderDuelsSection() {
       // Antes solo se veía la retroalimentación una vez, en el modal
       // que aparece justo al completarse -- si lo cerrabas sin fijarte,
       // no había forma de volver a ver qué respondiste mal.
-      actionHtml = `<button class="h-8 px-3 rounded-lg bg-white/10 text-white text-[0.6rem] font-black uppercase" onclick="window.showDuelReview('${d.id}')"><i class="fas fa-list-check"></i> Revisar</button>`;
+      actionHtml = window.GameArena.rematchBtnHtml('quiz', d) + `<button class="h-8 px-3 rounded-lg bg-white/10 text-white text-[0.6rem] font-black uppercase" onclick="window.showDuelReview('${d.id}')"><i class="fas fa-list-check"></i></button>`;
     }
 
     return `
@@ -216,7 +216,7 @@ window.renderDuelsSection = function renderDuelsSection() {
         <div class="min-w-0 flex-1">
           <div class="text-xs font-bold text-white truncate">vs ${sanitizeInput(opponentName)}</div>
           <div class="text-[0.6rem] text-slate-500 truncate">${sanitizeInput(d.topic)}</div>
-          ${statusHtml}
+          <div>${statusHtml}${window.GameArena.recordChipHtml(d)}</div>
         </div>
         <div class="shrink-0 flex items-center">${actionHtml}</div>
       </div>
@@ -226,8 +226,8 @@ window.renderDuelsSection = function renderDuelsSection() {
   // Lo que requiere atención (pendiente de responder/jugar) queda a la
   // vista; lo que ya terminó (completado/cancelado/rechazado) se amontonaba
   // sin fin en la misma lista -- ahora va colapsado en un acordeón aparte.
-  const activeDuels = duels.filter(d => d.status === 'pending' || d.status === 'active');
-  const historyDuels = duels.filter(d => d.status === 'completed' || d.status === 'cancelled' || d.status === 'rejected');
+  const activeDuels = duels.filter(d => window.GameArena.isOnTop(d));
+  const historyDuels = duels.filter(d => !window.GameArena.isOnTop(d));
 
   const activeHtml = activeDuels.length
     ? `<div class="space-y-2">${activeDuels.map(renderDuelCard).join('')}</div>`
@@ -300,6 +300,7 @@ window.getDuelTopicPoolForCurrentUser = getDuelTopicPoolForCurrentUser;
 function computeDuelQuestionCount(wager) {
   return Math.max(5, Math.min(15, 5 + Math.floor((wager || 0) / 10)));
 }
+window.computeDuelQuestionCount = computeDuelQuestionCount;
 
 window.updateDuelWagerPreview = function updateDuelWagerPreview() {
   const wager = parseInt(document.getElementById('duel-wager')?.value) || 0;
@@ -571,6 +572,7 @@ window.submitDuelAnswers = async function submitDuelAnswers() {
   document.getElementById('duel-quiz-modal')?.remove();
 
   if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
+  window.GameArena.notifyResult('quiz', duel.id);
 
   const total = duel.questions.length;
   const good = score >= Math.ceil(total / 2);

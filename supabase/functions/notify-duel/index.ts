@@ -60,12 +60,12 @@ Deno.serve(async (req) => {
 
   try {
     const { duel_id, type, game = 'quiz' } = await req.json();
-    if (!duel_id || !['challenge', 'accepted'].includes(type)) return json({ error: 'duel_id y type ("challenge"|"accepted") requeridos' }, 400);
+    if (!duel_id || !['challenge', 'accepted', 'result'].includes(type)) return json({ error: 'duel_id y type ("challenge"|"accepted"|"result") requeridos' }, 400);
     const config = GAME_CONFIG[game];
     if (!config) return json({ error: `game inválido: ${game}` }, 400);
 
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
-    const selectCols = `challenger_id, opponent_id, wager_gems${config.hasTopic ? ', topic' : ''}, challenger:students!challenger_id(full_name), opponent:students!opponent_id(full_name)`;
+    const selectCols = `challenger_id, opponent_id, wager_gems, status, winner_id, result_notified_at${config.hasTopic ? ', topic' : ''}, challenger:students!challenger_id(full_name), opponent:students!opponent_id(full_name)`;
     const { data: duel } = await admin.from(config.table)
       .select(selectCols)
       .eq('id', duel_id).maybeSingle();
@@ -78,25 +78,47 @@ Deno.serve(async (req) => {
     const opponentName = (Array.isArray(duel.opponent) ? duel.opponent[0] : duel.opponent)?.full_name || 'Tu rival';
     const subject = config.hasTopic ? duel.topic : config.label;
 
-    const targetId = type === 'challenge' ? duel.opponent_id : duel.challenger_id;
-    const payload = type === 'challenge'
-      ? { title: `⚔️ Nuevo ${config.label}`, body: `${challengerName} te retó por ${duel.wager_gems} gemas -- ${subject}` }
-      : { title: '✅ Reto Aceptado', body: `${opponentName} aceptó tu desafío -- ¡ya podés jugar!` };
+    // Cada envío: a quién y qué dice. "result" va a los DOS jugadores, una
+    // sola vez por duelo (result_notified_at), y solo si ya terminó.
+    const messages: { to: string; payload: { title: string; body: string } }[] = [];
+    if (type === 'challenge') {
+      messages.push({ to: duel.opponent_id, payload: { title: `⚔️ Nuevo ${config.label}`, body: `${challengerName} te retó por ${duel.wager_gems} gemas -- ${subject}` } });
+    } else if (type === 'accepted') {
+      messages.push({ to: duel.challenger_id, payload: { title: '✅ Reto Aceptado', body: `${opponentName} aceptó tu desafío -- ¡ya podés jugar!` } });
+    } else {
+      if (duel.status !== 'completed' || duel.result_notified_at) return json({ ok: true, skipped: true });
+      const { data: claimed } = await admin.from(config.table)
+        .update({ result_notified_at: new Date().toISOString() })
+        .eq('id', duel_id).is('result_notified_at', null).select('id');
+      if (!claimed?.length) return json({ ok: true, skipped: true });
 
-    const { data: subs } = await admin.from('push_subscriptions').select('*').eq('user_id', targetId);
+      const names: Record<string, string> = { [duel.challenger_id]: challengerName, [duel.opponent_id]: opponentName };
+      for (const me of [duel.challenger_id, duel.opponent_id]) {
+        const rival = names[me === duel.challenger_id ? duel.opponent_id : duel.challenger_id];
+        const payload = !duel.winner_id
+          ? { title: '🤝 ¡Empate!', body: `Empataste con ${rival} en ${config.label}. ¿Desempate?` }
+          : duel.winner_id === me
+            ? { title: '🏆 ¡Ganaste!', body: `Le ganaste a ${rival} en ${config.label}${duel.wager_gems ? ` -- +${duel.wager_gems} gemas` : ''}` }
+            : { title: '😤 Te ganaron', body: `${rival} te ganó en ${config.label}. ¡Pedile la revancha!` };
+        messages.push({ to: me, payload });
+      }
+    }
 
     let sent = 0, cleaned = 0;
-    for (const sub of (subs || [])) {
-      try {
-        await webpush.sendNotification(
-          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-          JSON.stringify({ ...payload, url: '/', target: 'game-center' })
-        );
-        sent++;
-      } catch (e: any) {
-        if (e?.statusCode === 404 || e?.statusCode === 410) {
-          await admin.from('push_subscriptions').delete().eq('id', sub.id);
-          cleaned++;
+    for (const msg of messages) {
+      const { data: subs } = await admin.from('push_subscriptions').select('*').eq('user_id', msg.to);
+      for (const sub of (subs || [])) {
+        try {
+          await webpush.sendNotification(
+            { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+            JSON.stringify({ ...msg.payload, url: '/', target: 'game-center' })
+          );
+          sent++;
+        } catch (e: any) {
+          if (e?.statusCode === 404 || e?.statusCode === 410) {
+            await admin.from('push_subscriptions').delete().eq('id', sub.id);
+            cleaned++;
+          }
         }
       }
     }

@@ -116,7 +116,7 @@ window.renderHangmanSection = function renderHangmanSection() {
         : won
           ? `<span class="text-[0.6rem] font-black uppercase text-emerald-400"><i class="fas fa-trophy"></i> Ganaste +${d.wager_gems} gemas</span>`
           : `<span class="text-[0.6rem] font-black uppercase text-rose-400">Perdiste</span>`;
-      actionHtml = `<button class="h-8 px-3 rounded-lg bg-white/10 text-white text-[0.6rem] font-black uppercase" onclick="window.showHangmanReview('${d.id}')"><i class="fas fa-list-check"></i> Revisar</button>`;
+      actionHtml = window.GameArena.rematchBtnHtml('hangman', d) + `<button class="h-8 px-3 rounded-lg bg-white/10 text-white text-[0.6rem] font-black uppercase" onclick="window.showHangmanReview('${d.id}')"><i class="fas fa-list-check"></i></button>`;
     }
 
     return `
@@ -125,15 +125,15 @@ window.renderHangmanSection = function renderHangmanSection() {
         <div class="min-w-0 flex-1">
           <div class="text-xs font-bold text-white truncate">vs ${sanitizeInput(opponentName)}</div>
           <div class="text-[0.6rem] text-slate-500 truncate">${sanitizeInput(d.topic)}</div>
-          ${statusHtml}
+          <div>${statusHtml}${window.GameArena.recordChipHtml(d)}</div>
         </div>
         <div class="shrink-0 flex items-center">${actionHtml}</div>
       </div>
     `;
   };
 
-  const activeDuels = duels.filter(d => d.status === 'pending' || d.status === 'active');
-  const historyDuels = duels.filter(d => d.status === 'completed' || d.status === 'cancelled' || d.status === 'rejected');
+  const activeDuels = duels.filter(d => window.GameArena.isOnTop(d));
+  const historyDuels = duels.filter(d => !window.GameArena.isOnTop(d));
 
   const activeHtml = activeDuels.length ? `<div class="space-y-2">${activeDuels.map(renderCard).join('')}</div>` : '';
   const historyHtml = historyDuels.length ? `
@@ -394,6 +394,7 @@ window.finishHangmanGame = async function finishHangmanGame() {
 
   window._myHangmanPlayed = window._myHangmanPlayed || new Set();
   window._myHangmanPlayed.add(state.duelId);
+  window.GameArena.notifyResult('hangman', state.duelId);
 
   const s = window.sanitizeInput || ((v) => v);
   await window.GameArena.result({

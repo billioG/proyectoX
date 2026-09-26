@@ -658,6 +658,7 @@ window.renderGamificationHubContent = function renderGamificationHubContent(moda
                  <!-- LOS 5 DESAFÍOS 1V1 -- antes cada uno era una sección de ancho
                       completo apilada, en desktop quedaba una sola columna
                       angosta desperdiciando el resto de la pantalla. -->
+                ${window.userRole === 'estudiante' && window.GameArena ? window.GameArena.quickStripHtml() : ''}
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-x-8">
                     <section>
                          <h3 class="text-2xl font-black text-white italic uppercase mb-6 flex items-center gap-3"><i class="fas fa-swords text-rose-500"></i> Desafíos de Código</h3>
@@ -706,11 +707,17 @@ window.renderGamificationHubContent = function renderGamificationHubContent(moda
         </div>
     `;
 
-  if (typeof window.loadDuelsSection === 'function') window.loadDuelsSection();
-  if (typeof window.loadHangmanSection === 'function') window.loadHangmanSection();
-  if (typeof window.loadTimedMathSection === 'function') window.loadTimedMathSection();
-  if (typeof window.loadDebugSection === 'function') window.loadDebugSection();
-  if (typeof window.loadSpellingSection === 'function') window.loadSpellingSection();
+  // El historial cara a cara se carga antes para que cada tarjeta muestre
+  // su "3-1" desde el primer render.
+  const loadGameSections = () => {
+    if (typeof window.loadDuelsSection === 'function') window.loadDuelsSection();
+    if (typeof window.loadHangmanSection === 'function') window.loadHangmanSection();
+    if (typeof window.loadTimedMathSection === 'function') window.loadTimedMathSection();
+    if (typeof window.loadDebugSection === 'function') window.loadDebugSection();
+    if (typeof window.loadSpellingSection === 'function') window.loadSpellingSection();
+  };
+  if (window.userRole === 'estudiante' && window.GameArena) window.GameArena.loadRivalries().catch(() => {}).finally(loadGameSections);
+  else loadGameSections();
   if (typeof window.renderSeasonHero === 'function') window.renderSeasonHero();
   if (window.userRole === 'estudiante' && typeof window.renderLeagueSection === 'function') window.renderLeagueSection();
   if (typeof window.loadTournamentsSection === 'function') window.loadTournamentsSection();
