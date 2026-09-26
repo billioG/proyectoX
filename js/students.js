@@ -974,7 +974,7 @@ window.openTeacherAddStudentsModal = async function openTeacherAddStudentsModal(
           </div>
         </div>
         <div>
-          <label class="text-[0.65rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Nombres completos -- uno por línea</label>
+          <label class="text-[0.65rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Nombres completos -- uno por línea (nombres y después apellidos)</label>
           <textarea id="tas-names" rows="7" class="input-field-tw text-sm py-3" placeholder="Ana María López Pérez&#10;José Daniel Sic Coc"></textarea>
           <p class="text-[0.65rem] text-slate-400 mt-1">Podés pegar la lista entera desde Excel o Word. El usuario de cada alumno se genera solo.</p>
         </div>
@@ -1043,7 +1043,7 @@ window.submitTeacherAddStudents = async function submitTeacherAddStudents() {
         <span class="grow">${s(r.fullName || '')}</span>
         ${r.status === 'created' ? `<code class="font-bold text-primary">${s(r.username)}</code>` : `<span class="text-rose-400">${s(r.message || 'error')}</span>`}
       </div>`).join('')}
-      ${(result.classes_without_password || []).length ? `<p class="text-[0.7rem] text-amber-500 font-bold mt-2"><i class="fas fa-key"></i> Esta clase todavía no tiene contraseña: configurala en "Contraseñas de clase" (o dejala sin contraseña) para que puedan entrar.</p>` : ''}`;
+      ${(result.classes_new_password || []).length ? `<p class="text-[0.7rem] text-amber-500 font-bold mt-2"><i class="fas fa-key"></i> Se generó la contraseña de esta clase nueva: la ves o la cambiás en "Contraseñas de clase".</p>` : ''}`;
     document.getElementById('tas-names').value = '';
     window.showToast(`<i class="fas fa-circle-check"></i> ${ok} alumno(s) creado(s)`, ok ? 'success' : 'error');
     if (ok) window.loadStudents?.();

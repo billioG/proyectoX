@@ -75,33 +75,67 @@ Deno.serve(async (req) => {
     }
 
     // Contraseña de la clase decidida EN SERVIDOR (el docente no puede leer
-    // class_passwords.password): la de la clase o, si no tiene, una al azar.
+    // class_passwords.password): la de la clase o, si la clase es nueva, se
+    // le crea una igual que en la importación del admin (8 caracteres sin
+    // ambiguos, requiere contraseña) -- así los alumnos pueden entrar ya.
     const classPwCache = new Map<string, string>();
-    const classesWithoutPassword = new Set<string>();
-    const randomPw = () => crypto.randomUUID().replace(/-/g, '').slice(0, 10);
+    const classesWithNewPassword = new Set<string>();
+    const randomPw = () => {
+      const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+      const bytes = crypto.getRandomValues(new Uint8Array(8));
+      return Array.from(bytes, b => chars[b % chars.length]).join('');
+    };
     async function classPassword(school: string, grade: string, section: string) {
       const key = `${school}|${grade}|${section}`;
       if (!classPwCache.has(key)) {
         const { data } = await admin.from('class_passwords').select('password, requires_password')
           .eq('school_code', school).eq('grade', grade).eq('section', section).maybeSingle();
-        if (!data) classesWithoutPassword.add(key);
-        classPwCache.set(key, data?.requires_password !== false && data?.password ? data.password : randomPw());
+        let pw = data?.requires_password !== false && data?.password ? data.password : randomPw();
+        if (!data) {
+          const { error } = await admin.from('class_passwords')
+            .upsert({ school_code: school, grade, section, password: pw, requires_password: true }, { onConflict: 'school_code,grade,section' });
+          if (!error) classesWithNewPassword.add(key);
+        }
+        classPwCache.set(key, pw);
       }
       return classPwCache.get(key)!;
     }
 
-    // Usuario único generado en servidor: nombre.apellido, y si ya existe
-    // se le agrega un número.
+    // Usuario con la MISMA nomenclatura que la importación del admin
+    // (pdf-processor.js / generateUsernameVariants): inicial del nombre +
+    // primer apellido ("jperez"); si está tomado, en cascada inicial del
+    // segundo nombre, segundo apellido, etc., y recién al final un número.
+    // Nombre escrito como "Nombre1 [Nombre2] Apellido1 [Apellido2]".
+    const usedInBatch = new Set<string>();
     async function uniqueUsername(fullName: string) {
       const parts = fullName.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
-        .replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(Boolean);
-      const base = (parts.length >= 3 ? `${parts[0]}.${parts[2]}` : parts.join('.')).slice(0, 24) || 'alumno';
-      for (let i = 0; i < 50; i++) {
-        const candidate = i === 0 ? base : `${base}${Math.floor(10 + Math.random() * 990)}`;
-        const { data } = await admin.from('students').select('id').eq('username', candidate).maybeSingle();
-        if (!data) return candidate;
-      }
-      return `${base}${Date.now() % 100000}`;
+        .replace(/[^a-z\s]/g, '').split(/\s+/).filter(Boolean);
+      const n1 = parts[0] || '';
+      let n2 = '', a1 = '', a2 = '';
+      if (parts.length === 2) a1 = parts[1];
+      else if (parts.length === 3) { n2 = parts[1]; a1 = parts[2]; }
+      else if (parts.length >= 4) { n2 = parts[1]; a1 = parts[2]; a2 = parts[3]; }
+      if (!a1) a1 = '1bot';
+
+      const seen = new Set<string>();
+      const candidates: string[] = [];
+      const tryAdd = (v: string | false) => { if (v && v.length > 1 && !seen.has(v)) { seen.add(v); candidates.push(v); } };
+      tryAdd(n1.charAt(0) + a1);
+      tryAdd(!!n2 && n1.charAt(0) + n2.charAt(0) + a1);
+      tryAdd(!!a2 && a2 !== a1 && n1.charAt(0) + a2);
+      tryAdd(!!a2 && a2 !== a1 && !!n2 && n1.charAt(0) + n2.charAt(0) + a2);
+      tryAdd(!!n2 && n1.charAt(0) + n2);
+      tryAdd(!!a1 && n1 + a1.charAt(0));
+      tryAdd(!!a2 && a2 !== a1 && a1.charAt(0) + a2);
+      tryAdd(!!a2 && a2 !== a1 && n1 + a2.charAt(0));
+      const base = candidates[0] || (n1 + a1) || 'estudiante';
+      for (let i = 1; i <= 200; i++) candidates.push(base + i);
+
+      const { data: taken } = await admin.from('students').select('username').in('username', candidates);
+      const takenSet = new Set((taken || []).map((r: any) => r.username));
+      const pick = candidates.find(c => !takenSet.has(c) && !usedInBatch.has(c)) || `${base}${Date.now() % 100000}`;
+      usedInBatch.add(pick);
+      return pick;
     }
 
     for (const s of students as StudentRow[]) {
@@ -171,9 +205,9 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Clases sin contraseña configurada: el cliente avisa que hay que
-    // ponerle una (o dejarla sin contraseña) para que puedan entrar.
-    return json({ ok: true, results, classes_without_password: [...classesWithoutPassword] });
+    // Clases a las que se les generó contraseña recién: el cliente avisa
+    // dónde verla/cambiarla.
+    return json({ ok: true, results, classes_new_password: [...classesWithNewPassword] });
 
   } catch (e) {
     return json({ error: String(e) }, 500);
