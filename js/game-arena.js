@@ -18,6 +18,9 @@ const GA_STYLES = `
   background:linear-gradient(135deg,#6366f1,#ec4899);border:4px solid rgba(255,255,255,.9);box-shadow:0 0 30px rgba(99,102,241,.6);overflow:hidden}
 .ga-player.right .ga-avatar{background:linear-gradient(135deg,#f97316,#ef4444);box-shadow:0 0 30px rgba(239,68,68,.6)}
 .ga-avatar img{width:100%;height:100%;object-fit:cover}
+.ga-fighter{width:7.5rem;height:7.5rem;filter:drop-shadow(0 0 18px rgba(99,102,241,.55))}
+.ga-player.right .ga-fighter{filter:drop-shadow(0 0 18px rgba(239,68,68,.55))}
+.ga-player.right .ga-fighter{transform:scaleX(-1)}
 .ga-name{font-weight:800;font-size:.85rem;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ga-vs-badge{font-size:2.6rem;font-weight:900;font-style:italic;color:#facc15;text-shadow:0 0 20px rgba(250,204,21,.8),0 4px 0 #a16207;animation:ga-pop .6s .3s cubic-bezier(.2,1.6,.4,1) both}
 .ga-title{font-size:.7rem;font-weight:900;letter-spacing:.3em;text-transform:uppercase;color:#a5b4fc;margin-bottom:1.5rem}
@@ -108,15 +111,24 @@ window.GameArena = {
   },
 
   // Tarjeta grande para "crear reto" en el Centro de Juego.
-  heroHtml({ title, subtitle, icon, c1, c2, onclick }) {
+  heroHtml({ title, subtitle, icon, c1, c2, onclick, cta = '<i class="fas fa-bolt"></i> Retar a alguien' }) {
     this.ensureStyles();
     return `
       <div class="ga-hero" style="--ga-c1:${c1};--ga-c2:${c2}" onclick="${onclick}">
         <i class="fas ${icon} ga-hero-icon"></i>
         <h4>${title}</h4>
         <p>${subtitle}</p>
-        <span class="ga-hero-cta"><i class="fas fa-bolt"></i> Retar a alguien</span>
+        <span class="ga-hero-cta">${cta}</span>
       </div>`;
+  },
+
+  // Mascota del jugador en el VS (si tiene); si no, foto/inicial.
+  fighterHtml(p) {
+    if (p.companion?.species && typeof window.renderCompanionSvg === 'function') {
+      const { species, stage, equipped } = p.companion;
+      return `<div class="ga-fighter">${window.renderCompanionSvg(stage, 'companion-idle', species, equipped || {})}</div>`;
+    }
+    return this.avatarHtml(p.name, p.photo);
   },
 
   // Pantalla VS + 3-2-1. Se resuelve cuando termina (antes de arrancar el
@@ -130,14 +142,17 @@ window.GameArena = {
       <div class="ga-panel">
         <div class="ga-title">${s(title)}</div>
         <div class="ga-vs">
-          <div class="ga-player left">${this.avatarHtml(me.name, me.photo)}<div class="ga-name">${s(me.name || 'Vos')}</div></div>
+          <div class="ga-player left">${this.fighterHtml(me)}<div class="ga-name">${s(me.name || 'Vos')}</div></div>
           <div class="ga-vs-badge">VS</div>
-          <div class="ga-player right">${this.avatarHtml(rival.name, rival.photo)}<div class="ga-name">${s(rival.name || 'Rival')}</div></div>
+          <div class="ga-player right">${this.fighterHtml(rival)}<div class="ga-name">${s(rival.name || 'Rival')}</div></div>
         </div>
         ${wager > 0 ? `<div class="ga-wager"><i class="fas fa-gem"></i> ${wager} gemas en juego</div>` : ''}
       </div>`;
     document.body.appendChild(overlay);
-    await wait(1600);
+    // Cada mascota "saluda" con un emote al entrar al ring.
+    setTimeout(() => overlay.querySelectorAll('.ga-fighter .cp-svg').forEach((svg, i) =>
+      setTimeout(() => window.playCompanionEmote?.(svg), i * 350)), 550);
+    await wait(2000);
 
     const panel = overlay.querySelector('.ga-panel');
     for (const n of ['3', '2', '1']) {

@@ -600,6 +600,15 @@ window.renderGamificationHubContent = function renderGamificationHubContent(moda
                 <!-- TIENDA -->
                 <section>
                     <h3 class="text-2xl font-black text-white italic uppercase mb-6 flex items-center gap-3"><i class="fas fa-store text-indigo-500"></i> Tienda de Mascotas</h3>
+                    ${window.userRole === 'estudiante' && window.GameArena ? window.GameArena.heroHtml({
+                      title: 'Vestidor',
+                      subtitle: 'Gorras, lentes, capas y trajes para tu mascota. Algunos se desbloquean gratis al evolucionar.',
+                      icon: 'fa-shirt',
+                      c1: '#0ea5e9',
+                      c2: '#6366f1',
+                      onclick: 'window.openWardrobe()',
+                      cta: '<i class="fas fa-shirt"></i> Abrir vestidor',
+                    }) : ''}
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                         ${window.renderShopItem('Racha Congelada', 'Protege tu racha 1 día', 300, '<i class="fas fa-cube"></i>', 'bg-cyan-500', userData?.streak_freeze)}
                         ${window.renderShopItem('Marco Dorado', 'Borde dorado en el ranking', 1000, '<i class="fas fa-image"></i>️', 'bg-amber-500', userData?.has_gold_frame)}

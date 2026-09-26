@@ -175,13 +175,77 @@ const COMPANION_SPECIES = {
 };
 window.COMPANION_SPECIES = COMPANION_SPECIES;
 
-function companionSvgInner(species, stageIndex) {
+// ---------- accesorios (estilo Free Fire) ----------
+// Dónde se apoya cada accesorio en el viewBox final, por especie y tamaño
+// (growth 1-3): top = tope de la cabeza, eyes = centro entre los ojos,
+// back = centro del cuerpo, hw = ancho de la cabeza (escala: 100 = 1).
+const ANCHORS = {
+  quetzal: {
+    1: { top: [150, 91], eyes: [150, 129], back: [150, 168], hw: 99 },
+    2: { top: [150, 78], eyes: [150, 123], back: [150, 170], hw: 117 },
+    3: { top: [150, 54], eyes: [150, 96], back: [150, 141], hw: 112 },
+  },
+  jaguar: {
+    1: { top: [150, 98], eyes: [150, 136], back: [150, 201], hw: 89 },
+    2: { top: [150, 76], eyes: [150, 126], back: [150, 210], hw: 115 },
+    3: { top: [150, 59], eyes: [150, 118], back: [150, 218], hw: 137 },
+  },
+  tortuga: {
+    1: { top: [150, 173], eyes: [150, 194], back: [150, 170], hw: 55 },
+    2: { top: [150, 173], eyes: [150, 200], back: [150, 170], hw: 70 },
+    3: { top: [150, 174], eyes: [150, 206], back: [150, 170], hw: 84 },
+  },
+};
+
+// Dibujados en unidades donde 100 = ancho de la cabeza, centrados en su
+// punto de apoyo (0,0).
+const COSMETIC_ART = {
+  lentes_nerd: `<circle cx="-21" cy="0" r="15" fill="rgba(255,255,255,.15)" stroke="#3E2723" stroke-width="4"/>
+    <circle cx="21" cy="0" r="15" fill="rgba(255,255,255,.15)" stroke="#3E2723" stroke-width="4"/><path d="M-6 0 Q0 -4 6 0" stroke="#3E2723" stroke-width="4" fill="none"/>`,
+  lentes_sol: `<rect x="-38" y="-10" width="32" height="21" rx="7" fill="#111827"/><rect x="6" y="-10" width="32" height="21" rx="7" fill="#111827"/>
+    <path d="M-6 -3 L6 -3" stroke="#111827" stroke-width="4"/><path d="M-33 -6 L-24 -6 M11 -6 L20 -6" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".6"/>`,
+  antifaz: `<path fill-rule="evenodd" fill="#212121" d="M-52 -12 Q0 -24 52 -12 L50 13 Q0 22 -50 13 Z M-21 0 m-10 0 a10 10 0 1 0 20 0 a10 10 0 1 0 -20 0 M21 0 m-10 0 a10 10 0 1 0 20 0 a10 10 0 1 0 -20 0"/>
+    <path d="M52 -6 L70 -14 M52 4 L72 8" stroke="#E53935" stroke-width="5" stroke-linecap="round"/>`,
+  corona_flores: `<path d="M-46 4 Q0 -12 46 4" stroke="#43A047" stroke-width="5" fill="none"/>
+    ${[[-40, 2, '#F06292'], [-20, -5, '#FFD54F'], [0, -8, '#BA68C8'], [20, -5, '#4FC3F7'], [40, 2, '#FF8A65']].map(([x, y, c]) =>
+      `<circle cx="${x}" cy="${y}" r="9" fill="${c}"/><circle cx="${x}" cy="${y}" r="3.5" fill="#FFF59D"/>`).join('')}`,
+  gorra: `<path d="M-44 6 C -44 -44, 44 -44, 44 6 Z" fill="#1E88E5"/><ellipse cx="0" cy="6" rx="58" ry="9" fill="#1565C0"/>
+    <circle cx="0" cy="-37" r="4" fill="#0D47A1"/><path d="M0 -22 l4 8 l9 1 l-7 6 l2 9 l-8 -5 l-8 5 l2 -9 l-7 -6 l9 -1 Z" fill="#FFD54F"/>`,
+  audifonos: `<path d="M-52 26 C -54 -42, 54 -42, 52 26" stroke="#212121" stroke-width="9" fill="none"/>
+    <rect x="-64" y="12" width="20" height="34" rx="8" fill="#212121"/><rect x="44" y="12" width="20" height="34" rx="8" fill="#212121"/>
+    <rect x="-60" y="18" width="12" height="22" rx="5" fill="#00E676"/><rect x="48" y="18" width="12" height="22" rx="5" fill="#00E676"/>`,
+  sombrero: `<ellipse cx="0" cy="4" rx="72" ry="13" fill="#8D6E63"/><path d="M-36 4 C -38 -52, 38 -52, 36 4 Z" fill="#A1887F"/>
+    <path d="M-36 -8 Q0 -2 36 -8 L36 0 Q0 6 -36 0 Z" fill="#5D4037"/>`,
+  capa_heroe: `<path d="M-42 -58 L42 -58 L78 72 Q0 92 -78 72 Z" fill="#E53935"/><path d="M-42 -58 L42 -58 L36 -44 L-36 -44 Z" fill="#B71C1C"/>`,
+  capa_legendaria: `<path d="M-44 -60 L44 -60 L84 76 Q0 98 -84 76 Z" fill="#6A1B9A"/><path d="M-44 -60 L44 -60 L38 -44 L-38 -44 Z" fill="#FFD54F"/>
+    <path d="M0 0 l5 12 l13 1 l-10 8 l3 13 l-11 -7 l-11 7 l3 -13 l-10 -8 l13 -1 Z" fill="#FFD54F"/>
+    <circle cx="-40" cy="40" r="4" fill="#FFD54F"/><circle cx="44" cy="30" r="3" fill="#FFD54F"/><circle cx="-20" cy="66" r="3" fill="#FFD54F"/>`,
+};
+
+const SKIN_FILTERS = {
+  skin_neon: 'hue-rotate(165deg) saturate(1.7) drop-shadow(0 0 6px #22d3ee)',
+  skin_sombra: 'brightness(.55) saturate(.5) contrast(1.25) drop-shadow(0 0 8px #a855f7)',
+  skin_oro: 'sepia(1) saturate(3.2) hue-rotate(-12deg) brightness(1.08) drop-shadow(0 0 8px #fbbf24)',
+};
+
+function placeCosmetic(itemId, point, hw, cls) {
+  const art = COSMETIC_ART[itemId];
+  if (!art) return '';
+  return `<g class="${cls}" transform="translate(${point[0]} ${point[1]}) scale(${(hw / 100).toFixed(3)})">${art}</g>`;
+}
+
+function companionSvgInner(species, stageIndex, equipped = {}) {
   const sp = COMPANION_SPECIES[species] || COMPANION_SPECIES.quetzal;
   const growth = STAGE_GROWTH[stageIndex] ?? 0;
   if (growth === 0) return egg(sp.egg);
-  let svg = `<g class="cp-body">${sp.draw(growth)}</g>`;
+  const A = ANCHORS[species]?.[growth] || ANCHORS.quetzal[growth];
+  const back = equipped.back ? placeCosmetic(equipped.back, A.back, A.hw, 'cp-acc-back') : '';
+  const face = equipped.face ? placeCosmetic(equipped.face, A.eyes, A.hw, 'cp-acc-face') : '';
+  const head = equipped.head ? placeCosmetic(equipped.head, A.top, A.hw, 'cp-acc-head') : '';
+  let svg = `<g class="cp-body">${back}${sp.draw(growth)}${face}${head}</g>`;
   if (stageIndex === 4) svg = aura(sp.color) + svg;
-  if (stageIndex === 5) svg = aura('#FFD54F') + svg + crown() + sparkles();
+  // Con algo puesto en la cabeza, la corona se choca con el accesorio.
+  if (stageIndex === 5) svg = aura('#FFD54F') + svg + (equipped.head ? '' : crown()) + sparkles();
   return svg;
 }
 
@@ -272,6 +336,28 @@ window.ensureCompanionStyles = function ensureCompanionStyles() {
     .cp-svg.cp-emote-legend { animation: cp-legend 1.5s ease-out !important; }
     @keyframes cp-legend { 0% { filter: drop-shadow(0 0 0 #FFD54F); transform: scale(1); } 40% { filter: drop-shadow(0 0 22px #FFD54F) brightness(1.25); transform: scale(1.15) translateY(-12px); } 100% { filter: drop-shadow(0 0 0 #FFD54F); transform: scale(1); } }
     .cp-svg.cp-emote-wobble { animation: cp-wiggle .22s ease-in-out 4 !important; }
+    .cp-svg .cp-acc-head, .cp-svg .cp-acc-face { transition: opacity .2s; }
+    .cp-svg.cp-emote-shell .cp-acc-head, .cp-svg.cp-emote-shell .cp-acc-face { opacity: 0; }
+
+    /* --- vestidor --- */
+    .wd-preview { width: 11rem; height: 11rem; margin: 0 auto .5rem; }
+    .wd-tabs { display: flex; gap: .4rem; justify-content: center; margin: .75rem 0 1rem; flex-wrap: wrap; }
+    .wd-tab { padding: .45rem .9rem; border-radius: 9999px; border: 1px solid rgba(255,255,255,.15); background: rgba(255,255,255,.05);
+      color: #cbd5e1; font-size: .7rem; font-weight: 900; text-transform: uppercase; letter-spacing: .08em; cursor: pointer; }
+    .wd-tab.active { background: #6366f1; border-color: #818cf8; color: #fff; }
+    .wd-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .6rem; max-height: 17rem; overflow-y: auto; padding: .25rem; }
+    .wd-item { background: rgba(255,255,255,.05); border: 2px solid rgba(255,255,255,.08); border-radius: 1rem; padding: .5rem .35rem .6rem;
+      display: flex; flex-direction: column; align-items: center; gap: .3rem; }
+    .wd-item.on { border-color: #4ade80; background: rgba(74,222,128,.08); }
+    .wd-item .wd-art { width: 4.5rem; height: 4.5rem; pointer-events: none; }
+    .wd-item .wd-name { font-size: .62rem; font-weight: 800; color: #e2e8f0; line-height: 1.15; min-height: 1.45rem; }
+    .wd-btn { width: 100%; border: 0; border-radius: .6rem; padding: .35rem .2rem; font-size: .62rem; font-weight: 900; text-transform: uppercase; cursor: pointer; }
+    .wd-btn.equip { background: #6366f1; color: #fff; }
+    .wd-btn.off { background: rgba(74,222,128,.2); color: #86efac; }
+    .wd-btn.buy { background: rgba(34,211,238,.15); color: #67e8f9; border: 1px solid rgba(34,211,238,.4); }
+    .wd-btn.confirm { background: #f59e0b; color: #111827; }
+    .wd-btn.locked { background: rgba(255,255,255,.05); color: #64748b; cursor: not-allowed; }
+
     .cp-bubble { position: absolute; top: -6%; right: -4%; font-size: 1.6rem; pointer-events: none; animation: cp-bubble 1.2s ease-out forwards; }
     @keyframes cp-bubble { 0% { transform: translateY(8px) scale(.3); opacity: 0; } 25% { transform: translateY(0) scale(1.15); opacity: 1; } 100% { transform: translateY(-28px) scale(1); opacity: 0; } }
     .cp-emote-chip { display:inline-flex; align-items:center; gap:.3rem; padding:.25rem .6rem; border-radius:9999px; font-size:.65rem; font-weight:800; }
@@ -292,10 +378,14 @@ window.ensureCompanionStyles = function ensureCompanionStyles() {
 
 // Las clases cp-g{n} habilitan los movimientos naturales de cada etapa
 // (ver ensureCompanionStyles); tocar la mascota dispara un emote.
-window.renderCompanionSvg = function renderCompanionSvg(stageIndex, extraClass = 'companion-idle', species = window._myCompanionSpecies || 'quetzal') {
+// equipped: por defecto, lo que tiene puesto el alumno actual si es su
+// especie; para la mascota de otro (ej. el rival en el VS) se pasa explícito.
+window.renderCompanionSvg = function renderCompanionSvg(stageIndex, extraClass = 'companion-idle', species = window._myCompanionSpecies || 'quetzal', equipped) {
   const growth = STAGE_GROWTH[stageIndex] ?? 0;
+  const eq = equipped ?? (species === window._myCompanionSpecies ? (window._myCompanionEquipped || {}) : {});
+  const skin = growth > 0 && eq.skin ? SKIN_FILTERS[eq.skin] || '' : '';
   return `<svg viewBox="0 0 300 300" class="cp-svg cp-g${growth} ${extraClass}" data-stage="${stageIndex}" data-species="${species}"
-    onclick="window.playCompanionEmote(this)" style="width:100%; height:100%; overflow:visible; cursor:pointer;">${companionSvgInner(species, stageIndex)}</svg>`;
+    onclick="window.playCompanionEmote(this)" style="width:100%; height:100%; overflow:visible; cursor:pointer;${skin ? `filter:${skin};` : ''}">${companionSvgInner(species, stageIndex, eq)}</svg>`;
 };
 
 // Emotes: se desbloquean al evolucionar (estilo Free Fire).
@@ -373,11 +463,12 @@ window.loadMyCompanion = async function loadMyCompanion() {
   if (window.userRole !== 'estudiante' || !window.currentUser || !window._supabase) return null;
   const uid = window.currentUser.id;
   const { data } = await window._supabase.from('students')
-    .select('gems_earned_total, companion_species').eq('id', uid).maybeSingle();
+    .select('gems_earned_total, companion_species, companion_equipped').eq('id', uid).maybeSingle();
   const species = data?.companion_species || null;
   const { stageIndex } = window.getCompanionStage(data?.gems_earned_total, species || 'quetzal');
   window._myCompanionSpecies = species;
   window._myCompanionStageIndex = stageIndex;
+  window._myCompanionEquipped = data?.companion_equipped || {};
 
   if (species) {
     const key = `PX_COMPANION_STAGE_${uid}`;
@@ -503,13 +594,99 @@ window.showCompanionEvolution = async function showCompanionEvolution(species, f
   celebrate();
 };
 
+// ---------- VESTIDOR ----------
+const WARDROBE_SLOTS = [
+  { id: 'head', label: 'Cabeza', icon: 'fa-hat-cowboy' },
+  { id: 'face', label: 'Cara', icon: 'fa-glasses' },
+  { id: 'back', label: 'Espalda', icon: 'fa-shield-halved' },
+  { id: 'skin', label: 'Trajes', icon: 'fa-shirt' },
+];
+
+window.openWardrobe = async function openWardrobe(slot = 'head') {
+  if (!window._myCompanionSpecies) {
+    await window.loadMyCompanion();
+    if (!window._myCompanionSpecies) return window.openStarterPicker();
+  }
+  const [{ data: items, error }, { data: owned }] = await Promise.all([
+    window._supabase.from('cosmetic_items').select('id, slot, name, price, min_stage').order('sort'),
+    window._supabase.from('student_cosmetics').select('item_id').eq('student_id', window.currentUser.id),
+  ]);
+  if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
+  window._wardrobe = { items: items || [], owned: new Set((owned || []).map(o => o.item_id)), slot, confirming: null };
+
+  document.getElementById('wardrobe-overlay')?.remove();
+  const overlay = companionOverlay('<div class="ga-card" id="wardrobe-card"></div>');
+  overlay.id = 'wardrobe-overlay';
+  window.renderWardrobe();
+};
+
+window.renderWardrobe = function renderWardrobe() {
+  const card = document.getElementById('wardrobe-card');
+  const w = window._wardrobe;
+  if (!card || !w) return;
+  const species = window._myCompanionSpecies;
+  const stage = window._myCompanionStageIndex || 0;
+  const equipped = window._myCompanionEquipped || {};
+  const names = COMPANION_SPECIES[species].names;
+  const s = window.sanitizeInput || ((v) => v);
+
+  const itemsHtml = w.items.filter(i => i.slot === w.slot).map(item => {
+    const isOn = equipped[item.slot] === item.id;
+    const unlocked = stage >= item.min_stage;
+    const have = item.price === 0 ? unlocked : w.owned.has(item.id);
+    const preview = window.renderCompanionSvg(Math.max(stage, 1), '', species, { ...equipped, [item.slot]: item.id });
+    let btn;
+    if (isOn) btn = `<button class="wd-btn off" onclick="window.equipCosmetic('${item.slot}', null)"><i class="fas fa-check"></i> Puesto</button>`;
+    else if (have) btn = `<button class="wd-btn equip" onclick="window.equipCosmetic('${item.slot}', '${item.id}')">Poner</button>`;
+    else if (!unlocked) btn = `<button class="wd-btn locked" disabled title="Se desbloquea en: ${s(names[item.min_stage])}"><i class="fas fa-lock"></i> ${s(names[item.min_stage])}</button>`;
+    else if (w.confirming === item.id) btn = `<button class="wd-btn confirm" onclick="window.buyCosmetic('${item.id}')">¿Comprar?</button>`;
+    else btn = `<button class="wd-btn buy" onclick="window._wardrobe.confirming='${item.id}'; window.renderWardrobe()"><i class="fas fa-gem"></i> ${item.price}</button>`;
+    return `<div class="wd-item ${isOn ? 'on' : ''}"><div class="wd-art">${preview}</div><div class="wd-name">${s(item.name)}</div>${btn}</div>`;
+  }).join('') || '<p style="color:#94a3b8;font-size:.8rem;grid-column:1/-1">No hay nada acá todavía.</p>';
+
+  card.innerHTML = `
+    <div class="ga-topbar">
+      <span class="ga-chip"><i class="fas fa-shirt"></i> Vestidor</span>
+      <span class="ga-chip" style="color:#67e8f9"><i class="fas fa-gem"></i> ${window.userData?.gems ?? 0}</span>
+    </div>
+    <div class="wd-preview">${window.renderCompanionSvg(stage, 'companion-idle', species)}</div>
+    <div style="font-weight:900;font-size:1rem">${s(names[stage])}</div>
+    <div class="wd-tabs">${WARDROBE_SLOTS.map(sl => `<button class="wd-tab ${sl.id === w.slot ? 'active' : ''}" onclick="window._wardrobe.slot='${sl.id}'; window._wardrobe.confirming=null; window.renderWardrobe()"><i class="fas ${sl.icon}"></i> ${sl.label}</button>`).join('')}</div>
+    <div class="wd-grid">${itemsHtml}</div>
+    <button class="ga-btn" style="margin-top:1rem" onclick="document.getElementById('wardrobe-overlay').remove()">Listo</button>`;
+};
+
+window.equipCosmetic = async function equipCosmetic(slot, itemId) {
+  const { data, error } = await window._supabase.rpc('equip_cosmetic', { p_slot: slot, p_item: itemId });
+  if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
+  window._myCompanionEquipped = data || {};
+  window.renderWardrobe();
+  const svg = document.querySelector('#wardrobe-card .wd-preview .cp-svg');
+  if (itemId && svg) window.playCompanionEmote(svg);
+  if (document.getElementById('companion-card-slot')) window.renderCompanionCard('companion-card-slot', window.currentUser.id);
+};
+
+window.buyCosmetic = async function buyCosmetic(itemId) {
+  const { data, error } = await window._supabase.rpc('buy_cosmetic', { p_item: itemId });
+  window._wardrobe.confirming = null;
+  if (error) {
+    window.renderWardrobe();
+    return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
+  }
+  if (window.userData) window.userData.gems = data.gems;
+  window._wardrobe.owned.add(itemId);
+  const item = window._wardrobe.items.find(i => i.id === itemId);
+  celebrate();
+  await window.equipCosmetic(item.slot, itemId);
+};
+
 window.renderCompanionCard = async function renderCompanionCard(containerId, studentId) {
   const container = document.getElementById(containerId);
   if (!container || !window._supabase) return;
   window.ensureCompanionStyles();
 
   const { data: student } = await window._supabase.from('students')
-    .select('gems_earned_total, companion_species').eq('id', studentId).maybeSingle();
+    .select('gems_earned_total, companion_species, companion_equipped').eq('id', studentId).maybeSingle();
   const species = student?.companion_species || null;
   const isMe = studentId === window.currentUser?.id;
 
@@ -535,7 +712,7 @@ window.renderCompanionCard = async function renderCompanionCard(containerId, stu
   }).join('');
   container.innerHTML = `
     <div class="glass-card p-8 flex flex-col sm:flex-row items-center gap-8 animate-slideUp">
-      <div class="w-32 h-32 shrink-0">${window.renderCompanionSvg(stageIndex, 'companion-idle', species)}</div>
+      <div class="w-32 h-32 shrink-0">${window.renderCompanionSvg(stageIndex, 'companion-idle', species, student?.companion_equipped || {})}</div>
       <div class="grow w-full text-center sm:text-left">
         <div class="text-[0.65rem] font-black uppercase tracking-widest text-slate-400 mb-1">Mi Mascota · ${COMPANION_SPECIES[species].label}</div>
         <h3 class="text-2xl font-black text-slate-800 dark:text-white mb-3">${stage.name}</h3>
@@ -551,6 +728,7 @@ window.renderCompanionCard = async function renderCompanionCard(containerId, stu
           <div class="text-[0.6rem] font-black uppercase tracking-widest text-slate-400 mb-2">Emotes ${isMe ? '-- tocá tu mascota' : ''}</div>
           <div class="flex flex-wrap gap-1.5">${emoteChips}</div>
         </div>
+        ${isMe && stageIndex > 0 ? `<button class="btn-primary-tw h-10 px-5 mt-4 text-xs uppercase font-bold" onclick="window.openWardrobe()"><i class="fas fa-shirt"></i> Vestidor</button>` : ''}
       </div>
     </div>`;
   startAutoEmotes(container);

@@ -8,7 +8,7 @@
 
 window.loadSpellingSection = async function loadSpellingSection() {
   const { data, error } = await window._supabase.from('student_spelling_duels')
-    .select('id, challenger_id, opponent_id, wager_gems, topic, status, winner_id, created_at, resolved_at, challenger:students!challenger_id(full_name, profile_photo_url), opponent:students!opponent_id(full_name, profile_photo_url)')
+    .select('id, challenger_id, opponent_id, wager_gems, topic, status, winner_id, created_at, resolved_at, challenger:students!challenger_id(full_name, profile_photo_url, companion_species, gems_earned_total, companion_equipped), opponent:students!opponent_id(full_name, profile_photo_url, companion_species, gems_earned_total, companion_equipped)')
     .or(`challenger_id.eq.${window.currentUser.id},opponent_id.eq.${window.currentUser.id}`)
     .order('created_at', { ascending: false })
     .limit(10);
@@ -261,10 +261,18 @@ window.openSpellingGame = async function openSpellingGame(duelId) {
 
   // VS + cuenta regresiva ANTES de start_spelling_duel -- el reloj del
   // servidor arranca recién cuando aparece la pista.
+  if (typeof window.loadMyCompanion === 'function' && window._myCompanionSpecies === undefined) await window.loadMyCompanion();
+  const rivalCompanion = rival?.companion_species && typeof window.getCompanionStage === 'function'
+    ? { species: rival.companion_species, stage: window.getCompanionStage(rival.gems_earned_total, rival.companion_species).stageIndex, equipped: rival.companion_equipped }
+    : null;
+  const myCompanion = window._myCompanionSpecies
+    ? { species: window._myCompanionSpecies, stage: window._myCompanionStageIndex || 0, equipped: window._myCompanionEquipped }
+    : null;
+
   await window.GameArena.versus({
     title: 'Ortografía 1v1',
-    me: { name: window.userData?.full_name, photo: window.userData?.profile_photo_url },
-    rival: { name: rival?.full_name, photo: rival?.profile_photo_url },
+    me: { name: window.userData?.full_name, photo: window.userData?.profile_photo_url, companion: myCompanion },
+    rival: { name: rival?.full_name, photo: rival?.profile_photo_url, companion: rivalCompanion },
     wager: duel?.wager_gems || 0,
   });
 
