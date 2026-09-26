@@ -723,6 +723,52 @@ window.ensureCompanionStyles = function ensureCompanionStyles() {
     .cp-svg.cp-emote-wobble { animation: cp-wiggle .22s ease-in-out 4 !important; }
     .cp-svg.cp-emote-swim { animation: cp-swim 1.6s ease-in-out !important; }
     .cp-svg.cp-emote-swim .cp-flip-l, .cp-svg.cp-emote-swim .cp-flip-r, .cp-svg.cp-emote-swim .cp-tail { animation-duration: .4s !important; }
+    /* emotes propios de cada especie */
+    .cp-svg.cp-emote-flap { animation: cp-bounce .4s ease-in-out 3 !important; }
+    .cp-svg.cp-emote-flap .cp-wing-l { animation: cp-flapfast-l .2s ease-in-out 6 !important; }
+    .cp-svg.cp-emote-flap .cp-wing-r { animation: cp-flapfast-r .2s ease-in-out 6 !important; }
+    @keyframes cp-flapfast-l { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(30deg); } }
+    @keyframes cp-flapfast-r { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-30deg); } }
+    .cp-svg.cp-emote-sing { animation: cp-sing .3s ease-in-out 4 !important; }
+    @keyframes cp-sing { 0%, 100% { transform: rotate(0) translateY(0); } 25% { transform: rotate(-7deg) translateY(-5px); } 75% { transform: rotate(7deg) translateY(-5px); } }
+    .cp-svg.cp-emote-glide { animation: cp-glide 1.8s ease-in-out !important; }
+    @keyframes cp-glide { 0%, 100% { transform: translate(0, 0) rotate(0); } 30% { transform: translate(-34px, -26px) rotate(-10deg); } 65% { transform: translate(34px, -18px) rotate(10deg); } }
+    .cp-svg.cp-emote-stretch { animation: cp-stretch 1.4s ease-in-out !important; }
+    @keyframes cp-stretch { 0%, 100% { transform: scale(1, 1); } 30% { transform: scale(1.18, .82); } 60% { transform: scale(.9, 1.16) translateY(-6px); } }
+    .cp-svg.cp-emote-ears .cp-ear-l, .cp-svg.cp-emote-ears .cp-ear-r { animation: cp-earflick .3s ease-in-out 4 !important; }
+    .cp-svg.cp-emote-ears { animation: cp-sing .6s ease-in-out 2 !important; }
+    @keyframes cp-earflick { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-22deg); } }
+    .cp-svg.cp-emote-pounce { animation: cp-pounce 1.3s cubic-bezier(.4,0,.2,1) !important; }
+    @keyframes cp-pounce { 0%, 100% { transform: translate(0, 0) scale(1, 1); } 35% { transform: translate(-6px, 8px) scale(1.12, .86); } 60% { transform: translate(26px, -34px) scale(.95, 1.08) rotate(8deg); } 80% { transform: translate(8px, 0) scale(1.08, .92); } }
+    .cp-svg.cp-emote-shake { animation: cp-shake .09s linear 10 !important; }
+    @keyframes cp-shake { 0%, 100% { transform: translateX(0) rotate(0); } 25% { transform: translateX(-6px) rotate(-3deg); } 75% { transform: translateX(6px) rotate(3deg); } }
+    .cp-svg.cp-emote-peek .cp-head { animation: cp-peek 1.3s ease-in-out !important; }
+    .cp-svg.cp-emote-peek { animation: cp-sing .65s ease-in-out 2 !important; }
+    .cp-svg.cp-emote-paddle .cp-flip-l { animation: cp-paddle-l .35s ease-in-out 4 !important; }
+    .cp-svg.cp-emote-paddle .cp-flip-r { animation: cp-paddle-r .35s ease-in-out 4 !important; }
+    .cp-svg.cp-emote-paddle .cp-tail { animation: cp-sway .35s ease-in-out 4 !important; }
+    .cp-svg.cp-emote-paddle { animation: cp-float 1.4s ease-in-out !important; }
+    .cp-svg.cp-emote-zzz { animation: cp-zzz 2.2s ease-in-out !important; }
+    .cp-svg.cp-emote-zzz .cp-eye { animation: none !important; transform: scaleY(.12) !important; }
+    @keyframes cp-zzz { 0%, 100% { transform: rotate(0) scale(1); } 30%, 70% { transform: rotate(-9deg) scale(1.04, .97); } 50% { transform: rotate(-9deg) scale(1.07, .95); } }
+    .cp-svg.cp-emote-peck { animation: cp-peck .4s ease-in-out 3 !important; }
+    @keyframes cp-peck { 0%, 100% { transform: rotate(0); } 45% { transform: rotate(16deg) translateY(4px); } }
+    .cp-svg.cp-emote-bounce { animation: cp-bounce .43s ease-in-out 3 !important; }
+    @keyframes cp-bounce { 0%, 100% { transform: translateY(0) scale(1, 1); } 15% { transform: scale(1.08, .92); } 55% { transform: translateY(-18px) scale(.96, 1.05); } }
+    .cp-svg.cp-emote-swing { animation: cp-swing 1.6s ease-in-out !important; transform-origin: 50% 0% !important; }
+    @keyframes cp-swing { 0%, 100% { transform: rotate(0); } 20% { transform: rotate(18deg); } 45% { transform: rotate(-16deg); } 70% { transform: rotate(10deg); } 88% { transform: rotate(-5deg); } }
+    .cp-svg.cp-emote-roll { animation: cp-roll 1.1s ease-in-out !important; transform-origin: 50% 55% !important; }
+    @keyframes cp-roll { 0% { transform: translateX(0) rotate(0); } 50% { transform: translateX(22px) rotate(200deg); } 100% { transform: translateX(0) rotate(360deg); } }
+    .cp-svg.cp-emote-float { animation: cp-float 1.8s ease-in-out !important; }
+    @keyframes cp-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-16px) rotate(-3deg); } }
+    .cp-svg.cp-emote-walk { animation: cp-walk 1.8s ease-in-out !important; }
+    @keyframes cp-walk { 0%, 100% { transform: translateX(0) rotate(0); } 12%, 37% { transform: translateX(-12px) rotate(-4deg) translateY(-3px); } 25% { transform: translateX(-20px); } 62%, 87% { transform: translateX(12px) rotate(4deg) translateY(-3px); } 75% { transform: translateX(20px); } }
+    .cp-svg.cp-emote-tailwhip .cp-tail { animation: cp-wag .22s ease-in-out 5 !important; }
+    .cp-svg.cp-emote-tailwhip { animation: cp-sing .55s ease-in-out 2 !important; }
+    .cp-svg.cp-emote-dig { animation: cp-dig .26s ease-in-out 5 !important; }
+    @keyframes cp-dig { 0%, 100% { transform: rotate(0) translateY(0); } 50% { transform: rotate(-12deg) translateY(10px); } }
+    .cp-svg.cp-emote-stand { animation: cp-stand 1.5s ease-in-out !important; }
+    @keyframes cp-stand { 0%, 100% { transform: scale(1, 1) translateY(0); } 25%, 75% { transform: scale(.94, 1.2) translateY(-12px); } 50% { transform: scale(.94, 1.2) translateY(-12px) rotate(-5deg); } }
     .cp-svg.cp-emote-sniff { animation: cp-sniff 1.4s ease-in-out !important; }
     @keyframes cp-sniff { 0%, 100% { transform: translateY(0) rotate(0); } 15%, 45%, 75% { transform: translateY(6px) rotate(-4deg); } 30%, 60%, 90% { transform: translateY(2px) rotate(4deg); } }
     @keyframes cp-swim { 0%, 100% { transform: translate(0, 0) rotate(0); } 25% { transform: translate(-16px, -12px) rotate(-8deg); } 50% { transform: translate(0, -20px) rotate(0); } 75% { transform: translate(16px, -12px) rotate(8deg); } }
@@ -755,6 +801,9 @@ window.ensureCompanionStyles = function ensureCompanionStyles() {
     .dex-stat small { display:block; font-size:.58rem; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:.06em; margin-bottom:.1rem; }
     .dex-stat b { font-size:.8rem; color:#0f172a; line-height:1.25; display:block; }
     .dex-fact { background:#f1f5f9; border-radius:1rem; padding:.7rem .85rem; font-size:.8rem; color:#334155; }
+    .dex-emotes { display:flex; flex-wrap:wrap; gap:.3rem; margin-top:.8rem; }
+    .dex-emotes span { font-size:.66rem; font-weight:800; padding:.25rem .55rem; border-radius:9999px; background:color-mix(in srgb, var(--dex-c) 15%, #fff); color:#1e293b; }
+    .dex-emotes span.locked { background:#f1f5f9; color:#94a3b8; }
     .dex-evo { display:grid; grid-template-columns:repeat(6, minmax(0,1fr)); gap:.25rem; margin-top:1rem; }
     .dex-evo > div { text-align:center; font-size:.5rem; font-weight:800; color:#475569; line-height:1.1; }
     .dex-evo .art { width:100%; aspect-ratio:1; }
@@ -814,34 +863,35 @@ window.renderCompanionSvg = function renderCompanionSvg(stageIndex, extraClass =
     onclick="window.playCompanionEmote(this)" style="width:100%; height:100%; overflow:visible; cursor:pointer;${skin ? `filter:${skin};` : ''}">${companionSvgInner(species, stageIndex, eq)}</svg>`;
 };
 
-// Emotes: se desbloquean al evolucionar (estilo Free Fire).
-const SPECIAL_EMOTE = {
-  quetzal: { id: 'fly', label: 'Vuelo', bubble: '🪶' },
-  jaguar: { id: 'roar', label: 'Rugido', bubble: '💢' },
-  tortuga: { id: 'shell', label: 'Caparazón', bubble: '🛡️' },
-  tucan: { id: 'fly', label: 'Vuelo Tropical', bubble: '🌈' },
-  saraguate: { id: 'roar', label: 'Aullido', bubble: '📣' },
-  manati: { id: 'swim', label: 'Nado', bubble: '🫧' },
-  guacamaya: { id: 'fly', label: 'Vuelo Escarlata', bubble: '🪶' },
-  danta: { id: 'swim', label: 'Chapuzón', bubble: '💦' },
-  pizote: { id: 'sniff', label: 'Olfateo', bubble: '👃' },
-  armadillo: { id: 'shell', label: 'Coraza', bubble: '🛡️' },
+// Emotes: cada especie tiene los SUYOS, inspirados en cómo se mueve el
+// animal de verdad, y se desbloquean al evolucionar (estilo Free Fire).
+// `anim` es la animación (ver cp-emote-* en ensureCompanionStyles); varias
+// mueven partes del cuerpo propias de la especie (alas, cola, orejas,
+// aletas, cabeza). Orden: etapas 1, 1, 2, 3, 4, 5.
+const EMOTE_SETS = {
+  quetzal: [['flap', 'Aleteo', '🪶'], ['sing', 'Canto del bosque', '🎶'], ['glide', 'Planeo', '🌬️'], ['dance', 'Baile nuboso', '💃'], ['fly', 'Vuelo', '☁️'], ['legend', "Q'uq'umatz", '🐉']],
+  jaguar: [['stretch', 'Estirón', '😼'], ['ears', 'Orejas alertas', '👂'], ['pounce', 'Acecho', '🐾'], ['shake', 'Sacudida', '💦'], ['roar', 'Rugido', '💢'], ['legend', 'Balam', '🌙']],
+  tortuga: [['peek', 'Asomarse', '👀'], ['paddle', 'Remar', '🌊'], ['zzz', 'Siesta en la arena', '💤'], ['swim', 'Nado', '🐚'], ['shell', 'Caparazón', '🛡️'], ['legend', 'Leyenda del mar', '🌅']],
+  tucan: [['peck', 'Picoteo', '🍓'], ['bounce', 'Saltitos', '✨'], ['flap', 'Aleteo', '🪶'], ['spin', 'Malabar de fruta', '🍌'], ['fly', 'Vuelo tropical', '🌈'], ['legend', 'Pico arcoíris', '🌟']],
+  saraguate: [['swing', 'Columpio', '🌿'], ['wiggle', 'Rascarse', '🤭'], ['roll', 'Voltereta', '🙃'], ['dance', 'Baile de la selva', '🥁'], ['roar', 'Aullido', '📣'], ['legend', 'Rey aullador', '👑']],
+  manati: [['float', 'Burbujas', '🫧'], ['paddle', 'Saludo', '👋'], ['zzz', 'Siesta', '💤'], ['roll', 'Giro de barril', '🌀'], ['swim', 'Nado', '🐟'], ['legend', 'Gigante del Río Dulce', '💎']],
+  guacamaya: [['peck', 'Picoteo', '🌰'], ['sing', 'Parloteo', '💬'], ['glide', 'Planeo', '🌬️'], ['flap', 'Aleteo escarlata', '🪶'], ['fly', 'Vuelo', '🔥'], ['legend', 'Guacamaya escarlata', '👑']],
+  danta: [['ears', 'Orejas', '👂'], ['shake', 'Sacudida', '💦'], ['sniff', 'Trompa curiosa', '👃'], ['walk', 'Paseo por la selva', '🌿'], ['swim', 'Chapuzón', '🏊'], ['legend', 'Jardinera ancestral', '🌳']],
+  pizote: [['sniff', 'Olfateo', '👃'], ['tailwhip', 'Cola arriba', '〰️'], ['dig', 'Escarbar', '🪱'], ['stand', 'En dos patas', '🧐'], ['bounce', 'Brinquitos', '✨'], ['legend', 'Rey pizote', '👑']],
+  armadillo: [['dig', 'Escarbar', '🕳️'], ['peek', 'Asomarse', '👀'], ['roll', 'Voltereta', '🌀'], ['hop', 'Salto sorpresa', '😲'], ['shell', 'Coraza', '🛡️'], ['legend', 'Armadillo blindado', '💠']],
 };
+const EMOTE_STAGES = [1, 1, 2, 3, 4, 5];
 
 function emotesFor(species) {
-  const special = SPECIAL_EMOTE[species] || SPECIAL_EMOTE.quetzal;
-  return [
-    { id: 'hop', label: 'Salto', bubble: '✨', minStage: 1 },
-    { id: 'wiggle', label: 'Alegría', bubble: '💚', minStage: 1 },
-    { id: 'spin', label: 'Giro', bubble: '🌀', minStage: 2 },
-    { id: 'dance', label: 'Baile', bubble: '🎵', minStage: 3 },
-    { ...special, minStage: 4 },
-    { id: 'legend', label: 'Aura Legendaria', bubble: '👑', minStage: 5 },
-  ];
+  return (EMOTE_SETS[species] || EMOTE_SETS.quetzal).map(([id, label, bubble], i) => ({ id, label, bubble, minStage: EMOTE_STAGES[i] }));
 }
 window.getCompanionEmotes = emotesFor;
 
-const EMOTE_MS = { hop: 1400, wiggle: 1200, spin: 900, dance: 1500, fly: 1700, roar: 1200, shell: 1500, swim: 1600, sniff: 1400, legend: 1500, wobble: 900 };
+const EMOTE_MS = {
+  hop: 1400, wiggle: 1200, spin: 900, dance: 1500, fly: 1700, roar: 1200, shell: 1500, swim: 1600, sniff: 1400, legend: 1500, wobble: 900,
+  flap: 1200, sing: 1200, glide: 1800, stretch: 1400, ears: 1200, pounce: 1300, shake: 900, peek: 1300, paddle: 1400, zzz: 2200,
+  peck: 1200, bounce: 1300, swing: 1600, roll: 1100, float: 1800, walk: 1800, tailwhip: 1200, dig: 1300, stand: 1500,
+};
 
 window.playCompanionEmote = function playCompanionEmote(svg) {
   if (!svg || svg.dataset.emoting) return;
@@ -1121,6 +1171,10 @@ window.openDexCard = function openDexCard(species, mode = 'collection') {
           <div class="dex-stat"><small>🍃 Come</small><b>${dex.food}</b></div>
         </div>
         <div class="dex-fact"><b>💡 ¿Sabías que?</b> ${dex.fact}</div>
+        <div class="dex-emotes">${emotesFor(species).map(e => {
+          const open = mode === 'view' || mode === 'starter' || (have && e.minStage <= myStage);
+          return `<span class="${open ? '' : 'locked'}" title="${open ? '' : 'Se desbloquea en: ' + sp.names[e.minStage]}">${open ? e.bubble : '🔒'} ${e.label}</span>`;
+        }).join('')}</div>
         <div class="dex-evo">${evo}</div>
         <div class="dex-actions">${actions}</div>
       </div>
@@ -1227,6 +1281,123 @@ async function hatchAnimation(species) {
     </div>`;
   celebrate();
 }
+
+// ---------- ADMIN: videos de la Quetzadex ----------
+// Un video por especie (YouTube o .mp4 subido al bucket course-content).
+window.openQuetzadexAdmin = async function openQuetzadexAdmin() {
+  window.ensureCompanionStyles();
+  _videosPromise = null;
+  const videos = await loadCompanionVideos();
+  const s = window.sanitizeAttr || window.sanitizeInput || (x => x);
+  document.getElementById('quetzadex-admin')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'quetzadex-admin';
+  modal.className = 'fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn';
+  modal.innerHTML = `
+    <div class="glass-card w-full max-w-3xl max-h-[90vh] overflow-y-auto custom-scrollbar p-0 bg-white dark:bg-slate-900 shadow-2xl animate-slideUp">
+      <div class="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center sticky top-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur z-10">
+        <div>
+          <h2 class="text-lg font-black uppercase tracking-tight text-slate-800 dark:text-white"><i class="fas fa-film text-primary mr-2"></i> Videos de la Quetzadex</h2>
+          <p class="text-xs text-slate-400 mt-1">Un video por mascota. Pegá un enlace de YouTube o subí un .mp4 (recomendado para escuelas sin internet: se puede copiar al nodo escolar).</p>
+        </div>
+        <button onclick="this.closest('.fixed').remove()" class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="p-6 space-y-4">
+        ${Object.entries(COMPANION_SPECIES).map(([key, sp]) => {
+          const v = videos[key] || {};
+          return `
+          <div class="rounded-2xl border border-slate-100 dark:border-slate-800 p-4 flex flex-col sm:flex-row gap-4" data-species="${key}">
+            <div class="flex sm:flex-col items-center gap-3 sm:w-28 shrink-0">
+              <div class="w-16 h-16 rounded-2xl p-1" style="background:${sp.color}">${window.renderCompanionSvg(3, '', key, {})}</div>
+              <div class="text-sm font-black text-slate-700 dark:text-slate-200">${sp.label}</div>
+              <span class="qa-status text-[0.6rem] font-black uppercase ${v.url ? 'text-emerald-500' : 'text-slate-400'}">${v.url ? '● Con video' : 'Sin video'}</span>
+            </div>
+            <div class="grow grid gap-2">
+              <input class="qa-url input-field-tw h-10 text-xs" placeholder="https://www.youtube.com/watch?v=... o https://.../video.mp4" value="${s(v.url || '')}">
+              <div class="grid grid-cols-2 gap-2">
+                <input class="qa-title input-field-tw h-10 text-xs" maxlength="120" placeholder="Título (ej. El quetzal en el bosque nuboso)" value="${s(v.title || '')}">
+                <input class="qa-credit input-field-tw h-10 text-xs" maxlength="120" placeholder="Fuente / crédito (ej. CONAP)" value="${s(v.credit || '')}">
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <button class="btn-primary-tw h-9 px-4 text-[0.65rem] uppercase font-bold" onclick="window.saveCompanionVideo('${key}', this)"><i class="fas fa-save"></i> Guardar</button>
+                <label class="btn-secondary-tw h-9 px-4 text-[0.65rem] uppercase font-bold cursor-pointer inline-flex items-center gap-1.5"><i class="fas fa-upload"></i> Subir .mp4
+                  <input type="file" accept="video/mp4,video/webm" class="hidden" onchange="window.uploadCompanionVideo('${key}', this)"></label>
+                <button class="btn-secondary-tw h-9 px-4 text-[0.65rem] uppercase font-bold" onclick="window.previewCompanionVideoAdmin('${key}')"><i class="fas fa-play"></i> Probar</button>
+                ${v.url ? `<button class="h-9 px-4 text-[0.65rem] uppercase font-bold rounded-xl border border-rose-300 text-rose-500" onclick="window.deleteCompanionVideo('${key}', this)"><i class="fas fa-trash"></i> Quitar</button>` : ''}
+              </div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+};
+
+function adminRow(species) {
+  return document.querySelector(`#quetzadex-admin [data-species="${species}"]`);
+}
+
+window.saveCompanionVideo = async function saveCompanionVideo(species, btn) {
+  const row = adminRow(species);
+  const url = row.querySelector('.qa-url').value.trim();
+  const title = row.querySelector('.qa-title').value.trim() || null;
+  const credit = row.querySelector('.qa-credit').value.trim() || null;
+  if (!/^https:\/\/\S+$/i.test(url)) return window.showToast('<i class="fas fa-circle-xmark"></i> Pegá un enlace que empiece con https://', 'error');
+  if (!youtubeId(url) && !/\.(mp4|webm)(\?|$)/i.test(url)) {
+    return window.showToast('<i class="fas fa-circle-xmark"></i> Tiene que ser un enlace de YouTube o un archivo .mp4/.webm', 'error');
+  }
+  btn.disabled = true;
+  const { error } = await window._supabase.from('companion_videos')
+    .upsert({ species, url, title, credit, updated_at: new Date().toISOString() }, { onConflict: 'species' });
+  btn.disabled = false;
+  if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
+  _videosPromise = null;
+  window.showToast(`<i class="fas fa-circle-check"></i> Video de ${COMPANION_SPECIES[species].label} guardado`, 'success');
+  window.openQuetzadexAdmin();
+};
+
+window.uploadCompanionVideo = async function uploadCompanionVideo(species, input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  if (file.size > 80 * 1024 * 1024) return window.showToast('<i class="fas fa-circle-xmark"></i> El video pesa más de 80 MB: comprimilo antes de subirlo', 'error');
+  const row = adminRow(species);
+  const status = row.querySelector('.qa-status');
+  status.textContent = 'Subiendo...';
+  const ext = file.name.split('.').pop().toLowerCase() === 'webm' ? 'webm' : 'mp4';
+  const path = `companion-videos/${species}-${Date.now()}.${ext}`;
+  const { error } = await window._supabase.storage.from('course-content').upload(path, file, { upsert: true, contentType: file.type || 'video/mp4' });
+  if (error) {
+    status.textContent = 'Error';
+    return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
+  }
+  const { data } = window._supabase.storage.from('course-content').getPublicUrl(path);
+  row.querySelector('.qa-url').value = data.publicUrl;
+  status.textContent = 'Subido -- tocá Guardar';
+  window.showToast('<i class="fas fa-circle-check"></i> Video subido. Tocá Guardar para publicarlo.', 'success');
+};
+
+window.previewCompanionVideoAdmin = function previewCompanionVideoAdmin(species) {
+  const url = adminRow(species).querySelector('.qa-url').value.trim();
+  if (!url) return;
+  const yt = youtubeId(url);
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 z-[210] flex items-center justify-center p-4 bg-slate-950/90';
+  modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+  modal.innerHTML = `<div class="w-full max-w-2xl">${yt
+    ? `<iframe src="https://www.youtube-nocookie.com/embed/${yt}?rel=0" allowfullscreen style="width:100%;aspect-ratio:16/9;border:0;border-radius:1rem"></iframe>`
+    : `<video src="${(window.sanitizeAttr || (x => x))(url)}" controls playsinline style="width:100%;border-radius:1rem;background:#000"></video>`}
+    <button class="btn-secondary-tw w-full h-11 mt-3 text-xs uppercase font-bold" onclick="this.closest('.fixed').remove()">Cerrar</button></div>`;
+  document.body.appendChild(modal);
+};
+
+window.deleteCompanionVideo = async function deleteCompanionVideo(species, btn) {
+  if (!confirm(`¿Quitar el video de ${COMPANION_SPECIES[species].label}?`)) return;
+  btn.disabled = true;
+  const { error } = await window._supabase.from('companion_videos').delete().eq('species', species);
+  if (error) { btn.disabled = false; return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error'); }
+  _videosPromise = null;
+  window.openQuetzadexAdmin();
+};
 
 // ---------- VESTIDOR ----------
 const WARDROBE_SLOTS = [
