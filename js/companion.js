@@ -1145,9 +1145,11 @@ window.openDexCard = function openDexCard(species, mode = 'collection') {
   } else if (mode === 'starter') {
     actions = `<button class="dex-btn" onclick="this.closest('.ga-overlay').remove(); window.confirmStarter('${species}')"><i class="fas fa-heart"></i> Elegir a ${sp.label}</button>`;
   } else if (active) {
-    actions = `<button class="dex-btn" disabled><i class="fas fa-star"></i> Es tu compañero activo</button>`;
+    actions = `<button class="dex-btn" onclick="window.shareCompanionCard('${species}', this)"><i class="fas fa-share-nodes"></i> Compartir en redes</button>
+      <button class="dex-btn ghost" disabled><i class="fas fa-star"></i> Es tu compañero activo</button>`;
   } else if (have) {
-    actions = `<button class="dex-btn" onclick="window.setActiveCompanion('${species}', this)"><i class="fas fa-right-left"></i> Que me acompañe</button>`;
+    actions = `<button class="dex-btn" onclick="window.setActiveCompanion('${species}', this)"><i class="fas fa-right-left"></i> Que me acompañe</button>
+      <button class="dex-btn ghost" onclick="window.shareCompanionCard('${species}', this)"><i class="fas fa-share-nodes"></i> Compartir en redes</button>`;
   } else {
     actions = `<button class="dex-btn" onclick="window.buyCompanionEgg('${species}', this)"><i class="fas fa-egg"></i> Comprar huevo · ${EGG_PRICE} 💎</button>
       <p style="font-size:.7rem;color:#64748b;margin:0;text-align:center">Nace a tu mismo nivel de entrenador. Tenés ${window.userData?.gems ?? 0} 💎.</p>`;
@@ -1282,6 +1284,98 @@ async function hatchAnimation(species) {
     </div>`;
   celebrate();
 }
+
+// ---------- COMPARTIR la tarjeta en redes ----------
+// Arma una imagen 1080x1350 (formato vertical de Instagram/WhatsApp
+// Estados/Facebook) con la mascota, su etapa y un dato real, y la comparte
+// con el menú nativo del celular. Sin el nombre del alumno: son menores.
+function wrapText(text, maxChars) {
+  const lines = [];
+  let line = '';
+  String(text).split(/\s+/).forEach(w => {
+    if ((line + ' ' + w).trim().length > maxChars) { if (line) lines.push(line); line = w; }
+    else line = (line + ' ' + w).trim();
+  });
+  if (line) lines.push(line);
+  return lines;
+}
+
+const xmlEsc = (v) => String(v ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function shareCardSvg(species, stageIndex, equipped) {
+  const sp = COMPANION_SPECIES[species];
+  const dex = COMPANION_DEX[species];
+  const font = "'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
+  const factLines = wrapText(dex.fact, 40).slice(0, 4);
+  let px = 90;
+  const pills = dex.types.map(([t, c]) => {
+    const w = t.length * 19 + 56;
+    const out = `<rect x="${px}" y="930" width="${w}" height="56" rx="28" fill="${c}"/>
+      <text x="${px + w / 2}" y="967" text-anchor="middle" font-family="${font}" font-size="26" font-weight="800" fill="#fff">${xmlEsc(t)}</text>`;
+    px += w + 16;
+    return out;
+  }).join('');
+  const stars = Array.from({ length: 6 }, (_, i) =>
+    `<circle cx="${780 + i * 38}" cy="880" r="13" fill="${i <= stageIndex ? '#FFD54F' : 'rgba(15,23,42,.12)'}"/>`).join('');
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350" viewBox="0 0 1080 1350">
+    <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${sp.color}"/><stop offset="1" stop-color="#0f172a"/></linearGradient></defs>
+    <rect width="1080" height="1350" fill="url(#bg)"/>
+    <rect x="50" y="50" width="980" height="1250" rx="64" fill="#ffffff"/>
+    <path d="M50 114 Q50 50 114 50 L966 50 Q1030 50 1030 114 L1030 560 Q540 690 50 560 Z" fill="${sp.color}"/>
+    <text x="990" y="330" text-anchor="end" font-size="200" opacity=".22">${DEX_BG[species] || ''}</text>
+    <circle cx="540" cy="370" r="240" fill="#ffffff" opacity=".42"/>
+    <text x="96" y="130" font-family="${font}" font-size="34" font-weight="800" fill="rgba(255,255,255,.9)">QUETZADEX · N°${String(dex.num).padStart(3, '0')}</text>
+    <svg x="290" y="120" width="500" height="500" viewBox="0 0 300 300" overflow="visible">${companionSvgInner(species, stageIndex, equipped)}</svg>
+    <text x="90" y="740" font-family="${font}" font-size="92" font-weight="900" fill="#0f172a">${xmlEsc(sp.names[stageIndex])}</text>
+    <text x="90" y="800" font-family="${font}" font-size="34" font-weight="700" fill="#64748b">${xmlEsc(sp.label)} · <tspan font-style="italic">${xmlEsc(dex.sci)}</tspan></text>
+    <text x="90" y="892" font-family="${font}" font-size="30" font-weight="800" fill="#475569">Etapa ${stageIndex + 1} de 6</text>
+    ${stars}
+    ${pills}
+    <rect x="90" y="1020" width="900" height="${100 + factLines.length * 46}" rx="32" fill="#f1f5f9"/>
+    <text font-family="${font}" font-size="34" fill="#334155">
+      <tspan x="130" y="1076" font-weight="900">💡 ¿Sabías que?</tspan>
+      ${factLines.map((l, i) => `<tspan x="130" y="${1124 + i * 46}">${xmlEsc(l)}</tspan>`).join('')}
+    </text>
+    <text x="540" y="1268" text-anchor="middle" font-family="${font}" font-size="30" font-weight="800" fill="#94a3b8">Aprendo jugando con Quetzal LMS · Guatemala 🌿</text>
+  </svg>`;
+}
+
+window.shareCompanionCard = async function shareCompanionCard(species = window._myCompanionSpecies, btn) {
+  const sp = COMPANION_SPECIES[species];
+  if (!sp) return;
+  const stageIndex = Math.max(window._myCompanionStageIndex || 0, 1);
+  const equipped = species === window._myCompanionSpecies ? (window._myCompanionEquipped || {}) : {};
+  const original = btn?.innerHTML;
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creando imagen...'; }
+  try {
+    const svg = shareCardSvg(species, stageIndex, equipped);
+    const img = new Image();
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+    await img.decode();
+    const canvas = document.createElement('canvas');
+    canvas.width = 1080; canvas.height = 1350;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+    const file = new File([blob], `quetzadex-${species}.png`, { type: 'image/png' });
+    const text = `¡Mirá mi ${sp.names[stageIndex]}! 🐾 ${COMPANION_DEX[species].fact} #QuetzalLMS #FaunaDeGuatemala`;
+    if (navigator.canShare?.({ files: [file] })) {
+      await navigator.share({ files: [file], title: 'Mi mascota en Quetzal LMS', text });
+    } else {
+      // Computadoras y navegadores sin "compartir archivo": se descarga.
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = file.name;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+      window.showToast?.('<i class="fas fa-download"></i> Imagen descargada: subila a tus redes', 'success');
+    }
+  } catch (e) {
+    if (e?.name !== 'AbortError') window.showToast?.('<i class="fas fa-circle-xmark"></i> No se pudo crear la imagen', 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = original; }
+  }
+};
 
 // ---------- ADMIN: videos de la Quetzadex ----------
 // Un video por especie (YouTube o .mp4 subido al bucket course-content).
@@ -1537,6 +1631,7 @@ window.renderCompanionCard = async function renderCompanionCard(containerId, stu
         </div>
         <div class="flex flex-wrap gap-2 mt-4 justify-center sm:justify-start">
           ${isMe && stageIndex > 0 ? `<button class="btn-primary-tw h-10 px-5 text-xs uppercase font-bold" onclick="window.openWardrobe()"><i class="fas fa-shirt"></i> Vestidor</button>` : ''}
+          ${isMe && stageIndex > 0 ? `<button class="btn-secondary-tw h-10 px-5 text-xs uppercase font-bold" onclick="window.shareCompanionCard('${species}', this)"><i class="fas fa-share-nodes"></i> Compartir</button>` : ''}
           ${isMe ? `<button class="btn-secondary-tw h-10 px-5 text-xs uppercase font-bold" onclick="window.openQuetzadex()"><i class="fas fa-book-open"></i> Quetzadex</button>` : `<button class="btn-secondary-tw h-10 px-5 text-xs uppercase font-bold" onclick="window.openDexCard('${species}', 'view')"><i class="fas fa-book-open"></i> Ficha</button>`}
         </div>
       </div>
