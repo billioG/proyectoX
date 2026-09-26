@@ -365,13 +365,21 @@ window.isAllowedContentHost = function isAllowedContentHost(url) {
 // "Ya jugué este duelo" vivía solo en un Set en memoria -- al recargar se
 // perdía y volvía a aparecer "Jugar", que terminaba en error "Ya jugaste".
 // Se reconstruye desde las filas propias en la tabla de resultados.
+// Vía RPC (get_my_played_duel_ids): leer la tabla de resultados directo
+// podía fallar en silencio por permisos por columna y dejaba "Jugar"
+// visible aunque ya hubieras jugado.
 window.hydratePlayedSet = async function hydratePlayedSet(resultsTable, duels, setName) {
   window[setName] = window[setName] || new Set();
   const activeIds = (duels || []).filter(d => d.status === 'active').map(d => d.id);
   if (!activeIds.length || !window.currentUser) return;
-  const { data } = await window._supabase.from(resultsTable)
+  const { data, error } = await window._supabase.rpc('get_my_played_duel_ids', { p_ids: activeIds });
+  if (!error) {
+    (data || []).forEach(id => window[setName].add(id));
+    return;
+  }
+  const { data: rows } = await window._supabase.from(resultsTable)
     .select('duel_id').in('duel_id', activeIds).eq('student_id', window.currentUser.id);
-  (data || []).forEach(r => window[setName].add(r.duel_id));
+  (rows || []).forEach(r => window[setName].add(r.duel_id));
 };
 
 // Traba simple para no disparar varias generaciones de IA en paralelo --

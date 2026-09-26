@@ -16,6 +16,7 @@ window.loadDuelsSection = async function loadDuelsSection() {
     .limit(10);
 
   window._duelsCache = duels || [];
+  await window.hydratePlayedSet('student_duel_answers', window._duelsCache, '_myDuelPlayed');
   window.renderDuelsSection();
   if (typeof window.updateDuelPendingBadge === 'function') window.updateDuelPendingBadge();
   window.checkDuelResults();
@@ -194,8 +195,12 @@ window.renderDuelsSection = function renderDuelsSection() {
     } else if (d.status === 'cancelled') {
       statusHtml = `<span class="text-[0.6rem] font-black uppercase text-slate-500">${isChallenger ? 'Cancelaste el desafío' : 'Cancelado'}</span>`;
     } else if (d.status === 'active') {
-      statusHtml = `<span class="text-[0.6rem] font-black uppercase text-primary">En curso -- ${d.wager_gems} gemas</span>`;
-      actionHtml = `<button class="h-8 px-4 rounded-lg bg-primary text-white text-[0.6rem] font-black uppercase" onclick="window.openDuelQuiz('${d.id}')">Jugar</button>`;
+      // Antes mostraba "Jugar" siempre, aunque ya hubieras respondido.
+      const myPlayed = window._myDuelPlayed?.has(d.id);
+      statusHtml = myPlayed
+        ? `<span class="text-[0.6rem] font-black uppercase text-primary">Jugaste -- esperando al rival</span>`
+        : `<span class="text-[0.6rem] font-black uppercase text-primary">En curso -- ${d.wager_gems} gemas</span>`;
+      actionHtml = myPlayed ? '' : `<button class="h-8 px-4 rounded-lg bg-primary text-white text-[0.6rem] font-black uppercase" onclick="window.openDuelQuiz('${d.id}')">Jugar</button>`;
     } else if (d.status === 'completed') {
       const won = d.winner_id === currentUser.id;
       const tie = !d.winner_id;
@@ -512,8 +517,13 @@ window.openDuelQuiz = async function openDuelQuiz(duelId) {
     .select('id, topic, question_count, status').eq('id', duelId).single();
   if (duelErr || !duel) return window.showToast('<i class="fas fa-circle-xmark"></i> No se pudo cargar el duelo', 'error');
 
-  const { data: myAnswer } = await window._supabase.from('student_duel_answers').select('id').eq('duel_id', duelId).eq('student_id', window.currentUser.id).maybeSingle();
-  if (myAnswer) return window.showToast('<i class="fas fa-circle-info"></i> Ya respondiste este duelo -- esperá a tu rival', 'info');
+  const { data: playedIds } = await window._supabase.rpc('get_my_played_duel_ids', { p_ids: [duelId] });
+  if ((playedIds || []).includes(duelId)) {
+    window._myDuelPlayed = window._myDuelPlayed || new Set();
+    window._myDuelPlayed.add(duelId);
+    window.renderDuelsSection();
+    return window.showToast('<i class="fas fa-circle-info"></i> Ya respondiste este duelo -- esperá a tu rival', 'info');
+  }
 
   // Las preguntas se piden vía RPC porque el correctIndex nunca viaja al
   // cliente hasta después de responder (ver migración duel-harden.sql).
@@ -623,6 +633,8 @@ window.submitDuelAnswers = async function submitDuelAnswers() {
   document.getElementById('duel-quiz-modal')?.remove();
 
   if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
+  window._myDuelPlayed = window._myDuelPlayed || new Set();
+  window._myDuelPlayed.add(duel.id);
   window.GameArena.notifyResult('quiz', duel.id);
 
   const total = duel.questions.length;
