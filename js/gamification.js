@@ -597,6 +597,8 @@ window.renderGamificationHubContent = function renderGamificationHubContent(moda
         <div class="flex-1 overflow-y-auto custom-scrollbar p-6">
             <div class="max-w-5xl mx-auto space-y-12 pb-20">
             
+                ${window.userRole === 'estudiante' ? '<section id="season-pass-hero"></section>' : ''}
+
                 <!-- TIENDA -->
                 <section>
                     <h3 class="text-2xl font-black text-white italic uppercase mb-6 flex items-center gap-3"><i class="fas fa-store text-indigo-500"></i> Tienda de Mascotas</h3>
@@ -708,6 +710,7 @@ window.renderGamificationHubContent = function renderGamificationHubContent(moda
   if (typeof window.loadTimedMathSection === 'function') window.loadTimedMathSection();
   if (typeof window.loadDebugSection === 'function') window.loadDebugSection();
   if (typeof window.loadSpellingSection === 'function') window.loadSpellingSection();
+  if (typeof window.renderSeasonHero === 'function') window.renderSeasonHero();
   if (typeof window.loadTournamentsSection === 'function') window.loadTournamentsSection();
 }
 

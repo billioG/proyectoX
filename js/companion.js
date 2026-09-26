@@ -216,6 +216,13 @@ const COSMETIC_ART = {
     <rect x="-60" y="18" width="12" height="22" rx="5" fill="#00E676"/><rect x="48" y="18" width="12" height="22" rx="5" fill="#00E676"/>`,
   sombrero: `<ellipse cx="0" cy="4" rx="72" ry="13" fill="#8D6E63"/><path d="M-36 4 C -38 -52, 38 -52, 36 4 Z" fill="#A1887F"/>
     <path d="M-36 -8 Q0 -2 36 -8 L36 0 Q0 6 -36 0 Z" fill="#5D4037"/>`,
+  gorro_quetzal: `<path d="M-44 6 C -44 -46, 44 -46, 44 6 Z" fill="#00C853"/><rect x="-47" y="-4" width="94" height="13" rx="6" fill="#009624"/>
+    <path d="M-30 -20 L-18 -32 M-6 -24 L6 -36 M18 -20 L30 -32" stroke="#69F0AE" stroke-width="4" stroke-linecap="round"/>
+    <path d="M6 -40 C 26 -78 56 -70 44 -44 C 36 -56 22 -52 6 -40 Z" fill="#00E676"/><circle cx="0" cy="-42" r="9" fill="#FF3D00"/>`,
+  alas_mariposa: `<path d="M-6 -30 C -70 -110 -130 -20 -64 6 C -112 44 -66 96 -6 22 Z" fill="#AB47BC" stroke="#6A1B9A" stroke-width="4"/>
+    <path d="M6 -30 C 70 -110 130 -20 64 6 C 112 44 66 96 6 22 Z" fill="#42A5F5" stroke="#1565C0" stroke-width="4"/>
+    <circle cx="-66" cy="-34" r="10" fill="#FFD54F"/><circle cx="66" cy="-34" r="10" fill="#FFD54F"/>
+    <circle cx="-54" cy="40" r="7" fill="#F48FB1"/><circle cx="54" cy="40" r="7" fill="#F48FB1"/>`,
   capa_heroe: `<path d="M-42 -58 L42 -58 L78 72 Q0 92 -78 72 Z" fill="#E53935"/><path d="M-42 -58 L42 -58 L36 -44 L-36 -44 Z" fill="#B71C1C"/>`,
   capa_legendaria: `<path d="M-44 -60 L44 -60 L84 76 Q0 98 -84 76 Z" fill="#6A1B9A"/><path d="M-44 -60 L44 -60 L38 -44 L-38 -44 Z" fill="#FFD54F"/>
     <path d="M0 0 l5 12 l13 1 l-10 8 l3 13 l-11 -7 l-11 7 l3 -13 l-10 -8 l13 -1 Z" fill="#FFD54F"/>
@@ -226,6 +233,7 @@ const SKIN_FILTERS = {
   skin_neon: 'hue-rotate(165deg) saturate(1.7) drop-shadow(0 0 6px #22d3ee)',
   skin_sombra: 'brightness(.55) saturate(.5) contrast(1.25) drop-shadow(0 0 8px #a855f7)',
   skin_oro: 'sepia(1) saturate(3.2) hue-rotate(-12deg) brightness(1.08) drop-shadow(0 0 8px #fbbf24)',
+  skin_galaxia: 'hue-rotate(245deg) saturate(1.8) brightness(.95) drop-shadow(0 0 10px #818cf8)',
 };
 
 function placeCosmetic(itemId, point, hw, cls) {
@@ -608,7 +616,7 @@ window.openWardrobe = async function openWardrobe(slot = 'head') {
     if (!window._myCompanionSpecies) return window.openStarterPicker();
   }
   const [{ data: items, error }, { data: owned }] = await Promise.all([
-    window._supabase.from('cosmetic_items').select('id, slot, name, price, min_stage').order('sort'),
+    window._supabase.from('cosmetic_items').select('id, slot, name, price, min_stage, pass_only').order('sort'),
     window._supabase.from('student_cosmetics').select('item_id').eq('student_id', window.currentUser.id),
   ]);
   if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
@@ -633,11 +641,12 @@ window.renderWardrobe = function renderWardrobe() {
   const itemsHtml = w.items.filter(i => i.slot === w.slot).map(item => {
     const isOn = equipped[item.slot] === item.id;
     const unlocked = stage >= item.min_stage;
-    const have = item.price === 0 ? unlocked : w.owned.has(item.id);
+    const have = item.pass_only || item.price > 0 ? w.owned.has(item.id) : unlocked;
     const preview = window.renderCompanionSvg(Math.max(stage, 1), '', species, { ...equipped, [item.slot]: item.id });
     let btn;
     if (isOn) btn = `<button class="wd-btn off" onclick="window.equipCosmetic('${item.slot}', null)"><i class="fas fa-check"></i> Puesto</button>`;
     else if (have) btn = `<button class="wd-btn equip" onclick="window.equipCosmetic('${item.slot}', '${item.id}')">Poner</button>`;
+    else if (item.pass_only) btn = `<button class="wd-btn locked" disabled title="Se gana en el Pase de Temporada"><i class="fas fa-ticket"></i> Pase</button>`;
     else if (!unlocked) btn = `<button class="wd-btn locked" disabled title="Se desbloquea en: ${s(names[item.min_stage])}"><i class="fas fa-lock"></i> ${s(names[item.min_stage])}</button>`;
     else if (w.confirming === item.id) btn = `<button class="wd-btn confirm" onclick="window.buyCosmetic('${item.id}')">¿Comprar?</button>`;
     else btn = `<button class="wd-btn buy" onclick="window._wardrobe.confirming='${item.id}'; window.renderWardrobe()"><i class="fas fa-gem"></i> ${item.price}</button>`;
