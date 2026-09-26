@@ -300,7 +300,7 @@ window.renderStudentsList = function renderStudentsList(container, students, all
         <div class="glass-card p-12 text-center border-2 border-dashed border-slate-200 dark:border-slate-800">
             <i class="fas fa-user-graduate text-5xl text-slate-200 dark:text-slate-800 mb-4 mx-auto"></i>
             <p class="text-slate-500 font-bold uppercase tracking-widest text-sm mb-6 text-center">No hay alumnos registrados en tus secciones</p>
-            ${userRole === 'admin' ? `<button class="btn-primary-tw mx-auto" onclick="window.openAddStudentModal()"><i class="fas fa-user-plus"></i> AGREGAR ALUMNO</button>` : ''}
+            ${userRole === 'admin' ? `<button class="btn-primary-tw mx-auto" onclick="window.openAddStudentModal()"><i class="fas fa-user-plus"></i> AGREGAR ALUMNO</button>` : userRole === 'docente' ? `<button class="btn-primary-tw mx-auto" onclick="window.openTeacherAddStudentsModal()"><i class="fas fa-user-plus"></i> AGREGAR ALUMNOS</button>` : ''}
         </div>
       `;
     return;
@@ -332,7 +332,7 @@ window.renderStudentsList = function renderStudentsList(container, students, all
             <input type="text" id="search-students" class="input-field-tw pl-12 h-11 text-sm font-bold" placeholder="FILTRO: NOMBRE, USUARIO O CUI..." oninput="window.filterStudents()">
         </div>
         <div class="flex gap-2 w-full md:w-auto shrink-0">
-            ${userRole === 'admin' ? `<button class="btn-primary-tw grow h-11 text-xs uppercase font-bold" onclick="window.openAddStudentModal()"><i class="fas fa-plus"></i> NUEVO</button>` : ''}
+            ${userRole === 'admin' ? `<button class="btn-primary-tw grow h-11 text-xs uppercase font-bold" onclick="window.openAddStudentModal()"><i class="fas fa-plus"></i> NUEVO</button>` : userRole === 'docente' ? `<button class="btn-primary-tw grow h-11 text-xs uppercase font-bold" onclick="window.openTeacherAddStudentsModal()"><i class="fas fa-user-plus"></i> AGREGAR ALUMNOS</button>` : ''}
             <button class="btn-secondary-tw grow h-11 text-xs uppercase font-bold" onclick="window.exportStudentsCSV()"><i class="fas fa-download"></i> EXPORTAR</button>
         </div>
       </div>
@@ -927,5 +927,132 @@ window.generateStudentUsername = function generateStudentUsername(fullName) {
     }
   }, 600); // 600ms debounce
 }
+
+// ================================================
+// DOCENTE: agregar alumnos a sus clases (uno o una lista) y abrir su
+// propio club/sección -- sin depender del admin. El servidor valida que
+// cada alumno caiga en una clase asignada a este docente.
+// ================================================
+window.openTeacherAddStudentsModal = async function openTeacherAddStudentsModal() {
+  const s = window.sanitizeInput;
+  const { data: asg } = await window._supabase.from('teacher_assignments')
+    .select('school_code, grade, section, schools(name)').eq('teacher_id', window.currentUser.id)
+    .order('school_code').order('grade').order('section');
+  const classes = asg || [];
+  if (!classes.length) return window.showToast('<i class="fas fa-circle-info"></i> Todavía no tenés clases asignadas -- pedíselo al administrador', 'info');
+  window._teacherClasses = classes;
+  const schools = [...new Map(classes.map(c => [c.school_code, c.schools?.name || c.school_code])).entries()];
+  const clubSuggestions = (window.GRADES_BY_LEVEL?.Extraescolar || []);
+
+  document.getElementById('teacher-add-students')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'teacher-add-students';
+  modal.className = 'fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn';
+  modal.innerHTML = `
+    <div class="glass-card w-full max-w-xl max-h-[90vh] overflow-y-auto custom-scrollbar p-6 shadow-2xl animate-slideUp bg-white dark:bg-slate-900">
+      <div class="flex justify-between items-center mb-5">
+        <h2 class="text-lg font-black uppercase tracking-tight text-slate-800 dark:text-white"><i class="fas fa-user-plus text-primary mr-2"></i> Agregar alumnos</h2>
+        <button onclick="this.closest('.fixed').remove()" class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="space-y-4">
+        <div>
+          <label class="text-[0.65rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Clase</label>
+          <select id="tas-class" class="input-field-tw h-11 text-sm" onchange="document.getElementById('tas-new-class').classList.toggle('hidden', this.value !== '__new__')">
+            ${classes.map((c, i) => `<option value="${i}">${s(c.schools?.name || c.school_code)} · ${s(c.grade)} ${s(c.section)}</option>`).join('')}
+            <option value="__new__">+ Crear club o sección nueva</option>
+          </select>
+        </div>
+        <div id="tas-new-class" class="hidden p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 space-y-3">
+          <p class="text-[0.7rem] text-slate-500">Se crea en un establecimiento donde ya das clases y queda asignada a vos. Si la clase ya existe, pedile al administrador que te la asigne.</p>
+          <select id="tas-new-school" class="input-field-tw h-11 text-sm">${schools.map(([code, name]) => `<option value="${window.sanitizeAttr(code)}">${s(name)}</option>`).join('')}</select>
+          <div class="grid grid-cols-3 gap-3">
+            <div class="col-span-2">
+              <input id="tas-new-grade" list="tas-club-list" maxlength="60" class="input-field-tw h-11 text-sm" placeholder="Ej: Club de Ajedrez">
+              <datalist id="tas-club-list">${clubSuggestions.map(g => `<option value="${window.sanitizeAttr(g)}">`).join('')}</datalist>
+            </div>
+            <input id="tas-new-section" maxlength="10" value="A" class="input-field-tw h-11 text-sm" placeholder="Sección">
+          </div>
+        </div>
+        <div>
+          <label class="text-[0.65rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Nombres completos -- uno por línea</label>
+          <textarea id="tas-names" rows="7" class="input-field-tw text-sm py-3" placeholder="Ana María López Pérez&#10;José Daniel Sic Coc"></textarea>
+          <p class="text-[0.65rem] text-slate-400 mt-1">Podés pegar la lista entera desde Excel o Word. El usuario de cada alumno se genera solo.</p>
+        </div>
+        <div id="tas-results" class="hidden space-y-1 max-h-60 overflow-y-auto custom-scrollbar"></div>
+        <button id="tas-submit" class="btn-primary-tw w-full h-12 text-xs uppercase font-bold" onclick="window.submitTeacherAddStudents()"><i class="fas fa-check"></i> Crear cuentas</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+};
+
+window.submitTeacherAddStudents = async function submitTeacherAddStudents() {
+  const s = window.sanitizeInput;
+  const btn = document.getElementById('tas-submit');
+  const names = [...new Set((document.getElementById('tas-names')?.value || '').split(/\r?\n/)
+    .map(n => n.replace(/\t/g, ' ').replace(/\s+/g, ' ').trim()).filter(n => n.length >= 3))];
+  if (!names.length) return window.showToast('<i class="fas fa-circle-xmark"></i> Escribí al menos un nombre completo', 'error');
+  if (names.length > 100) return window.showToast('<i class="fas fa-circle-xmark"></i> Máximo 100 alumnos por vez', 'error');
+
+  let cls;
+  const choice = document.getElementById('tas-class').value;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creando...';
+  try {
+    if (choice === '__new__') {
+      const school_code = document.getElementById('tas-new-school').value;
+      const grade = document.getElementById('tas-new-grade').value.replace(/\s+/g, ' ').trim();
+      const section = document.getElementById('tas-new-section').value.trim().toUpperCase();
+      if (!grade || !section) throw new Error('Escribí el nombre del club/grado y la sección');
+      const { error } = await window._supabase.rpc('teacher_create_class', { p_school_code: school_code, p_grade: grade, p_section: section });
+      if (error) throw error;
+      cls = { school_code, grade, section };
+    } else {
+      cls = window._teacherClasses[Number(choice)];
+    }
+
+    // Posibles duplicados: mismo nombre ya matriculado en esa clase.
+    const { data: existing } = await window._supabase.from('students').select('full_name')
+      .eq('school_code', cls.school_code).eq('grade', cls.grade).eq('section', cls.section);
+    const norm = (v) => String(v || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
+    const taken = new Set((existing || []).map(e => norm(e.full_name)));
+    const dupes = names.filter(n => taken.has(norm(n)));
+    let toCreate = names;
+    if (dupes.length) {
+      const keep = confirm(`Ya hay alumnos con este nombre en la clase:\n\n${dupes.join('\n')}\n\nAceptar = crearlos igual · Cancelar = saltarlos`);
+      if (!keep) toCreate = names.filter(n => !taken.has(norm(n)));
+    }
+    if (!toCreate.length) throw new Error('No quedó ningún alumno nuevo para crear');
+
+    const { data: { session } } = await window._supabase.auth.getSession();
+    const res = await fetch(`${window.SUPABASE_URL}/functions/v1/admin-bulk-import-students`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token || ''}` },
+      body: JSON.stringify({ students: toCreate.map(fullName => ({ fullName, school_code: cls.school_code, grade: cls.grade, section: cls.section })) }),
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || 'No se pudieron crear las cuentas');
+
+    const rows = result.results || [];
+    const ok = rows.filter(r => r.status === 'created').length;
+    const box = document.getElementById('tas-results');
+    box.classList.remove('hidden');
+    box.innerHTML = `
+      <p class="text-[0.65rem] font-black uppercase text-slate-400 tracking-widest mb-2">Anotá el usuario de cada alumno</p>
+      ${rows.map(r => `<div class="text-xs px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800/50 flex items-center gap-2">
+        <i class="fas ${r.status === 'created' ? 'fa-circle-check text-emerald-500' : 'fa-circle-xmark text-rose-500'}"></i>
+        <span class="grow">${s(r.fullName || '')}</span>
+        ${r.status === 'created' ? `<code class="font-bold text-primary">${s(r.username)}</code>` : `<span class="text-rose-400">${s(r.message || 'error')}</span>`}
+      </div>`).join('')}
+      ${(result.classes_without_password || []).length ? `<p class="text-[0.7rem] text-amber-500 font-bold mt-2"><i class="fas fa-key"></i> Esta clase todavía no tiene contraseña: configurala en "Contraseñas de clase" (o dejala sin contraseña) para que puedan entrar.</p>` : ''}`;
+    document.getElementById('tas-names').value = '';
+    window.showToast(`<i class="fas fa-circle-check"></i> ${ok} alumno(s) creado(s)`, ok ? 'success' : 'error');
+    if (ok) window.loadStudents?.();
+  } catch (err) {
+    window.showToast('<i class="fas fa-circle-xmark"></i> ' + (err.message || err), 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-check"></i> Crear cuentas';
+  }
+};
 
 console.log('✅ students.js cargado (Versión ES Module)');
