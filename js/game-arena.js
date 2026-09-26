@@ -195,7 +195,7 @@ window.GameArena = {
     const s = window.sanitizeInput || ((v) => v);
     const weekly = window._weeklyTopic;
     return `<div class="ga-quick">
-      <div class="ga-quick-title"><i class="fas fa-bolt"></i> Reto rápido <span>${weekly
+      <div class="ga-quick-title"><i class="fas fa-bolt"></i> Reto rápido${this.streakHtml(window._myDuelStreak || 0, '.8rem')} <span>${weekly
         ? `un toque: rival al azar, 10 💎 · 🎯 Tema de la semana: <b style="color:#fde68a">${s(weekly)}</b>`
         : 'un toque: rival y tema de tu clase al azar, 10 💎'}</span></div>
       <div class="ga-quick-row">${Object.entries(this.GAMES).map(([key, g]) =>
@@ -241,7 +241,12 @@ window.GameArena = {
   },
 
   // Columnas de students para el join de challenger/opponent en cada juego.
-  STUDENT_JOIN: 'full_name, profile_photo_url, companion_species, gems_earned_total, companion_equipped',
+  STUDENT_JOIN: 'full_name, profile_photo_url, companion_species, gems_earned_total, companion_equipped, duel_win_streak',
+
+  // "🔥 N" si viene ganando 2 o más duelos seguidos.
+  streakHtml(n, size = '.75rem') {
+    return n >= 2 ? `<span style="display:inline-block;margin-left:.3rem;padding:.05rem .45rem;border-radius:9999px;background:rgba(249,115,22,.18);color:#fdba74;font-size:${size};font-weight:900">🔥${n}</span>` : '';
+  },
 
   // Jugadores de un duelo listos para versus() (con su mascota si tienen).
   async fightersFor(duel) {
@@ -256,8 +261,8 @@ window.GameArena = {
     const rivalId = duel?.challenger_id === window.currentUser.id ? duel?.opponent_id : duel?.challenger_id;
     if (!window._rivalries) await this.loadRivalries().catch(() => {});
     return {
-      me: { name: window.userData?.full_name, photo: window.userData?.profile_photo_url, companion: myCompanion },
-      rival: { name: rival?.full_name, photo: rival?.profile_photo_url, companion: rivalCompanion },
+      me: { name: window.userData?.full_name, photo: window.userData?.profile_photo_url, companion: myCompanion, streak: window._myDuelStreak || 0 },
+      rival: { name: rival?.full_name, photo: rival?.profile_photo_url, companion: rivalCompanion, streak: rival?.duel_win_streak || 0 },
       wager: duel?.wager_gems || 0,
       record: this.recordFor(rivalId),
     };
@@ -290,9 +295,9 @@ window.GameArena = {
       <div class="ga-panel">
         <div class="ga-title">${s(title)}</div>
         <div class="ga-vs">
-          <div class="ga-player left">${this.fighterHtml(me)}<div class="ga-name">${s(me.name || 'Vos')}</div></div>
+          <div class="ga-player left">${this.fighterHtml(me)}<div class="ga-name">${s(me.name || 'Vos')}</div>${this.streakHtml(me.streak)}</div>
           <div class="ga-vs-badge">VS</div>
-          <div class="ga-player right">${this.fighterHtml(rival)}<div class="ga-name">${s(rival.name || 'Rival')}</div></div>
+          <div class="ga-player right">${this.fighterHtml(rival)}<div class="ga-name">${s(rival.name || 'Rival')}</div>${this.streakHtml(rival.streak)}</div>
         </div>
         ${wager > 0 ? `<div class="ga-wager"><i class="fas fa-gem"></i> ${wager} gemas en juego</div>` : ''}
         ${record && (record.w + record.l + record.t) > 0

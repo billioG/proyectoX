@@ -714,7 +714,7 @@ window.renderGamificationHubContent = function renderGamificationHubContent(moda
   // También los temas de la clase, para que los selectores de "crear reto"
   // y el reto rápido ya los tengan listos.
   if (window.userRole === 'estudiante' && window.GameArena) {
-    Promise.allSettled([window.GameArena.loadRivalries(), window.loadClassTopics?.()]).finally(() => {
+    Promise.allSettled([window.GameArena.loadRivalries(), window.loadClassTopics?.(), window.loadMyCompanion?.()]).finally(() => {
       // La barra se dibujó antes de saber el tema de la semana.
       const strip = document.querySelector('#gamification-hub-modal .ga-quick');
       if (strip) strip.outerHTML = window.GameArena.quickStripHtml();

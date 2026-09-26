@@ -471,12 +471,13 @@ window.loadMyCompanion = async function loadMyCompanion() {
   if (window.userRole !== 'estudiante' || !window.currentUser || !window._supabase) return null;
   const uid = window.currentUser.id;
   const { data } = await window._supabase.from('students')
-    .select('gems_earned_total, companion_species, companion_equipped').eq('id', uid).maybeSingle();
+    .select('gems_earned_total, companion_species, companion_equipped, duel_win_streak').eq('id', uid).maybeSingle();
   const species = data?.companion_species || null;
   const { stageIndex } = window.getCompanionStage(data?.gems_earned_total, species || 'quetzal');
   window._myCompanionSpecies = species;
   window._myCompanionStageIndex = stageIndex;
   window._myCompanionEquipped = data?.companion_equipped || {};
+  window._myDuelStreak = data?.duel_win_streak || 0;
 
   if (species) {
     const key = `PX_COMPANION_STAGE_${uid}`;

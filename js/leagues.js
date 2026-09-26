@@ -81,7 +81,7 @@ window.renderLeagueSection = async function renderLeagueSection(containerId = 'l
     return `${zone}<div class="lg-row ${r.id === me ? 'me' : ''}">
       <span class="lg-rank">${rank <= 3 ? ['🥇', '🥈', '🥉'][rank - 1] : rank}</span>
       ${lgPet(r)}
-      <span class="lg-name">${s(r.full_name)}${r.id === me ? ' (vos)' : ''}</span>
+      <span class="lg-name">${s(r.full_name)}${r.id === me ? ' (vos)' : ''}${window.GameArena ? window.GameArena.streakHtml(r.duel_win_streak || 0, '.65rem') : ''}</span>
       <span class="lg-xp">${r.xp} XP</span>
     </div>`;
   }).join('');
