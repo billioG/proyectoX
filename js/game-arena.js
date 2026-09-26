@@ -146,9 +146,9 @@ window.GameArena = {
     const g = this.GAMES[game];
     const gems = window.userData?.gems ?? 0;
     const safeWager = Math.max(0, Math.min(wager ?? 10, gems));
-    const pool = window.getDuelTopicPoolForCurrentUser ? window.getDuelTopicPoolForCurrentUser() : [];
     const row = { challenger_id: window.currentUser.id, opponent_id: opponentId, wager_gems: safeWager };
-    if (g.topic) row.topic = topic || pool[Math.floor(Math.random() * pool.length)] || 'Cultura general';
+    // Sin tema elegido: repaso de un tema de la clase (o cultura general si no hay).
+    if (g.topic) row.topic = topic || window.resolveDuelTopic?.('__class__') || 'Cultura general';
     if (game === 'quiz') row.question_count = window.computeDuelQuestionCount ? window.computeDuelQuestionCount(safeWager) : 5;
 
     const { data, error } = await window._supabase.from(g.table).insert(row).select('id').single();

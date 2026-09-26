@@ -192,8 +192,7 @@ window.openCreateHangmanModal = async function openCreateHangmanModal() {
         <div>
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Categoría</label>
           <select id="hangman-topic" class="input-field-tw h-11 text-sm">
-            <option value="">🎲 Aleatorio</option>
-            ${pool.map(t => `<option value="${window.sanitizeAttr(t)}">${window.sanitizeInput(t)}</option>`).join('')}
+            ${window.topicOptionsHtml(pool)}
           </select>
         </div>
       </div>
@@ -211,7 +210,7 @@ window.sendHangmanChallenge = async function sendHangmanChallenge() {
   const wager = parseInt(document.getElementById('hangman-wager')?.value) || 0;
   const chosenTopic = document.getElementById('hangman-topic')?.value;
   const pool = window.getDuelTopicPoolForCurrentUser ? window.getDuelTopicPoolForCurrentUser() : [];
-  const topic = chosenTopic || pool[Math.floor(Math.random() * pool.length)];
+  const topic = window.resolveDuelTopic(chosenTopic);
   const btn = document.getElementById('btn-send-hangman');
   const userData = window.userData;
 

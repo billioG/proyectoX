@@ -659,37 +659,32 @@ window.renderGamificationHubContent = function renderGamificationHubContent(moda
                       completo apilada, en desktop quedaba una sola columna
                       angosta desperdiciando el resto de la pantalla. -->
                 ${window.userRole === 'estudiante' && window.GameArena ? window.GameArena.quickStripHtml() : ''}
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-x-8">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6">
                     <section>
-                         <h3 class="text-2xl font-black text-white italic uppercase mb-6 flex items-center gap-3"><i class="fas fa-swords text-rose-500"></i> Desafíos de Código</h3>
                          <div id="duels-section">
                             <div class="text-center text-slate-500 text-xs py-6"><i class="fas fa-spinner fa-spin"></i></div>
                          </div>
                     </section>
 
                     <section>
-                         <h3 class="text-2xl font-black text-white italic uppercase mb-6 flex items-center gap-3"><i class="fas fa-spider text-rose-500"></i> Ahorcado 1v1</h3>
                          <div id="hangman-section">
                             <div class="text-center text-slate-500 text-xs py-6"><i class="fas fa-spinner fa-spin"></i></div>
                          </div>
                     </section>
 
                     <section>
-                         <h3 class="text-2xl font-black text-white italic uppercase mb-6 flex items-center gap-3"><i class="fas fa-stopwatch text-rose-500"></i> Contrarreloj 1v1</h3>
                          <div id="timed-math-section">
                             <div class="text-center text-slate-500 text-xs py-6"><i class="fas fa-spinner fa-spin"></i></div>
                          </div>
                     </section>
 
                     <section>
-                         <h3 class="text-2xl font-black text-white italic uppercase mb-6 flex items-center gap-3"><i class="fas fa-bug text-rose-500"></i> Encontrá el Error 1v1</h3>
                          <div id="debug-section">
                             <div class="text-center text-slate-500 text-xs py-6"><i class="fas fa-spinner fa-spin"></i></div>
                          </div>
                     </section>
 
                     <section>
-                         <h3 class="text-2xl font-black text-white italic uppercase mb-6 flex items-center gap-3"><i class="fas fa-spell-check text-rose-500"></i> Ortografía 1v1</h3>
                          <div id="spelling-section">
                             <div class="text-center text-slate-500 text-xs py-6"><i class="fas fa-spinner fa-spin"></i></div>
                          </div>
@@ -716,8 +711,13 @@ window.renderGamificationHubContent = function renderGamificationHubContent(moda
     if (typeof window.loadDebugSection === 'function') window.loadDebugSection();
     if (typeof window.loadSpellingSection === 'function') window.loadSpellingSection();
   };
-  if (window.userRole === 'estudiante' && window.GameArena) window.GameArena.loadRivalries().catch(() => {}).finally(loadGameSections);
-  else loadGameSections();
+  // También los temas de la clase, para que los selectores de "crear reto"
+  // y el reto rápido ya los tengan listos.
+  if (window.userRole === 'estudiante' && window.GameArena) {
+    Promise.allSettled([window.GameArena.loadRivalries(), window.loadClassTopics?.()]).finally(loadGameSections);
+  } else {
+    loadGameSections();
+  }
   if (typeof window.renderSeasonHero === 'function') window.renderSeasonHero();
   if (window.userRole === 'estudiante' && typeof window.renderLeagueSection === 'function') window.renderLeagueSection();
   if (typeof window.loadTournamentsSection === 'function') window.loadTournamentsSection();

@@ -163,8 +163,7 @@ window.openCreateSpellingModal = async function openCreateSpellingModal() {
         <div>
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Categoría</label>
           <select id="spelling-topic" class="input-field-tw h-11 text-sm">
-            <option value="">🎲 Aleatorio</option>
-            ${pool.map(t => `<option value="${window.sanitizeAttr(t)}">${window.sanitizeInput(t)}</option>`).join('')}
+            ${window.topicOptionsHtml(pool)}
           </select>
         </div>
       </div>
@@ -182,7 +181,7 @@ window.sendSpellingChallenge = async function sendSpellingChallenge() {
   const wager = parseInt(document.getElementById('spelling-wager')?.value) || 0;
   const chosenTopic = document.getElementById('spelling-topic')?.value;
   const pool = window.getDuelTopicPoolForCurrentUser ? window.getDuelTopicPoolForCurrentUser() : [];
-  const topic = chosenTopic || pool[Math.floor(Math.random() * pool.length)];
+  const topic = window.resolveDuelTopic(chosenTopic);
   const btn = document.getElementById('btn-send-spelling');
   const userData = window.userData;
 

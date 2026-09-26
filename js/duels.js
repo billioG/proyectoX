@@ -297,6 +297,51 @@ function getDuelTopicPoolForCurrentUser() {
 // explícitamente.
 window.getDuelTopicPoolForCurrentUser = getDuelTopicPoolForCurrentUser;
 
+// Temas de LA CLASE del alumno: títulos de sus cursos y lecciones. Así un
+// duelo es un repaso de lo que están viendo, no un tema suelto al azar.
+// Se descartan títulos genéricos ("Video 1", "PDF") que no le dicen nada
+// a la IA sobre qué preguntar.
+const GENERIC_LESSON_TITLE = /^(video|pdf|gu[ií]a|actividad|lecci[oó]n|clase|tarea|recurso|presentaci[oó]n|imagen|quiz|h5p|scorm)\s*\d*$/i;
+window.loadClassTopics = async function loadClassTopics() {
+  if (window._classTopics) return window._classTopics;
+  const u = window.userData;
+  if (!u?.school_code) return (window._classTopics = []);
+  const { data } = await window._supabase.from('courses').select('title, lessons(title)')
+    .eq('school_code', u.school_code).eq('grade', u.grade).eq('section', u.section);
+  const topics = new Set();
+  for (const c of data || []) {
+    const course = (c.title || '').trim();
+    if (course) topics.add(course.slice(0, 180));
+    for (const l of c.lessons || []) {
+      const t = (l.title || '').trim();
+      if (t.length >= 6 && !GENERIC_LESSON_TITLE.test(t)) topics.add(`${t} (${course})`.slice(0, 180));
+    }
+  }
+  return (window._classTopics = [...topics]);
+};
+
+window.topicOptionsHtml = function topicOptionsHtml(pool) {
+  const s = window.sanitizeInput || ((v) => v);
+  const a = window.sanitizeAttr || ((v) => v);
+  const cls = window._classTopics || [];
+  const classPart = cls.length ? `
+    <option value="__class__" selected>📚 Repaso de mi clase (al azar)</option>
+    <optgroup label="📚 De mi clase">${cls.map(t => `<option value="${a(t)}">${s(t)}</option>`).join('')}</optgroup>` : '';
+  return `${classPart}
+    <option value="">🌎 Cultura general (al azar)</option>
+    <optgroup label="🌎 Cultura general">${pool.map(t => `<option value="${a(t)}">${s(t)}</option>`).join('')}</optgroup>`;
+};
+
+// '__class__' = tema al azar de la clase (si no hay, cae a cultura general);
+// '' = cultura general al azar; cualquier otro valor = ese tema.
+window.resolveDuelTopic = function resolveDuelTopic(chosen) {
+  const pool = getDuelTopicPoolForCurrentUser();
+  const cls = window._classTopics || [];
+  const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+  if (chosen === '__class__') return cls.length ? pick(cls) : pick(pool);
+  return chosen || pick(pool);
+};
+
 function computeDuelQuestionCount(wager) {
   return Math.max(5, Math.min(15, 5 + Math.floor((wager || 0) / 10)));
 }
@@ -341,8 +386,7 @@ window.openCreateDuelModal = async function openCreateDuelModal() {
         <div>
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Categoría</label>
           <select id="duel-topic" class="input-field-tw h-11 text-sm">
-            <option value="">🎲 Aleatorio</option>
-            ${getDuelTopicPoolForCurrentUser().map(t => `<option value="${window.sanitizeAttr(t)}">${window.sanitizeInput(t)}</option>`).join('')}
+            ${window.topicOptionsHtml(getDuelTopicPoolForCurrentUser())}
           </select>
         </div>
         <div class="p-4 rounded-xl bg-white/5 border border-white/10 text-center">
@@ -365,7 +409,7 @@ window.sendDuelChallenge = async function sendDuelChallenge() {
   const wager = parseInt(document.getElementById('duel-wager')?.value) || 0;
   const chosenTopic = document.getElementById('duel-topic')?.value;
   const pool = getDuelTopicPoolForCurrentUser();
-  const topic = chosenTopic || pool[Math.floor(Math.random() * pool.length)];
+  const topic = window.resolveDuelTopic(chosenTopic);
   const questionCount = computeDuelQuestionCount(wager);
   const btn = document.getElementById('btn-send-duel');
   const userData = window.userData;
