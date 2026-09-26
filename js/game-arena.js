@@ -207,7 +207,7 @@ window.GameArena = {
     return `<div class="ga-quick">
       <div class="ga-quick-title"><i class="fas fa-bolt"></i> Reto rápido${this.streakHtml(window._myDuelStreak || 0, '.8rem')} <span>${weekly
         ? `un toque: rival al azar, 10 💎 · 🎯 Tema de la semana: <b style="color:#fde68a">${s(weekly)}</b>`
-        : 'un toque: rival y tema de tu clase al azar, 10 💎'}</span></div>
+        : 'un toque: rival y tema de tu clase al azar, 10 💎'} · ganar da +5 💎 aunque tengas 0 · <a href="javascript:void(0)" onclick="window.openGemsGuide && window.openGemsGuide()" style="color:#67e8f9;font-weight:900;text-decoration:underline">¿cómo gano gemas?</a></span></div>
       <div class="ga-quick-row">${Object.entries(this.GAMES).map(([key, g]) =>
         `<button class="ga-quick-btn" onclick="window.GameArena.quickChallenge('${key}')"><i class="fas ${g.icon}"></i><span>${g.label}</span></button>`).join('')}</div>
       <div class="ga-online" id="ga-online">${this.onlineHtml()}</div>

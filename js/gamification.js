@@ -81,6 +81,7 @@ window.initGamification = async function initGamification() {
       // decidir se lee el estado real (userData puede venir de caché).
       await window.refreshMyWallet();
       window.checkDailyChest();
+      window.subscribeGemEvents();
 
     } else if (userRole === 'docente') {
       // Antes solo se actualizaba last_login/streak para estudiantes -- por
@@ -405,6 +406,80 @@ window.refreshMyWallet = async function refreshMyWallet() {
   Object.assign(u, data);
   document.querySelectorAll('[data-my-gems]').forEach(el => { el.textContent = data.gems ?? 0; });
 };
+// ---- Gemas en vivo: cada cambio de gemas (duelo cerrado por el rival,
+// premio, compra) llega por Realtime desde student_gem_events
+// (migrations/duel-rewards-live-gems.sql) y actualiza el contador al
+// instante, con aviso. Si Realtime no está, un sondeo liviano cada 30s
+// mientras la app está visible.
+const GEM_REASONS = {
+  duel_win: { icon: 'fa-trophy', text: '¡Ganaste el duelo!' },
+  duel_tie: { icon: 'fa-handshake', text: 'Empate en el duelo' },
+  duel_loss: { icon: 'fa-shield-halved', text: 'Duelo terminado' },
+};
+window.subscribeGemEvents = function subscribeGemEvents() {
+  if (window._gemChannel || window.userRole !== 'estudiante' || !window.currentUser || window.isNodeSession) return;
+  const me = window.currentUser.id;
+  window._gemChannel = window._supabase.channel(`gems-${me}`)
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'student_gem_events', filter: `student_id=eq.${me}` }, ({ new: ev }) => {
+      if (window.userData && typeof ev.balance === 'number') window.userData.gems = ev.balance;
+      document.querySelectorAll('[data-my-gems]').forEach(el => {
+        el.textContent = ev.balance ?? el.textContent;
+        el.animate?.([{ transform: 'scale(1.6)', color: '#67e8f9' }, { transform: 'scale(1)' }], { duration: 700 });
+      });
+      const r = GEM_REASONS[ev.reason];
+      if (r) {
+        const sign = ev.amount > 0 ? `+${ev.amount}` : `${ev.amount}`;
+        window.showToast?.(`<i class="fas ${r.icon}"></i> ${r.text} ${sign} 💎 (tenés ${ev.balance})`, ev.amount >= 0 ? 'success' : 'info');
+      }
+    })
+    .subscribe();
+  if (!window._gemPoll) {
+    window._gemPoll = setInterval(() => { if (!document.hidden) window.refreshMyWallet(); }, 30000);
+  }
+};
+
+// Guía clara de cómo conseguir gemas (los alumnos quedaban en 0 sin saber qué hacer).
+window.openGemsGuide = async function openGemsGuide() {
+  let left = null;
+  try { const { data } = await window._supabase.rpc('get_my_duel_rewards_left'); left = data; } catch { /* sin migración todavía */ }
+  const today = guatemalaToday();
+  const chestReady = window.userData?.daily_chest_last_claimed !== today;
+  const row = (icon, color, title, gems, desc) => `
+    <div class="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/5">
+      <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style="background:${color}22;color:${color}"><i class="fas ${icon}"></i></div>
+      <div class="grow">
+        <div class="flex justify-between gap-2"><span class="text-sm font-black text-white">${title}</span><span class="text-sm font-black text-cyan-300 whitespace-nowrap">${gems}</span></div>
+        <p class="text-[0.72rem] text-slate-400 mt-0.5">${desc}</p>
+      </div>
+    </div>`;
+  document.getElementById('gems-guide')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'gems-guide';
+  modal.className = 'fixed inset-0 z-[260] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-sm animate-fadeIn';
+  modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+  modal.innerHTML = `
+    <div class="w-full max-w-md max-h-[90vh] overflow-y-auto custom-scrollbar rounded-3xl p-6 bg-slate-900 border border-white/10 shadow-2xl animate-slideUp">
+      <div class="flex justify-between items-center mb-1">
+        <h2 class="text-xl font-black text-white"><i class="fas fa-gem text-cyan-400 mr-2"></i>¿Cómo gano gemas?</h2>
+        <button onclick="this.closest('.fixed').remove()" class="text-slate-400 hover:text-rose-400 text-2xl font-bold">×</button>
+      </div>
+      <p class="text-xs text-slate-400 mb-4">Tenés <b class="text-cyan-300" data-my-gems>${window.userData?.gems ?? 0}</b> 💎. Con gemas evoluciona tu mascota y comprás accesorios.</p>
+      <div class="space-y-2">
+        ${row('fa-trophy', '#facc15', 'Ganar un duelo 1v1', '+5 💎', 'Premio de la arena, aunque el rival no tenga gemas. Con racha de 3 victorias o más: +2 extra.')}
+        ${row('fa-coins', '#fb923c', 'Apostar en el duelo', '+ la apuesta', 'Si ganás, te llevás también lo que apostó tu rival. Si perdés, perdés lo tuyo. Podés apostar 0.')}
+        ${row('fa-handshake', '#a78bfa', 'Empatar', '+2 💎', 'Cada uno recibe 2 gemas.')}
+        ${row('fa-shield-halved', '#94a3b8', 'Jugar aunque pierdas', '+1 💎', 'Solo por jugar el duelo completo.')}
+        <p class="text-[0.7rem] text-slate-500 px-1">${left === null ? 'Los primeros 8 duelos de cada día dan premio de la arena.' : `Te quedan <b class="text-white">${left}</b> de 8 duelos con premio hoy.`}</p>
+        ${row('fa-box-open', '#f59e0b', 'Cofre diario', '+5 a +50 💎', chestReady ? '¡Hoy todavía no lo abriste! Entrá mañana también.' : 'Ya lo abriste hoy. Volvé mañana por otro.')}
+        ${row('fa-flag-checkered', '#34d399', 'Reto del mes', '+10 💎', 'Completá el reto del mes y contá qué hiciste.')}
+        ${row('fa-camera', '#60a5fa', 'Tu primera foto de perfil', '+25 💎', 'Una sola vez, al subir tu foto.')}
+        ${row('fa-ticket', '#f472b6', 'Pase de temporada', 'premios', 'Algunos niveles del pase dan gemas: jugá y subí de nivel.')}
+      </div>
+      <button onclick="this.closest('.fixed').remove(); window.GameArena && window.GameArena.quickChallenge && window.GameArena.quickChallenge('quiz')" class="w-full mt-5 h-12 rounded-xl font-black uppercase text-sm text-slate-900" style="background:linear-gradient(135deg,#facc15,#f97316)"><i class="fas fa-bolt"></i> Retar a alguien ahora</button>
+    </div>`;
+  document.body.appendChild(modal);
+};
+
 // Versión agrupada para llamar seguido (cada recarga de sección de juego).
 window.refreshMyWalletSoon = function refreshMyWalletSoon() {
   clearTimeout(_walletTimer);
@@ -618,6 +693,9 @@ window.renderGamificationHubContent = function renderGamificationHubContent(moda
                     <i class="fas fa-gem text-cyan-400"></i>
                     <span class="text-sm font-bold text-white" data-my-gems>${userData?.gems || 0}</span>
                  </div>
+                 <button onclick="window.openGemsGuide()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 text-xs font-black uppercase hover:bg-cyan-500/25 transition-colors">
+                    <i class="fas fa-circle-question"></i> ¿Cómo gano gemas?
+                 </button>
              </div>
         </div>
 
