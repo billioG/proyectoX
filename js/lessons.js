@@ -79,6 +79,7 @@ window.loadTeacherCourses = async function loadTeacherCourses(container) {
       <button class="btn-secondary-tw h-11 px-6 text-xs uppercase font-bold shrink-0" onclick="window.openSharedCoursesLibrary()"><i class="fas fa-book-bookmark"></i> Biblioteca Compartida</button>
       <button class="btn-secondary-tw h-11 px-6 text-xs uppercase font-bold shrink-0" onclick="window.openExportSireModal()"><i class="fas fa-file-export"></i> Exportar Notas (SIRE)</button>
       <button class="btn-secondary-tw h-11 px-6 text-xs uppercase font-bold shrink-0" onclick="window.openCuadroFinalModal()"><i class="fas fa-table-list"></i> Cuadro de Resultados</button>
+      ${window.userRole === 'docente' ? `<button class="btn-secondary-tw h-11 px-6 text-xs uppercase font-bold shrink-0" onclick="window.openWeeklyTopicModal()"><i class="fas fa-bullseye"></i> Tema de la semana</button>` : ''}
       <button class="btn-primary-tw h-11 px-6 text-xs uppercase font-bold shrink-0" onclick="window.openCreateCourseModal()"><i class="fas fa-plus"></i> Nuevo Curso</button>
     </div>
     <div id="courses-list" class="space-y-3">

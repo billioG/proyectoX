@@ -147,8 +147,9 @@ window.GameArena = {
     const gems = window.userData?.gems ?? 0;
     const safeWager = Math.max(0, Math.min(wager ?? 10, gems));
     const row = { challenger_id: window.currentUser.id, opponent_id: opponentId, wager_gems: safeWager };
-    // Sin tema elegido: repaso de un tema de la clase (o cultura general si no hay).
-    if (g.topic) row.topic = topic || window.resolveDuelTopic?.('__class__') || 'Cultura general';
+    // Sin tema elegido: el tema de la semana del docente; si no hay, un tema
+    // de la clase; si tampoco, cultura general.
+    if (g.topic) row.topic = topic || window.resolveDuelTopic?.(window._weeklyTopic ? '__weekly__' : '__class__') || 'Cultura general';
     if (game === 'quiz') row.question_count = window.computeDuelQuestionCount ? window.computeDuelQuestionCount(safeWager) : 5;
 
     const { data, error } = await window._supabase.from(g.table).insert(row).select('id').single();
@@ -191,8 +192,12 @@ window.GameArena = {
 
   quickStripHtml() {
     this.ensureStyles();
+    const s = window.sanitizeInput || ((v) => v);
+    const weekly = window._weeklyTopic;
     return `<div class="ga-quick">
-      <div class="ga-quick-title"><i class="fas fa-bolt"></i> Reto rápido <span>un toque: rival y tema al azar, 10 💎</span></div>
+      <div class="ga-quick-title"><i class="fas fa-bolt"></i> Reto rápido <span>${weekly
+        ? `un toque: rival al azar, 10 💎 · 🎯 Tema de la semana: <b style="color:#fde68a">${s(weekly)}</b>`
+        : 'un toque: rival y tema de tu clase al azar, 10 💎'}</span></div>
       <div class="ga-quick-row">${Object.entries(this.GAMES).map(([key, g]) =>
         `<button class="ga-quick-btn" onclick="window.GameArena.quickChallenge('${key}')"><i class="fas ${g.icon}"></i><span>${g.label}</span></button>`).join('')}</div>
     </div>`;

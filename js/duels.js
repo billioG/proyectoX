@@ -306,8 +306,12 @@ window.loadClassTopics = async function loadClassTopics() {
   if (window._classTopics) return window._classTopics;
   const u = window.userData;
   if (!u?.school_code) return (window._classTopics = []);
-  const { data } = await window._supabase.from('courses').select('title, lessons(title)')
-    .eq('school_code', u.school_code).eq('grade', u.grade).eq('section', u.section);
+  const [{ data }, { data: weekly }] = await Promise.all([
+    window._supabase.from('courses').select('title, lessons(title)')
+      .eq('school_code', u.school_code).eq('grade', u.grade).eq('section', u.section),
+    window._supabase.rpc('get_weekly_topic'),
+  ]);
+  window._weeklyTopic = weekly || null;
   const topics = new Set();
   for (const c of data || []) {
     const course = (c.title || '').trim();
@@ -324,10 +328,12 @@ window.topicOptionsHtml = function topicOptionsHtml(pool) {
   const s = window.sanitizeInput || ((v) => v);
   const a = window.sanitizeAttr || ((v) => v);
   const cls = window._classTopics || [];
+  const weekly = window._weeklyTopic;
+  const weeklyPart = weekly ? `<option value="__weekly__" selected>🎯 Tema de la semana: ${s(weekly)}</option>` : '';
   const classPart = cls.length ? `
-    <option value="__class__" selected>📚 Repaso de mi clase (al azar)</option>
+    <option value="__class__" ${weekly ? '' : 'selected'}>📚 Repaso de mi clase (al azar)</option>
     <optgroup label="📚 De mi clase">${cls.map(t => `<option value="${a(t)}">${s(t)}</option>`).join('')}</optgroup>` : '';
-  return `${classPart}
+  return `${weeklyPart}${classPart}
     <option value="">🌎 Cultura general (al azar)</option>
     <optgroup label="🌎 Cultura general">${pool.map(t => `<option value="${a(t)}">${s(t)}</option>`).join('')}</optgroup>`;
 };
@@ -338,6 +344,7 @@ window.resolveDuelTopic = function resolveDuelTopic(chosen) {
   const pool = getDuelTopicPoolForCurrentUser();
   const cls = window._classTopics || [];
   const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+  if (chosen === '__weekly__') return window._weeklyTopic || (cls.length ? pick(cls) : pick(pool));
   if (chosen === '__class__') return cls.length ? pick(cls) : pick(pool);
   return chosen || pick(pool);
 };

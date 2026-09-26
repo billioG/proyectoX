@@ -24,7 +24,7 @@ const MODULE_MAP = {
     'feed': ['js/projects.js', 'js/gamification.js', 'js/game-arena.js', 'js/duels.js', 'js/hangman-duel.js', 'js/timed-math-duel.js', 'js/debug-duel.js', 'js/spelling-duel.js', 'js/season-pass.js', 'js/leagues.js', 'js/companion.js', 'js/tournaments.js', 'js/kpi-engine.js', 'js/feed-ui.js', 'js/project-modals.js', 'js/profile-modals.js', 'js/reports.js', 'js/certificates.js'],
     'upload': ['js/project-modals.js', 'js/groups.js'],
     'bonus-system': ['js/bonus-system.js', 'js/certificates.js'],
-    'lessons': ['js/lessons.js']
+    'lessons': ['js/lessons.js', 'js/weekly-topic.js']
 };
 
 export async function loadModule(name) {
