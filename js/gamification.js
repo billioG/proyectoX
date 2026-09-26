@@ -620,8 +620,9 @@ window.renderGamificationHubContent = function renderGamificationHubContent(moda
 
                 <!-- LIGAS -->
                 <section>
-                    <h3 class="text-2xl font-black text-white italic uppercase mb-6 flex items-center gap-3"><i class="fas fa-trophy text-amber-400"></i> Liga de Diamantes</h3>
-                    <div class="glass-card bg-slate-800/50 border-white/10 overflow-hidden">
+                    <h3 class="text-2xl font-black text-white italic uppercase mb-6 flex items-center gap-3"><i class="fas fa-trophy text-amber-400"></i> ${window.userRole === 'estudiante' ? 'Liga Semanal' : 'Liga de Diamantes'}</h3>
+                    ${window.userRole === 'estudiante' ? '<div id="league-section"><div class="text-center text-slate-500 text-xs py-6"><i class="fas fa-spinner fa-spin"></i></div></div>' : ''}
+                    <div class="glass-card bg-slate-800/50 border-white/10 overflow-hidden" ${window.userRole === 'estudiante' ? 'hidden' : ''}>
                         <table class="w-full text-left">
                             <thead class="bg-white/5 text-[0.65rem] uppercase font-black text-slate-400 tracking-widest">
                                 <tr>
@@ -711,6 +712,7 @@ window.renderGamificationHubContent = function renderGamificationHubContent(moda
   if (typeof window.loadDebugSection === 'function') window.loadDebugSection();
   if (typeof window.loadSpellingSection === 'function') window.loadSpellingSection();
   if (typeof window.renderSeasonHero === 'function') window.renderSeasonHero();
+  if (window.userRole === 'estudiante' && typeof window.renderLeagueSection === 'function') window.renderLeagueSection();
   if (typeof window.loadTournamentsSection === 'function') window.loadTournamentsSection();
 }
 
