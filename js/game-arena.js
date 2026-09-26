@@ -6,10 +6,11 @@
  */
 
 const GA_STYLES = `
-.ga-overlay{position:fixed;inset:0;z-index:240;display:flex;align-items:center;justify-content:center;padding:1.5rem;
-  background:radial-gradient(circle at 50% 30%,#1e1b4b 0%,#0f172a 55%,#020617 100%);overflow:hidden;animation:ga-fade .25s ease-out}
-.ga-overlay::before{content:"";position:absolute;inset:-50%;background:repeating-conic-gradient(from 0deg,rgba(255,255,255,.03) 0 10deg,transparent 10deg 20deg);animation:ga-spin 40s linear infinite}
-.ga-panel{position:relative;width:100%;max-width:32rem;text-align:center;color:#fff}
+.ga-overlay{position:fixed;inset:0;z-index:240;display:flex;align-items:flex-start;justify-content:center;padding:1.5rem;
+  background:radial-gradient(circle at 50% 30%,#1e1b4b 0%,#0f172a 55%,#020617 100%);overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;animation:ga-fade .25s ease-out}
+.ga-overlay::before{content:"";position:fixed;inset:-50%;background:repeating-conic-gradient(from 0deg,rgba(255,255,255,.03) 0 10deg,transparent 10deg 20deg);animation:ga-spin 40s linear infinite;pointer-events:none}
+.ga-panel{position:relative;width:100%;max-width:32rem;text-align:center;color:#fff;margin:auto}
 .ga-vs{display:flex;align-items:center;justify-content:space-between;gap:1rem}
 .ga-player{flex:1;display:flex;flex-direction:column;align-items:center;gap:.6rem;min-width:0}
 .ga-player.left{animation:ga-in-left .5s cubic-bezier(.2,1.4,.4,1) both}

@@ -775,7 +775,8 @@ window.ensureCompanionStyles = function ensureCompanionStyles() {
 
     /* --- Quetzadex (ficha estilo Pokédex) --- */
     .dex-grid { display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:.75rem; }
-    @media (max-width: 520px) { .dex-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+    @media (max-width: 520px) { .dex-grid { gap:.5rem; } .dex-grid .dex-mini { padding:.45rem .45rem .55rem; border-radius:1rem; } .dex-grid .dex-mini .nm { font-size:.72rem; } .dex-grid .dex-mini .tag { font-size:.5rem; top:.35rem; right:.35rem; } }
+    @media (max-width: 340px) { .dex-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
     .dex-mini { position:relative; border-radius:1.25rem; background:var(--dex-c); padding:.6rem .6rem .75rem; cursor:pointer; color:#fff; text-align:left;
       border:0; transition: transform .15s; overflow:hidden; }
     .dex-mini:hover { transform: translateY(-4px); }
