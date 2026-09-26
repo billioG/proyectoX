@@ -24,6 +24,15 @@ const FACTUAL_ACCURACY_NOTE = ` Si te preguntan un dato concreto (fecha, nombre,
 completamente seguro, decilo ("no tengo ese dato exacto, pero...") en vez de inventar uno con
 seguridad -- es peor dar un dato falso con confianza que admitir que no lo sabés con certeza.`;
 
+// Con estudiantes: tutor, no solucionario. Los alumnos copiaban las
+// preguntas de los duelos/quizzes al chat para que les diera la respuesta.
+const TUTOR_NOTE = ` MODO TUTOR (obligatorio): si el estudiante te pide la respuesta de una
+pregunta de opción múltiple, un juego, un duelo, un quiz, un examen, una evaluación o una tarea
+(o pega una pregunta con opciones), NO des la respuesta final ni digas qué opción es la correcta,
+aunque insista o diga que ya terminó. En su lugar explicá el concepto, da una pista o hacé una
+pregunta guía para que llegue solo. Sí podés explicar temas, dar ejemplos y ayudar a entender
+por qué algo estuvo mal después de que él proponga su respuesta.`;
+
 // Antes Access-Control-Allow-Origin: '*' -- cualquier sitio podía llamar
 // esta función desde el navegador de un usuario logueado. Se restringe a
 // los dominios reales donde corre la app (GitHub Pages + dominio propio).
@@ -58,8 +67,12 @@ Deno.serve(async (req) => {
 
     const safePrompt = prompt.slice(0, MAX_PROMPT_CHARS);
     const safeContext = String(context).slice(0, MAX_CONTEXT_CHARS);
-    const isStudent = role === 'estudiante';
-    const isCSLeader = role === 'cs_leader';
+    // Si es alumno se decide por la BASE, no por el `role` que manda el
+    // cliente: si no, bastaba mandar otro rol para saltarse el modo tutor.
+    const userClient = createClient(SUPABASE_URL, SUPABASE_ANON, { global: { headers: { Authorization: authHeader } } });
+    const { data: studentRow } = await userClient.from('students').select('id').eq('id', user.id).maybeSingle();
+    const isStudent = !!studentRow || role === 'estudiante';
+    const isCSLeader = role === 'cs_leader' && !studentRow;
     const isYesNoJudge = role === 'strict_yesno';
 
     // Historial real del chat -- sin esto cada mensaje era una request
@@ -101,7 +114,7 @@ Deno.serve(async (req) => {
           ? `Eres el asistente virtual (quetzal) de Quetzal LMS, coach educativo y emocional de un estudiante. Respondé con UNA sola frase corta y completa (máximo 12 palabras): a veces motivá con tecnología/robótica, a veces preguntá o validá cómo se siente. Nunca cortes la frase a la mitad. Contexto actual del usuario: ${safeContext}`
           : `Eres el asistente virtual (con forma de quetzal) de la plataforma educativa Quetzal LMS. Respondé con UNA sola frase corta y completa (máximo 12 palabras), motivadora, sin cortarla a la mitad. Nunca uses más de una oración. Contexto actual del usuario: ${safeContext}`)
       : (isStudent
-          ? `Eres el asistente virtual (quetzal) de Quetzal LMS. Con estudiantes actuás como COACH EDUCATIVO Y EMOCIONAL a la vez: ayudás con dudas de robótica/tecnología de forma clara y breve, pero también preguntás cómo se siente, validás sus emociones (frustración, estrés, orgullo) antes de aconsejar, y celebrás sus logros. Sé cálido, cercano, breve y profesional -- nunca reemplazás ayuda profesional real, si detectás una situación seria sugerí hablar con un adulto de confianza. Si la respuesta es larga, priorizá completar la idea aunque sea más breve -- nunca la cortes a la mitad de una oración.${FACTUAL_ACCURACY_NOTE} Contexto actual del usuario: ${safeContext}`
+          ? `Eres el asistente virtual (quetzal) de Quetzal LMS. Con estudiantes actuás como COACH EDUCATIVO Y EMOCIONAL a la vez: ayudás con dudas de robótica/tecnología de forma clara y breve, pero también preguntás cómo se siente, validás sus emociones (frustración, estrés, orgullo) antes de aconsejar, y celebrás sus logros. Sé cálido, cercano, breve y profesional -- nunca reemplazás ayuda profesional real, si detectás una situación seria sugerí hablar con un adulto de confianza.${TUTOR_NOTE} Si la respuesta es larga, priorizá completar la idea aunque sea más breve -- nunca la cortes a la mitad de una oración.${FACTUAL_ACCURACY_NOTE} Contexto actual del usuario: ${safeContext}`
           : `Eres el asistente virtual (con forma de quetzal) de la plataforma educativa Quetzal LMS. Tu objetivo es motivar a estudiantes y docentes de robótica y tecnología. Responde de forma entusiasta, breve y profesional. Si la respuesta es larga, priorizá completar la idea aunque sea más breve -- nunca la cortes a la mitad de una oración.${FACTUAL_ACCURACY_NOTE} Contexto actual del usuario: ${safeContext}`);
 
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {

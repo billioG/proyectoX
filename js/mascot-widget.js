@@ -99,7 +99,32 @@ const MascotWidget = {
         this.applyAnimations();
     },
 
+    // Pantallas donde el alumno responde algo que se califica o se compite:
+    // ahí el asistente no aparece (lo usaban para sacar las respuestas de
+    // los duelos). Juegos 1v1, Centro de Juego, torneos, eventos sorpresa,
+    // quizzes de curso y actividades H5P (que envían puntaje).
+    EVALUATIVE_SELECTORS: [
+        '#gamification-hub-modal', '#gamecenter-onboarding-modal', '#ga-challenge-for',
+        '#duel-quiz-modal', '#hangman-game-modal', '#timed-math-modal', '#debug-game-modal', '#spelling-game-modal',
+        '#tournament-quiz-modal', '#random-event-quiz-modal',
+        '#quiz-player-form', '#course-player-viewer iframe[src*="player.html"]',
+    ],
+
+    injectVisibilityRules() {
+        if (document.getElementById('mascot-visibility-rules')) return;
+        const has = this.EVALUATIVE_SELECTORS.join(', ');
+        const st = document.createElement('style');
+        st.id = 'mascot-visibility-rules';
+        // Solo alumnos (docentes/admin lo siguen viendo en todos lados). CSS
+        // puro con :has() -- no depende de que cada juego se acuerde de
+        // esconderlo, y vuelve solo al cerrar el juego.
+        st.textContent = `body.role-estudiante:has(${has}) #${this.containerId},
+            body.role-estudiante:has(${has}) #mascot-ai-modal { display: none !important; }`;
+        document.head.appendChild(st);
+    },
+
     render() {
+        this.injectVisibilityRules();
         if (document.getElementById(this.containerId)) return;
 
         const container = document.createElement('div');
@@ -705,6 +730,8 @@ const MascotWidget = {
                 .order('created_at', { ascending: false }).limit(11);
             const chatHistory = (priorMessages || []).reverse().slice(0, -1).slice(-10);
 
+            // Con alumnos el servidor (ai-proxy) lo pone en MODO TUTOR: no da
+            // respuestas finales de juegos/quizzes, solo pistas.
             const context = `Usuario: ${window.userData?.full_name || ''}, Rol: ${window.userRole}, Racha: ${window.userData?.streak || 0}`;
             const response = await AIService.ask(text, context, false, chatHistory);
             document.getElementById(loadingId)?.remove();
