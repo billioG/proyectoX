@@ -303,6 +303,8 @@ function getNextGrade(gradeText) {
   return GRADE_SEQUENCE[idx + 1];
 }
 window.getNextGrade = getNextGrade;
+// false para clubes/extraescolares (grados fuera del pensum).
+window.isRegularGrade = (gradeText) => GRADE_SEQUENCE.some(g => g.toLowerCase() === String(gradeText || '').trim().toLowerCase());
 
 function getNivelFromGrade(gradeText) {
   const rank = getGradeRank(gradeText);

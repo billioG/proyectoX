@@ -55,6 +55,9 @@ window.renderSchoolsContent = function renderSchoolsContent(container, schools) 
         <button class="btn-secondary-tw h-12 px-5 text-xs uppercase font-bold tracking-widest shrink-0" onclick="window.openManagePrograms()">
             <i class="fas fa-layer-group"></i> Programas
         </button>
+        <button class="btn-primary-tw h-12 px-5 text-xs uppercase font-bold tracking-widest shrink-0" onclick="window.openAddSchoolModal()">
+            <i class="fas fa-plus"></i> Nuevo
+        </button>
       </div>
 
       <div id="schools-list-view" class="space-y-6">
@@ -67,7 +70,7 @@ window.renderSchoolsContent = function renderSchoolsContent(container, schools) 
         ` : `
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             ${schools.map(s => `
-              <div class="school-card glass-card p-6 flex flex-col sm:flex-row gap-6 hover:translate-y-[-4px] transition-all group" data-name="${s.name.toLowerCase()}" data-code="${s.code.toLowerCase()}" data-municipality="${s.municipality.toLowerCase()}">
+              <div class="school-card glass-card p-6 flex flex-col sm:flex-row gap-6 hover:translate-y-[-4px] transition-all group" data-name="${sanitizeInput((s.name || '').toLowerCase())}" data-code="${sanitizeInput((s.code || '').toLowerCase())}" data-municipality="${sanitizeInput((s.municipality || '').toLowerCase())}">
                   <div class="w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-slate-800 text-indigo-500 flex items-center justify-center text-3xl shrink-0 group-hover:bg-indigo-500 group-hover:text-white transition-colors">
                       <i class="fas fa-university"></i>
                   </div>

@@ -40,7 +40,7 @@ window.SUPABASE_ANON_KEY = SUPABASE_ANON_KEY;
 export const SCHOOL_SECTORS = ['Oficial', 'Privado', 'Cooperativa', 'NUFED', 'Otro'];
 
 // Niveles educativos
-export const EDUCATION_LEVELS = ['Primaria', 'Básico', 'Diversificado'];
+export const EDUCATION_LEVELS = ['Primaria', 'Básico', 'Diversificado', 'Extraescolar'];
 
 // Jornadas
 export const SCHEDULES = ['Matutina', 'Vespertina', 'Nocturna', 'Doble'];
@@ -57,7 +57,10 @@ window.AREAS = AREAS;
 export const GRADES_BY_LEVEL = {
   'Primaria': ['1ro Primaria', '2do Primaria', '3ro Primaria', '4to Primaria', '5to Primaria', '6to Primaria'],
   'Básico': ['1ro Básico', '2do Básico', '3ro Básico'],
-  'Diversificado': ['4to Diversificado', '5to Diversificado', '6to Diversificado']
+  'Diversificado': ['4to Diversificado', '5to Diversificado', '6to Diversificado'],
+  // Clubes y cursos fuera del pensum: no se promueven de ciclo. En el
+  // formulario de alumno también se puede escribir un nombre propio.
+  'Extraescolar': ['Club de Robótica', 'Club de Programación', 'Club STEAM', 'Extraescolar']
 };
 
 // Secciones disponibles

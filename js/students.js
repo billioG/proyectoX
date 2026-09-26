@@ -390,7 +390,7 @@ window.renderStudentsList = function renderStudentsList(container, students, all
                     <div class="bg-slate-50 dark:bg-slate-800/50 rounded-lg px-4 py-2.5 flex items-center justify-between hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                       <span class="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">${window.sanitizeInput(cg.grade)} ${window.sanitizeInput(cg.section)} <span class="text-slate-400 font-normal normal-case">· ${cg.students.length} alumnos</span></span>
                       <div class="flex items-center gap-2">
-                        ${userRole === 'admin' ? `
+                        ${userRole === 'admin' && window.isRegularGrade?.(cg.grade) ? `
                           <button onclick="event.preventDefault(); event.stopPropagation(); window.promoteClassToNextGrade('${window.sanitizeAttr(schoolCode)}', '${window.sanitizeAttr(cg.grade)}', '${window.sanitizeAttr(cg.section)}', ${cg.students.length})" class="h-7 px-3 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white transition-colors text-[0.6rem] font-black uppercase tracking-widest flex items-center gap-1.5">
                             <i class="fas fa-graduation-cap"></i> Promover
                           </button>
@@ -513,8 +513,8 @@ window.openAddStudentModal = async function openAddStudentModal(student = null) 
             </select>
           </div>
           <div>
-            <label class="block text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-1.5">CUI (13 dígitos) *</label>
-            <input type="text" id="student-cui" maxlength="13" placeholder="Ej: 1234567890101" value="${student?.cui || ''}" required
+            <label class="block text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-1.5">CUI (opcional)</label>
+            <input type="text" id="student-cui" maxlength="13" inputmode="numeric" placeholder="13 dígitos, si lo tiene" value="${window.sanitizeAttr(student?.cui || '')}"
                    class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary/20 transition-all">
           </div>
         </div>
@@ -546,10 +546,11 @@ window.openAddStudentModal = async function openAddStudentModal(student = null) 
           </div>
           <div>
             <label class="block text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Grado *</label>
-            <select id="student-grade" required class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary/20 transition-all">
+            <select id="student-grade" required class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary/20 transition-all" onchange="window.toggleCustomGrade()">
                <option value="">...</option>
-               ${student?.grade ? `<option value="${student.grade}" selected>${student.grade}</option>` : ''}
+               ${student?.grade ? `<option value="${window.sanitizeAttr(student.grade)}" selected>${window.sanitizeInput(student.grade)}</option>` : ''}
             </select>
+            <input type="text" id="student-grade-custom" maxlength="60" placeholder="Ej: Club de Ajedrez" class="hidden mt-2 w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary/20 transition-all">
           </div>
            <div>
             <label class="block text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Sección *</label>
@@ -574,10 +575,25 @@ window.openAddStudentModal = async function openAddStudentModal(student = null) 
 window.updateGradesByLevel = function updateGradesByLevel() {
   const levelSelection = document.getElementById('student-level').value;
   const gradeSelect = document.getElementById('student-grade');
-  const grades = (window.GRADES_BY_LEVEL || {})[levelSelection] || [];
+  const grades = [...((window.GRADES_BY_LEVEL || {})[levelSelection] || [])];
+  // Al editar, conserva el grado actual aunque no esté en la lista (clubes
+  // con nombre propio); antes se perdía la selección.
+  const current = gradeSelect.value;
+  if (current && current !== '__otro__' && !grades.includes(current)) grades.unshift(current);
 
   gradeSelect.innerHTML = '<option value="">Seleccionar...</option>' +
-    grades.map(g => `<option value="${g}">${g}</option>`).join('');
+    grades.map(g => `<option value="${window.sanitizeAttr(g)}" ${g === current ? 'selected' : ''}>${window.sanitizeInput(g)}</option>`).join('') +
+    (levelSelection === 'Extraescolar' ? '<option value="__otro__">+ Otro (escribir nombre)</option>' : '');
+  window.toggleCustomGrade();
+}
+
+window.toggleCustomGrade = function toggleCustomGrade() {
+  const custom = document.getElementById('student-grade-custom');
+  if (!custom) return;
+  const on = document.getElementById('student-grade')?.value === '__otro__';
+  custom.classList.toggle('hidden', !on);
+  custom.required = on;
+  if (on) custom.focus();
 }
 
 window.submitStudent = async function submitStudent(e) {
@@ -590,8 +606,11 @@ window.submitStudent = async function submitStudent(e) {
   const username = document.getElementById('student-username').value;
   const full_name = document.getElementById('student-name').value;
   const school_code = document.getElementById('student-school').value;
-  const cui = document.getElementById('student-cui').value;
-  const grade = document.getElementById('student-grade').value;
+  const cui = document.getElementById('student-cui').value.replace(/\D/g, '') || null;
+  const gradeRaw = document.getElementById('student-grade').value;
+  const grade = gradeRaw === '__otro__' ? document.getElementById('student-grade-custom').value.trim() : gradeRaw;
+  if (cui && cui.length !== 13) return showToast('<i class="fas fa-circle-xmark"></i> El CUI tiene 13 dígitos -- o dejalo vacío', 'error');
+  if (!grade) return showToast('<i class="fas fa-circle-xmark"></i> Escribí el nombre del grado o club', 'error');
   const section = document.getElementById('student-section').value;
   const codigo_personal = document.getElementById('student-codigo-personal').value.trim() || null;
   const gender = document.getElementById('student-gender').value || null;
@@ -715,6 +734,8 @@ window.deleteAllStudentsInSchool = async function deleteAllStudentsInSchool(scho
 // Diversificado) no hay "siguiente grado", así que en cambio se marca
 // egresado (ver auth.js: un egresado ya no puede loguearse).
 window.promoteClassToNextGrade = async function promoteClassToNextGrade(schoolCode, grade, section, count) {
+  // Un club no tiene "siguiente grado": sin esto quedaban todos EGRESADOS.
+  if (!window.isRegularGrade?.(grade)) return window.showToast('<i class="fas fa-circle-info"></i> Los clubes y grupos extraescolares no se promueven', 'info');
   const nextGrade = window.getNextGrade ? window.getNextGrade(grade) : null;
 
   const confirmMsg = nextGrade
