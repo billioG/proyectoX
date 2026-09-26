@@ -1,0 +1,7 @@
+{
+  "cloudUrl": "https://vyptkxudkmlpyfosppzh.supabase.co",
+  "nodeToken": "PEGAR_ACA_EL_TOKEN_QUE_DA_EL_PANEL_ADMIN",
+  "port": 8080,
+  "syncEveryMinutes": 10,
+  "dataDir": "./data"
+}
