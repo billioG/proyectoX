@@ -146,6 +146,89 @@ function tortuga(g) {
   </g>`;
 }
 
+// ---------- TUCÁN ----------
+function tucan(g) {
+  const sc = [0.62, 0.8, 0.95][g - 1];
+  const len = [40, 58, 74][g - 1];
+  const tail = g >= 2 ? `<g class="cp-tail"><path d="M136 262 L126 304 L174 304 L164 262 Z" fill="#212121"/></g>` : '';
+  const stripe = g >= 2
+    ? `<path d="M131 ${140 + len * 0.35} Q150 ${133 + len * 0.35} 169 ${140 + len * 0.35} L165 ${150 + len * 0.45} Q150 ${144 + len * 0.45} 135 ${150 + len * 0.45} Z" fill="#FF9800"/>`
+    : '';
+  const tip = g >= 3 ? `<ellipse cx="150" cy="${136 + len}" rx="9" ry="8" fill="#E53935"/>` : '';
+  return `<g transform="translate(150 170) scale(${sc}) translate(-150 -170)">
+    ${tail}
+    <ellipse class="cp-wing-l" cx="94" cy="206" rx="20" ry="46" fill="#111"/>
+    <ellipse class="cp-wing-r" cx="206" cy="206" rx="20" ry="46" fill="#111"/>
+    <ellipse cx="150" cy="200" rx="62" ry="76" fill="#212121"/>
+    <ellipse cx="150" cy="182" rx="40" ry="44" fill="#FFD600"/>
+    <ellipse cx="150" cy="266" rx="22" ry="8" fill="#E53935"/>
+    <ellipse cx="124" cy="276" rx="14" ry="7" fill="#546E7A"/><ellipse cx="176" cy="276" rx="14" ry="7" fill="#546E7A"/>
+    <circle cx="150" cy="120" r="54" fill="#212121"/>
+    <ellipse cx="150" cy="140" rx="36" ry="26" fill="#FFD600"/>
+    <circle cx="128" cy="112" r="17" fill="#4FC3F7"/><circle cx="172" cy="112" r="17" fill="#4FC3F7"/>
+    ${eyePair(128, 172, 112, 12)}
+    <path d="M128 132 Q150 124 172 132 Q170 ${132 + len} 150 ${140 + len} Q130 ${132 + len} 128 132 Z" fill="#8BC34A"/>
+    ${stripe}${tip}
+  </g>`;
+}
+
+// ---------- SARAGUATE (mono aullador) ----------
+function saraguate(g) {
+  const sc = [0.62, 0.8, 0.95][g - 1];
+  const tail = g >= 2
+    ? `<g class="cp-tail cp-tail-j"><path d="M192 248 C 250 258 262 198 236 186 C 222 180 212 196 226 202" stroke="#3E2723" stroke-width="12" fill="none" stroke-linecap="round"/></g>`
+    : '';
+  const beard = g >= 2 ? `<path d="M118 158 Q150 206 182 158 Q150 184 118 158 Z" fill="#3E2723"/>` : '';
+  const tuft = g >= 3 ? `<path d="M132 66 Q150 40 168 66 Z" fill="#3E2723"/>` : '';
+  const mouth = g >= 3
+    ? `<ellipse cx="150" cy="161" rx="8" ry="7" fill="#3E2723"/>`
+    : `<path d="M140 158 Q150 166 160 158" stroke="#3E2723" stroke-width="3" fill="none" stroke-linecap="round"/>`;
+  return `<g transform="translate(150 170) scale(${sc}) translate(-150 -170)">
+    ${tail}
+    <g class="cp-wing-l"><path d="M104 196 C 74 214 72 250 90 264" stroke="#4E342E" stroke-width="18" fill="none" stroke-linecap="round"/></g>
+    <g class="cp-wing-r"><path d="M196 196 C 226 214 228 250 210 264" stroke="#4E342E" stroke-width="18" fill="none" stroke-linecap="round"/></g>
+    <ellipse cx="150" cy="218" rx="58" ry="56" fill="#4E342E"/>
+    <ellipse cx="150" cy="228" rx="32" ry="34" fill="#6D4C41"/>
+    <ellipse cx="120" cy="272" rx="20" ry="11" fill="#3E2723"/><ellipse cx="180" cy="272" rx="20" ry="11" fill="#3E2723"/>
+    <g class="cp-ear-l"><circle cx="92" cy="122" r="16" fill="#4E342E"/><circle cx="92" cy="122" r="8" fill="#A1887F"/></g>
+    <g class="cp-ear-r"><circle cx="208" cy="122" r="16" fill="#4E342E"/><circle cx="208" cy="122" r="8" fill="#A1887F"/></g>
+    <circle cx="150" cy="120" r="60" fill="#4E342E"/>
+    ${tuft}${beard}
+    <ellipse cx="150" cy="126" rx="42" ry="40" fill="#BCAAA4"/>
+    <ellipse cx="150" cy="150" rx="26" ry="18" fill="#D7CCC8"/>
+    ${eyePair(132, 168, 118, 12)}
+    <circle cx="144" cy="145" r="3" fill="#3E2723"/><circle cx="156" cy="145" r="3" fill="#3E2723"/>
+    ${mouth}
+  </g>`;
+}
+
+// ---------- MANATÍ ----------
+function manati(g) {
+  const sc = [0.62, 0.8, 0.95][g - 1];
+  const whiskers = g >= 2
+    ? [[136, 156], [142, 162], [158, 162], [164, 156], [150, 164]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2" fill="#546E7A"/>`).join('')
+    : '';
+  const spots = g >= 3
+    ? [[104, 190, 7], [196, 196, 6], [118, 240, 5], [186, 248, 6], [150, 262, 4]].map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#B0BEC5" opacity=".8"/>`).join('')
+    : '';
+  const nails = g >= 2 ? `<circle cx="66" cy="222" r="3" fill="#ECEFF1"/><circle cx="72" cy="228" r="3" fill="#ECEFF1"/><circle cx="234" cy="222" r="3" fill="#ECEFF1"/><circle cx="228" cy="228" r="3" fill="#ECEFF1"/>` : '';
+  return `<g transform="translate(150 170) scale(${sc}) translate(-150 -170)">
+    <g class="cp-tail"><ellipse cx="150" cy="284" rx="46" ry="18" fill="#78909C"/></g>
+    <g class="cp-flip-l"><ellipse cx="82" cy="218" rx="30" ry="13" fill="#78909C" transform="rotate(-30 82 218)"/></g>
+    <g class="cp-flip-r"><ellipse cx="218" cy="218" rx="30" ry="13" fill="#78909C" transform="rotate(30 218 218)"/></g>
+    ${nails}
+    <ellipse cx="150" cy="205" rx="74" ry="78" fill="#90A4AE"/>
+    <ellipse cx="150" cy="222" rx="46" ry="50" fill="#B0BEC5"/>
+    ${spots}
+    <ellipse cx="150" cy="128" rx="62" ry="54" fill="#90A4AE"/>
+    <circle cx="112" cy="142" r="8" fill="#F48FB1" opacity=".6"/><circle cx="188" cy="142" r="8" fill="#F48FB1" opacity=".6"/>
+    <ellipse cx="150" cy="150" rx="36" ry="24" fill="#CFD8DC"/>
+    <circle cx="140" cy="140" r="3.5" fill="#546E7A"/><circle cx="160" cy="140" r="3.5" fill="#546E7A"/>
+    ${whiskers}
+    ${eyePair(124, 176, 116, 10)}
+  </g>`;
+}
+
 // ---------- catálogo ----------
 const COMPANION_SPECIES = {
   quetzal: {
@@ -172,7 +255,74 @@ const COMPANION_SPECIES = {
     names: ['Huevo de Tortuga', 'Tortuguita', 'Tortuga Joven', 'Tortuga Marina', 'Tortuga Guardiana', 'Tortuga Ancestral'],
     draw: tortuga,
   },
+  tucan: {
+    label: 'Tucán',
+    desc: 'Alegre y colorido. Su pico es un arcoíris.',
+    color: '#FFB300',
+    egg: { shell: '#FFF8E1', stroke: '#FFB300', spot: '#8BC34A' },
+    names: ['Huevo de Tucán', 'Pichón de Tucán', 'Tucancito', 'Tucán', 'Tucán Guardián', 'Tucán Arcoíris'],
+    draw: tucan,
+  },
+  saraguate: {
+    label: 'Saraguate',
+    desc: 'Ruidoso y juguetón. Su aullido llena la selva.',
+    color: '#8D6E63',
+    egg: { shell: '#EFEBE9', stroke: '#6D4C41', spot: '#A1887F' },
+    names: ['Huevo de Saraguate', 'Monito', 'Saraguatito', 'Saraguate', 'Saraguate Guardián', 'Rey Aullador'],
+    draw: saraguate,
+  },
+  manati: {
+    label: 'Manatí',
+    desc: 'Tranquilo y gentil. El gigante del Río Dulce.',
+    color: '#607D8B',
+    egg: { shell: '#ECEFF1', stroke: '#607D8B', spot: '#90A4AE' },
+    names: ['Huevo de Manatí', 'Manatí Bebé', 'Manatincito', 'Manatí', 'Manatí Guardián', 'Manatí Ancestral'],
+    draw: manati,
+  },
 };
+
+// Ficha "Quetzadex": datos REALES de cada animal (fauna de Guatemala) --
+// la mascota también enseña. Estado de conservación según la UICN.
+const COMPANION_DEX = {
+  quetzal: {
+    num: 1, sci: 'Pharomachrus mocinno', types: [['Aire', '#29B6F6'], ['Bosque nuboso', '#43A047']],
+    about: 'Es el ave nacional de Guatemala y le da nombre a nuestra moneda. Los mayas usaban sus plumas verdes en los tocados de sus gobernantes.',
+    weight: 'Unos 200 g', habitat: 'Bosques nubosos (Biotopo del Quetzal, Baja Verapaz)', food: 'Frutas como el aguacatillo, e insectos', status: 'Casi amenazado',
+    fact: 'Las plumas largas del macho pueden medir más que todo su cuerpo.',
+  },
+  jaguar: {
+    num: 2, sci: 'Panthera onca', types: [['Selva', '#2E7D32'], ['Fuerza', '#E65100']],
+    about: 'Es el felino más grande de América. Los mayas lo llamaban Balam y lo veían como guardián de la noche.',
+    weight: 'Entre 50 y 100 kg', habitat: 'Selvas de Petén (Reserva de la Biosfera Maya)', food: 'Carnívoro: venados, pecaríes, tortugas', status: 'Casi amenazado',
+    fact: 'A diferencia de muchos gatos, al jaguar le gusta el agua: es un gran nadador.',
+  },
+  tortuga: {
+    num: 3, sci: 'Lepidochelys olivacea (parlama)', types: [['Agua', '#1E88E5'], ['Arena', '#F9A825']],
+    about: 'La tortuga parlama llega a anidar a las playas del Pacífico de Guatemala, como Monterrico, y sus crías caminan solas hasta el mar.',
+    weight: 'Unos 35 a 45 kg', habitat: 'Océano Pacífico y sus playas', food: 'Cangrejos, medusas, algas', status: 'Vulnerable',
+    fact: 'La temperatura de la arena decide si de los huevos nacen machos o hembras.',
+  },
+  tucan: {
+    num: 4, sci: 'Ramphastos sulfuratus', types: [['Aire', '#29B6F6'], ['Fruta', '#E53935']],
+    about: 'El tucán pico multicolor vive en las selvas del norte de Guatemala. Su pico enorme parece pesado, ¡pero es muy liviano!',
+    weight: 'Unos 400 g', habitat: 'Selvas de Petén e Izabal', food: 'Frutas, insectos y a veces huevos', status: 'Preocupación menor',
+    fact: 'Su pico es hueco por dentro, con una estructura como de panal que lo hace liviano y fuerte.',
+  },
+  saraguate: {
+    num: 5, sci: 'Alouatta pigra', types: [['Selva', '#2E7D32'], ['Sonido', '#8E24AA']],
+    about: 'El saraguate o mono aullador negro vive en las selvas de Petén. Los grupos aúllan al amanecer para avisar dónde están.',
+    weight: 'Entre 6 y 11 kg', habitat: 'Selvas de Petén (Tikal)', food: 'Hojas, frutas y flores', status: 'En peligro',
+    fact: 'Su aullido es uno de los sonidos más fuertes de los animales terrestres y se oye a varios kilómetros.',
+  },
+  manati: {
+    num: 6, sci: 'Trichechus manatus', types: [['Agua', '#1E88E5'], ['Planta', '#7CB342']],
+    about: 'El manatí vive en el Río Dulce y el lago de Izabal. Es tan tranquilo que le dicen "vaca marina".',
+    weight: 'Entre 400 y 550 kg', habitat: 'Río Dulce y lago de Izabal', food: 'Herbívoro: plantas acuáticas', status: 'Vulnerable',
+    fact: 'Aunque vive en el agua, sus parientes más cercanos son los elefantes.',
+  },
+};
+window.COMPANION_DEX = COMPANION_DEX;
+const EGG_PRICE = 150;
 window.COMPANION_SPECIES = COMPANION_SPECIES;
 
 // ---------- accesorios (estilo Free Fire) ----------
@@ -194,6 +344,21 @@ const ANCHORS = {
     1: { top: [150, 173], eyes: [150, 194], back: [150, 170], hw: 55 },
     2: { top: [150, 173], eyes: [150, 200], back: [150, 170], hw: 70 },
     3: { top: [150, 174], eyes: [150, 206], back: [150, 170], hw: 84 },
+  },
+  tucan: {
+    1: { top: [150, 106], eyes: [150, 134], back: [150, 188], hw: 67 },
+    2: { top: [150, 87], eyes: [150, 124], back: [150, 194], hw: 86 },
+    3: { top: [150, 71], eyes: [150, 115], back: [150, 198], hw: 103 },
+  },
+  saraguate: {
+    1: { top: [150, 102], eyes: [150, 138], back: [150, 200], hw: 74 },
+    2: { top: [150, 82], eyes: [150, 128], back: [150, 208], hw: 96 },
+    3: { top: [150, 66], eyes: [150, 120], back: [150, 216], hw: 114 },
+  },
+  manati: {
+    1: { top: [150, 112], eyes: [150, 137], back: [150, 192], hw: 77 },
+    2: { top: [150, 95], eyes: [150, 127], back: [150, 198], hw: 99 },
+    3: { top: [150, 81], eyes: [150, 118], back: [150, 203], hw: 118 },
   },
 };
 
@@ -344,6 +509,45 @@ window.ensureCompanionStyles = function ensureCompanionStyles() {
     .cp-svg.cp-emote-legend { animation: cp-legend 1.5s ease-out !important; }
     @keyframes cp-legend { 0% { filter: drop-shadow(0 0 0 #FFD54F); transform: scale(1); } 40% { filter: drop-shadow(0 0 22px #FFD54F) brightness(1.25); transform: scale(1.15) translateY(-12px); } 100% { filter: drop-shadow(0 0 0 #FFD54F); transform: scale(1); } }
     .cp-svg.cp-emote-wobble { animation: cp-wiggle .22s ease-in-out 4 !important; }
+    .cp-svg.cp-emote-swim { animation: cp-swim 1.6s ease-in-out !important; }
+    .cp-svg.cp-emote-swim .cp-flip-l, .cp-svg.cp-emote-swim .cp-flip-r, .cp-svg.cp-emote-swim .cp-tail { animation-duration: .4s !important; }
+    @keyframes cp-swim { 0%, 100% { transform: translate(0, 0) rotate(0); } 25% { transform: translate(-16px, -12px) rotate(-8deg); } 50% { transform: translate(0, -20px) rotate(0); } 75% { transform: translate(16px, -12px) rotate(8deg); } }
+
+    /* --- Quetzadex (ficha estilo Pokédex) --- */
+    .dex-grid { display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:.75rem; }
+    @media (max-width: 520px) { .dex-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+    .dex-mini { position:relative; border-radius:1.25rem; background:var(--dex-c); padding:.6rem .6rem .75rem; cursor:pointer; color:#fff; text-align:left;
+      border:0; transition: transform .15s; overflow:hidden; }
+    .dex-mini:hover { transform: translateY(-4px); }
+    .dex-mini .art { width:100%; aspect-ratio:1; }
+    .dex-mini .n { font-size:.6rem; font-weight:800; opacity:.8; }
+    .dex-mini .nm { font-size:.95rem; font-weight:900; line-height:1.1; }
+    .dex-mini .tag { position:absolute; top:.5rem; right:.5rem; font-size:.55rem; font-weight:900; padding:.15rem .45rem; border-radius:9999px; background:rgba(0,0,0,.35); }
+    .dex-sil .cp-svg { filter: brightness(0) opacity(.3) !important; }
+    .dex-card { background:#fff; color:#0f172a; border-radius:1.75rem; overflow:hidden; max-width:24rem; margin:0 auto; text-align:left; }
+    .dex-top { position:relative; height:14.5rem; background:var(--dex-c); border-radius:0 0 50% 50% / 0 0 20% 20%; display:flex; align-items:center; justify-content:center; }
+    .dex-top .dex-bg { position:absolute; font-size:9rem; opacity:.18; right:-1rem; top:-1rem; pointer-events:none; }
+    .dex-top .art { width:12rem; height:12rem; position:relative; }
+    .dex-close { position:absolute; left:.8rem; top:.8rem; width:2.2rem; height:2.2rem; border-radius:9999px; border:0; background:rgba(255,255,255,.3); color:#fff; font-size:1rem; cursor:pointer; }
+    .dex-body { padding:1.1rem 1.35rem 1.35rem; }
+    .dex-name { font-size:1.75rem; font-weight:900; line-height:1.05; }
+    .dex-num { color:#64748b; font-weight:700; font-size:.8rem; margin-top:.15rem; }
+    .dex-sci { color:#94a3b8; font-style:italic; font-size:.72rem; }
+    .dex-types { display:flex; flex-wrap:wrap; gap:.4rem; margin:.7rem 0; }
+    .dex-type { padding:.3rem .75rem; border-radius:9999px; font-size:.72rem; font-weight:800; color:#fff; }
+    .dex-desc { font-size:.85rem; color:#334155; line-height:1.45; margin:0; }
+    .dex-stats { display:grid; grid-template-columns:1fr 1fr; gap:.55rem; margin:1rem 0; }
+    .dex-stat { border:1px solid #e2e8f0; border-radius:1rem; padding:.5rem .7rem; }
+    .dex-stat small { display:block; font-size:.58rem; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:.06em; margin-bottom:.1rem; }
+    .dex-stat b { font-size:.8rem; color:#0f172a; line-height:1.25; display:block; }
+    .dex-fact { background:#f1f5f9; border-radius:1rem; padding:.7rem .85rem; font-size:.8rem; color:#334155; }
+    .dex-evo { display:grid; grid-template-columns:repeat(6, minmax(0,1fr)); gap:.25rem; margin-top:1rem; }
+    .dex-evo > div { text-align:center; font-size:.5rem; font-weight:800; color:#475569; line-height:1.1; }
+    .dex-evo .art { width:100%; aspect-ratio:1; }
+    .dex-actions { display:flex; flex-direction:column; gap:.5rem; margin-top:1.1rem; }
+    .dex-btn { border:0; border-radius:.9rem; height:3rem; font-weight:900; font-size:.8rem; text-transform:uppercase; cursor:pointer; color:#fff; background:var(--dex-c); }
+    .dex-btn.ghost { background:#f1f5f9; color:#475569; }
+    .dex-btn:disabled { opacity:.5; cursor:not-allowed; }
     .cp-svg .cp-acc-head, .cp-svg .cp-acc-face { transition: opacity .2s; }
     .cp-svg.cp-emote-shell .cp-acc-head, .cp-svg.cp-emote-shell .cp-acc-face { opacity: 0; }
 
@@ -401,6 +605,9 @@ const SPECIAL_EMOTE = {
   quetzal: { id: 'fly', label: 'Vuelo', bubble: '🪶' },
   jaguar: { id: 'roar', label: 'Rugido', bubble: '💢' },
   tortuga: { id: 'shell', label: 'Caparazón', bubble: '🛡️' },
+  tucan: { id: 'fly', label: 'Vuelo Tropical', bubble: '🌈' },
+  saraguate: { id: 'roar', label: 'Aullido', bubble: '📣' },
+  manati: { id: 'swim', label: 'Nado', bubble: '🫧' },
 };
 
 function emotesFor(species) {
@@ -416,7 +623,7 @@ function emotesFor(species) {
 }
 window.getCompanionEmotes = emotesFor;
 
-const EMOTE_MS = { hop: 1400, wiggle: 1200, spin: 900, dance: 1500, fly: 1700, roar: 1200, shell: 1500, legend: 1500, wobble: 900 };
+const EMOTE_MS = { hop: 1400, wiggle: 1200, spin: 900, dance: 1500, fly: 1700, roar: 1200, shell: 1500, swim: 1600, legend: 1500, wobble: 900 };
 
 window.playCompanionEmote = function playCompanionEmote(svg) {
   if (!svg || svg.dataset.emoting) return;
@@ -512,7 +719,7 @@ const waitMs = (ms) => new Promise(r => setTimeout(r, ms));
 window.openStarterPicker = function openStarterPicker() {
   if (document.getElementById('starter-picker')) return;
   const cards = Object.entries(COMPANION_SPECIES).map(([key, sp]) => `
-    <div class="cp-card" style="--cp-color:${sp.color}" onclick="window.confirmStarter('${key}')">
+    <div class="cp-card" style="--cp-color:${sp.color}" onclick="window.openDexCard('${key}', 'starter')">
       <div class="cp-art">${window.renderCompanionSvg(3, 'companion-idle', key)}</div>
       <div>
         <h3>${sp.label}</h3>
@@ -523,7 +730,7 @@ window.openStarterPicker = function openStarterPicker() {
   const overlay = companionOverlay(`
     <div class="ga-card">
       <div class="ga-title" style="margin-bottom:.5rem">Elegí tu compañero</div>
-      <p style="color:#cbd5e1;font-size:.85rem;margin-bottom:1.25rem">Va a crecer con vos: cada gema que ganes lo hace evolucionar.</p>
+      <p style="color:#cbd5e1;font-size:.85rem;margin-bottom:1.25rem">Va a crecer con vos: cada gema que ganes lo hace evolucionar. Tocá uno para ver su ficha. Después podés sumar más a tu colección con gemas.</p>
       <div class="cp-grid">${cards}</div>
     </div>`);
   overlay.id = 'starter-picker';
@@ -537,7 +744,7 @@ window.confirmStarter = function confirmStarter(species) {
     <div class="ga-card">
       <div style="width:10rem;height:10rem;margin:0 auto">${window.renderCompanionSvg(3, 'companion-victory', species)}</div>
       <div class="ga-result-title" style="color:${sp.color}">¿${sp.label}?</div>
-      <p style="color:#cbd5e1;font-size:.85rem;margin-bottom:1.25rem">Es para siempre -- no se puede cambiar después.</p>
+      <p style="color:#cbd5e1;font-size:.85rem;margin-bottom:1.25rem">Es tu primer compañero y es gratis. Los demás se consiguen después con gemas.</p>
       <button class="ga-btn" id="btn-confirm-starter" onclick="window.chooseStarter('${species}')"><i class="fas fa-heart"></i> ¡Lo elijo!</button>
       <button onclick="document.getElementById('starter-picker').remove(); window.openStarterPicker()" style="margin-top:.9rem;background:none;border:0;color:#94a3b8;font-weight:800;font-size:.75rem;cursor:pointer">Volver</button>
     </div>`;
@@ -602,6 +809,154 @@ window.showCompanionEvolution = async function showCompanionEvolution(species, f
     </div>`;
   celebrate();
 };
+
+// ---------- QUETZADEX: colección + fichas ----------
+// Todas las mascotas de un alumno comparten la etapa (sale de las gemas
+// ganadas en total): un huevo nuevo nace ya al nivel del entrenador.
+async function loadOwnedCompanions() {
+  const own = new Set(window._myCompanionSpecies ? [window._myCompanionSpecies] : []);
+  const { data, error } = await window._supabase.from('student_companions').select('species').eq('student_id', window.currentUser.id);
+  if (!error) (data || []).forEach(r => own.add(r.species));
+  window._myCompanionsOwned = own;
+  return own;
+}
+
+const DEX_BG = { quetzal: '🪶', jaguar: '🐾', tortuga: '🌊', tucan: '🌈', saraguate: '🌳', manati: '🫧' };
+
+window.openQuetzadex = async function openQuetzadex() {
+  if (window._myCompanionSpecies === undefined) await window.loadMyCompanion();
+  const owned = await loadOwnedCompanions();
+  const stage = window._myCompanionStageIndex || 0;
+  document.getElementById('quetzadex-overlay')?.remove();
+  const cards = Object.entries(COMPANION_SPECIES).map(([key, sp]) => {
+    const have = owned.has(key);
+    const active = key === window._myCompanionSpecies;
+    const dex = COMPANION_DEX[key];
+    return `<button class="dex-mini ${have ? '' : 'dex-sil'}" style="--dex-c:${sp.color}" onclick="window.openDexCard('${key}')">
+      <span class="tag">${active ? '★ Activo' : have ? '✓ Tuyo' : `🥚 ${EGG_PRICE} 💎`}</span>
+      <div class="art">${window.renderCompanionSvg(have ? Math.max(stage, 1) : 3, '', key, active ? undefined : {})}</div>
+      <div class="n">N°${String(dex.num).padStart(3, '0')}</div>
+      <div class="nm">${sp.label}</div>
+    </button>`;
+  }).join('');
+  const overlay = companionOverlay(`
+    <div class="ga-card">
+      <div class="ga-topbar">
+        <span class="ga-chip"><i class="fas fa-book-open"></i> Quetzadex</span>
+        <span class="ga-chip" style="color:#67e8f9"><i class="fas fa-gem"></i> <span data-my-gems>${window.userData?.gems ?? 0}</span></span>
+      </div>
+      <p style="color:#cbd5e1;font-size:.8rem;margin:0 0 1rem">Fauna de Guatemala: ${owned.size} de ${Object.keys(COMPANION_SPECIES).length} en tu colección. Tocá una para ver su ficha.</p>
+      <div class="dex-grid">${cards}</div>
+      <button class="ga-btn" style="margin-top:1rem" onclick="document.getElementById('quetzadex-overlay').remove()">Cerrar</button>
+    </div>`);
+  overlay.id = 'quetzadex-overlay';
+};
+
+// mode: 'collection' (desde la Quetzadex) o 'starter' (eligiendo la primera).
+window.openDexCard = function openDexCard(species, mode = 'collection') {
+  const sp = COMPANION_SPECIES[species];
+  const dex = COMPANION_DEX[species];
+  if (!sp || !dex) return;
+  const owned = window._myCompanionsOwned || new Set(window._myCompanionSpecies ? [window._myCompanionSpecies] : []);
+  const preview = mode === 'starter' || mode === 'view';
+  const have = preview || owned.has(species);
+  const active = species === window._myCompanionSpecies;
+  const stage = preview ? 3 : Math.max(window._myCompanionStageIndex || 0, 1);
+  const myStage = window._myCompanionStageIndex || 0;
+  const eq = active ? undefined : {};
+
+  const evo = sp.names.map((name, i) => {
+    const seen = preview || (have && i <= myStage);
+    return `<div class="${seen ? '' : 'dex-sil'}"><div class="art">${window.renderCompanionSvg(i, '', species, eq)}</div>${seen ? name : '???'}</div>`;
+  }).join('');
+
+  let actions = '';
+  if (mode === 'view') {
+    actions = '';
+  } else if (mode === 'starter') {
+    actions = `<button class="dex-btn" onclick="this.closest('.ga-overlay').remove(); window.confirmStarter('${species}')"><i class="fas fa-heart"></i> Elegir a ${sp.label}</button>`;
+  } else if (active) {
+    actions = `<button class="dex-btn" disabled><i class="fas fa-star"></i> Es tu compañero activo</button>`;
+  } else if (have) {
+    actions = `<button class="dex-btn" onclick="window.setActiveCompanion('${species}', this)"><i class="fas fa-right-left"></i> Que me acompañe</button>`;
+  } else {
+    actions = `<button class="dex-btn" onclick="window.buyCompanionEgg('${species}', this)"><i class="fas fa-egg"></i> Comprar huevo · ${EGG_PRICE} 💎</button>
+      <p style="font-size:.7rem;color:#64748b;margin:0;text-align:center">Nace a tu mismo nivel de entrenador. Tenés ${window.userData?.gems ?? 0} 💎.</p>`;
+  }
+
+  const overlay = companionOverlay(`
+    <div class="dex-card" style="--dex-c:${sp.color}">
+      <div class="dex-top">
+        <span class="dex-bg">${DEX_BG[species] || ''}</span>
+        <button class="dex-close" onclick="this.closest('.ga-overlay').remove()"><i class="fas fa-arrow-left"></i></button>
+        <div class="art ${have ? '' : 'dex-sil'}">${window.renderCompanionSvg(stage, 'companion-idle', species, eq)}</div>
+      </div>
+      <div class="dex-body">
+        <div class="dex-name">${sp.label}</div>
+        <div class="dex-num">N°${String(dex.num).padStart(3, '0')} · <span class="dex-sci">${dex.sci}</span></div>
+        <div class="dex-types">${dex.types.map(([t, c]) => `<span class="dex-type" style="background:${c}">${t}</span>`).join('')}</div>
+        <p class="dex-desc">${dex.about}</p>
+        <div class="dex-stats">
+          <div class="dex-stat"><small>⚖️ Peso real</small><b>${dex.weight}</b></div>
+          <div class="dex-stat"><small>🛡️ Conservación</small><b>${dex.status}</b></div>
+          <div class="dex-stat"><small>📍 Hábitat</small><b>${dex.habitat}</b></div>
+          <div class="dex-stat"><small>🍃 Come</small><b>${dex.food}</b></div>
+        </div>
+        <div class="dex-fact"><b>💡 ¿Sabías que?</b> ${dex.fact}</div>
+        <div class="dex-evo">${evo}</div>
+        <div class="dex-actions">${actions}</div>
+      </div>
+    </div>`);
+  overlay.classList.add('dex-overlay');
+};
+
+window.buyCompanionEgg = async function buyCompanionEgg(species, btn) {
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+  const { data, error } = await window._supabase.rpc('buy_companion_egg', { p_species: species });
+  if (error) {
+    if (btn) { btn.disabled = false; btn.innerHTML = `<i class="fas fa-egg"></i> Comprar huevo · ${EGG_PRICE} 💎`; }
+    return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
+  }
+  if (window.userData && typeof data?.gems === 'number') window.userData.gems = data.gems;
+  document.querySelectorAll('.dex-overlay, #quetzadex-overlay').forEach(o => o.remove());
+  window._myCompanionSpecies = species;
+  (window._myCompanionsOwned = window._myCompanionsOwned || new Set()).add(species);
+  await hatchAnimation(species);
+  if (document.getElementById('companion-card-slot')) window.renderCompanionCard('companion-card-slot', window.currentUser.id);
+};
+
+window.setActiveCompanion = async function setActiveCompanion(species, btn) {
+  if (btn) btn.disabled = true;
+  const { error } = await window._supabase.rpc('set_active_companion', { p_species: species });
+  if (error) {
+    if (btn) btn.disabled = false;
+    return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
+  }
+  window._myCompanionSpecies = species;
+  document.querySelectorAll('.dex-overlay').forEach(o => o.remove());
+  window.showToast(`<i class="fas fa-heart"></i> ¡${COMPANION_SPECIES[species].label} te acompaña ahora!`, 'success');
+  if (document.getElementById('quetzadex-overlay')) window.openQuetzadex();
+  if (document.getElementById('companion-card-slot')) window.renderCompanionCard('companion-card-slot', window.currentUser.id);
+};
+
+async function hatchAnimation(species) {
+  const sp = COMPANION_SPECIES[species];
+  const stageIndex = Math.max(window._myCompanionStageIndex || 0, 1);
+  const overlay = companionOverlay(`<div style="width:12rem;height:12rem;margin:0 auto">${window.renderCompanionSvg(0, 'companion-hatch', species, {})}</div>
+    <p class="ga-title" style="margin-top:1rem">¿Qué va a salir?</p>`);
+  const panel = overlay.querySelector('.ga-panel');
+  await waitMs(1600);
+  panel.innerHTML = `<div style="width:12rem;height:12rem;margin:0 auto">${window.renderCompanionSvg(stageIndex, 'companion-flash', species)}</div>`;
+  await waitMs(700);
+  panel.innerHTML = `
+    <div class="ga-card">
+      <div style="width:12rem;height:12rem;margin:0 auto">${window.renderCompanionSvg(stageIndex, 'companion-victory', species)}</div>
+      <div class="ga-result-title win">¡${sp.names[stageIndex]}!</div>
+      <p style="color:#cbd5e1;font-size:.9rem;margin-bottom:1.25rem">Se sumó a tu Quetzadex y ahora te acompaña. Podés cambiar de compañero cuando quieras.</p>
+      <button class="ga-btn" onclick="this.closest('.ga-overlay').remove(); window.openDexCard('${species}')">Ver su ficha <i class="fas fa-book-open"></i></button>
+    </div>`;
+  celebrate();
+}
 
 // ---------- VESTIDOR ----------
 const WARDROBE_SLOTS = [
@@ -738,7 +1093,10 @@ window.renderCompanionCard = async function renderCompanionCard(containerId, stu
           <div class="text-[0.6rem] font-black uppercase tracking-widest text-slate-400 mb-2">Emotes ${isMe ? '-- tocá tu mascota' : ''}</div>
           <div class="flex flex-wrap gap-1.5">${emoteChips}</div>
         </div>
-        ${isMe && stageIndex > 0 ? `<button class="btn-primary-tw h-10 px-5 mt-4 text-xs uppercase font-bold" onclick="window.openWardrobe()"><i class="fas fa-shirt"></i> Vestidor</button>` : ''}
+        <div class="flex flex-wrap gap-2 mt-4 justify-center sm:justify-start">
+          ${isMe && stageIndex > 0 ? `<button class="btn-primary-tw h-10 px-5 text-xs uppercase font-bold" onclick="window.openWardrobe()"><i class="fas fa-shirt"></i> Vestidor</button>` : ''}
+          ${isMe ? `<button class="btn-secondary-tw h-10 px-5 text-xs uppercase font-bold" onclick="window.openQuetzadex()"><i class="fas fa-book-open"></i> Quetzadex</button>` : `<button class="btn-secondary-tw h-10 px-5 text-xs uppercase font-bold" onclick="window.openDexCard('${species}', 'view')"><i class="fas fa-book-open"></i> Ficha</button>`}
+        </div>
       </div>
     </div>`;
   startAutoEmotes(container);

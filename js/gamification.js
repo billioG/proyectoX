@@ -717,6 +717,15 @@ window.renderGamificationHubContent = function renderGamificationHubContent(moda
                       onclick: 'window.openWardrobe()',
                       cta: '<i class="fas fa-shirt"></i> Abrir vestidor',
                     }) : ''}
+                    ${window.userRole === 'estudiante' && window.GameArena ? window.GameArena.heroHtml({
+                      title: 'Quetzadex',
+                      subtitle: 'Fauna de Guatemala: conocé la ficha de cada mascota y sumá nuevas a tu colección con gemas.',
+                      icon: 'fa-book-open',
+                      c1: '#10b981',
+                      c2: '#f59e0b',
+                      onclick: 'window.openQuetzadex()',
+                      cta: '<i class="fas fa-egg"></i> Abrir Quetzadex',
+                    }) : ''}
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                         ${window.renderShopItem('Racha Congelada', 'Protege tu racha 1 día', 300, '<i class="fas fa-cube"></i>', 'bg-cyan-500', userData?.streak_freeze)}
                         ${window.renderShopItem('Marco Dorado', 'Borde dorado en el ranking', 1000, '<i class="fas fa-image"></i>️', 'bg-amber-500', userData?.has_gold_frame)}
