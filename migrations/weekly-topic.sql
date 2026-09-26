@@ -1,11 +1,18 @@
 -- ============================================================
 -- Tema de repaso de la semana: el docente marca un tema por clase y los
 -- duelos de esa semana lo proponen primero (y el reto rápido lo usa).
--- Requiere weekly-leagues.sql (current_week_id).
 --
 -- ADITIVO/NO DESTRUCTIVO. Seguro de re-ejecutar. Pegar completo en el
 -- SQL Editor de Supabase.
 -- ============================================================
+
+-- Misma definición que en weekly-leagues.sql -- se repite acá para que
+-- esta migración no dependa del orden en que se corran.
+create or replace function public.current_week_id()
+returns text
+language sql
+stable
+as $$ select to_char(now() at time zone 'America/Guatemala', 'IYYY-"W"IW'); $$;
 
 create table if not exists public.class_weekly_topics (
   school_code text not null,
