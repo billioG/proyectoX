@@ -1,71 +1,68 @@
-# 🚀 ProjectX - Guía de Interpretación de Métricas Administrativas
+# Quetzal LMS
 
-Esta guía explica detalladamente la lógica, el uso y la interpretación de los números que alimentan el panel administrativo de ProjectX.
+Plataforma educativa gamificada para escuelas de Guatemala, pensada para
+funcionar también en comunidades rurales **sin internet**.
 
----
+- **Estudiantes**: cursos (PDF, video, H5P, SCORM, quizzes), proyectos STEAM, 5 juegos de duelo 1 contra 1, ligas semanales, pase de temporada y la Quetzadex: 10 mascotas de fauna guatemalteca con datos reales.
+- **Docentes**: asistencia con QR, evaluación de proyectos con apoyo de IA, cursos, alta de alumnos y clubes, avisos a estudiantes y padres.
+- **Administración**: establecimientos, docentes, importación de nóminas del SIRE, tableros de asistencia y resultados, avisos segmentados.
+- **Padres de familia**: avisos por SMS o notificación en el celular, con un portal personal sin necesidad de cuenta.
+- **Sin conexión**: la app funciona en la tablet sin señal y, con un **nodo escolar en Raspberry Pi**, toda la escuela trabaja sin internet y sincroniza cuando hay señal.
 
-## 🎯 1. Centro de Fidelización (Customer Success Hub)
-Este módulo mide la **salud operativa** de cada colegio basada en su capacidad de producción tecnológica.
+En producción: [clases.yoaprendo.online](https://clases.yoaprendo.online)
 
-### 🧮 ¿De dónde salen los números?
-*   **Meta Bimestral:** El sistema calcula cuántos equipos "ideales" (de 3.5 alumnos) debería tener el colegio y espera que cada equipo entregue **4 proyectos por bimestre**.
-    *   *Fórmula:* `(Total de Alumnos / 3.5) * 4`.
-*   **Salud (% de la meta):** Compara los proyectos entregados contra la meta bimestral.
-    *   *Fórmula:* `(Proyectos Actuales / Meta Bimestral) * 100`.
-*   **Próxima Sesión (Sugerencia):** Se calcula automáticamente según la salud:
-    *   **Crítico (<40%):** Agendar en **3 días** (Intervención urgente).
-    *   **Medio (40-79%):** Agendar en **7 días** (Seguimiento estándar).
-    *   **Excelente (>80%):** Agendar en **15 días** (Mantenimiento de éxito).
+## Tecnología
 
-### 💡 Cómo usarlo:
-*   Utiliza el botón **"Reporte"** para generar un PDF ejecutivo para los directores.
-*   Utiliza el **"Mapa"** para ver los videos de los proyectos con mejor punteo y usarlos como casos de éxito.
+| Parte | Tecnología |
+|---|---|
+| Aplicación | JavaScript (módulos ES, sin framework), Tailwind CSS, PWA |
+| Datos, login y archivos | [Supabase](https://supabase.com): Postgres con reglas por fila, Auth, Storage, Realtime |
+| Lógica de servidor | 27 Edge Functions en Deno |
+| IA | Groq (quizzes, tutor, evaluaciones) |
+| Nodo escolar | Node.js + SQLite en Raspberry Pi 4 |
+| Hosting | GitHub Pages |
 
----
+## Documentación
 
-## 📊 2. Analítica de Asistencia Global
-Mide la **consistencia de la participación** de los estudiantes en el programa.
+| Documento | Para qué |
+|---|---|
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Cómo está armado el sistema: módulos, roles, seguridad, sin conexión |
+| [docs/SETUP.md](docs/SETUP.md) | Instalar una copia de prueba completa |
+| [docs/MIGRATIONS.md](docs/MIGRATIONS.md) | Base de datos: orden de migraciones y reglas |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Reglas para colaborar y publicar versiones |
+| [CHANGELOG.md](CHANGELOG.md) | Historial de cambios |
+| [docs/METRICAS_ADMIN.md](docs/METRICAS_ADMIN.md) | Cómo se calculan las métricas del panel de administración |
+| [MANUAL_DE_USUARIO.md](MANUAL_DE_USUARIO.md) | Uso para docentes y administración |
+| [school-node/README.md](school-node/README.md) | Instalar el nodo escolar en una Raspberry Pi |
 
-### 🧮 ¿De dónde salen los números?
-*   **Tasa de Asistencia Global (Real):** No es solo un conteo de registros, es un ratio de cumplimiento.
-    *   *Fórmula:* `(Presentes + Tardes) / (Total de Estudiantes * Cantidad de Días que se pasó asistencia)`.
-*   **Asistencias Totales:** Suma de todos los estados `present` (presente) capturados por el escáner QR.
-*   **Tardanzas:** Suma de estados `late`.
-*   **Ausencias:** Suma de estados `absent`.
+## Empezar rápido
 
-### 💡 Cómo interpretarlo:
-*   Si un colegio tiene 35 alumnos y solo escaneaste a 3, aunque los 3 estén presentes, la tasa será del **8.5%**. Esto indica que el docente aún no ha terminado de pasar asistencia a todo el grupo.
+```bash
+git clone https://github.com/billioG/proyectoX.git
+cd proyectoX
+npx -y http-server -p 8080 -c-1
+```
 
----
+Eso sirve la aplicación en `http://localhost:8080`, pero conectada a la base
+configurada en `js/config.js`. Para desarrollar necesitás tu propio proyecto
+de Supabase de prueba: seguí [docs/SETUP.md](docs/SETUP.md).
 
-## 📈 3. Resumen de Resultados Académicos
-Mide la **calidad del aprendizaje** y el avance del docente en su labor evaluativa.
+## Estructura
 
-### 🧮 ¿De dónde salen los números?
-*   **Promedio General:** Es la media aritmética de todos los proyectos que tienen una nota asignada.
-    *   *Fórmula:* `Suma de Scores / Cantidad de Proyectos con Score > 0`.
-*   **Progreso (%):** Indica qué porcentaje de los proyectos subidos ya han sido revisados y calificados.
-    *   *Fórmula:* `(Proyectos con Nota / Total de Proyectos Subidos) * 100`.
-*   **Pendientes:** Proyectos que están en el sistema pero tienen nota 0 o vacía.
+```
+index.html            Aplicación (una sola página)
+padres.html           Portal de padres
+service-worker.js     Caché sin conexión y notificaciones push
+js/                   Módulos de la aplicación
+css/                  Tailwind (fuente y compilado) y estilos propios
+migrations/           Cambios de base de datos (SQL)
+supabase/functions/   Edge Functions (espejo idéntico en supabase-functions/)
+school-node/          Servidor del nodo escolar para Raspberry Pi
+scripts/              Utilidades (volcado del esquema, arreglos puntuales)
+docs/                 Documentación técnica
+```
 
-### 💡 Niveles de Desempeño:
-*   **Sobresaliente (90-100):** Excelencia académica.
-*   **Satisfactorio (75-89):** Cumple con los objetivos de aprendizaje.
-*   **Necesita Mejora (<75):** Requiere refuerzo pedagógico.
+## Autor y licencia
 
----
-
-## 👨‍🏫 4. Desempeño Docente (Dashboard Principal)
-Mide el **compromiso y satisfacción** de los líderes educativos.
-
-### 🧮 ¿De dónde salen los números?
-*   **Calificación Stu.:** Promedio de las estrellas (1-5) que los alumnos le dan a su docente semanalmente.
-*   **Alertas de Salud (Churn):** Colegios que llevan más de **15 días sin subir un solo proyecto** o tienen una producción mínima histórica.
-*   **Satisfacción Docente:** Un cruce entre la nota de los alumnos y la cantidad de proyectos que el docente ha calificado (volumen de trabajo).
-
----
-
-## 🛠️ Buenas Prácticas de Uso
-1.  **Limpieza de Caché:** Siempre que realices cambios masivos en alumnos o escuelas, refresca la página para que el sistema recalcule las metas bimestrales.
-2.  **Reporte Ejecutivo:** Imprime este reporte para las reuniones mensuales con directores; los datos de "Impacto Social" y "Creatividad" son los que más valor generan para el colegio.
-3.  **Monitoreo Real-Time:** El Dashboard se actualiza al instante cada vez que un alumno sube un video o un docente califica.
+Proyecto creado por Billy Gómez (Guatemala). Todavía no tiene licencia
+definida: hasta entonces, todos los derechos están reservados por su autor.

@@ -7,6 +7,10 @@
 --    cuando llega la hora (genera preguntas + manda push).
 -- 3) settle-random-event (edge function, cada minuto): liquida el evento
 --    cuando se acaba el tiempo (reparte gemas).
+--
+-- ANTES DE CORRER: reemplazá <CRON_SECRET> por el valor del secreto
+-- CRON_SECRET de las Edge Functions (y la URL si es otro proyecto). No
+-- subas este archivo con el valor real.
 -- ============================================================
 
 create or replace function public.schedule_tonight_event()
@@ -58,7 +62,7 @@ select cron.schedule(
   $$
   select net.http_post(
     url := 'https://vyptkxudkmlpyfosppzh.supabase.co/functions/v1/trigger-random-event',
-    headers := jsonb_build_object('Content-Type', 'application/json', 'x-cron-secret', '39340d5c25dd985dbfd8bcd2b8b60e0923f349110ac3511f'),
+    headers := jsonb_build_object('Content-Type', 'application/json', 'x-cron-secret', '<CRON_SECRET>'),
     body := '{}'::jsonb
   );
   $$
@@ -70,7 +74,7 @@ select cron.schedule(
   $$
   select net.http_post(
     url := 'https://vyptkxudkmlpyfosppzh.supabase.co/functions/v1/settle-random-event',
-    headers := jsonb_build_object('Content-Type', 'application/json', 'x-cron-secret', '39340d5c25dd985dbfd8bcd2b8b60e0923f349110ac3511f'),
+    headers := jsonb_build_object('Content-Type', 'application/json', 'x-cron-secret', '<CRON_SECRET>'),
     body := '{}'::jsonb
   );
   $$
