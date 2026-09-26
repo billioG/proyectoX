@@ -2,7 +2,7 @@
 // SERVICE WORKER - PROJECTX PWA
 // ================================================
 
-const CACHE_NAME = 'projectx-v1.0.79';
+const CACHE_NAME = 'projectx-v1.0.80';
 // Caché de archivos de lecciones (video/PDF/imagen/paquetes SCORM-H5P) --
 // separada de CACHE_NAME a propósito: CACHE_NAME se recrea y se BORRA
 // entera en cada deploy (bump de versión) para forzar JS/CSS frescos, pero
@@ -92,6 +92,7 @@ const urlsToCache = [
   'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js',
   'https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js',
+  'vendor/h5p-standalone/player.html',
   'vendor/h5p-standalone/main.bundle.js',
   'vendor/h5p-standalone/frame.bundle.js',
   'vendor/h5p-standalone/styles/h5p.css',
@@ -200,7 +201,10 @@ self.addEventListener('fetch', event => {
 
   const targetCacheName = isMedia ? MEDIA_CACHE_NAME : CACHE_NAME;
 
-  const fallbackToCache = () => caches.match(request).then(cachedResponse => {
+  // player.html se pide con ?json=<contenido> distinto cada vez, pero la
+  // página es siempre la misma -- se busca ignorando el query.
+  const ignoreSearch = request.url.includes('/vendor/h5p-standalone/player.html');
+  const fallbackToCache = () => caches.match(request, { ignoreSearch }).then(cachedResponse => {
     if (cachedResponse) {
       console.log('📂 Sirviendo desde caché:', request.url);
       return cachedResponse;

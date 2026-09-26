@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>H5P</title>
+  <!--
+    Reproductor H5P aislado. h5p-standalone guarda su estado en globales
+    (window.H5P, window.H5PIntegration) y se rompe al cargar un segundo
+    contenido en la misma página -- antes se "arreglaba" recargando la app
+    entera. Cada recurso H5P ahora abre esta página en su propio iframe:
+    cada uno arranca con globales limpios. Notas (xAPI) y altura se le
+    avisan a la app con postMessage (mismo origen).
+  -->
+  <style>
+    html, body { margin: 0; padding: 0; background: transparent; }
+    #h5p { min-height: 60px; }
+  </style>
+  <script src="main.bundle.js"></script>
+</head>
+<body>
+  <div id="h5p"></div>
+  <script>
+    (function () {
+      var params = new URLSearchParams(location.search);
+      var jsonPath = params.get('json');
+
+      function post(msg) {
+        msg.source = 'px-h5p';
+        parent.postMessage(msg, location.origin);
+      }
+
+      if (!jsonPath || typeof H5PStandalone === 'undefined') {
+        post({ type: 'error', message: !jsonPath ? 'Falta el contenido' : 'No se cargó el reproductor' });
+        return;
+      }
+
+      var el = document.getElementById('h5p');
+      try {
+        Promise.resolve(new H5PStandalone.H5P(el, {
+          h5pJsonPath: jsonPath,
+          // Relativas a esta página: la librería les antepone la carpeta
+          // actual incluso si son absolutas (daba ".../h5p-standalone/http://...").
+          frameJs: 'frame.bundle.js',
+          frameCss: 'styles/h5p.css',
+        })).catch(function (e) {
+          post({ type: 'error', message: String((e && e.message) || e) });
+        });
+      } catch (e) {
+        post({ type: 'error', message: String((e && e.message) || e) });
+        return;
+      }
+
+      // Notas: el dispatcher vive dentro del iframe que crea h5p-standalone.
+      var tries = 0;
+      var hookTimer = setInterval(function () {
+        tries++;
+        var inner = document.querySelector('#h5p iframe');
+        var H = (inner && inner.contentWindow && inner.contentWindow.H5P) || window.H5P;
+        if (inner) post({ type: 'ready' });
+        if (H && H.externalDispatcher) {
+          clearInterval(hookTimer);
+          H.externalDispatcher.on('xAPI', function (event) {
+            var statement = event && event.data && event.data.statement;
+            if (statement) post({ type: 'xapi', statement: JSON.parse(JSON.stringify(statement)) });
+          });
+        } else if (tries > 100) {
+          clearInterval(hookTimer);
+        }
+      }, 200);
+
+      // Altura: la app ajusta el iframe para que no quede con scroll propio.
+      var lastHeight = 0;
+      setInterval(function () {
+        var h = document.documentElement.scrollHeight;
+        if (h !== lastHeight) {
+          lastHeight = h;
+          post({ type: 'height', height: h });
+        }
+      }, 400);
+    })();
+  </script>
+</body>
+</html>

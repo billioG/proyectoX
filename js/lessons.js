@@ -563,17 +563,7 @@ window.previewCourseResource = function previewCourseResource(lessonId) {
   const lesson = (window._managingCourseLessons || []).find(l => l.id === lessonId);
   if (!lesson) return;
 
-  // Mismo workaround que en selectCourseResource(): el estado global de
-  // h5p-standalone (window.H5P/H5PIntegration) queda contaminado tras el
-  // primer H5P cargado en la página -- vista previa docente y reproductor
-  // alumno comparten el mismo _loadedH5PLessonId a propósito, porque el
-  // problema es global, no por contexto.
-  if (lesson.content_type === 'h5p' && window._loadedH5PLessonId && window._loadedH5PLessonId !== lesson.id) {
-    sessionStorage.setItem('PX_RESUME_PREVIEW', JSON.stringify({ courseId: lesson.course_id, lessonId: lesson.id }));
-    window.location.reload();
-    return;
-  }
-  if (lesson.content_type === 'h5p') window._loadedH5PLessonId = lesson.id;
+  window.stopH5PSession?.();
 
   const sanitizeInput = window.sanitizeInput || ((v) => v);
 
@@ -644,24 +634,28 @@ window.previewCourseResource = function previewCourseResource(lessonId) {
   if (lesson.content_type === 'scorm' || lesson.content_type === 'html5') {
     window.loadIframeViaFetch('teacher-preview-frame', lesson.content_url);
   } else if (lesson.content_type === 'h5p') {
-    // Reintenta hasta que H5PStandalone esté disponible, sin escribir
-    // ninguna nota -- es solo vista previa, no crea lesson_completions.
-    const tryInit = (attempt = 1) => {
-      const container = document.getElementById('h5p-preview-container');
-      if (!container) return;
-      if (typeof H5PStandalone === 'undefined') {
-        if (attempt >= 3) { container.innerHTML = '<p class="text-rose-500 text-sm text-center py-10">No se pudo cargar el reproductor H5P.</p>'; return; }
-        setTimeout(() => tryInit(attempt + 1), 800);
-        return;
-      }
-      resetH5PGlobalState();
-      new H5PStandalone.H5P(container, {
-        h5pJsonPath: lesson.content_url.replace(/\/$/, ''),
-        frameJs: h5pVendorUrl('frame.bundle.js'),
-        frameCss: h5pVendorUrl('styles/h5p.css'),
-      });
+    // Mismo reproductor aislado que el alumno, pero sin escuchar notas --
+    // es solo vista previa, no crea lesson_completions.
+    const container = document.getElementById('h5p-preview-container');
+    if (!container) return;
+    const frame = document.createElement('iframe');
+    frame.src = `${h5pVendorUrl('player.html')}?json=${encodeURIComponent(lesson.content_url.replace(/\/$/, ''))}`;
+    frame.title = lesson.title || 'Contenido H5P';
+    frame.setAttribute('allow', 'fullscreen; autoplay');
+    frame.allowFullscreen = true;
+    frame.style.cssText = 'width:100%;border:0;display:block;min-height:320px;';
+    container.innerHTML = '';
+    container.appendChild(frame);
+
+    if (window._h5pPreviewHandler) window.removeEventListener('message', window._h5pPreviewHandler);
+    window._h5pPreviewHandler = (event) => {
+      if (event.origin !== window.location.origin || event.source !== frame.contentWindow) return;
+      const msg = event.data;
+      if (msg?.source !== 'px-h5p') return;
+      if (msg.type === 'height' && msg.height > 0) frame.style.height = `${Math.ceil(msg.height)}px`;
+      if (msg.type === 'error') container.innerHTML = '<p class="text-rose-500 text-sm text-center py-10">No se pudo cargar el contenido H5P.</p>';
     };
-    tryInit();
+    window.addEventListener('message', window._h5pPreviewHandler);
   }
 }
 
@@ -1983,19 +1977,7 @@ window.selectCourseResource = function selectCourseResource(index) {
   window._activeCourseIndex = index;
   const lesson = items[index];
 
-  // h5p-standalone acumula estado global (window.H5P/window.H5PIntegration)
-  // entre instancias y se corrompe al inicializar un SEGUNDO contenido H5P
-  // sin recargar la página completa -- confirmado: el primero siempre
-  // carga bien, el segundo siempre falla ("tardó demasiado"), y solo
-  // recargar la página lo arregla. En vez de pedirle al alumno que
-  // recargue a mano (perdiendo su lugar en el curso), se recarga sola acá
-  // guardando dónde estaba para volver directo a este mismo recurso.
-  if (lesson.content_type === 'h5p' && window._loadedH5PLessonId && window._loadedH5PLessonId !== lesson.id) {
-    sessionStorage.setItem('PX_RESUME_COURSE', JSON.stringify({ courseId: window._activeCourse.course.id, index }));
-    window.location.reload();
-    return;
-  }
-  if (lesson.content_type === 'h5p') window._loadedH5PLessonId = lesson.id;
+  window.stopH5PSession?.();
 
   const titleEl = document.getElementById('course-player-resource-title');
   if (titleEl) titleEl.textContent = lesson.title;
@@ -2538,129 +2520,104 @@ window.teardownScormSession = function teardownScormSession() {
 // RUNTIME H5P -- captura nota vía eventos xAPI
 // ================================================
 // h5p-standalone guarda TODO en globales compartidos (window.H5P,
-// window.H5PIntegration, y marca cada <script>/<link> que inyecta con
-// data-h5p="..." para no volver a insertarlos) -- está pensado para una
-// sola actividad por carga de página completa, no para navegar entre
-// varios recursos H5P de un curso sin recargar. La segunda vez, esos
-// globales quedan con el estado de la actividad ANTERIOR (ej.
-// H5P.preventInit en false, contenidos previos todavía en
-// H5PIntegration.contents) y la inicialización de la nueva falla --
-// coincide exacto con "el primero carga bien, el segundo da error, y
-// recargar la página lo arregla" reportado. Se resetea todo antes de
-// cada instancia nueva para que cada una arranque como si fuera la
-// primera carga de la página.
-function resetH5PGlobalState() {
-  delete window.H5P;
-  delete window.H5PIntegration;
-  document.querySelectorAll('script[data-h5p], link[data-h5p]').forEach(el => el.remove());
+// window.H5PIntegration) y está pensado para UNA actividad por carga de
+// página: el segundo H5P fallaba y antes se "arreglaba" recargando la app
+// entera. Ahora cada recurso H5P corre en su propio iframe
+// (vendor/h5p-standalone/player.html) con globales limpios -- se puede
+// pasar de un H5P a otro sin recargar. Notas y altura llegan por
+// postMessage desde ese iframe (mismo origen).
+function stopH5PSession() {
+  if (window._h5pMessageHandler) window.removeEventListener('message', window._h5pMessageHandler);
+  window._h5pMessageHandler = null;
+  clearTimeout(window._h5pTimeout);
 }
+window.stopH5PSession = stopH5PSession;
 
-window.initH5PSession = async function initH5PSession(lesson, attempt = 1) {
+window.initH5PSession = async function initH5PSession(lesson) {
   const container = document.getElementById('h5p-container');
   if (!container) return;
-  resetH5PGlobalState();
+  stopH5PSession();
 
-  // A veces main.bundle.js (que define window.H5PStandalone) todavía no
-  // terminó de ejecutarse cuando el alumno navega rápido entre recursos del
-  // curso, o Supabase Storage devolvió un 429 momentáneo en alguna librería
-  // del paquete H5P -- ambos son transitorios, así que reintentamos un par
-  // de veces antes de rendirnos (esto explicaba el "a veces sí, a veces no").
-  if (typeof H5PStandalone === 'undefined') {
-    if (attempt >= 3) {
-      container.innerHTML = `<div class="text-center py-10"><p class="text-rose-500 text-sm mb-3">No se pudo cargar el reproductor H5P.</p><button class="btn-secondary-tw h-9 px-4 text-xs uppercase font-bold" onclick="window.initH5PSession(window._activeCourse.items[window._activeCourseIndex])"><i class="fas fa-rotate"></i> Reintentar</button></div>`;
+  // Un curso puede tener varios recursos H5P -- cada uno necesita su
+  // propio acumulador de puntaje (algunos H5P, como Video Interactivo,
+  // disparan VARIAS interacciones internas -- multi-choice con nota real,
+  // preguntas abiertas sin nota, etc. -- y hay que sumarlas, no quedarnos
+  // solo con la última que llegó, o una interacción sin nota pisa la nota
+  // real de otra que sí tenía).
+  const scoredInteractions = new Map();
+
+  const frame = document.createElement('iframe');
+  frame.src = `${h5pVendorUrl('player.html')}?json=${encodeURIComponent(lesson.content_url.replace(/\/$/, ''))}`;
+  frame.title = lesson.title || 'Contenido H5P';
+  frame.setAttribute('allow', 'fullscreen; autoplay');
+  frame.allowFullscreen = true;
+  frame.style.cssText = 'width:100%;border:0;display:block;min-height:320px;';
+  container.querySelector('iframe')?.remove();
+  container.appendChild(frame);
+
+  const failOverlay = (msg) => {
+    const overlay = document.getElementById('h5p-loading-overlay');
+    if (!overlay) return;
+    // El overlay nace con pointer-events-none (spinner decorativo) -- sin
+    // sacarlo acá el botón Reintentar se ve pero los clicks lo atraviesan.
+    overlay.classList.remove('pointer-events-none');
+    overlay.innerHTML = `<p class="text-rose-500 text-sm mb-3 px-4 text-center">${msg}</p><button class="btn-secondary-tw h-9 px-4 text-xs uppercase font-bold" onclick="window.selectCourseResource(window._activeCourseIndex)"><i class="fas fa-rotate"></i> Reintentar</button>`;
+  };
+
+  // Si a los 15s el reproductor no avisó que cargó, se ofrece reintentar
+  // (antes el spinner giraba para siempre).
+  window._h5pTimeout = setTimeout(() => failOverlay('El contenido tardó demasiado en cargar.'), 15000);
+
+  const handleStatement = (statement) => {
+    const result = statement?.result;
+
+    if (result && result.score != null && result.score.max) {
+      // Cada sub-interacción tiene su propio id de objeto xAPI -- se
+      // guarda la última nota de CADA una y se suma el total al final.
+      const objectId = statement.object?.id || crypto.randomUUID();
+      scoredInteractions.set(objectId, { raw: result.score.raw ?? 0, max: result.score.max });
+
+      let totalRaw = 0, totalMax = 0;
+      scoredInteractions.forEach(s => { totalRaw += s.raw; totalMax += s.max; });
+      const pct = totalMax > 0 ? Math.round((totalRaw / totalMax) * 100) : 0;
+      const status = result.completion ? 'completed' : 'incomplete';
+      persistLessonScore(lesson.id, pct, status, statement);
+      updateLiveScoreLabel(pct, status);
       return;
     }
-    setTimeout(() => window.initH5PSession(lesson, attempt + 1), 800);
-    return;
-  }
 
-  try {
-    // Un curso puede tener varios recursos H5P -- cada uno necesita su
-    // propio acumulador de puntaje (algunos H5P, como Video Interactivo,
-    // disparan VARIAS interacciones internas -- multi-choice con nota real,
-    // preguntas abiertas sin nota, etc. -- y hay que sumarlas, no quedarnos
-    // solo con la última que llegó, o una interacción sin nota pisa la nota
-    // real de otra que sí tenía).
-    const scoredInteractions = new Map();
+    // Contenido H5P sin nota (ej. "Mensaje", texto libre, tarjetas
+    // informativas) nunca dispara un result.score -- antes se ignoraba por
+    // completo y el curso quedaba trabado en ese recurso. Si llega una
+    // señal de "completado/respondido" y todavía no hay nada guardado, se
+    // cuenta como visto (igual que video/PDF) para desbloquear el siguiente.
+    const verb = statement?.verb?.id || '';
+    const isCompletionSignal = /\/(completed|answered)$/.test(verb) || result?.completion;
+    if (isCompletionSignal && !window._completionsCache?.has(lesson.id)) {
+      persistLessonScore(lesson.id, null, 'completed', statement);
+      updateLiveScoreLabel(null, 'completed');
+    }
+  };
 
-    const h5p = new H5PStandalone.H5P(container, {
-      h5pJsonPath: lesson.content_url.replace(/\/$/, ''),
-      frameJs: h5pVendorUrl('frame.bundle.js'),
-      frameCss: h5pVendorUrl('styles/h5p.css'),
-    });
-
-    // No confiar en que h5p-standalone limpie el contenedor solo -- se
-    // saca el spinner a mano en cuanto aparece el iframe real (a veces
-    // quedaba pegado tapando el contenido ya cargado).
-    const waitForIframe = setInterval(() => {
-      if (document.querySelector('#h5p-container iframe')) {
-        clearInterval(waitForIframe);
-        document.getElementById('h5p-loading-overlay')?.remove();
-      }
-    }, 200);
-    setTimeout(() => {
-      clearInterval(waitForIframe);
-      // Si a los 15s nunca apareció el iframe, h5p-standalone se quedó
-      // colgado (ej. un fetch interno que nunca resuelve ni rechaza) --
-      // antes se quedaba el spinner girando para siempre sin forma de
-      // reintentar salvo salir y volver a entrar al recurso.
-      const overlay = document.getElementById('h5p-loading-overlay');
-      if (overlay) {
-        // El overlay nace con pointer-events-none (para no tapar clicks
-        // mientras es solo un spinner decorativo) -- sin sacarlo acá el
-        // botón Reintentar se ve pero los clicks lo atraviesan.
-        overlay.classList.remove('pointer-events-none');
-        overlay.innerHTML = `<p class="text-rose-500 text-sm mb-3 px-4 text-center">El contenido tardó demasiado en cargar.</p><button class="btn-secondary-tw h-9 px-4 text-xs uppercase font-bold" onclick="window.selectCourseResource(window._activeCourseIndex)"><i class="fas fa-rotate"></i> Reintentar</button>`;
-      }
-    }, 15000);
-
-    // El propio H5PStandalone despacha xAPI a través de H5P.externalDispatcher
-    // una vez que termina de inicializar el iframe interno.
-    const waitForDispatcher = setInterval(() => {
-      const innerH5P = document.querySelector('#h5p-container iframe')?.contentWindow?.H5P;
-      if (innerH5P?.externalDispatcher) {
-        clearInterval(waitForDispatcher);
-        innerH5P.externalDispatcher.on('xAPI', (event) => {
-          const statement = event?.data?.statement;
-          const result = statement?.result;
-
-          if (result && result.score != null && result.score.max) {
-            // Cada sub-interacción tiene su propio id de objeto xAPI -- se
-            // guarda la última nota de CADA una y se suma el total al final.
-            const objectId = statement.object?.id || crypto.randomUUID();
-            scoredInteractions.set(objectId, { raw: result.score.raw ?? 0, max: result.score.max });
-
-            let totalRaw = 0, totalMax = 0;
-            scoredInteractions.forEach(s => { totalRaw += s.raw; totalMax += s.max; });
-            const pct = totalMax > 0 ? Math.round((totalRaw / totalMax) * 100) : 0;
-            const status = result.completion ? 'completed' : 'incomplete';
-            persistLessonScore(lesson.id, pct, status, statement);
-            updateLiveScoreLabel(pct, status);
-            return;
-          }
-
-          // Contenido H5P sin nota (ej. "Mensaje", texto libre, tarjetas
-          // informativas) nunca dispara un result.score -- antes se
-          // ignoraba por completo, nunca se guardaba ninguna fila de
-          // avance y el curso quedaba trabado para siempre en ese
-          // recurso. Si llega una señal de "completado/respondido" y
-          // todavía no hay nada guardado, se cuenta como visto (igual que
-          // video/PDF) para desbloquear el siguiente.
-          const verb = statement?.verb?.id || '';
-          const isCompletionSignal = /\/(completed|answered)$/.test(verb) || result?.completion;
-          if (isCompletionSignal && !window._completionsCache?.has(lesson.id)) {
-            persistLessonScore(lesson.id, null, 'completed', statement);
-            updateLiveScoreLabel(null, 'completed');
-          }
-        });
-      }
-    }, 500);
-    setTimeout(() => clearInterval(waitForDispatcher), 20000);
-
-  } catch (e) {
-    console.error('Error cargando H5P:', e);
-    container.innerHTML = '<p class="text-rose-500 text-sm text-center py-10">Error cargando el contenido H5P.</p>';
-  }
+  window._h5pMessageHandler = (event) => {
+    // Solo mensajes de ESTE iframe, del mismo origen.
+    if (event.origin !== window.location.origin || event.source !== frame.contentWindow) return;
+    const msg = event.data;
+    if (!msg || msg.source !== 'px-h5p') return;
+    if (msg.type === 'ready') {
+      clearTimeout(window._h5pTimeout);
+      document.getElementById('h5p-loading-overlay')?.remove();
+    } else if (msg.type === 'height' && msg.height > 0) {
+      frame.style.height = `${Math.ceil(msg.height)}px`;
+    } else if (msg.type === 'xapi') {
+      handleStatement(msg.statement);
+    } else if (msg.type === 'error') {
+      clearTimeout(window._h5pTimeout);
+      console.error('Error cargando H5P:', msg.message);
+      failOverlay('No se pudo cargar el contenido H5P.');
+    }
+  };
+  window.addEventListener('message', window._h5pMessageHandler);
 }
 
 // ================================================
