@@ -178,7 +178,11 @@ class SyncManager {
 
     // --- MÉTODOS DE COLA DE SINCRONIZACIÓN ---
 
-    async enqueue(action, data) {
+    // owner = de quién es la acción. En una tablet compartida la cola tiene
+    // acciones de varios alumnos: cada una se sube solo con la sesión de su
+    // dueño (o la relevo el docente, ver processQueue). Antes no se guardaba
+    // y todo se intentaba subir con la sesión de quien estuviera logueado.
+    async enqueue(action, data, owner = window.currentUser?.id || null) {
         if (!this.db) return;
         return new Promise((resolve, reject) => {
             const transaction = this.db.transaction(['sync_queue'], 'readwrite');
@@ -186,6 +190,7 @@ class SyncManager {
             const request = store.add({
                 action,
                 data,
+                owner,
                 timestamp: Date.now(),
                 retries: 0
             });
@@ -197,6 +202,18 @@ class SyncManager {
             };
             request.onerror = () => reject(request.error);
         });
+    }
+
+    // Acciones pendientes de UN usuario (en una tablet compartida la cola
+    // mezcla varios alumnos).
+    async getOwnedItems(owner, action = null) {
+        if (!this.db || !owner) return [];
+        const items = await new Promise(resolve => {
+            const req = this.db.transaction(['sync_queue'], 'readonly').objectStore('sync_queue').getAll();
+            req.onsuccess = () => resolve(req.result || []);
+            req.onerror = () => resolve([]);
+        });
+        return items.filter(i => (i.owner || i.data?.student_id || i.data?.user_id) === owner && (!action || i.action === action));
     }
 
     async processQueue() {
@@ -224,22 +241,50 @@ class SyncManager {
 
                 console.log(`🔄 Sincronizando ${total} elementos con la nube...`);
                 let processed = 0;
+                const me = window.currentUser?.id;
+                const isTeacher = window.userRole === 'docente' || window.userRole === 'admin';
+                const relayBatch = [];
+
+                const removeItem = (id) => new Promise((res, rej) => {
+                    const delTx = this.db.transaction(['sync_queue'], 'readwrite');
+                    const delReq = delTx.objectStore('sync_queue').delete(id);
+                    delReq.onsuccess = () => res();
+                    delReq.onerror = () => rej();
+                });
 
                 for (const item of queue) {
+                    // Acciones viejas (sin owner) se atribuyen por el dato.
+                    const owner = item.owner || item.data?.student_id || item.data?.user_id || me;
+                    if (owner !== me) {
+                        // Progreso de un alumno que trajo el docente (relevo
+                        // QR/archivo): se sube en su nombre vía RPC validado.
+                        if (isTeacher && item.action === 'mark_lesson_complete') relayBatch.push(item);
+                        // Si no, queda en la cola hasta que entre su dueño.
+                        continue;
+                    }
                     try {
                         const success = await this.executeAction(item);
                         if (success) {
-                            // Borrar de IndexedDB usando una nueva transacción de escritura
-                            await new Promise((res, rej) => {
-                                const delTx = this.db.transaction(['sync_queue'], 'readwrite');
-                                const delReq = delTx.objectStore('sync_queue').delete(item.id);
-                                delReq.onsuccess = () => res();
-                                delReq.onerror = () => rej();
-                            });
+                            await removeItem(item.id);
                             processed++;
                         }
                     } catch (err) {
                         console.error(`Error en item ${item.id}:`, err);
+                    }
+                }
+
+                if (relayBatch.length) {
+                    try {
+                        const { data: relay, error } = await _supabase.rpc('relay_lesson_completions', {
+                            p_items: relayBatch.map(i => ({ qid: i.id, data: i.data })),
+                        });
+                        if (error) throw error;
+                        for (const qid of relay?.accepted || []) {
+                            await removeItem(qid);
+                            processed++;
+                        }
+                    } catch (err) {
+                        console.error('Error subiendo progreso de alumnos (relevo):', err);
                     }
                 }
 
@@ -426,12 +471,21 @@ class SyncManager {
             req.onsuccess = () => resolve(req.result);
         });
 
-        if (items.length === 0) return null;
+        // Solo lo del alumno que genera el código (en una tablet compartida
+        // la cola puede tener cosas de otros). raw_data (el detalle xAPI/SCORM)
+        // se omite: es opcional y no entra en un QR.
+        const me = window.currentUser?.id;
+        const mine = items.filter(i => (i.owner || i.data?.student_id || i.data?.user_id || me) === me);
+        if (mine.length === 0) return null;
 
         const payload = {
-            source: currentUser?.id,
+            source: me,
             timestamp: Date.now(),
-            items: items.map(i => ({ action: i.action, data: i.data }))
+            items: mine.map(i => {
+                const data = { ...i.data };
+                if (i.action === 'mark_lesson_complete') delete data.raw_data;
+                return { action: i.action, data, owner: me };
+            })
         };
 
         // Comprimir datos para que quepan en QR o sean ligeros (Compresión Agresiva)
@@ -446,8 +500,10 @@ class SyncManager {
         if (!finalPayload.items) return false;
 
         console.log(`📥 Importando ${finalPayload.items.length} acciones de otro dispositivo...`);
+        // Se conserva el dueño original: el docente que lo recibe no lo sube
+        // como propio, lo relevá en nombre del alumno (processQueue).
         for (const item of finalPayload.items) {
-            await this.enqueue(item.action, item.data);
+            await this.enqueue(item.action, item.data, item.owner || finalPayload.source || item.data?.student_id || null);
         }
 
         showToast(`<i class="fas fa-circle-check"></i> ${finalPayload.items.length} acciones importadas correctamente`, 'success');

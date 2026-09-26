@@ -1615,19 +1615,35 @@ window.loadStudentCourses = async function loadStudentCourses(container) {
   if (!courses?.length) { container.innerHTML = '<div class="glass-card p-10 text-center text-slate-400 text-sm">Tu docente todavía no publicó cursos.</div>'; return; }
 
   const completionsByLesson = new Map((completions || []).map(c => [c.lesson_id, c]));
+
+  // Progreso hecho sin internet que todavía no subió: se suma a lo que vino
+  // de la nube. Antes, al recargar offline, esas lecciones volvían a figurar
+  // como no hechas y la siguiente quedaba bloqueada.
+  const myQueued = window._syncManager ? await window._syncManager.getOwnedItems(currentUser.id) : [];
+  for (const q of myQueued) {
+    if (q.action !== 'mark_lesson_complete' || !q.data?.lesson_id) continue;
+    const d = q.data;
+    const prev = completionsByLesson.get(d.lesson_id);
+    const score = prev?.score != null && d.score != null ? Math.max(prev.score, d.score) : (d.score ?? prev?.score ?? null);
+    const status = prev?.status === 'completed' || d.status === 'completed' ? 'completed' : (d.status || prev?.status || 'completed');
+    completionsByLesson.set(d.lesson_id, { lesson_id: d.lesson_id, score, status });
+  }
   window._coursesCache = courses;
   window._completionsCache = completionsByLesson;
 
   // Si hay progreso encolado (avanzaste/completaste algo sin red), se ofrece
   // el mismo relevo QR que ya existe para asistencia (KolibriSync) -- el
   // docente lo escanea con SU teléfono y sube todo cuando llegue a internet.
-  const pendingQueueCount = window._syncManager ? await window._syncManager.getQueueCount() : 0;
+  // Solo lo de ESTE alumno (en una tablet compartida hay de varios).
+  const pendingQueueCount = myQueued.length;
+  setTimeout(() => window.renderStorageStatus?.(), 0);
 
   container.innerHTML = `
     ${fromCache ? `<div class="glass-card p-3 mb-4 border border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs flex flex-col sm:flex-row sm:items-center gap-2">
       <div class="flex items-center gap-2 grow"><i class="fas fa-cloud-slash"></i> Sin conexión -- viendo la última versión guardada. El progreso que ya viste offline vuelve a estar disponible; nuevos cursos/recursos aparecen al reconectar.</div>
       ${pendingQueueCount > 0 ? `<button onclick="KolibriSync.openSyncCenter()" class="shrink-0 h-8 px-3 rounded-lg bg-amber-500 text-white text-[0.65rem] font-bold uppercase whitespace-nowrap"><i class="fas fa-qrcode"></i> Generar código de entrega (${pendingQueueCount})</button>` : ''}
     </div>` : ''}
+    <div id="storage-status" class="text-[0.65rem] text-slate-400 mb-3"></div>
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
       ${courses.map(c => {
         const items = (c.lessons || []).slice().sort((a, b) => a.order_index - b.order_index);
@@ -1757,6 +1773,8 @@ function refreshLessonsContainer() {
 window.downloadCourseOffline = async function downloadCourseOffline(courseId) {
   const course = (window._coursesCache || []).find(c => c.id === courseId);
   if (!course) return;
+  // Sin esto el sistema puede borrar lo descargado cuando falta espacio.
+  await window.requestPersistentStorage?.();
   const btn = document.getElementById(`btn-download-course-${courseId}`);
 
   if (btn) btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Preparando...';

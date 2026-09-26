@@ -76,39 +76,28 @@ export async function initAuth() {
 
   const { data: { session } } = await _supabase.auth.getSession();
 
+  // Versiones anteriores guardaban solo la última sesión -- se migra a la
+  // lista de cuentas de la tablet para no perderla.
+  if (cachedUser && cachedData && cachedRole && !window.listOfflineAccounts?.().length) {
+    window.saveOfflineAccount?.(JSON.parse(cachedUser), JSON.parse(cachedData), cachedRole);
+  }
+  const offlineAccounts = window.listOfflineAccounts?.() || [];
+
   if (session) {
     await handleSuccessfulLogin(session.user);
-  } else if (cachedUser && cachedData && cachedRole) {
-    // Si estamos offline y hay datos en cache, permitir entrada.
-    // PX_CACHED_ROLE viene de localStorage sin ninguna verificación
-    // criptográfica -- cualquiera puede escribirlo desde la consola. Sin
-    // sesión Supabase real no hay JWT, así que ninguna escritura a la base
-    // de datos va a pasar RLS de todas formas, pero por las dudas nunca
-    // se navega directo al panel admin solo por el rol cacheado: siempre
-    // aterriza en 'feed' (vista de solo lectura de datos ya propios) y se
-    // marca el modo para que la UI de escritura/admin quede deshabilitada
-    // hasta que exista una sesión real.
-    console.log('🔌 Modo Offline: Cargando sesión desde caché (solo lectura)');
-    updateAppState('currentUser', JSON.parse(cachedUser));
-    updateAppState('userData', JSON.parse(cachedData));
-    updateAppState('userRole', cachedRole);
-    window.isOfflineCachedSession = true;
-
-    document.getElementById('auth-container').style.display = 'none';
-    document.getElementById('app-container').style.display = 'block';
-
-    updateHeaderUI();
-    setupNavigationUI();
-    // Un alumno offline entra directo a Cursos (lo único realmente útil sin
-    // red -- lo que ya descargó) en vez de "feed", que depende de datos en
-    // vivo que acá no puede tener.
-    nav(cachedRole === 'estudiante' ? 'lessons' : 'feed');
-
-    if (typeof window.initOnboarding === 'function') {
-      window.initOnboarding();
+  } else if (offlineAccounts.length === 1 && !navigator.onLine) {
+    const only = offlineAccounts[0];
+    if (only.secretHash) {
+      showLoginScreen();
+      window.pickOfflineAccount(only.user.id);
+    } else {
+      enterOfflineSession(only.user, only.userData, only.role);
     }
-
-    showToast('<i class="fas fa-wifi"></i> Conectado en modo Offline (solo lectura)', 'info');
+  } else if (offlineAccounts.length > 1 && !navigator.onLine) {
+    // Tablet compartida sin internet: cada alumno elige su cuenta (antes
+    // entraba siempre el último que había usado la tablet).
+    showLoginScreen();
+    window.openOfflineAccountPicker();
   } else {
     showLoginScreen();
   }
@@ -237,6 +226,35 @@ window.submitNewPassword = async function submitNewPassword() {
   }
 }
 
+// Entrada sin internet con una cuenta guardada en esta tablet.
+// El rol viene de localStorage sin verificación criptográfica: sin sesión
+// Supabase real no hay JWT, así que ninguna escritura pasa RLS igual, y se
+// marca el modo para que la UI de escritura/admin quede deshabilitada
+// hasta que exista una sesión real.
+function enterOfflineSession(user, userData, role) {
+  console.log('🔌 Modo Offline: Cargando sesión desde caché (solo lectura)');
+  updateAppState('currentUser', user);
+  updateAppState('userData', userData);
+  updateAppState('userRole', role);
+  window.isOfflineCachedSession = true;
+
+  document.getElementById('auth-container').style.display = 'none';
+  document.getElementById('app-container').style.display = 'block';
+
+  updateHeaderUI();
+  setupNavigationUI();
+  // Un alumno offline entra directo a Cursos (lo único útil sin red: lo
+  // que ya descargó) en vez de "feed", que depende de datos en vivo.
+  nav(role === 'estudiante' ? 'lessons' : 'feed');
+
+  if (typeof window.initOnboarding === 'function') {
+    window.initOnboarding();
+  }
+
+  showToast(`<i class="fas fa-wifi"></i> Sin internet: entraste como ${userData?.full_name?.split(' ')[0] || 'usuario'}`, 'info');
+}
+window.enterOfflineSession = enterOfflineSession;
+
 function showLoginScreen() {
   const authContainer = document.getElementById('auth-container');
   authContainer.style.display = 'flex';
@@ -244,6 +262,24 @@ function showLoginScreen() {
 
   document.getElementById('app-container').style.display = 'none';
   renderMotivationalQuote();
+  renderOfflineEntryButton();
+}
+
+// Botón "Entrar sin internet" si en esta tablet ya entró alguien con
+// internet -- también sirve cuando hay WiFi pero sin salida a internet
+// (navigator.onLine dice true y el login online no responde).
+function renderOfflineEntryButton() {
+  document.getElementById('btn-offline-entry')?.remove();
+  if (!window.listOfflineAccounts?.().length) return;
+  const loginBtn = document.getElementById('btn-login');
+  if (!loginBtn) return;
+  const btn = document.createElement('button');
+  btn.id = 'btn-offline-entry';
+  btn.type = 'button';
+  btn.className = 'btn-secondary-tw w-full h-12 mt-3 text-xs uppercase font-bold';
+  btn.innerHTML = '<i class="fas fa-wifi"></i> Entrar sin internet';
+  btn.onclick = () => window.openOfflineAccountPicker();
+  loginBtn.insertAdjacentElement('afterend', btn);
 }
 
 function renderMotivationalQuote() {
@@ -280,6 +316,7 @@ export async function handleLogin() {
       const { data, error } = await _supabase.auth.signInWithPassword({ email: username, password });
       if (error) throw error;
       await handleSuccessfulLogin(data.user);
+      await window.setOfflineAccountSecret?.(data.user.id, password);
     } else {
       // Login de alumno por usuario -- pasa por la edge function
       // student-login, que valida la contraseña de CLASE (o permite
@@ -303,8 +340,17 @@ export async function handleLogin() {
       });
       if (error) throw error;
       await handleSuccessfulLogin(data.user);
+      await window.setOfflineAccountSecret?.(data.user.id, password);
     }
   } catch (err) {
+    // Sin internet (o WiFi sin salida): ofrecer entrar con una cuenta
+    // guardada en vez de un error de red que el alumno no entiende.
+    const isNetwork = !navigator.onLine || err instanceof TypeError || /fetch|network/i.test(err.message || '');
+    if (isNetwork && window.listOfflineAccounts?.().length) {
+      showToast('<i class="fas fa-wifi"></i> No hay internet -- elegí tu cuenta para entrar sin conexión', 'info');
+      window.openOfflineAccountPicker();
+      return;
+    }
     showToast('<i class="fas fa-circle-xmark"></i> ' + err.message, 'error');
   } finally {
     btn.disabled = false;
@@ -340,6 +386,7 @@ export async function handleSuccessfulLogin(user) {
     // dado de baja (retiro a mitad de año) -- en ambos casos se conserva
     // la cuenta y su historial, pero ya no puede entrar.
     if (data?.status === 'egresado' || data?.status === 'baja') {
+      window.removeOfflineAccount?.(user.id);
       await _supabase.auth.signOut();
       const msg = data.status === 'egresado'
         ? 'Esta cuenta ya egresó y no tiene acceso. Contactá a tu establecimiento si creés que es un error.'
@@ -359,6 +406,10 @@ export async function handleSuccessfulLogin(user) {
       localStorage.setItem('PX_CACHED_USER', JSON.stringify(user));
       localStorage.setItem('PX_CACHED_USER_DATA', JSON.stringify(window.userData));
       localStorage.setItem('PX_CACHED_ROLE', window.userRole);
+      // Queda en la lista de cuentas de esta tablet para poder entrar
+      // después sin internet (tablets compartidas en escuelas rurales).
+      window.saveOfflineAccount?.(user, window.userData, window.userRole);
+      window.requestPersistentStorage?.();
     }
 
     document.getElementById('auth-container').style.display = 'none';
