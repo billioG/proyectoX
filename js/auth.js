@@ -69,6 +69,13 @@ export async function initAuth() {
     return;
   }
 
+  // Abierta desde el nodo escolar (Raspberry sin internet): login con PIN
+  // contra el nodo, no contra Supabase.
+  if (await window.detectQuetzalNode?.()) {
+    await window.startNodeMode();
+    return;
+  }
+
   // Intentar recuperar sesión offline primero
   const cachedUser = localStorage.getItem('PX_CACHED_USER');
   const cachedData = localStorage.getItem('PX_CACHED_USER_DATA');
@@ -231,7 +238,7 @@ window.submitNewPassword = async function submitNewPassword() {
 // Supabase real no hay JWT, así que ninguna escritura pasa RLS igual, y se
 // marca el modo para que la UI de escritura/admin quede deshabilitada
 // hasta que exista una sesión real.
-function enterOfflineSession(user, userData, role) {
+function enterOfflineSession(user, userData, role, { node = false } = {}) {
   console.log('🔌 Modo Offline: Cargando sesión desde caché (solo lectura)');
   updateAppState('currentUser', user);
   updateAppState('userData', userData);
@@ -247,11 +254,16 @@ function enterOfflineSession(user, userData, role) {
   // que ya descargó) en vez de "feed", que depende de datos en vivo.
   nav(role === 'estudiante' ? 'lessons' : 'feed');
 
-  if (typeof window.initOnboarding === 'function') {
+  // El tutorial recorre secciones que necesitan la nube (y su primer paso
+  // navega al feed) -- en el nodo escolar solo existe Cursos.
+  if (!node && typeof window.initOnboarding === 'function') {
     window.initOnboarding();
   }
 
-  showToast(`<i class="fas fa-wifi"></i> Sin internet: entraste como ${userData?.full_name?.split(' ')[0] || 'usuario'}`, 'info');
+  const firstName = userData?.full_name?.split(' ')[0] || 'usuario';
+  showToast(node
+    ? `<i class="fas fa-tree"></i> ¡Hola, ${firstName}! Estás en la red de tu escuela.`
+    : `<i class="fas fa-wifi"></i> Sin internet: entraste como ${firstName}`, 'info');
 }
 window.enterOfflineSession = enterOfflineSession;
 
@@ -623,6 +635,11 @@ async function handleMandatoryPasswordChange() {
 }
 
 export async function logout() {
+  if (window.isNodeSession) {
+    await window.nodeLogout?.();
+    location.reload();
+    return;
+  }
   if (typeof window.unregisterPushOnLogout === 'function') await window.unregisterPushOnLogout();
   localStorage.removeItem('PX_CACHED_USER');
   localStorage.removeItem('PX_CACHED_USER_DATA');

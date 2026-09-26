@@ -1587,7 +1587,24 @@ window.loadStudentCourses = async function loadStudentCourses(container) {
   const cacheKey = `student_courses_${currentUser.id}`;
   let courses, completions, fromCache = false;
 
-  const [coursesRes, completionsRes] = await Promise.all([
+  // Nodo escolar (Raspberry): cursos y progreso salen del nodo, y los
+  // archivos se sirven desde su espejo local en vez de Supabase Storage.
+  const nodeData = window.isNodeSession
+    ? await window.nodeApi('/api/courses').catch(e => ({ error: e }))
+    : null;
+  if (nodeData?.courses) {
+    for (const c of nodeData.courses) {
+      for (const l of c.lessons || []) {
+        if (l.content_url) l.content_url = window.nodeContentUrl(l.content_url);
+        if (l.content_path) l.content_url = l.content_url || `${location.origin}/content/${l.content_path}`;
+      }
+      c.lessons = (c.lessons || []).sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));
+    }
+  }
+
+  const [coursesRes, completionsRes] = nodeData
+    ? [nodeData.courses ? { data: nodeData.courses } : { error: nodeData.error }, { data: nodeData.completions }]
+    : await Promise.all([
     _supabase.from('courses').select('*, lessons(*)')
       .eq('school_code', userData.school_code).eq('grade', userData.grade).eq('section', userData.section)
       .order('created_at', { ascending: false }),
@@ -2426,6 +2443,16 @@ window.markLessonSeen = async function markLessonSeen(lessonId) {
 // Ahora, si falla (típicamente por estar offline), se encola en
 // SyncManager y se sincroniza solo al volver la conexión.
 async function upsertLessonCompletion(payload) {
+  // Nodo escolar: el progreso se guarda en la Raspberry y ella lo sube a la
+  // nube cuando tenga señal.
+  if (window.isNodeSession) {
+    try {
+      await window.nodeApi('/api/completions', { method: 'POST', body: { lesson_id: payload.lesson_id, score: payload.score ?? null, status: payload.status || 'completed' } });
+      return { queued: false, error: null };
+    } catch (e) {
+      return { queued: false, error: e };
+    }
+  }
   const { error } = await window._supabase.from('lesson_completions').upsert(payload, { onConflict: 'lesson_id,student_id' });
   if (!error) return { queued: false, error: null };
 
