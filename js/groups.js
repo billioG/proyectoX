@@ -27,7 +27,7 @@ window.loadGroups = async function loadGroups() {
       // 1. Obtener asignaciones si es docente
       let assignments = [];
       if (userRole === 'docente') {
-        const { data } = await _supabase.from('teacher_assignments').select('school_code, grade, section').eq('teacher_id', currentUser.id);
+        const { data } = await _supabase.from('teacher_assignments').select('school_code, grade, section, schools(name)').eq('teacher_id', currentUser.id);
         assignments = data || [];
         if (assignments.length === 0) return { groups: [], assignments: [] };
       }
@@ -70,7 +70,9 @@ window.renderGroupsContent = function renderGroupsContent(container, groups, ass
     return;
   }
 
-  if (!groups || groups.length === 0) {
+  // El docente ve todas sus clases asignadas aunque todavía no tengan
+  // equipos -- antes una clase nueva (ej. un club) no aparecía en absoluto.
+  if ((!groups || groups.length === 0) && userRole !== 'docente') {
     container.innerHTML = `
         <div class="glass-card p-20 text-center flex flex-col items-center gap-6 animate-slideUp">
             <div class="w-16 h-16 bg-white dark:bg-slate-800 rounded-[1.5rem] flex items-center justify-center text-3xl text-slate-200 mx-auto shadow-inner"><i class="fas fa-users-slash"></i></div>
@@ -82,11 +84,20 @@ window.renderGroupsContent = function renderGroupsContent(container, groups, ass
   }
 
   const groupsBySchool = {};
-  groups.forEach(g => {
+  const emptyClassesBySchool = {};
+  (groups || []).forEach(g => {
     const schoolName = g.schools?.name || 'Establecimiento';
     if (!groupsBySchool[schoolName]) groupsBySchool[schoolName] = [];
     groupsBySchool[schoolName].push(g);
   });
+  if (userRole === 'docente') {
+    (assignments || []).forEach(a => {
+      const schoolName = a.schools?.name || a.school_code;
+      if (!groupsBySchool[schoolName]) groupsBySchool[schoolName] = [];
+      const hasTeams = (groups || []).some(g => String(g.school_code) === String(a.school_code) && String(g.grade) === String(a.grade) && String(g.section) === String(a.section));
+      if (!hasTeams) (emptyClassesBySchool[schoolName] = emptyClassesBySchool[schoolName] || []).push(a);
+    });
+  }
 
   container.innerHTML = `
       <div class="flex flex-col md:flex-row gap-4 mb-8 items-center animate-fadeIn px-2 text-center md:text-left">
@@ -101,12 +112,12 @@ window.renderGroupsContent = function renderGroupsContent(container, groups, ass
       </div>
 
       <div class="space-y-6">
-        ${Object.keys(groupsBySchool).sort().map(schoolName => window.renderSchoolGroupAccordion && window.renderSchoolGroupAccordion(schoolName, groupsBySchool[schoolName])).join('')}
+        ${Object.keys(groupsBySchool).sort().map(schoolName => window.renderSchoolGroupAccordion && window.renderSchoolGroupAccordion(schoolName, groupsBySchool[schoolName], emptyClassesBySchool[schoolName] || [])).join('')}
       </div>
     `;
 }
 
-window.renderSchoolGroupAccordion = function renderSchoolGroupAccordion(schoolName, schoolGroups) {
+window.renderSchoolGroupAccordion = function renderSchoolGroupAccordion(schoolName, schoolGroups, emptyClasses = []) {
   return `
     <details class="group/school animate-fadeIn" open>
         <summary class="list-none cursor-pointer">
@@ -125,6 +136,13 @@ window.renderSchoolGroupAccordion = function renderSchoolGroupAccordion(schoolNa
         </summary>
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 p-2">
             ${schoolGroups.map(g => renderTeamCard(g)).join('')}
+            ${emptyClasses.map(a => `
+            <button class="rounded-[1.5rem] p-4 min-h-[250px] border-2 border-dashed border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center gap-3 text-slate-400 hover:border-primary hover:text-primary transition-colors" onclick="window.openCreateGroupModal()">
+                <i class="fas fa-users-slash text-2xl"></i>
+                <span class="text-xs font-bold uppercase tracking-widest text-center">${sanitizeInput(a.grade)} · ${sanitizeInput(a.section)}</span>
+                <span class="text-[0.7rem] font-medium">Sin equipos todavía</span>
+                <span class="text-[0.7rem] font-bold text-primary"><i class="fas fa-plus"></i> Crear equipo</span>
+            </button>`).join('')}
         </div>
     </details>
   `;
@@ -330,7 +348,7 @@ window.openCreateGroupModal = async function openCreateGroupModal(isEdit = false
                       <select id="group-school" class="input-field-tw h-10 text-[0.65rem] font-bold" onchange="loadGradesForGroup()">
                           <option value="">Seleccionar...</option>
                           ${[...new Set(safeAssignments.map(a => a.school_code))].map(code => {
-    const name = safeAssignments.find(a => a.school_code === code).schools.name;
+    const name = safeAssignments.find(a => a.school_code === code).schools?.name || code;
     return `<option value="${code}">${sanitizeInput(name)}</option>`;
   }).join('')}
                       </select>
@@ -438,17 +456,22 @@ window.deleteGroup = async function deleteGroup(id, name) {
 
 window.loadGradesForGroup = async function loadGradesForGroup() {
   const code = document.getElementById('group-school').value;
-  const { data } = await _supabase.from('teacher_assignments').select('grade').eq('school_code', code);
-  const grades = [...new Set(data.map(d => d.grade))].sort();
+  // Solo las clases de este docente (el admin ve todas las del colegio).
+  let q = _supabase.from('teacher_assignments').select('grade').eq('school_code', code);
+  if (window.userRole === 'docente') q = q.eq('teacher_id', window.currentUser.id);
+  const { data } = await q;
+  const grades = [...new Set((data || []).map(d => d.grade))].sort();
   const select = document.getElementById('group-grade');
-  if (select) select.innerHTML = '<option value="">---</option>' + grades.map(g => `<option value="${g}">${g}</option>`).join('');
+  if (select) select.innerHTML = '<option value="">---</option>' + grades.map(g => `<option value="${sanitizeInput(g)}">${sanitizeInput(g)}</option>`).join('');
 }
 
 window.loadSectionsForGroup = async function loadSectionsForGroup() {
   const code = document.getElementById('group-school').value;
   const grade = document.getElementById('group-grade').value;
-  const { data } = await _supabase.from('teacher_assignments').select('section').eq('school_code', code).eq('grade', grade);
-  const sections = [...new Set(data.map(d => d.section))].sort();
+  let q = _supabase.from('teacher_assignments').select('section').eq('school_code', code).eq('grade', grade);
+  if (window.userRole === 'docente') q = q.eq('teacher_id', window.currentUser.id);
+  const { data } = await q;
+  const sections = [...new Set((data || []).map(d => d.section))].sort();
   const select = document.getElementById('group-section');
   if (select) select.innerHTML = '<option value="">---</option>' + sections.map(s => `<option value="${s}">${s}</option>`).join('');
 }
