@@ -57,12 +57,30 @@ Deno.serve(async (req) => {
 
     let targetUserIds: string[] | null = null;
     let targetRoles: string[] = [];
+    const wantsStudents = ann.audience === 'students' || ann.audience === 'all' || !ann.audience;
+    const wantsTeachers = ann.audience === 'teachers' || ann.audience === 'all' || !ann.audience;
+    const groups: Array<{ school_code: string; grade: string; section: string }> = Array.isArray(ann.target_groups) ? ann.target_groups : [];
+    const schools: string[] = Array.isArray(ann.target_schools) ? ann.target_schools : [];
+    const inGroup = (r: any) => groups.some(g => g.school_code === r.school_code && g.grade === r.grade && g.section === r.section);
 
-    if (ann.audience === 'students' && ann.school_code) {
-      // Docente -> avisando a SU clase puntual (school_code/grade/section).
+    if (ann.school_code) {
+      // Aviso a UNA clase (school_code/grade/section).
       const { data: students } = await admin.from('students').select('id')
         .eq('school_code', ann.school_code).eq('grade', ann.grade).eq('section', ann.section);
       targetUserIds = (students || []).map((s: any) => s.id);
+    } else if (groups.length || schools.length) {
+      // Alcance elegido: grupos o establecimientos (ver announcements-targeting.sql).
+      const codes = groups.length ? [...new Set(groups.map(g => g.school_code))] : schools;
+      const ids = new Set<string>();
+      if (wantsStudents) {
+        const { data: st } = await admin.from('students').select('id, school_code, grade, section').in('school_code', codes);
+        (st || []).filter((r: any) => !groups.length || inGroup(r)).forEach((r: any) => ids.add(r.id));
+      }
+      if (wantsTeachers) {
+        const { data: ta } = await admin.from('teacher_assignments').select('teacher_id, school_code, grade, section').in('school_code', codes);
+        (ta || []).filter((r: any) => !groups.length || inGroup(r)).forEach((r: any) => ids.add(r.teacher_id));
+      }
+      targetUserIds = [...ids];
     } else if (ann.audience === 'students') {
       targetRoles = ['estudiante'];
     } else if (ann.audience === 'teachers') {
@@ -71,9 +89,17 @@ Deno.serve(async (req) => {
       targetRoles = ['estudiante', 'docente'];
     }
 
-    let subsQuery = admin.from('push_subscriptions').select('*');
-    subsQuery = targetUserIds ? subsQuery.in('user_id', targetUserIds) : subsQuery.in('role', targetRoles);
-    const { data: subs } = await subsQuery;
+    let subs: any[] = [];
+    if (targetUserIds) {
+      // .in() con miles de ids arma una URL enorme: se consulta por tandas.
+      for (let i = 0; i < targetUserIds.length; i += 200) {
+        const { data } = await admin.from('push_subscriptions').select('*').in('user_id', targetUserIds.slice(i, i + 200));
+        subs.push(...(data || []));
+      }
+    } else {
+      const { data } = await admin.from('push_subscriptions').select('*').in('role', targetRoles);
+      subs = data || [];
+    }
 
     const senderLabel = ann.sender_role === 'admin' ? 'Administración' : 'Tu docente';
     const payload = JSON.stringify({

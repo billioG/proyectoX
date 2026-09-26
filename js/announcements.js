@@ -246,9 +246,26 @@ window.openAnnouncementReadersModal = async function openAnnouncementReadersModa
   if (!ann) { listEl.innerHTML = '<p class="text-rose-500 text-xs">No se pudo cargar el aviso.</p>'; return; }
 
   let recipients = [];
+  const groups = Array.isArray(ann.target_groups) ? ann.target_groups : [];
+  const schools = Array.isArray(ann.target_schools) ? ann.target_schools : [];
   if (ann.audience === 'students' && ann.school_code) {
     const { data } = await _supabase.from('students').select('id, full_name').eq('school_code', ann.school_code).eq('grade', ann.grade).eq('section', ann.section);
     recipients = data || [];
+  } else if (groups.length || schools.length) {
+    // Alcance por grupos o establecimientos (announcements-targeting.sql).
+    const codes = groups.length ? [...new Set(groups.map(g => g.school_code))] : schools;
+    const inGroup = (r) => !groups.length || groups.some(g => g.school_code === r.school_code && g.grade === r.grade && g.section === r.section);
+    if (ann.audience !== 'teachers') {
+      const studs = await window.fetchAllRows(() => _supabase.from('students').select('id, full_name, school_code, grade, section').in('school_code', codes));
+      recipients.push(...(studs || []).filter(inGroup));
+    }
+    if (ann.audience !== 'students') {
+      const { data: ta } = await _supabase.from('teacher_assignments').select('teacher_id, school_code, grade, section, teachers(full_name)').in('school_code', codes);
+      const seen = new Set();
+      (ta || []).filter(inGroup).forEach(r => {
+        if (!seen.has(r.teacher_id)) { seen.add(r.teacher_id); recipients.push({ id: r.teacher_id, full_name: r.teachers?.full_name || 'Docente' }); }
+      });
+    }
   } else if (ann.audience === 'students') {
     const { data } = await _supabase.from('students').select('id, full_name');
     recipients = data || [];
@@ -294,91 +311,171 @@ window.deleteAnnouncement = async function deleteAnnouncement(id) {
   window.loadAnnouncementsUnreadCount();
 }
 
+// Destinatarios (ver migrations/announcements-targeting.sql):
+//   admin   -> todos / solo estudiantes / solo docentes, en todos los
+//              establecimientos, en algunos, o en grupos puntuales.
+//   docente -> estudiantes de uno o varios de SUS grupos.
+// En ambos casos se puede avisar también a los padres (SMS/notificación).
 window.openSendAnnouncementModal = async function openSendAnnouncementModal() {
   const _supabase = window._supabase;
-  const currentUser = window.currentUser;
   const isAdmin = window.userRole === 'admin';
+  const s = window.sanitizeInput || ((v) => v);
 
-  let classOptions = [];
-  if (!isAdmin) {
-    const { data: assignments } = await _supabase.from('teacher_assignments')
-      .select('school_code, grade, section, schools(name)').eq('teacher_id', currentUser.id);
-    classOptions = assignments || [];
-    if (!classOptions.length) return window.showToast('<i class="fas fa-circle-xmark"></i> No tenés clases asignadas todavía', 'error');
+  let groups = [];      // [{school_code, grade, section, schoolName}]
+  let schools = [];     // [{code, name}]
+  if (isAdmin) {
+    const [{ data: sch }, rows] = await Promise.all([
+      _supabase.from('schools').select('code, name').order('name'),
+      window.fetchAllRows(() => _supabase.from('students').select('school_code, grade, section')),
+    ]);
+    schools = sch || [];
+    const names = new Map(schools.map(x => [x.code, x.name]));
+    const seen = new Set();
+    (rows || []).forEach(r => {
+      const k = `${r.school_code}|${r.grade}|${r.section}`;
+      if (r.school_code && r.grade && r.section && !seen.has(k)) {
+        seen.add(k);
+        groups.push({ school_code: r.school_code, grade: r.grade, section: r.section, schoolName: names.get(r.school_code) || r.school_code });
+      }
+    });
+  } else {
+    const { data } = await _supabase.from('teacher_assignments')
+      .select('school_code, grade, section, schools(name)').eq('teacher_id', window.currentUser.id);
+    groups = (data || []).map(a => ({ school_code: a.school_code, grade: a.grade, section: a.section, schoolName: a.schools?.name || a.school_code }));
+    if (!groups.length) return window.showToast('<i class="fas fa-circle-xmark"></i> No tenés clases asignadas todavía', 'error');
   }
+  groups.sort((a, b) => `${a.schoolName}${a.grade}${a.section}`.localeCompare(`${b.schoolName}${b.grade}${b.section}`));
+  window._annTargets = { groups, schools };
+
+  // Grupos agrupados por establecimiento, con "marcar todo el colegio".
+  const bySchool = new Map();
+  groups.forEach((g, i) => {
+    if (!bySchool.has(g.school_code)) bySchool.set(g.school_code, { name: g.schoolName, items: [] });
+    bySchool.get(g.school_code).items.push(i);
+  });
+  const groupsHtml = [...bySchool.entries()].map(([code, sc]) => `
+    <div class="rounded-xl border border-slate-100 dark:border-slate-800 p-2.5">
+      <label class="flex items-center gap-2 text-xs font-black text-slate-700 dark:text-slate-200">
+        <input type="checkbox" class="w-4 h-4" onchange="document.querySelectorAll('[data-ann-school=&quot;${window.sanitizeAttr(code)}&quot;]').forEach(c => c.checked = this.checked); window.updateAnnSummary()">
+        ${s(sc.name)}
+      </label>
+      <div class="flex flex-wrap gap-1.5 mt-2 pl-6">
+        ${sc.items.map(i => `<label class="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-50 dark:bg-slate-800 text-[0.7rem] font-bold text-slate-600 dark:text-slate-300">
+          <input type="checkbox" class="ann-group w-3.5 h-3.5" value="${i}" data-ann-school="${window.sanitizeAttr(code)}" onchange="window.updateAnnSummary()"> ${s(groups[i].grade)} ${s(groups[i].section)}</label>`).join('')}
+      </div>
+    </div>`).join('');
 
   const modal = document.createElement('div');
   modal.id = 'send-announcement-modal';
-  modal.className = 'fixed inset-0 z-[210] flex items-center justify-center p-6 bg-slate-950/90 backdrop-blur-sm animate-fadeIn';
+  modal.className = 'fixed inset-0 z-[210] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-sm animate-fadeIn';
   modal.innerHTML = `
-    <div class="glass-card w-full max-w-md p-8 shadow-2xl animate-slideUp bg-white dark:bg-slate-900">
-      <h3 class="text-lg font-bold text-slate-800 dark:text-white uppercase tracking-tighter mb-6"><i class="fas fa-paper-plane text-primary mr-2"></i> Enviar Aviso</h3>
+    <div class="glass-card w-full max-w-lg max-h-[92vh] overflow-y-auto custom-scrollbar p-6 shadow-2xl animate-slideUp bg-white dark:bg-slate-900">
+      <h3 class="text-lg font-bold text-slate-800 dark:text-white uppercase tracking-tighter mb-5"><i class="fas fa-paper-plane text-primary mr-2"></i> Enviar Aviso</h3>
       <div class="space-y-4">
         ${isAdmin ? `
         <div>
-          <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Destinatarios</label>
-          <select id="ann-audience" class="input-field-tw h-11 text-sm">
-            <option value="all">Todos (estudiantes y docentes)</option>
-            <option value="students">Todos los estudiantes</option>
-            <option value="teachers">Todos los docentes</option>
-          </select>
+          <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">¿A quién?</label>
+          <div class="grid grid-cols-3 gap-2">
+            ${[['all', 'Todos', 'fa-users'], ['students', 'Estudiantes', 'fa-user-graduate'], ['teachers', 'Docentes', 'fa-chalkboard-teacher']].map(([v, l, ic], i) => `
+              <label class="flex flex-col items-center gap-1 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 cursor-pointer has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                <input type="radio" name="ann-audience" value="${v}" ${i === 0 ? 'checked' : ''} class="sr-only" onchange="window.updateAnnSummary()"><i class="fas ${ic} text-primary"></i>${l}</label>`).join('')}
+          </div>
         </div>
-        ` : `
         <div>
-          <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Clase</label>
-          <select id="ann-class" class="input-field-tw h-11 text-sm">
-            ${classOptions.map((c, i) => `<option value="${i}">${window.sanitizeInput(c.schools?.name || c.school_code)} -- ${window.sanitizeInput(c.grade)} ${window.sanitizeInput(c.section)}</option>`).join('')}
+          <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">¿Dónde?</label>
+          <select id="ann-scope" class="input-field-tw h-11 text-sm" onchange="window.updateAnnSummary()">
+            <option value="everywhere">Todos los establecimientos</option>
+            <option value="schools">Elegir establecimientos</option>
+            <option value="groups">Elegir grupos</option>
           </select>
         </div>
-        `}
+        <div id="ann-schools-box" class="hidden space-y-1.5 max-h-56 overflow-y-auto custom-scrollbar">
+          ${schools.map(sc => `<label class="flex items-center gap-2 p-2 rounded-lg bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-600 dark:text-slate-300">
+            <input type="checkbox" class="ann-school w-4 h-4" value="${window.sanitizeAttr(sc.code)}" onchange="window.updateAnnSummary()"> ${s(sc.name)}</label>`).join('')}
+        </div>` : ''}
+        <div id="ann-groups-box" class="${isAdmin ? 'hidden' : ''} space-y-2 max-h-64 overflow-y-auto custom-scrollbar">
+          ${isAdmin ? '' : '<label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest block">Tus grupos</label>'}
+          ${groupsHtml}
+        </div>
         <div>
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Título</label>
-          <input type="text" id="ann-title" class="input-field-tw h-11 text-sm" placeholder="Ej: Suspensión de clases">
+          <input type="text" id="ann-title" maxlength="120" class="input-field-tw h-11 text-sm" placeholder="Ej: Suspensión de clases">
         </div>
         <div>
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Mensaje</label>
           <textarea id="ann-message" class="input-field-tw text-sm" rows="4" placeholder="Escribí el aviso..."></textarea>
         </div>
-        ${isAdmin ? '' : `
-        <label class="flex items-start gap-3 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 cursor-pointer">
-          <input type="checkbox" id="ann-guardians" class="w-5 h-5 mt-0.5">
-          <span class="text-xs text-slate-600 dark:text-slate-300"><b>También avisar a los padres</b><br>Por notificación si la activaron en su portal, o por SMS. Mantenelo corto (menos de 160 letras para que entre en un SMS).</span>
-        </label>`}
+        <label id="ann-guardians-box" class="flex items-start gap-3 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 cursor-pointer">
+          <input type="checkbox" id="ann-guardians" class="w-5 h-5 mt-0.5" onchange="window.updateAnnSummary()">
+          <span class="text-xs text-slate-600 dark:text-slate-300"><b>También avisar a los padres</b> de esos estudiantes<br>Por notificación si la activaron en su portal, o por SMS. Mantenelo corto (menos de 160 letras).</span>
+        </label>
+        <p id="ann-summary" class="text-xs font-bold text-primary"></p>
       </div>
-      <div class="flex gap-3 mt-8">
+      <div class="flex gap-3 mt-6">
         <button class="btn-secondary-tw flex-1 h-11 text-xs uppercase font-bold" onclick="this.closest('.fixed').remove()">Cancelar</button>
-        <button class="btn-primary-tw flex-1 h-11 text-xs uppercase font-bold" id="btn-send-announcement" onclick="window.sendAnnouncement(${JSON.stringify(classOptions).replace(/"/g, '&quot;')})"><i class="fas fa-paper-plane"></i> Enviar</button>
+        <button class="btn-primary-tw flex-1 h-11 text-xs uppercase font-bold" id="btn-send-announcement" onclick="window.sendAnnouncement()"><i class="fas fa-paper-plane"></i> Enviar</button>
       </div>
     </div>
   `;
   document.body.appendChild(modal);
+  window.updateAnnSummary();
+};
+
+// Lee la selección actual del modal.
+function readAnnTargets() {
+  const isAdmin = window.userRole === 'admin';
+  const { groups } = window._annTargets || { groups: [] };
+  const audience = isAdmin ? (document.querySelector('input[name="ann-audience"]:checked')?.value || 'all') : 'students';
+  const scope = isAdmin ? (document.getElementById('ann-scope')?.value || 'everywhere') : 'groups';
+  const pickedGroups = [...document.querySelectorAll('.ann-group:checked')].map(c => groups[Number(c.value)]);
+  const pickedSchools = [...document.querySelectorAll('.ann-school:checked')].map(c => c.value);
+  return { isAdmin, audience, scope, pickedGroups, pickedSchools };
 }
 
-window.sendAnnouncement = async function sendAnnouncement(classOptions) {
-  const isAdmin = window.userRole === 'admin';
+window.updateAnnSummary = function updateAnnSummary() {
+  const t = readAnnTargets();
+  document.getElementById('ann-schools-box')?.classList.toggle('hidden', t.scope !== 'schools');
+  document.getElementById('ann-groups-box')?.classList.toggle('hidden', t.scope !== 'groups');
+  document.getElementById('ann-guardians-box')?.classList.toggle('hidden', t.audience === 'teachers');
+  const who = { all: 'estudiantes y docentes', students: 'estudiantes', teachers: 'docentes' }[t.audience];
+  const where = t.scope === 'everywhere' ? 'de todos los establecimientos'
+    : t.scope === 'schools' ? `de ${t.pickedSchools.length} establecimiento(s)`
+    : `de ${t.pickedGroups.length} grupo(s)`;
+  const parents = document.getElementById('ann-guardians')?.checked && t.audience !== 'teachers' ? ' + sus padres' : '';
+  const el = document.getElementById('ann-summary');
+  if (el) el.innerHTML = `<i class="fas fa-bullseye"></i> Le llega a: ${who} ${where}${parents}`;
+};
+
+// Grupos a los que corresponde avisar a los padres según la selección.
+function guardianGroupsFor(t) {
+  const { groups } = window._annTargets || { groups: [] };
+  if (t.scope === 'groups') return t.pickedGroups;
+  if (t.scope === 'schools') return groups.filter(g => t.pickedSchools.includes(g.school_code));
+  return groups;
+}
+
+window.sendAnnouncement = async function sendAnnouncement() {
   const title = document.getElementById('ann-title')?.value.trim();
   const message = document.getElementById('ann-message')?.value.trim();
   const btn = document.getElementById('btn-send-announcement');
+  const t = readAnnTargets();
 
   if (!title || !message) return window.showToast('<i class="fas fa-circle-xmark"></i> Completá título y mensaje', 'error');
+  if (t.scope === 'groups' && !t.pickedGroups.length) return window.showToast('<i class="fas fa-circle-xmark"></i> Elegí al menos un grupo', 'error');
+  if (t.scope === 'schools' && !t.pickedSchools.length) return window.showToast('<i class="fas fa-circle-xmark"></i> Elegí al menos un establecimiento', 'error');
 
   const payload = {
     sender_id: window.currentUser.id,
     sender_role: window.userRole,
     title, message,
+    audience: t.audience,
   };
+  if (t.scope === 'groups') payload.target_groups = t.pickedGroups.map(g => ({ school_code: g.school_code, grade: g.grade, section: g.section }));
+  if (t.scope === 'schools') payload.target_schools = t.pickedSchools;
 
-  if (isAdmin) {
-    payload.audience = document.getElementById('ann-audience')?.value || 'all';
-  } else {
-    const classIndex = parseInt(document.getElementById('ann-class')?.value) || 0;
-    const cls = classOptions[classIndex];
-    if (!cls) return window.showToast('<i class="fas fa-circle-xmark"></i> Elegí una clase', 'error');
-    payload.audience = 'students';
-    payload.school_code = cls.school_code;
-    payload.grade = cls.grade;
-    payload.section = cls.section;
-  }
+  const wantsParents = document.getElementById('ann-guardians')?.checked && t.audience !== 'teachers';
+  const parentGroups = wantsParents ? guardianGroupsFor(t) : [];
+  if (wantsParents && parentGroups.length > 15 && !confirm(`Vas a avisar a los padres de ${parentGroups.length} grupos. Los que no activaron el portal lo recibirán por SMS. ¿Continuar?`)) return;
 
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
@@ -386,7 +483,7 @@ window.sendAnnouncement = async function sendAnnouncement(classOptions) {
   const { data: inserted, error } = await window._supabase.from('announcements').insert(payload).select().single();
 
   if (error) {
-    window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
+    window.showToast('<i class="fas fa-circle-xmark"></i> ' + (/target_groups|target_schools/.test(error.message) ? 'Falta correr migrations/announcements-targeting.sql' : error.message), 'error');
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar';
     return;
@@ -397,26 +494,26 @@ window.sendAnnouncement = async function sendAnnouncement(classOptions) {
   // momento y veía el punto rojo en la campana.
   if (inserted?.id) window.sendAnnouncementPush(inserted.id);
 
-  // Padres de la clase (migrations/guardians.sql + notify-guardians).
-  if (!isAdmin && document.getElementById('ann-guardians')?.checked && payload.school_code) {
+  // Padres (migrations/guardians.sql + notify-guardians): se encola por grupo.
+  if (parentGroups.length) {
     const text = `${title}: ${message}`.slice(0, 300);
-    const { data: counts, error: gErr } = await window._supabase.rpc('enqueue_class_guardian_message', {
-      p_school_code: payload.school_code, p_grade: payload.grade, p_section: payload.section, p_text: text,
-    });
-    if (gErr) {
-      window.showToast('<i class="fas fa-triangle-exclamation"></i> Aviso enviado a alumnos, pero no a padres: ' + gErr.message, 'warning');
-    } else {
-      const total = (counts?.push || 0) + (counts?.sms || 0);
-      if (total) {
-        const { data: { session } } = await window._supabase.auth.getSession();
-        fetch(`${window.SUPABASE_URL}/functions/v1/notify-guardians`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token || ''}` },
-          body: '{}',
-        }).catch(err => console.error('Error enviando avisos a padres:', err));
-      }
-      window.showToast(`<i class="fas fa-people-roof"></i> Padres: ${counts?.push || 0} por notificación, ${counts?.sms || 0} por SMS${counts?.none ? `, ${counts.none} sin contacto` : ''}`, 'info');
+    let push = 0, sms = 0, none = 0, failedGroups = 0;
+    for (const g of parentGroups) {
+      const { data: counts, error: gErr } = await window._supabase.rpc('enqueue_class_guardian_message', {
+        p_school_code: g.school_code, p_grade: g.grade, p_section: g.section, p_text: text,
+      });
+      if (gErr) { failedGroups++; continue; }
+      push += counts?.push || 0; sms += counts?.sms || 0; none += counts?.none || 0;
     }
+    if (push + sms) {
+      const { data: { session } } = await window._supabase.auth.getSession();
+      fetch(`${window.SUPABASE_URL}/functions/v1/notify-guardians`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token || ''}` },
+        body: '{}',
+      }).catch(err => console.error('Error enviando avisos a padres:', err));
+    }
+    window.showToast(`<i class="fas fa-people-roof"></i> Padres: ${push} por notificación, ${sms} por SMS${none ? `, ${none} sin contacto` : ''}${failedGroups ? ` (${failedGroups} grupo(s) con error)` : ''}`, failedGroups ? 'warning' : 'info');
   }
 
   window.showToast('<i class="fas fa-circle-check"></i> Aviso enviado', 'success');
