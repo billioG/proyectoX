@@ -139,3 +139,4 @@ de producción.
 | 95 | 2026-09-26 | `impact-metrics.sql` | Tablero de impacto del admin: métricas por establecimiento y tendencia mensual |
 | — | 2026-09-27 | `demo-school.sql` | **Opcional, no es migración.** Plantel de demostración con datos inventados para demos comerciales. Se quita con `demo-school-remove.sql`. |
 | 96 | 2026-09-27 | `school-project-visibility.sql` | `schools.public_projects`; política restrictiva en `projects` (privado = solo su escuela, admin y su coordinador); RPC `set_school_public_projects`; lectura de `attendance` para coordinador |
+| 97 | 2026-09-27 | `season-pass-companion-reward.sql` | Nuevo premio de mascota gratis en el Pase de Temporada (nivel 18: guacamaya) |

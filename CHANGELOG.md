@@ -6,6 +6,7 @@ Al publicar una versión nueva, agregá una línea arriba de todo (ver CONTRIBUT
 
 ## 2026-09-27
 
+- Quetzadex card is shorter: emotes and evolution line are now collapsible (`<details>`). Season Pass level 18 now grants a free companion (guacamaya) instead of gems -- new 'companion' reward type, easy to point at a future global species. Migration: `season-pass-companion-reward.sql` (v1.0.116)
 - Quetzadex: each pet's info card now shows the UN Sustainable Development Goal(s) it illustrates (14 Vida submarina for water species, 15 Vida de ecosistemas terrestres for land/forest species) -- useful content alignment for grant applications, no new species (v1.0.115)
 - Coordinador nav no longer duplicates "Explorar Proyectos" -- nav-docente's own "Inicio" already goes to feed now that both menus show together (v1.0.114)
 - Coordinador is no longer a separate, exclusive role: a coordinador who also teaches keeps their full teacher menu (classes, attendance, evaluate, profile) and gets "Mis Docentes"/"Mi Establecimiento" added on top, instead of losing teacher access entirely (v1.0.113)

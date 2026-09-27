@@ -119,16 +119,21 @@ window.renderSeasonPass = function renderSeasonPass(scrollToCurrent = false) {
         ? window.renderCompanionSvg(stage, '', species, { ...(window._myCompanionEquipped || {}), [item.slot]: r.item })
         : '🎁';
       label = item ? s(item.name) : 'Accesorio';
+    } else if (r.type === 'companion') {
+      const rewardSpecies = window.COMPANION_SPECIES?.[r.species];
+      art = rewardSpecies ? window.renderCompanionSvg(3, '', r.species, {}) : '🥚';
+      label = rewardSpecies ? s(rewardSpecies.label) : 'Mascota';
     }
+    const isMilestone = r.type === 'cosmetic' || r.type === 'companion';
     const action = claimed
       ? '<span class="sp-tag"><i class="fas fa-check"></i> Listo</span>'
       : reached
         ? `<button class="sp-btn" onclick="window.claimSeasonReward(${r.level})">Reclamar</button>`
         : '<span class="sp-tag"><i class="fas fa-lock"></i></span>';
-    return `<div class="sp-node ${state} ${r.type === 'cosmetic' ? 'milestone' : ''}" data-level="${r.level}">
+    return `<div class="sp-node ${state} ${isMilestone ? 'milestone' : ''}" data-level="${r.level}">
       <span class="sp-lv">Nv ${r.level}</span>
       <div class="sp-art" style="pointer-events:none">${art}</div>
-      <span class="sp-amt" style="${r.type === 'cosmetic' ? 'color:#fde68a;font-size:.62rem;text-align:center;line-height:1.1' : ''}">${label}</span>
+      <span class="sp-amt" style="${isMilestone ? 'color:#fde68a;font-size:.62rem;text-align:center;line-height:1.1' : ''}">${label}</span>
       ${action}
     </div>`;
   }).join('');
@@ -175,6 +180,9 @@ window.claimSeasonReward = async function claimSeasonReward(level) {
     if (typeof window.confetti === 'function') window.confetti({ particleCount: 90, spread: 70, origin: { y: 0.6 }, zIndex: 260 });
     if (data.type === 'cosmetic' && !data.gems_granted) {
       window.showToast('<i class="fas fa-shirt"></i> ¡Accesorio exclusivo desbloqueado! Ponelo en el Vestidor', 'success');
+    } else if (data.type === 'companion' && !data.gems_granted) {
+      const label = window.COMPANION_SPECIES?.[data.species]?.label || 'mascota nueva';
+      window.showToast(`<i class="fas fa-egg"></i> ¡${label} desbloqueada! Andá a la Quetzadex a elegirla`, 'success');
     } else {
       window.showToast(`<i class="fas fa-gem"></i> +${data.gems_granted} gemas`, 'success');
     }
@@ -187,17 +195,19 @@ window.claimSeasonReward = async function claimSeasonReward(level) {
 window.claimAllSeasonRewards = async function claimAllSeasonRewards() {
   const p = window._seasonPass;
   const levels = p.rewards.filter(r => r.level <= p.level && !p.claimedSet.has(r.level)).map(r => r.level);
-  let gems = 0, items = 0;
+  let gems = 0, items = 0, companions = 0;
   for (const level of levels) {
     try {
       const data = await spClaim(level);
       gems += data.gems_granted || 0;
       if (data.type === 'cosmetic' && !data.gems_granted) items++;
+      if (data.type === 'companion' && !data.gems_granted) companions++;
     } catch (err) {
       console.error('Reclamo de pase:', err);
     }
   }
   if (typeof window.confetti === 'function') window.confetti({ particleCount: 160, spread: 100, origin: { y: 0.6 }, zIndex: 260 });
-  window.showToast(`<i class="fas fa-gift"></i> +${gems} gemas${items ? ` y ${items} accesorio(s) nuevo(s)` : ''}`, 'success');
+  const extra = [items ? `${items} accesorio(s)` : '', companions ? `${companions} mascota(s) nueva(s)` : ''].filter(Boolean).join(' y ');
+  window.showToast(`<i class="fas fa-gift"></i> +${gems} gemas${extra ? ` y ${extra}` : ''}`, 'success');
   window.renderSeasonPass();
 };

@@ -64,6 +64,8 @@ seguras de re-ejecutar):
 - [ ] `migrations/impact-metrics.sql` (v1.0.100) — tablero de impacto del admin.
 - [ ] `migrations/coordinador-role.sql` (si no la corriste ya) — necesaria antes de la siguiente.
 - [ ] `migrations/school-project-visibility.sql` (v1.0.112) — switch de Hall de la Fama por establecimiento y reportes del coordinador.
+- [ ] `migrations/season-pass.sql` (si no la corriste ya) — necesaria antes de la siguiente.
+- [ ] `migrations/season-pass-companion-reward.sql` (v1.0.116) — el pase de temporada regala una mascota gratis en el nivel 18.
 
 Redesplegar estas Edge Functions (cambiaron en las últimas versiones):
 

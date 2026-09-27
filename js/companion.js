@@ -928,10 +928,15 @@ window.ensureCompanionStyles = function ensureCompanionStyles() {
     .dex-stat b { font-size:.8rem; color:#0f172a; line-height:1.25; display:block; }
     .dex-fact { background:#f1f5f9; border-radius:1rem; padding:.7rem .85rem; font-size:.8rem; color:#334155; }
     .dex-fact-more { display:inline-flex; align-items:center; gap:.3rem; margin-top:.45rem; border:0; background:transparent; color:var(--dex-c); font-weight:900; font-size:.72rem; cursor:pointer; padding:0; filter:brightness(.8); }
-    .dex-emotes { display:flex; flex-wrap:wrap; gap:.3rem; margin-top:.8rem; }
+    .dex-details { margin-top:.7rem; border-top:1px solid #f1f5f9; padding-top:.6rem; }
+    .dex-details summary { list-style:none; cursor:pointer; font-size:.72rem; font-weight:800; color:#475569; display:flex; align-items:center; gap:.4rem; }
+    .dex-details summary::-webkit-details-marker { display:none; }
+    .dex-details summary::before { content:'\f105'; font-family:'Font Awesome 6 Free'; font-weight:900; transition:transform .15s; }
+    .dex-details[open] summary::before { transform:rotate(90deg); }
+    .dex-emotes { display:flex; flex-wrap:wrap; gap:.3rem; margin-top:.6rem; }
     .dex-emotes span { font-size:.66rem; font-weight:800; padding:.25rem .55rem; border-radius:9999px; background:color-mix(in srgb, var(--dex-c) 15%, #fff); color:#1e293b; }
     .dex-emotes span.locked { background:#f1f5f9; color:#94a3b8; }
-    .dex-evo { display:grid; grid-template-columns:repeat(6, minmax(0,1fr)); gap:.25rem; margin-top:1rem; }
+    .dex-evo { display:grid; grid-template-columns:repeat(6, minmax(0,1fr)); gap:.25rem; margin-top:.6rem; }
     .dex-evo > div { text-align:center; font-size:.5rem; font-weight:800; color:#475569; line-height:1.1; }
     .dex-evo .art { width:100%; aspect-ratio:1; }
     .dex-actions { display:flex; flex-direction:column; gap:.5rem; margin-top:1.1rem; }
@@ -1599,11 +1604,15 @@ window.openDexCard = function openDexCard(species, mode = 'collection') {
         </div>
         <div class="dex-fact"><b>💡 ¿Sabías que?</b> <span class="dex-fact-text">${nextFact(species)}</span>
           <button type="button" class="dex-fact-more" onclick="window.showAnotherFact('${species}', this)"><i class="fas fa-shuffle"></i> Otro dato</button></div>
-        <div class="dex-emotes">${emotesFor(species).map(e => {
-          const open = mode === 'view' || mode === 'starter' || (have && e.minStage <= myStage);
-          return `<span class="${open ? '' : 'locked'}" title="${open ? '' : 'Se desbloquea en: ' + sp.names[e.minStage]}">${open ? e.bubble : '🔒'} ${e.label}</span>`;
-        }).join('')}</div>
-        <div class="dex-evo">${evo}</div>
+        <details class="dex-details"><summary>Emotes (${emotesFor(species).length})</summary>
+          <div class="dex-emotes">${emotesFor(species).map(e => {
+    const open = mode === 'view' || mode === 'starter' || (have && e.minStage <= myStage);
+    return `<span class="${open ? '' : 'locked'}" title="${open ? '' : 'Se desbloquea en: ' + sp.names[e.minStage]}">${open ? e.bubble : '🔒'} ${e.label}</span>`;
+  }).join('')}</div>
+        </details>
+        <details class="dex-details"><summary>Línea evolutiva</summary>
+          <div class="dex-evo">${evo}</div>
+        </details>
         <div class="dex-actions">${actions}</div>
       </div>
     </div>`);
