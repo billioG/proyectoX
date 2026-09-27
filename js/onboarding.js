@@ -369,7 +369,13 @@ function shouldShowOnboarding() {
 // como para "Ver tutorial de nuevo" desde el perfil -- ya no hace falta
 // recargar la página para volver a correr el tour.
 window.startOnboardingTour = function startOnboardingTour() {
-  const steps = window.userRole === 'estudiante' ? STUDENT_TOUR_STEPS : TEACHER_TOUR_STEPS;
+  let steps = window.userRole === 'estudiante' ? STUDENT_TOUR_STEPS : TEACHER_TOUR_STEPS;
+  // "Bonos y Desempeño" está oculto del menú si el docente no es del
+  // equipo 1bot (ver setupNavigationUI en auth.js) -- sin esto el tour
+  // resaltaría un elemento invisible.
+  if (window.userRole === 'docente' && !window.userData?.is_1bot_team) {
+    steps = steps.filter(s => s.element !== '#nav-doc-bonus' && s.element !== '#main-content-area-bonus');
+  }
   runGuidedTour(steps);
 };
 

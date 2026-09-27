@@ -541,11 +541,26 @@ function updateHeaderUI() {
   if (typeof window.renderDevModeToggle === 'function') window.renderDevModeToggle();
 }
 
+// Feature todavía en desarrollo (no probada en hardware real): se oculta
+// del menú de docente y admin hasta terminarla. La funcionalidad sigue
+// intacta -- solo hay que borrar este bloque para volver a mostrarla.
+const NODE_USB_FEATURE_READY = false;
+
 function setupNavigationUI() {
   ['nav-estudiante', 'nav-docente', 'nav-admin', 'nav-coordinador'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = id === `nav-${userRole}` ? 'block' : 'none';
   });
+
+  // "Bonos y Desempeño" es el programa de retribución de docentes 1bot
+  // (asistencia con geocerca, evidencia fotográfica, etc.) -- no aplica a
+  // docentes de otras escuelas ni al docente de demostración.
+  const bonusNav = document.getElementById('nav-doc-bonus');
+  if (bonusNav) bonusNav.style.display = window.userData?.is_1bot_team ? 'flex' : 'none';
+
+  if (!NODE_USB_FEATURE_READY) {
+    document.querySelectorAll('.nav-node-usb').forEach(el => { el.style.display = 'none'; });
+  }
 }
 
 function showMandatoryPasswordChangeModal() {
