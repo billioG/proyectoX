@@ -34,8 +34,7 @@ alter table public.projects enable row level security;
 
 drop policy if exists "projects_select_restrict_private_school" on public.projects;
 create policy "projects_select_restrict_private_school"
-  on public.projects for select
-  as restrictive
+  on public.projects as restrictive for select
   using (
     public.is_admin()
     or exists (
