@@ -9,6 +9,7 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { openDb, getMeta } from './db.js';
 import { runSync, loadConfig } from './sync.js';
+import { runUsbSync } from './usb-sync.js';
 
 const NODE_DIR = path.dirname(fileURLToPath(import.meta.url));
 const APP_DIR = path.resolve(NODE_DIR, '..');
@@ -231,3 +232,22 @@ async function trySync() {
 }
 setTimeout(trySync, 5000);
 setInterval(trySync, (config.syncEveryMinutes || 10) * 60 * 1000);
+
+// Sync por USB: revisa cada 20 s si hay una memoria con carpeta QUETZAL.
+// Solo reescribe la USB si cambió algo desde la última vez, para no
+// escribir sin parar mientras la memoria queda conectada.
+let lastUsbSignature = '';
+setInterval(() => {
+  if (syncing) return;
+  try {
+    const sig = JSON.stringify([
+      db.prepare('SELECT COUNT(*) n, MAX(updated_at) m FROM completions WHERE dirty = 1').get(),
+      db.prepare('SELECT COUNT(*) n FROM students WHERE pin_dirty = 1').get(),
+      db.prepare('SELECT COUNT(*) n FROM session_logs WHERE dirty = 1').get(),
+    ]);
+    const found = runUsbSync(db, config, (m) => console.log(m), { skipIfSame: sig === lastUsbSignature });
+    lastUsbSignature = found ? sig : '';
+  } catch (e) {
+    console.log('⚠️ USB:', e.message);
+  }
+}, 20000);

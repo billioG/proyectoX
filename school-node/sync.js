@@ -2,24 +2,45 @@
 // Sube: progreso, PIN creados en la escuela y sesiones. Baja: alumnos,
 // cursos, progreso y archivos de la escuela (solo los que cambiaron).
 // Se puede correr a mano:  node sync.js
+// Sin internet en la escuela: ver usb-sync.js (misma lógica, por memoria USB).
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openDb, setMeta, getMeta } from './db.js';
 
+// Lo pendiente de subir a la nube (lo usa también la sincronización por USB).
+export function buildPush(db) {
+  return {
+    completions: db.prepare('SELECT lesson_id, student_id, score, status, updated_at FROM completions WHERE dirty = 1').all(),
+    pins: db.prepare('SELECT id AS student_id, pin_hash, pin_salt, pin_updated_at FROM students WHERE pin_dirty = 1').all(),
+    sessions: db.prepare('SELECT id, student_id, device, entered_at FROM session_logs WHERE dirty = 1').all(),
+  };
+}
+
 export async function runSync(db, config, log = console.log) {
-  const pushCompletions = db.prepare('SELECT lesson_id, student_id, score, status, updated_at FROM completions WHERE dirty = 1').all();
-  const pushPins = db.prepare('SELECT id AS student_id, pin_hash, pin_salt, pin_updated_at FROM students WHERE pin_dirty = 1').all();
-  const pushSessions = db.prepare('SELECT id, student_id, device, entered_at FROM session_logs WHERE dirty = 1').all();
+  const push = buildPush(db);
 
   const res = await fetch(`${config.cloudUrl}/functions/v1/node-sync`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-node-token': config.nodeToken },
-    body: JSON.stringify({ push: { completions: pushCompletions, pins: pushPins, sessions: pushSessions } }),
+    body: JSON.stringify({ push }),
     signal: AbortSignal.timeout(120000),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || `node-sync respondió ${res.status}`);
+
+  applyPull(db, data, push);
+  log(`✅ Sync: ${data.students?.length || 0} alumnos, ${data.courses?.length || 0} cursos. Subido: ${JSON.stringify(data.applied)}`);
+  await downloadFiles(db, config, log);
+  return data.applied;
+}
+
+// Aplica lo que mandó la nube y marca como subido lo que ella confirmó
+// (`pushed` = lo que se le mandó). Compartido por internet y USB.
+export function applyPull(db, data, pushed = {}) {
+  const pushCompletions = pushed.completions || [];
+  const pushPins = pushed.pins || [];
+  const pushSessions = pushed.sessions || [];
 
   const apply = db.transaction(() => {
     // Lo que se subió deja de estar pendiente (salvo que haya cambiado
@@ -87,10 +108,6 @@ export async function runSync(db, config, log = console.log) {
     setMeta(db, 'last_sync_at', data.server_time || new Date().toISOString());
   });
   apply();
-
-  log(`✅ Sync: ${data.students?.length || 0} alumnos, ${data.courses?.length || 0} cursos. Subido: ${JSON.stringify(data.applied)}`);
-  await downloadFiles(db, config, log);
-  return data.applied;
 }
 
 // Descarga los archivos que faltan o cambiaron (6 en paralelo).

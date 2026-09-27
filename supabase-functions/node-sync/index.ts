@@ -55,20 +55,76 @@ async function listStorageRecursive(admin: any, path: string): Promise<{ path: s
   return out;
 }
 
-Deno.serve(async (req) => {
-  if (req.method !== 'POST') return json({ error: 'Método no permitido' }, 405);
+// ---- Sincronización por USB (usb-sync.js en el nodo) ----
+// El docente sube desde el navegador el paquete que dejó el nodo en la
+// USB. No trae el token del nodo (solo su hash): la autorización es la
+// sesión del docente, que tiene que estar asignado a la escuela del nodo
+// (o ser admin). La respuesta va cifrada con la llave pública del nodo.
+const ALLOWED_ORIGINS = new Set(['https://clases.yoaprendo.online', 'https://billiog.github.io']);
 
-  const token = req.headers.get('x-node-token') || '';
-  if (token.length < 32) return json({ error: 'Token de nodo requerido' }, 401);
+function toBase64(bytes: Uint8Array): string {
+  let s = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+
+async function encryptForNode(publicSpkiB64: string, payload: unknown) {
+  const der = Uint8Array.from(atob(publicSpkiB64), c => c.charCodeAt(0));
+  const rsa = await crypto.subtle.importKey('spki', der, { name: 'RSA-OAEP', hash: 'SHA-256' }, false, ['encrypt']);
+  const aes = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt']);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const data = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, aes, new TextEncoder().encode(JSON.stringify(payload))));
+  const rawKey = new Uint8Array(await crypto.subtle.exportKey('raw', aes));
+  const key = new Uint8Array(await crypto.subtle.encrypt({ name: 'RSA-OAEP' }, rsa, rawKey));
+  return { alg: 'RSA-OAEP-256+A256GCM', key: toBase64(key), iv: toBase64(iv), data: toBase64(data) };
+}
+
+Deno.serve(async (req) => {
+  const origin = req.headers.get('origin') || '';
+  const cors: Record<string, string> = origin ? {
+    'Access-Control-Allow-Origin': ALLOWED_ORIGINS.has(origin) ? origin : 'https://clases.yoaprendo.online',
+    'Access-Control-Allow-Headers': 'authorization, content-type, apikey',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  } : {};
+  if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
+  const reply = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', ...cors } });
+  if (req.method !== 'POST') return reply({ error: 'Método no permitido' }, 405);
 
   const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
-  const { data: node } = await admin.from('school_nodes')
-    .select('id, school_code, name, revoked_at').eq('token_hash', await sha256Hex(token)).maybeSingle();
-  if (!node || node.revoked_at) return json({ error: 'Nodo no autorizado o revocado' }, 401);
+  const token = req.headers.get('x-node-token') || '';
+  const body = await req.json().catch(() => ({}));
+  let node: any = null;
+  let usb: any = null;
+
+  if (token) {
+    if (token.length < 32) return reply({ error: 'Token de nodo requerido' }, 401);
+    const { data } = await admin.from('school_nodes')
+      .select('id, school_code, name, revoked_at').eq('token_hash', await sha256Hex(token)).maybeSingle();
+    node = data;
+  } else {
+    // Paquete USB traído por un docente.
+    usb = body?.usb;
+    const authHeader = req.headers.get('Authorization') || '';
+    const { data: { user } } = await admin.auth.getUser(authHeader.replace(/^Bearer\s+/i, ''));
+    if (!user) return reply({ error: 'Iniciá sesión como docente o administrador' }, 401);
+    if (!/^[0-9a-f]{64}$/.test(usb?.node?.token_hash || '') || typeof usb?.public_key !== 'string') {
+      return reply({ error: 'El archivo de la USB no es válido' }, 400);
+    }
+    const { data } = await admin.from('school_nodes')
+      .select('id, school_code, name, revoked_at').eq('token_hash', usb.node.token_hash).maybeSingle();
+    node = data;
+    if (node) {
+      const { data: teacher } = await admin.from('teachers').select('role').eq('id', user.id).maybeSingle();
+      const isAdmin = teacher?.role === 'admin';
+      const { data: assigned } = await admin.from('teacher_assignments').select('id').eq('teacher_id', user.id).eq('school_code', node.school_code).limit(1);
+      if (!teacher || (!isAdmin && !assigned?.length)) return reply({ error: 'Solo un docente de esa escuela o un administrador puede sincronizar este nodo' }, 403);
+    }
+  }
+  if (!node || node.revoked_at) return reply({ error: 'Nodo no autorizado o revocado' }, 401);
 
   try {
-    const body = await req.json().catch(() => ({}));
-    const push = body?.push || {};
+    const push = (usb ? usb.push : body?.push) || {};
 
     const students = await fetchAll((from, to) => admin.from('students')
       .select('id, username, full_name, grade, section, profile_photo_url, status, companion_species, gems_earned_total, companion_equipped, pin_hash, pin_salt, pin_updated_at')
@@ -146,10 +202,10 @@ Deno.serve(async (req) => {
     const serverTime = new Date().toISOString();
     await admin.from('school_nodes').update({
       last_sync_at: serverTime,
-      last_sync_info: { students: students.length, courses: courses.length, files: files.length, appliedCompletions, appliedPins, appliedSessions },
+      last_sync_info: { via: usb ? 'usb' : 'internet', students: students.length, courses: courses.length, files: files.length, appliedCompletions, appliedPins, appliedSessions },
     }).eq('id', node.id);
 
-    return json({
+    const pull = {
       server_time: serverTime,
       node: { id: node.id, name: node.name, school_code: node.school_code },
       storage_base: storagePrefix,
@@ -158,8 +214,23 @@ Deno.serve(async (req) => {
       completions: allCompletions,
       files,
       applied: { completions: appliedCompletions, pins: appliedPins, sessions: appliedSessions },
+    };
+
+    if (!usb) return reply(pull);
+
+    // USB: todo lo personal va cifrado para ese nodo; en claro solo la
+    // lista de archivos de cursos que la computadora tiene que bajar.
+    const have = new Map((usb.have_files || []).map((f: any) => [f.path, f.etag || '']));
+    const missing = files.filter(f => !have.has(f.path) || (f.etag && have.get(f.path) !== f.etag));
+    return reply({
+      generated_at: serverTime,
+      node: { name: node.name, school_code: node.school_code },
+      storage_base: storagePrefix,
+      files_to_copy: missing,
+      applied: pull.applied,
+      envelope: await encryptForNode(usb.public_key, { ...pull, pushed: push }),
     });
   } catch (e) {
-    return json({ error: String((e as any)?.message || e) }, 500);
+    return reply({ error: String((e as any)?.message || e) }, 500);
   }
 });

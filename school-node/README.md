@@ -12,8 +12,10 @@ con la nube cuando consigue señal (cable, hotspot del celular o, más adelante,
 - Cada 10 minutos intenta sincronizar: sube progreso, PIN y sesiones; baja
   alumnos, cursos, progreso y los archivos nuevos.
 
-Todavía falta: que la app use el nodo (login con PIN, cursos y progreso),
-HTTPS, instalador de un comando y sincronización por USB.
+- **Sincronización por memoria USB** para escuelas donde la Raspberry nunca
+  consigue internet (ver abajo).
+
+Todavía falta: HTTPS e instalador de un comando.
 
 ## Requisitos
 
@@ -76,6 +78,42 @@ WantedBy=multi-user.target
 EOF
 sudo systemctl enable --now quetzal-node
 ```
+
+## Sincronizar por memoria USB (sin internet en la escuela)
+
+Sirve también para la **primera carga** de una Raspberry que nunca tuvo
+internet: basta con el token del nodo en `config.json`.
+
+1. En una memoria USB, crear una carpeta llamada **`QUETZAL`**.
+2. **En la escuela:** conectarla a la Raspberry. En menos de un minuto aparecen
+   `de-la-escuela-XXXXXXXX.json` y `estado-XXXXXXXX.txt`. Cuando el estado dice
+   **"YA PODÉS SACAR LA USB"**, sacarla.
+3. **En una computadora con internet** (Chrome o Edge): entrar a Quetzal LMS
+   como docente de esa escuela o admin → menú **Nodo escolar (USB)** → **Elegir
+   la carpeta QUETZAL**. La app sube el avance de los alumnos y copia a la USB la
+   respuesta y los archivos de cursos que falten (carpeta `archivos/`).
+4. **De vuelta en la escuela:** conectar la USB. La Raspberry aplica todo y lo
+   confirma en `estado-XXXXXXXX.txt`.
+
+Seguridad: la USB **no** lleva el token del nodo, y los datos de alumnos que
+vuelven (`para-la-escuela-….json`) van **cifrados**: solo esa Raspberry los
+puede leer (llave en `data/usb-key.pem`, que nunca sale de la Raspberry). Solo
+un docente asignado a la escuela del nodo, o un admin, puede sincronizarlo.
+
+### Montaje automático de la USB (Raspberry Pi OS Lite)
+
+La versión con escritorio monta las memorias sola en `/media/<usuario>/`. En
+la versión **Lite** hace falta esta regla (una sola vez):
+
+```bash
+sudo tee /etc/udev/rules.d/99-quetzal-usb.rules >/dev/null <<'EOF'
+ACTION=="add", SUBSYSTEMS=="usb", SUBSYSTEM=="block", ENV{ID_FS_USAGE}=="filesystem", RUN{program}+="/usr/bin/systemd-mount --no-block --automount=yes --collect $devnode /media/quetzal-usb"
+EOF
+sudo udevadm control --reload-rules
+```
+
+El nodo busca la carpeta `QUETZAL` en `/media`, `/mnt` y `/run/media`. Para
+otra ruta, definir la variable de entorno `QUETZAL_USB_DIR`.
 
 ## Seguridad
 

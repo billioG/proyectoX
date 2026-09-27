@@ -6,6 +6,7 @@ Al publicar una versión nueva, agregá una línea arriba de todo (ver CONTRIBUT
 
 ## 2026-09-26
 
+- School node sync by USB drive: node writes pending progress to a QUETZAL folder, a teacher uploads it from any computer (menu Nodo escolar (USB)) and brings back an encrypted reply plus missing course files (v1.0.105)
 - Pet sounds audible on phones (audio unlock, compressor and boost, mid-range voices, iPhone silent-switch bypass, Probar sonido diagnostics) and 6 rotating did-you-know facts per species with an Otro dato button (v1.0.104)
 - Service worker always revalidates own files (GitHub Pages 10-minute HTTP cache served old code after deploys), fixes the offline app.js cache key and shows an update banner when a new version is installed (v1.0.103)
 - Species-specific pet voices for every emote and stronger vibration patterns (v1.0.102)
