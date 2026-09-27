@@ -2,9 +2,11 @@
 // DASHBOARD DE RESULTADOS ACADÉMICOS (VISTA ADMINISTRATIVA)
 // ================================================
 
-window.loadAdminEvalReport = async function loadAdminEvalReport() {
+window.loadAdminEvalReport = async function loadAdminEvalReport(opts = {}) {
+    const { containerId = 'admin-eval-report-container', schoolCodes = null, cacheKey = 'admin_academic_evals' } = opts;
+    window._lastEvalReportOpts = opts; // el botón "Actualizar" recarga con las mismas opciones
     console.log('📈 Cargando reporte de resultados académicos...');
-    const container = document.getElementById('admin-eval-report-container');
+    const container = document.getElementById(containerId);
     if (!container) return;
 
     if (!container.innerHTML || container.innerHTML.includes('fa-circle-notch')) {
@@ -19,7 +21,7 @@ window.loadAdminEvalReport = async function loadAdminEvalReport() {
     try {
         const _supabase = window._supabase;
         const fetchWithCache = window.fetchWithCache;
-        await fetchWithCache('admin_academic_evals', async () => {
+        await fetchWithCache(cacheKey, async () => {
             // Obtenemos los proyectos con su puntaje directo (score) y relación con estudiantes
             const [projectsRes, schoolsRes] = await Promise.all([
                 _supabase.from('projects').select('id, title, score, students(school_code)'),
@@ -32,11 +34,21 @@ window.loadAdminEvalReport = async function loadAdminEvalReport() {
             // Cuentas/establecimiento de prueba interna -- no deben contaminar
             // el reporte académico real.
             const testSchoolCodes = window.getTestSchoolCodes ? window.getTestSchoolCodes(schoolsRes.data) : new Set();
-            const schools = (schoolsRes.data || []).filter(s => !window.isTestSchoolCode(testSchoolCodes, s.code));
-            const projects = (projectsRes.data || []).filter(p => {
+            let schools = (schoolsRes.data || []).filter(s => !window.isTestSchoolCode(testSchoolCodes, s.code));
+            let projects = (projectsRes.data || []).filter(p => {
                 const student = Array.isArray(p.students) ? p.students[0] : p.students;
                 return !student || !window.isTestSchoolCode(testSchoolCodes, student.school_code);
             });
+
+            // Coordinador: solo el/los establecimiento(s) de sus docentes.
+            if (schoolCodes) {
+                const codeSet = new Set(schoolCodes);
+                schools = schools.filter(s => codeSet.has(s.code));
+                projects = projects.filter(p => {
+                    const student = Array.isArray(p.students) ? p.students[0] : p.students;
+                    return student && codeSet.has(student.school_code);
+                });
+            }
 
             return { projects, schools };
         }, (snapshot) => {
@@ -113,7 +125,7 @@ window.renderEvalDashboard = function renderEvalDashboard(container, stats) {
                 <h1 class="text-3xl font-black text-slate-800 dark:text-white tracking-tight leading-none mb-2"><i class="fas fa-chart-line"></i> Resultados Académicos</h1>
                 <p class="text-slate-500 dark:text-slate-400 font-medium">Análisis de calidad de proyectos y rendimiento por establecimiento.</p>
              </div>
-             <button class="btn-secondary-tw px-5 h-10 text-xs uppercase font-bold tracking-widest" onclick="loadAdminEvalReport()">
+             <button class="btn-secondary-tw px-5 h-10 text-xs uppercase font-bold tracking-widest" onclick="loadAdminEvalReport(window._lastEvalReportOpts)">
                 <i class="fas fa-sync-alt animate-spin-slow"></i> ACTUALIZAR
              </button>
         </div>

@@ -62,6 +62,8 @@ seguras de re-ejecutar):
 - [ ] `migrations/announcements-targeting.sql` (v1.0.99) — reemplaza las reglas de acceso de avisos: después de correrla, probar que un alumno siga viendo los avisos de su clase.
 - [ ] `migrations/guardian-consent.sql` (v1.0.100) — **antes** de redesplegar `guardian-portal`.
 - [ ] `migrations/impact-metrics.sql` (v1.0.100) — tablero de impacto del admin.
+- [ ] `migrations/coordinador-role.sql` (si no la corriste ya) — necesaria antes de la siguiente.
+- [ ] `migrations/school-project-visibility.sql` (v1.0.112) — switch de Hall de la Fama por establecimiento y reportes del coordinador.
 
 Redesplegar estas Edge Functions (cambiaron en las últimas versiones):
 

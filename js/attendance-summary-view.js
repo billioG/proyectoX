@@ -7,8 +7,12 @@ let schoolsMap = {}; // Maps school_code to school_name
 let schoolsAddressMap = {}; // Maps school_code to school_address
 let currentFilterDate = new Date(); // To track selected month
 
-window.showAttendanceSummaryView = async function showAttendanceSummaryView() {
-    const container = document.getElementById('admin-attendance-report-container');
+let currentContainerId = 'admin-attendance-report-container';
+
+window.showAttendanceSummaryView = async function showAttendanceSummaryView(opts = {}) {
+    const { containerId = 'admin-attendance-report-container', teacherIds = null, cacheKey = 'admin_global_attendance' } = opts;
+    currentContainerId = containerId;
+    const container = document.getElementById(containerId);
     if (!container) return;
 
     if (!container.innerHTML || container.innerHTML.includes('fa-circle-notch')) {
@@ -24,20 +28,23 @@ window.showAttendanceSummaryView = async function showAttendanceSummaryView() {
         const _supabase = window._supabase;
         const fetchWithCache = window.fetchWithCache;
 
-        await fetchWithCache('admin_global_attendance', async () => {
-            // 1. Cargar registros de asistencia y datos de escuelas en paralelo
+        await fetchWithCache(cacheKey, async () => {
+            // 1. Cargar registros de asistencia y datos de escuelas en paralelo.
+            // Coordinador: solo la asistencia tomada por sus docentes asignados
+            // (RLS también lo exige -- ver migrations/school-project-visibility.sql).
+            let attendanceQuery = _supabase
+                .from('attendance')
+                .select(`
+                    *,
+                    students!fk_attendance_student(full_name, school_code),
+                    teachers!fk_attendance_teacher(full_name)
+                `)
+                .order('date', { ascending: false });
+            if (teacherIds) attendanceQuery = attendanceQuery.in('teacher_id', teacherIds);
+
             const [attendanceResult, schoolsResult] = await Promise.all([
-                _supabase
-                    .from('attendance')
-                    .select(`
-                        *,
-                        students!fk_attendance_student(full_name, school_code),
-                        teachers!fk_attendance_teacher(full_name)
-                    `)
-                    .order('date', { ascending: false }),
-                _supabase
-                    .from('schools')
-                    .select('code, name, address')
+                attendanceQuery,
+                _supabase.from('schools').select('code, name, address')
             ]);
 
             if (attendanceResult.error) throw attendanceResult.error;
@@ -245,7 +252,7 @@ window.renderAnalyticsView = function renderAnalyticsView(container) {
 
 window.changeFilterMonth = function (delta) {
     currentFilterDate.setMonth(currentFilterDate.getMonth() + delta);
-    const container = document.getElementById('admin-attendance-report-container');
+    const container = document.getElementById(currentContainerId);
     if (container) window.renderAnalyticsView(container);
 }
 

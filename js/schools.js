@@ -341,6 +341,20 @@ window.editSchool = async function editSchool(schoolId) {
                     <p class="text-[0.6rem] text-amber-600/70 mt-2 italic ml-1">* Esta meta personalizada para el establecimiento prevalece sobre el estándar global.</p>
                 </div>
             </div>
+
+            <div class="col-span-full">
+                <div class="p-4 rounded-xl bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/30 flex items-center justify-between gap-4">
+                    <div>
+                        <label class="text-[0.6rem] font-black uppercase text-indigo-600 dark:text-indigo-400 tracking-widest mb-1 block">Proyectos en el Hall de la Fama</label>
+                        <p class="text-[0.65rem] text-indigo-600/70 dark:text-indigo-400/70">Si está apagado, los proyectos de este establecimiento solo los ven sus propios docentes y alumnos: no salen en el ranking global ni en el feed de otras escuelas.</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                        <input type="checkbox" id="edit-school-public-projects" class="sr-only peer" ${school.public_projects !== false ? 'checked' : ''}>
+                        <div class="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:bg-indigo-500 transition-colors"></div>
+                        <div class="absolute left-0.5 top-0.5 bg-white w-5 h-5 rounded-full transition-transform peer-checked:translate-x-5"></div>
+                    </label>
+                </div>
+            </div>
           </div>
         </div>
 
@@ -431,6 +445,7 @@ window.saveSchoolChanges = async function saveSchoolChanges(schoolId) {
   const schedule = document.getElementById('edit-school-schedule')?.value;
   const area = document.getElementById('edit-school-area')?.value;
   const projectsTarget = parseInt(document.getElementById('edit-school-projects-target')?.value);
+  const publicProjects = document.getElementById('edit-school-public-projects')?.checked !== false;
 
   const lat = parseFloat(document.getElementById('edit-school-lat')?.value);
   const lng = parseFloat(document.getElementById('edit-school-lng')?.value);
@@ -460,6 +475,7 @@ window.saveSchoolChanges = async function saveSchoolChanges(schoolId) {
         schedule,
         area,
         projects_per_bimestre: isNaN(projectsTarget) ? 4 : projectsTarget,
+        public_projects: publicProjects,
         latitude: isNaN(lat) ? null : lat,
         longitude: isNaN(lng) ? null : lng,
         geofence_radius: isNaN(radius) ? 100 : radius

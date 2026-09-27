@@ -10,6 +10,7 @@ const MODULE_MAP = {
     'admin-dashboard': ['js/admin-dashboard.js', 'js/admin-waivers.js', 'js/admin-reports.js', 'js/team-performance-widget.js'],
     'admin-teacher-performance': ['js/admin-performance.js'],
     'coordinator-dashboard': ['js/admin-performance.js', 'js/coordinator.js'],
+    'coordinator-reports': ['js/admin-evaluations.js', 'js/attendance-summary-view.js', 'js/coordinator.js'],
     'admin-success': ['js/admin-success.js', 'js/team-performance-widget.js', 'js/kpi-engine.js'],
     'schools': ['js/schools.js', 'js/programs.js'],
     'students': ['js/students.js', 'js/pdf-processor.js'],
@@ -223,6 +224,9 @@ export function loadViewContent(view) {
         case 'coordinator-dashboard':
             if (userRole === 'coordinador' && typeof window.loadCoordinatorDashboard === 'function') window.loadCoordinatorDashboard();
             break;
+        case 'coordinator-reports':
+            if (userRole === 'coordinador' && typeof window.loadCoordinatorReports === 'function') window.loadCoordinatorReports();
+            break;
         case 'feed':
             if (typeof window.loadFeed === 'function') window.loadFeed();
             break;
@@ -286,7 +290,7 @@ const ADMIN_ONLY_VIEWS = new Set([
     'schools', 'teachers', 'admin-attendance-report', 'admin-eval-report'
 ]);
 const STAFF_ONLY_VIEWS = new Set(['students']);
-const COORDINADOR_ONLY_VIEWS = new Set(['coordinator-dashboard']);
+const COORDINADOR_ONLY_VIEWS = new Set(['coordinator-dashboard', 'coordinator-reports']);
 
 function isViewAllowedForRole(view, role) {
     if (ADMIN_ONLY_VIEWS.has(view)) return role === 'admin';
