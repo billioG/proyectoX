@@ -17,7 +17,7 @@ puntos marcados con ⚖️ hay que confirmarlos con un abogado o notario.
 
 Pendiente:
 
-- [ ] Poner el **correo de contacto** del proyecto en `privacidad.html` (`id="contact-email"`).
+- [x] Poner el **correo de contacto** del proyecto en `privacidad.html` (`colegios@yoaprendo.online`).
 - [ ] ⚖️ Revisar la política con un abogado.
 - [ ] Definir qué hacer con alumnos **sin padre registrado**: la escuela puede recoger el consentimiento en papel (modelo abajo) y el docente registrar al padre después.
 - [ ] Acuerdo con cada escuela (convenio simple): la escuela autoriza el uso, designa un responsable y se compromete a informar a las familias.

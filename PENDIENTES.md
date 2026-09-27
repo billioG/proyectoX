@@ -40,9 +40,10 @@ del proyecto (necesitan contraseñas o acceso al panel de Supabase).
 - [x] Singular/plural en contadores ("1 evaluación recibida") (v1.0.107)
 - [x] Ranking explica el orden (votos primero, luego score) (v1.0.107)
 - [x] Ranking: entre alumnos se ve "Ana L.", no el nombre completo (v1.0.107)
-- [ ] Crear `colegios@yoaprendo.online` y `soporte@` con SPF, DKIM y DMARC; calentar el dominio 2 semanas
-- [ ] Poner ese correo en `privacidad.html` y cambiar "Este texto se revisará con asesoría legal" por la fecha de última revisión
-- [ ] Plantel de demostración: crear el docente demo desde la app y correr `migrations/demo-school.sql` (editar correo y clave al inicio). Asignarle una ruta publicada a sus 2 clases. Nunca demostrar con un plantel con menores reales.
+- [x] Crear `colegios@yoaprendo.online`
+- [ ] Verificar SPF, DKIM y DMARC de ese correo (mail-tester.com ≥ 9/10) y calentar el dominio 2 semanas
+- [x] Correo de contacto y fecha de última revisión en `privacidad.html` (v1.0.108)
+- [ ] Plantel de demostración: crear el docente "Docente Demostración" con `colegios@yoaprendo.online` desde la app, volver a correr `migrations/impact-metrics.sql` (excluye planteles demo del tablero de Impacto) y correr `migrations/demo-school.sql` (poner la clave de clase al inicio). Asignarle una ruta publicada a sus 2 clases. Nunca demostrar con un plantel con menores reales.
 - [ ] Publicar la página para colegios y enlazarla desde el pie de Quetzal ("Para colegios e instituciones")
 - [ ] Nombre legal = DPI = NIT en el acuerdo de piloto y facturas; inscripción SAT / FEL
 - [ ] No prometer en demos el nodo escolar ni la importación SIRE hasta probarlos en vivo
@@ -94,7 +95,7 @@ Redesplegar estas Edge Functions (cambiaron en las últimas versiones):
 - [x] Política de privacidad (`privacidad.html`), enlazada desde el login y el Portal de padres
 - [x] Consentimiento de padres en el portal, con fecha y versión; sin avisos a quien no acepta
 - [x] La IA recibe solo el primer nombre
-- [ ] Poner el **correo de contacto** en `privacidad.html` (`id="contact-email"`)
+- [x] Poner el **correo de contacto** en `privacidad.html` (`colegios@yoaprendo.online`)
 - [ ] Revisar la política con un abogado (lista de preguntas en la guía)
 - [ ] Registrar el software y la marca en el Registro de la Propiedad Intelectual
 - [ ] Elegir figura legal (asociación, empresa o ambas)

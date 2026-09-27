@@ -9,18 +9,21 @@
 --
 -- ANTES DE CORRER:
 --   1. Crear el docente de demo desde la app (admin → Docentes →
---      nuevo docente), por ejemplo "Docente Demostración" con un
---      correo tuyo del dominio del proyecto.
---   2. Poner ese correo abajo en v_teacher_email.
---   3. Poner la contraseña de clase que usarán los alumnos demo
+--      nuevo docente): "Docente Demostración", correo
+--      colegios@yoaprendo.online (ya está puesto abajo).
+--   2. Poner la contraseña de clase que usarán los alumnos demo
 --      en v_class_password (no la escribas en ningún material).
+--
+-- Ese docente y este plantel quedan fuera de los reportes del admin
+-- y del tablero de Impacto (js/test-accounts-filter.js e
+-- is_test_school_code en migrations/impact-metrics.sql).
 --
 -- Es seguro correrlo de nuevo: lo que ya existe no se duplica.
 -- Para quitar todo: migrations/demo-school-remove.sql
 -- ============================================================
 do $$
 declare
-  v_teacher_email  text := 'CORREO_DEL_DOCENTE_DEMO';
+  v_teacher_email  text := 'colegios@yoaprendo.online';
   v_class_password text := 'CAMBIAR_CLAVE_DEMO';
 
   v_school   text := 'DEMO-QUETZAL';
@@ -66,8 +69,8 @@ declare
      'Prototipo que enciende una luz y un zumbador al detectar vibración fuerte, pensado para simulacros de evacuación.', '4', '90', '8', '2']
   ];
 begin
-  if v_teacher_email = 'CORREO_DEL_DOCENTE_DEMO' or v_class_password = 'CAMBIAR_CLAVE_DEMO' then
-    raise exception 'Editá v_teacher_email y v_class_password al inicio del script antes de correrlo.';
+  if v_class_password = 'CAMBIAR_CLAVE_DEMO' then
+    raise exception 'Editá v_class_password al inicio del script antes de correrlo.';
   end if;
 
   select id into v_teacher from public.teachers where lower(email) = lower(v_teacher_email);

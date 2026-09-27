@@ -9,8 +9,9 @@
 // tocar código -- por default queda oculta (producción real).
 // ================================================
 
-const TEST_TEACHER_EMAILS = ['profebillio@gmail.com', 'billy@1bot.org'];
-const TEST_SCHOOL_NAME_PATTERN = /1bot/i;
+// colegios@ es también el docente del plantel de demostración (migrations/demo-school.sql).
+const TEST_TEACHER_EMAILS = ['profebillio@gmail.com', 'billy@1bot.org', 'colegios@yoaprendo.online'];
+const TEST_SCHOOL_NAME_PATTERN = /1bot|demostraci[oó]n/i;
 const DEV_MODE_KEY = 'PX_DEV_MODE';
 
 window.isDevModeEnabled = function isDevModeEnabled() {

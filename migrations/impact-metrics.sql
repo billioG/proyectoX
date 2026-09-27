@@ -6,9 +6,23 @@
 --   get_impact_metrics(desde, hasta) -> una fila por establecimiento
 --   get_impact_trend(meses)          -> evolución mensual de toda la red
 --
--- Solo admin. Excluye estudiantes dados de baja. ADITIVO. Seguro de
--- re-ejecutar.
+-- Solo admin. Excluye estudiantes dados de baja y los planteles de prueba
+-- o demostración (nombre con "1bot" o "Demostración", código DEMO-*): son
+-- cifras para postulaciones y no pueden incluir datos inventados.
+-- ADITIVO. Seguro de re-ejecutar.
 -- ============================================================
+
+create or replace function public.is_test_school_code(p_code text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(p_code ilike 'DEMO-%', false)
+      or exists (select 1 from public.schools s
+                  where s.code = p_code and s.name ~* '(1bot|demostraci[oó]n)');
+$$;
 
 create or replace function public.get_impact_metrics(p_from date, p_to date)
 returns jsonb
@@ -25,6 +39,7 @@ begin
   with st as (
     select id, school_code from public.students
     where coalesce(status, 'active') <> 'baja' and school_code is not null
+      and not public.is_test_school_code(school_code)
   ),
   enrolled as (select school_code, count(*) as n from st group by school_code),
   active as (
@@ -106,9 +121,12 @@ begin
     select to_char(m.month, 'YYYY-MM') as month,
            (select count(distinct a.user_id) from public.active_time_tracking a
              join public.students s on s.id = a.user_id
-             where date_trunc('month', a.activity_date) = m.month) as active_students,
+             where date_trunc('month', a.activity_date) = m.month
+               and not public.is_test_school_code(s.school_code)) as active_students,
            (select count(*) from public.lesson_completions lc
-             where date_trunc('month', lc.completed_at) = m.month) as lessons_completed
+             join public.students s on s.id = lc.student_id
+             where date_trunc('month', lc.completed_at) = m.month
+               and not public.is_test_school_code(s.school_code)) as lessons_completed
     from generate_series(
       date_trunc('month', now()) - make_interval(months => greatest(p_months, 1) - 1),
       date_trunc('month', now()),
