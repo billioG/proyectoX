@@ -66,6 +66,7 @@ seguras de re-ejecutar):
 - [ ] `migrations/school-project-visibility.sql` (v1.0.112) — switch de Hall de la Fama por establecimiento y reportes del coordinador.
 - [ ] `migrations/season-pass.sql` (si no la corriste ya) — necesaria antes de la siguiente.
 - [ ] `migrations/season-pass-companion-reward.sql` (v1.0.116) — el pase de temporada regala una mascota gratis en el nivel 18.
+- [ ] `migrations/guardian-paper-consent.sql` (v1.0.118) — consentimiento firmado en papel, registrado por el docente/admin.
 
 Redesplegar estas Edge Functions (cambiaron en las últimas versiones):
 
@@ -74,7 +75,7 @@ Redesplegar estas Edge Functions (cambiaron en las últimas versiones):
 - [ ] `ai-proxy` (modo tutor)
 - [ ] `notify-announcement` (avisos por colegio o grupo)
 - [ ] `notify-guardians` — **Verify JWT ON**
-- [ ] `guardian-portal` — **Verify JWT OFF** (redesplegar después de correr `guardian-consent.sql`: ahora registra el consentimiento de padres)
+- [ ] `guardian-portal` — **Verify JWT OFF** (redesplegar después de correr `guardian-consent.sql`: ahora registra el consentimiento de padres; desde v1.0.118 también guarda `consent_method: 'portal'`)
 
 ## 🟠 SMS a padres
 

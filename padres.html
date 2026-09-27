@@ -59,6 +59,7 @@
     </div>
     <div class="card" id="error-card" hidden>
       <p id="error" style="margin:0"></p>
+      <button class="btn" id="btn-retry" style="margin-top:.75rem">🔄 Reintentar</button>
     </div>
     <p class="muted" style="text-align:center"><a href="privacidad.html" target="_blank" rel="noopener">Política de privacidad</a></p>
   </main>
@@ -83,7 +84,14 @@
           body: JSON.stringify({ token, ...body }),
         });
       } catch {
-        throw new Error('Sin conexión a internet. Revisá tu señal e intentá de nuevo.');
+        // fetch() falla igual sin importar la causa real (sin señal, DNS,
+        // o un bloqueador de rastreadores/anuncios del navegador que
+        // corta las conexiones a dominios que no reconoce) -- por eso el
+        // mensaje no asegura que sea "sin internet" cuando el celular
+        // dice tener señal.
+        throw new Error(navigator.onLine
+          ? 'No se pudo conectar. Si tenés un bloqueador de anuncios o "modo privado" activado en el navegador, probá desactivarlo para este sitio, o abrí el enlace en otro navegador.'
+          : 'Sin conexión a internet. Revisá tu señal e intentá de nuevo.');
       }
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'No se pudo conectar');
@@ -161,10 +169,11 @@
       }
     }
 
-    (async () => {
+    async function init() {
       if (!/^[0-9a-f]{32}$/.test(token)) return showError('Este enlace no es válido. Pedile al docente el enlace del Portal de padres.');
       localStorage.setItem('PX_GUARDIAN_TOKEN', token);
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./service-worker.js', { updateViaCache: 'none' }).catch(() => {});
+      $('error-card').hidden = true;
       try {
         const info = await api({ action: 'info' });
         $('subtitle').textContent = `${info.student}${info.school ? ' · ' + info.school : ''}`;
@@ -198,7 +207,9 @@
       } catch (e) {
         showError(e.message);
       }
-    })();
+    }
+    $('btn-retry').onclick = () => { $('btn-retry').disabled = true; init().finally(() => { $('btn-retry').disabled = false; }); };
+    init();
   </script>
 </body>
 </html>

@@ -1132,9 +1132,11 @@ window.openGuardiansModal = async function openGuardiansModal(studentId, student
               </div>
               <div class="flex flex-col items-end gap-1">
                 ${withPush.has(g.id) ? '<span class="text-[0.6rem] font-black text-emerald-500 uppercase">🔔 Notificaciones activas</span>' : '<span class="text-[0.6rem] font-black text-slate-400 uppercase">Sin notificaciones</span>'}
-                ${g.consent_status === 'accepted' ? '<span class="text-[0.6rem] font-black text-emerald-500 uppercase">✓ Aceptó privacidad</span>'
-                  : g.consent_status === 'declined' ? '<span class="text-[0.6rem] font-black text-rose-500 uppercase">No aceptó · sin avisos</span>'
-                  : '<span class="text-[0.6rem] font-black text-amber-500 uppercase">Consentimiento pendiente</span>'}
+                ${g.consent_status === 'accepted'
+        ? `<span class="text-[0.6rem] font-black text-emerald-500 uppercase" title="${g.consent_method === 'paper' ? 'Firmado en papel en la inscripción' : 'Aceptado desde el portal de padres'}">✓ Aceptó privacidad${g.consent_method === 'paper' ? ' (papel)' : ''}</span>`
+        : g.consent_status === 'declined' ? '<span class="text-[0.6rem] font-black text-rose-500 uppercase">No aceptó · sin avisos</span>'
+          : `<span class="text-[0.6rem] font-black text-amber-500 uppercase">Consentimiento pendiente</span>
+             <button class="h-6 px-2 rounded-md bg-amber-50 text-amber-700 text-[0.55rem] font-black uppercase" title="Si ya firmó la autorización en papel al inscribirse en el colegio" onclick="window.recordPaperConsent('${g.id}', this)">Ya lo firmó en papel</button>`}
                 ${g.phone ? `<label class="text-[0.6rem] font-bold text-slate-500 flex items-center gap-1"><input type="checkbox" ${g.sms_enabled ? 'checked' : ''} onchange="window.toggleGuardianSms('${g.id}', this.checked)"> SMS</label>` : ''}
               </div>
             </div>
@@ -1176,6 +1178,21 @@ function reopenGuardians() {
   const c = window._guardiansCtx;
   if (c) window.openGuardiansModal(c.studentId, c.studentName);
 }
+
+// Muchos padres ya firman la autorización en la inscripción del colegio,
+// en papel: el docente/admin lo registra acá sin depender de que el
+// padre entre a su portal desde el celular.
+window.recordPaperConsent = async function recordPaperConsent(guardianId, btn) {
+  if (btn) { btn.disabled = true; btn.textContent = '...'; }
+  const { error } = await window._supabase.rpc('record_guardian_paper_consent', { p_guardian: guardianId });
+  if (error) {
+    window.showToast('<i class="fas fa-circle-xmark"></i> ' + (/does not exist/.test(error.message) ? 'Falta correr migrations/guardian-paper-consent.sql' : error.message), 'error');
+    if (btn) { btn.disabled = false; btn.textContent = 'Ya lo firmó en papel'; }
+    return;
+  }
+  window.showToast('<i class="fas fa-circle-check"></i> Consentimiento registrado', 'success');
+  reopenGuardians();
+};
 
 window.addGuardian = async function addGuardian(btn) {
   const name = document.getElementById('gd-name').value.trim();

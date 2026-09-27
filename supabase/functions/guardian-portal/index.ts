@@ -60,6 +60,7 @@ Deno.serve(async (req) => {
         consent_status: accepted ? 'accepted' : 'declined',
         consent_version: 1,
         consent_at: new Date().toISOString(),
+        consent_method: 'portal',
       }).eq('id', g.id);
       if (error) return json({ error: error.message }, 500);
       return json({ ok: true });
