@@ -784,7 +784,17 @@ window.ensureCompanionStyles = function ensureCompanionStyles() {
     .dex-mini .n { font-size:.6rem; font-weight:800; opacity:.8; }
     .dex-mini .nm { font-size:.95rem; font-weight:900; line-height:1.1; }
     .dex-mini .tag { position:absolute; top:.5rem; right:.5rem; font-size:.55rem; font-weight:900; padding:.15rem .45rem; border-radius:9999px; background:rgba(0,0,0,.35); }
+    /* Mascota sobre fondo de su mismo color (jaguar naranja en tarjeta
+       naranja): círculo de luz detrás y contorno suave para que resalte. */
+    .dex-mini .art, .dex-top .art, .cp-card .cp-art, .wd-preview, .cp-spot {
+      background: radial-gradient(circle at 50% 56%, rgba(255,255,255,.72) 0 40%, rgba(255,255,255,.28) 55%, rgba(255,255,255,0) 70%);
+      border-radius: 50%;
+    }
+    .dex-mini .art .cp-svg, .dex-top .art .cp-svg, .cp-card .cp-art .cp-svg, .wd-preview .cp-svg, .cp-spot .cp-svg {
+      filter: drop-shadow(0 0 1.5px rgba(15,23,42,.55)) drop-shadow(0 6px 6px rgba(15,23,42,.28));
+    }
     .dex-sil .cp-svg { filter: brightness(0) opacity(.3) !important; }
+    .dex-mini.dex-sil .art, .dex-top .art.dex-sil { background: radial-gradient(circle at 50% 56%, rgba(255,255,255,.35) 0 40%, rgba(255,255,255,0) 70%); }
     .dex-card { background:#fff; color:#0f172a; border-radius:1.75rem; overflow:hidden; max-width:24rem; margin:0 auto; text-align:left; }
     .dex-top { position:relative; height:14.5rem; background:var(--dex-c); border-radius:0 0 50% 50% / 0 0 20% 20%; display:flex; align-items:center; justify-content:center; }
     .dex-top .dex-bg { position:absolute; font-size:9rem; opacity:.18; right:-1rem; top:-1rem; pointer-events:none; }
@@ -894,7 +904,138 @@ const EMOTE_MS = {
   peck: 1200, bounce: 1300, swing: 1600, roll: 1100, float: 1800, walk: 1800, tailwhip: 1200, dig: 1300, stand: 1500,
 };
 
-window.playCompanionEmote = function playCompanionEmote(svg) {
+// ---------- SONIDOS de los emotes ----------
+// Sintetizados con Web Audio (sin archivos: funcionan sin internet y no
+// pesan). Suenan solo cuando el alumno TOCA la mascota -- los emotes
+// automáticos van en silencio para no hacer ruido en clase. Se pueden
+// silenciar (preferencia guardada en este dispositivo).
+const PET_SOUND_KEY = 'PX_PET_SOUND';
+let petAudio = null;
+function petSoundOn() {
+  try { return localStorage.getItem(PET_SOUND_KEY) !== 'off'; } catch { return true; }
+}
+window.togglePetSound = function togglePetSound(btn) {
+  const on = !petSoundOn();
+  try { localStorage.setItem(PET_SOUND_KEY, on ? 'on' : 'off'); } catch { /* sin almacenamiento */ }
+  document.querySelectorAll('[data-pet-sound]').forEach(b => { b.innerHTML = petSoundIcon(); b.title = on ? 'Silenciar mascotas' : 'Activar sonidos'; });
+  if (on) playPetSound('hop', null);
+};
+function petSoundIcon() {
+  return petSoundOn() ? '<i class="fas fa-volume-high"></i>' : '<i class="fas fa-volume-xmark"></i>';
+}
+window.petSoundButtonHtml = function petSoundButtonHtml(extraStyle = '') {
+  return `<button type="button" data-pet-sound onclick="window.togglePetSound(this)" title="${petSoundOn() ? 'Silenciar mascotas' : 'Activar sonidos'}"
+    style="border:0;border-radius:9999px;width:2.2rem;height:2.2rem;cursor:pointer;background:rgba(255,255,255,.12);color:inherit;${extraStyle}">${petSoundIcon()}</button>`;
+};
+
+function audioCtx() {
+  if (!petAudio) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    petAudio = new AC();
+  }
+  if (petAudio.state === 'suspended') petAudio.resume();
+  return petAudio;
+}
+
+// Tono con barrido de frecuencia (pío, boing, aullido...).
+function tone(ctx, { from, to = from, dur = 0.2, type = 'sine', vol = 0.12, at = 0, vibrato = 0 }) {
+  const t0 = ctx.currentTime + at;
+  const osc = ctx.createOscillator();
+  const g = ctx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(from, t0);
+  osc.frequency.exponentialRampToValueAtTime(Math.max(20, to), t0 + dur);
+  if (vibrato) {
+    const lfo = ctx.createOscillator();
+    const lg = ctx.createGain();
+    lfo.frequency.value = 7;
+    lg.gain.value = vibrato;
+    lfo.connect(lg).connect(osc.frequency);
+    lfo.start(t0); lfo.stop(t0 + dur);
+  }
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(vol, t0 + 0.015);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  osc.connect(g).connect(ctx.destination);
+  osc.start(t0); osc.stop(t0 + dur + 0.02);
+}
+
+// Ruido filtrado (aleteo, rugido, chapuzón, escarbar...).
+function noise(ctx, { dur = 0.15, freq = 1500, q = 1, type = 'bandpass', vol = 0.12, at = 0 }) {
+  const t0 = ctx.currentTime + at;
+  const len = Math.ceil(ctx.sampleRate * dur);
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  const f = ctx.createBiquadFilter();
+  f.type = type; f.frequency.value = freq; f.Q.value = q;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(vol, t0 + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  src.connect(f).connect(g).connect(ctx.destination);
+  src.start(t0); src.stop(t0 + dur + 0.02);
+}
+
+const BIRDS = new Set(['quetzal', 'tucan', 'guacamaya']);
+const PET_SOUNDS = {
+  hop: (c) => tone(c, { from: 260, to: 620, dur: 0.18 }),
+  wiggle: (c) => [0, 0.09, 0.18, 0.27].forEach((at, i) => tone(c, { from: i % 2 ? 880 : 700, dur: 0.08, type: 'triangle', at })),
+  spin: (c) => tone(c, { from: 300, to: 1300, dur: 0.45, type: 'triangle' }),
+  dance: (c) => [523, 659, 784, 1047].forEach((f, i) => tone(c, { from: f, dur: 0.16, type: 'square', vol: 0.06, at: i * 0.15 })),
+  legend: (c) => {
+    [784, 988, 1175, 1568].forEach((f, i) => tone(c, { from: f, dur: 0.35, type: 'triangle', vol: 0.08, at: i * 0.1 }));
+    noise(c, { dur: 0.7, freq: 6000, type: 'highpass', vol: 0.03, at: 0.2 });
+  },
+  wobble: (c) => [0, 0.15].forEach(at => tone(c, { from: 900, to: 700, dur: 0.05, type: 'square', vol: 0.05, at })),
+  flap: (c) => [0, 0.12, 0.24, 0.36].forEach(at => noise(c, { dur: 0.08, freq: 1800, q: 0.7, vol: 0.14, at })),
+  sing: (c, sp) => sp === 'guacamaya'
+    ? [0, 0.22].forEach(at => tone(c, { from: 900, to: 560, dur: 0.18, type: 'sawtooth', vol: 0.07, at }))
+    : [0, 0.14, 0.28].forEach((at, i) => tone(c, { from: 1700 + i * 200, to: 2600 + i * 150, dur: 0.1, at, vol: 0.09 })),
+  glide: (c) => noise(c, { dur: 1.1, freq: 700, q: 0.5, type: 'lowpass', vol: 0.08 }),
+  fly: (c) => { PET_SOUNDS.flap(c); noise(c, { dur: 0.9, freq: 900, type: 'lowpass', vol: 0.07, at: 0.4 }); },
+  stretch: (c) => tone(c, { from: 320, to: 170, dur: 0.7, type: 'triangle', vol: 0.09, vibrato: 6 }),
+  ears: (c) => [0, 0.12].forEach(at => noise(c, { dur: 0.03, freq: 4000, vol: 0.1, at })),
+  pounce: (c) => { noise(c, { dur: 0.25, freq: 1200, vol: 0.08 }); tone(c, { from: 140, to: 55, dur: 0.25, vol: 0.2, at: 0.55 }); },
+  shake: (c) => [0, 0.07, 0.14, 0.21, 0.28, 0.35].forEach(at => noise(c, { dur: 0.05, freq: 3000, vol: 0.07, at })),
+  roar: (c, sp) => sp === 'saraguate'
+    ? tone(c, { from: 260, to: 520, dur: 0.9, type: 'sawtooth', vol: 0.06, vibrato: 25 })
+    : (noise(c, { dur: 0.9, freq: 320, q: 0.8, type: 'lowpass', vol: 0.25 }), tone(c, { from: 110, to: 70, dur: 0.9, type: 'sawtooth', vol: 0.08 })),
+  peek: (c) => tone(c, { from: 500, to: 950, dur: 0.12, vol: 0.1 }),
+  paddle: (c) => [0, 0.2, 0.4].forEach(at => noise(c, { dur: 0.12, freq: 900, q: 1.5, vol: 0.1, at })),
+  swim: (c) => { noise(c, { dur: 0.35, freq: 1200, q: 0.8, vol: 0.12 }); [0.3, 0.45, 0.6, 0.8].forEach((at, i) => tone(c, { from: 400 + i * 150, to: 900 + i * 120, dur: 0.07, vol: 0.07, at })); },
+  zzz: (c) => [0, 0.8].forEach(at => tone(c, { from: 180, to: 150, dur: 0.6, type: 'triangle', vol: 0.07, at })),
+  peck: (c) => [0, 0.13, 0.26].forEach(at => tone(c, { from: 1400, to: 1100, dur: 0.035, type: 'square', vol: 0.05, at })),
+  bounce: (c) => [0, 0.43, 0.86].forEach(at => tone(c, { from: 240, to: 560, dur: 0.15, vol: 0.1, at })),
+  swing: (c) => tone(c, { from: 500, to: 950, dur: 0.5, vol: 0.08, vibrato: 30 }),
+  roll: (c) => [0, 0.1, 0.2, 0.3, 0.4].forEach((at, i) => tone(c, { from: 700 - i * 90, dur: 0.07, type: 'triangle', vol: 0.08, at })),
+  float: (c) => [0, 0.25, 0.5, 0.8, 1.1].forEach((at, i) => tone(c, { from: 350 + (i % 3) * 180, to: 800 + (i % 3) * 150, dur: 0.08, vol: 0.07, at })),
+  walk: (c) => [0, 0.45, 0.9, 1.35].forEach(at => tone(c, { from: 95, to: 60, dur: 0.12, vol: 0.18, at })),
+  tailwhip: (c) => [0, 0.22, 0.44].forEach(at => noise(c, { dur: 0.09, freq: 5000, type: 'highpass', vol: 0.08, at })),
+  dig: (c) => [0, 0.26, 0.52, 0.78].forEach(at => noise(c, { dur: 0.12, freq: 600, q: 0.6, vol: 0.12, at })),
+  stand: (c) => tone(c, { from: 380, to: 820, dur: 0.35, type: 'triangle', vol: 0.09 }),
+  sniff: (c) => [0, 0.16, 0.32].forEach(at => noise(c, { dur: 0.08, freq: 3500, q: 2, vol: 0.08, at })),
+  shell: (c) => { tone(c, { from: 220, to: 90, dur: 0.2, vol: 0.15 }); noise(c, { dur: 0.04, freq: 2500, vol: 0.08, at: 0.05 }); },
+};
+
+function playPetSound(id, species) {
+  if (!petSoundOn()) return;
+  const ctx = audioCtx();
+  const fn = PET_SOUNDS[id];
+  if (!ctx || !fn) return;
+  try {
+    fn(ctx, species);
+    // Las aves pían un poquito además de su emote.
+    if (BIRDS.has(species) && !['sing', 'peck', 'flap', 'fly', 'glide', 'legend'].includes(id)) {
+      tone(ctx, { from: 2200, to: 2800, dur: 0.07, vol: 0.05, at: 0.05 });
+    }
+  } catch { /* sin audio, no pasa nada */ }
+}
+
+window.playCompanionEmote = function playCompanionEmote(svg, opts = {}) {
   if (!svg || svg.dataset.emoting) return;
   const stage = parseInt(svg.dataset.stage || '0', 10);
   const species = svg.dataset.species || 'quetzal';
@@ -920,6 +1061,7 @@ window.playCompanionEmote = function playCompanionEmote(svg) {
     bubble.textContent = emote.bubble;
     host.appendChild(bubble);
   }
+  if (!opts.silent) playPetSound(emote.id, species);
   if (navigator.vibrate && navigator.userActivation?.isActive) navigator.vibrate(30);
 
   setTimeout(() => {
@@ -936,7 +1078,7 @@ function startAutoEmotes(container) {
     const svg = container.querySelector('.cp-svg');
     if (!svg || !document.body.contains(container)) return clearInterval(id);
     if (document.hidden) return;
-    window.playCompanionEmote(svg);
+    window.playCompanionEmote(svg, { silent: true });
   }, 9000);
 }
 
@@ -1111,7 +1253,7 @@ window.openQuetzadex = async function openQuetzadex() {
   const overlay = companionOverlay(`
     <div class="ga-card">
       <div class="ga-topbar">
-        <span class="ga-chip"><i class="fas fa-book-open"></i> Quetzadex</span>
+        <span class="ga-chip"><i class="fas fa-book-open"></i> Quetzadex</span>${window.petSoundButtonHtml()}
         <span class="ga-chip" style="color:#67e8f9"><i class="fas fa-gem"></i> <span data-my-gems>${window.userData?.gems ?? 0}</span></span>
       </div>
       <p style="color:#cbd5e1;font-size:.8rem;margin:0 0 1rem">Fauna de Guatemala: ${owned.size} de ${Object.keys(COMPANION_SPECIES).length} en tu colección. Tocá una para ver su ficha.</p>
@@ -1547,7 +1689,7 @@ window.renderWardrobe = function renderWardrobe() {
 
   card.innerHTML = `
     <div class="ga-topbar">
-      <span class="ga-chip"><i class="fas fa-shirt"></i> Vestidor</span>
+      <span class="ga-chip"><i class="fas fa-shirt"></i> Vestidor</span>${window.petSoundButtonHtml()}
       <span class="ga-chip" style="color:#67e8f9"><i class="fas fa-gem"></i> <span data-my-gems>${window.userData?.gems ?? 0}</span></span>
     </div>
     <div class="wd-preview">${window.renderCompanionSvg(stage, 'companion-idle', species)}</div>
@@ -1613,7 +1755,7 @@ window.renderCompanionCard = async function renderCompanionCard(containerId, stu
   }).join('');
   container.innerHTML = `
     <div class="glass-card p-8 flex flex-col sm:flex-row items-center gap-8 animate-slideUp">
-      <div class="w-32 h-32 shrink-0">${window.renderCompanionSvg(stageIndex, 'companion-idle', species, student?.companion_equipped || {})}</div>
+      <div class="w-32 h-32 shrink-0 cp-spot" style="background-color:${COMPANION_SPECIES[species].color}22">${window.renderCompanionSvg(stageIndex, 'companion-idle', species, student?.companion_equipped || {})}</div>
       <div class="grow w-full text-center sm:text-left">
         <div class="text-[0.65rem] font-black uppercase tracking-widest text-slate-400 mb-1">Mi Mascota · ${COMPANION_SPECIES[species].label}</div>
         <h3 class="text-2xl font-black text-slate-800 dark:text-white mb-3">${stage.name}</h3>
@@ -1632,6 +1774,7 @@ window.renderCompanionCard = async function renderCompanionCard(containerId, stu
         <div class="flex flex-wrap gap-2 mt-4 justify-center sm:justify-start">
           ${isMe && stageIndex > 0 ? `<button class="btn-primary-tw h-10 px-5 text-xs uppercase font-bold" onclick="window.openWardrobe()"><i class="fas fa-shirt"></i> Vestidor</button>` : ''}
           ${isMe && stageIndex > 0 ? `<button class="btn-secondary-tw h-10 px-5 text-xs uppercase font-bold" onclick="window.shareCompanionCard('${species}', this)"><i class="fas fa-share-nodes"></i> Compartir</button>` : ''}
+          ${isMe ? window.petSoundButtonHtml('width:2.5rem;height:2.5rem;background:rgba(100,116,139,.12);color:#64748b') : ''}
           ${isMe ? `<button class="btn-secondary-tw h-10 px-5 text-xs uppercase font-bold" onclick="window.openQuetzadex()"><i class="fas fa-book-open"></i> Quetzadex</button>` : `<button class="btn-secondary-tw h-10 px-5 text-xs uppercase font-bold" onclick="window.openDexCard('${species}', 'view')"><i class="fas fa-book-open"></i> Ficha</button>`}
         </div>
       </div>
