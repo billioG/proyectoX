@@ -125,6 +125,11 @@ window.renderCourseProgressBanner = async function renderCourseProgressBanner() 
 }
 
 window.renderTeacherManagementPanel = async function renderTeacherManagementPanel() {
+  // Evidencia semanal, informe mensual y el reto docente con XP son del
+  // programa de retribución 1bot -- no aplican a docentes de otras
+  // escuelas ni al docente de demostración.
+  if (!window.userData?.is_1bot_team) return '';
+
   const _supabase = window._supabase;
   const currentUser = window.currentUser;
   const renderTeacherPanel = window.renderTeacherPanel;

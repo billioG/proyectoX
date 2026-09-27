@@ -89,10 +89,26 @@ window.initGamification = async function initGamification() {
       // usara la plataforma seguido.
       if (typeof window.updateLoginStreak === 'function') await window.updateLoginStreak();
 
-      // El widget "Métricas de Impacto" (asistencia GPS, evidencia semanal,
-      // informe mensual) es del programa de retribución 1bot -- no aplica
-      // a docentes de otras escuelas ni al docente de demostración.
-      if (!window.userData?.is_1bot_team) return;
+      // El widget "Métricas de Impacto" completo (evidencia semanal, informe
+      // mensual, reto con XP) es del programa de retribución 1bot -- no
+      // aplica a docentes de otras escuelas ni al docente de demostración.
+      // Ellos sí llevan un progreso general (asistencia + evaluaciones),
+      // que es trabajo real de cualquier docente, no del programa de pago.
+      if (!window.userData?.is_1bot_team) {
+        const generalCacheKey = `teacher_general_progress_${currentUser.id}`;
+        await fetchWithCache(generalCacheKey, async () => {
+          const { data: assignments } = await _supabase.from('teacher_assignments').select('*').eq('teacher_id', currentUser.id);
+          if (typeof window.calculateGeneralTeacherActivity !== 'function' && typeof window.loadModule === 'function') {
+            await window.loadModule('profile');
+          }
+          return typeof window.calculateGeneralTeacherActivity === 'function'
+            ? await window.calculateGeneralTeacherActivity(currentUser.id, assignments || [])
+            : null;
+        }, (progress) => {
+          if (progress && typeof window.renderTeacherSidebarGeneral === 'function') window.renderTeacherSidebarGeneral(progress);
+        });
+        return;
+      }
 
       const cacheKey = `teacher_kpi_snapshot_${currentUser.id}`;
       // kpi-engine.js se carga perezosamente (solo al entrar a "feed"/"perfil"),
@@ -338,6 +354,52 @@ window.renderTeacherSidebar = function renderTeacherSidebar(stats) {
         <span class="text-[0.7rem] font-bold text-white/40 uppercase tracking-widest flex items-center justify-center gap-2">
           <i class="fas fa-trophy text-amber-500 animate-bounce"></i> Reto Global: <strong class="text-primary font-bold">${challengeXP || 0}/10 XP</strong>
         </span>
+      </div>
+    </div>
+  `;
+
+  sidebar.appendChild(container);
+}
+
+// Versión para docentes fuera del programa 1bot: solo asistencia y
+// evaluaciones (trabajo real de cualquier docente en la plataforma), sin
+// evidencia semanal, informe mensual, reto con XP ni lenguaje de pago.
+window.renderTeacherSidebarGeneral = function renderTeacherSidebarGeneral(stats) {
+  const { totalXP, attCount, attMeta, evalCount, evalMeta } = stats;
+  const sidebar = document.getElementById('sidebar');
+  if (!sidebar) return;
+
+  document.getElementById('gamification-sidebar')?.remove();
+
+  const container = document.createElement('div');
+  container.id = 'gamification-sidebar';
+  container.className = 'px-6 py-4 mt-auto mb-6';
+
+  container.innerHTML = `
+    <div class="glass-card p-6 bg-slate-900 text-white border-none shadow-2xl relative overflow-hidden group">
+      <div class="absolute -right-6 -top-6 text-7xl opacity-5 rotate-12 group-hover:rotate-45 transition-transform duration-700 pointer-events-none">
+        <i class="fas fa-chart-line"></i>
+      </div>
+
+      <div class="relative z-10 mb-6">
+        <h4 class="text-[0.65rem] font-bold uppercase tracking-[0.2em] text-primary mb-1">Progreso del Mes</h4>
+        <div class="text-3xl font-bold flex items-baseline gap-2 leading-none">${totalXP} <span class="text-[0.6rem] opacity-40 uppercase tracking-widest font-bold">/ 100</span></div>
+      </div>
+
+      <div class="h-2 w-full bg-white/5 rounded-full overflow-hidden mb-6">
+        <div class="h-full bg-primary rounded-full transition-all duration-1000 shadow-[0_0_15px_rgba(0,173,239,0.5)]" style="width: ${totalXP}%"></div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3 relative z-10">
+        ${[
+      { l: 'Asistencia', c: attCount, m: attMeta, col: 'text-sky-400', d: 'Días de asistencia tomados este mes en tus clases.' },
+      { l: 'Evaluación', c: evalCount, m: evalMeta, col: 'text-amber-400', d: 'Equipos con al menos un proyecto calificado este mes.' },
+    ].map(o => `
+            <div class="p-3 bg-white/5 rounded-2xl border border-white/[0.03] text-center hover:bg-white/10 transition-colors cursor-help" title="${o.d}">
+                <div class="text-[0.55rem] font-bold uppercase text-white/40 tracking-widest mb-1">${o.l}</div>
+                <div class="text-xs font-bold text-white">${o.c || 0}<span class="opacity-30 mx-0.5">/</span>${o.m ?? '--'}</div>
+            </div>
+        `).join('')}
       </div>
     </div>
   `;

@@ -141,6 +141,70 @@ window.calculateMonthlyKPIs = async function calculateMonthlyKPIs(teacherId, ass
 }
 
 /**
+ * Progreso mensual general de un docente (asistencia + evaluaciones),
+ * para docentes fuera del programa de retribución 1bot. Reusa las mismas
+ * metas de asistencia/evaluación que calculateMonthlyKPIs, sin evidencia
+ * semanal ni informe mensual (exclusivos de ese programa).
+ */
+window.calculateGeneralTeacherActivity = async function calculateGeneralTeacherActivity(teacherId, assignments) {
+    const _supabase = window._supabase;
+    const SYSTEM_CONFIG = window.SYSTEM_CONFIG || { projectsPerBimester: 4 };
+
+    try {
+        const now = new Date();
+        const currentMonth = now.getMonth() + 1;
+        const currentYear = now.getFullYear();
+        const startOfMonth = new Date(currentYear, currentMonth - 1, 1).toISOString();
+        const endOfMonth = new Date(currentYear, currentMonth, 0, 23, 59, 59).toISOString();
+
+        const safeAssignments = assignments || [];
+        const schoolCodes = [...new Set(safeAssignments.map(a => a.school_code).filter(Boolean))];
+
+        const [attRes, evalRes, groupsRes, schoolsRes] = await Promise.all([
+            _supabase.from('attendance').select('date').eq('teacher_id', teacherId).gte('date', startOfMonth.split('T')[0]).lte('date', endOfMonth.split('T')[0]),
+            _supabase.from('evaluations').select('id, project_id').eq('teacher_id', teacherId).gte('created_at', startOfMonth).lte('created_at', endOfMonth),
+            schoolCodes.length ? _supabase.from('groups').select('*').in('school_code', schoolCodes) : Promise.resolve({ data: [], error: null }),
+            _supabase.from('schools').select('id, code, projects_per_bimestre'),
+        ]);
+
+        const attCount = new Set(attRes.data?.map(r => r.date)).size;
+
+        const evalProjectIds = (evalRes.data || []).map(e => e.project_id).filter(Boolean);
+        let evalCount = 0;
+        if (evalProjectIds.length) {
+            const { data: evaluatedProjects } = await _supabase.from('projects').select('id, group_id').in('id', evalProjectIds);
+            const distinctGroups = new Set((evaluatedProjects || []).map(p => p.group_id).filter(Boolean));
+            const individualProjects = (evaluatedProjects || []).filter(p => !p.group_id).length;
+            evalCount = distinctGroups.size + individualProjects;
+        }
+
+        const SESSIONS_PER_MONTH = 4;
+        const attMeta = safeAssignments.length * SESSIONS_PER_MONTH;
+
+        const schools = schoolsRes.data || [];
+        const relevantGroups = (groupsRes.data || []).filter(g => schoolCodes.includes(g.school_code));
+        let evalMeta = 0;
+        schoolCodes.forEach(code => {
+            const school = schools.find(s => s.code === code);
+            const projectsPerBimester = school?.projects_per_bimestre || SYSTEM_CONFIG.projectsPerBimester || 4;
+            const groupsInSchool = relevantGroups.filter(g => g.school_code === code).length;
+            evalMeta += (groupsInSchool * projectsPerBimester);
+        });
+
+        // 50% asistencia, 50% evaluaciones -- sin evidencia ni informe.
+        const totalXP = Math.round(
+            (Math.min(50, (attCount / (attMeta || 1)) * 50)) +
+            (Math.min(50, (evalCount / (evalMeta || 1)) * 50))
+        ) || 0;
+
+        return { attCount, attMeta, evalCount, evalMeta, totalXP };
+    } catch (err) {
+        console.error('Error en progreso general del docente:', err);
+        return { attCount: 0, attMeta: 0, evalCount: 0, evalMeta: 0, totalXP: 0 };
+    }
+}
+
+/**
  * Calcula el rendimiento general de un colegio para el Success Hub
  */
 window.calculateSchoolHealth = async function calculateSchoolHealth(schoolCode) {

@@ -1468,24 +1468,10 @@ window.renderSharedLibraryList = function renderSharedLibraryList() {
     return;
   }
 
-  const byTag = new Map();
-  const untagged = [];
-  courses.forEach(c => {
-    if (!c.tags?.length) { untagged.push(c); return; }
-    c.tags.forEach(t => {
-      if (!byTag.has(t)) byTag.set(t, []);
-      byTag.get(t).push(c);
-    });
-  });
-
-  let html = '';
-  for (const [tag, group] of [...byTag.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
-    html += `<details open><summary class="list-none cursor-pointer text-[0.65rem] font-black uppercase tracking-widest text-slate-400 mb-2">${window.sanitizeInput(tag)} (${group.length})</summary><div class="space-y-3 mb-4">${group.map(renderSharedLibraryCourseCard).join('')}</div></details>`;
-  }
-  if (untagged.length) {
-    html += `<details open><summary class="list-none cursor-pointer text-[0.65rem] font-black uppercase tracking-widest text-slate-400 mb-2">Sin etiqueta (${untagged.length})</summary><div class="space-y-3 mb-4">${untagged.map(renderSharedLibraryCourseCard).join('')}</div></details>`;
-  }
-  listEl.innerHTML = html;
+  // "Todas": un curso con 2+ etiquetas antes aparecía repetido, una vez por
+  // cada grupo -- se muestra en cambio una sola lista plana, un curso una
+  // sola vez (ya viene ordenada por más reciente desde la consulta).
+  listEl.innerHTML = courses.map(renderSharedLibraryCourseCard).join('');
 }
 
 window.openCopyCourseModal = async function openCopyCourseModal(courseId) {

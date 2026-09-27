@@ -6,6 +6,7 @@ Al publicar una versión nueva, agregá una línea arriba de todo (ver CONTRIBUT
 
 ## 2026-09-27
 
+- Hide the whole "Gestion Academica" panel (weekly evidence, monthly report, teacher challenge) from a teacher's feed unless they're on the 1bot team; give non-1bot teachers a general monthly progress widget instead (attendance + evaluations only, no payment framing); shared course library no longer duplicates a course under each of its tags (v1.0.111)
 - Hide the 1bot payment KPI widget from a teacher's sidebar and profile ("Mu00e9tricas de Impacto", "XP Acumulada Mes", "Objetivos del Periodo") unless the teacher is on the 1bot team; non-1bot teachers still see student feedback and badges (v1.0.110)
 - Hide "Bonos y Desempeño" from a teacher's nav (and onboarding tour) unless they're on the 1bot team (is_1bot_team); hide "Nodo escolar (USB)" from teacher and admin nav until it's tested on real hardware (v1.0.109)
 - Fix `migrations/demo-school.sql`: `attendance.time` is NOT NULL with no default; the seed's attendance insert failed. Added an explicit time value.
