@@ -6,6 +6,7 @@ Al publicar una versión nueva, agregá una línea arriba de todo (ver CONTRIBUT
 
 ## 2026-09-26
 
+- Species-specific pet voices for every emote and stronger vibration patterns (v1.0.102)
 - Pet emote sounds (synthesized, tap only, mute toggle) and a spotlight so pets stand out on same-color cards (v1.0.101)
 - Privacy policy, parent consent in the parent portal, impact dashboard for admins, first-name-only AI context, smoke tests and roadmap docs for steps 2 to 6 (v1.0.100)
 - Project documentation: README, architecture, setup, migrations order, contributing guide, changelog and schema dump script; remove a leaked cron secret from a migration

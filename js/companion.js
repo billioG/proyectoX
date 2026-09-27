@@ -1021,17 +1021,115 @@ const PET_SOUNDS = {
   shell: (c) => { tone(c, { from: 220, to: 90, dur: 0.2, vol: 0.15 }); noise(c, { dur: 0.04, freq: 2500, vol: 0.08, at: 0.05 }); },
 };
 
-function playPetSound(id, species) {
+// VOZ de cada especie, inspirada en el sonido real del animal. p = tono
+// (1 = normal), s = duración (1 = normal), v = volumen, at = cuándo.
+const VOICES = {
+  // Silbido de dos notas "ki-óu", como el llamado del quetzal.
+  quetzal: (c, { at = 0, p = 1, s = 1, v = 1 }) => {
+    tone(c, { from: 1250 * p, to: 1650 * p, dur: 0.13 * s, vol: 0.11 * v, at, vibrato: 8 });
+    tone(c, { from: 1650 * p, to: 1050 * p, dur: 0.3 * s, vol: 0.11 * v, at: at + 0.14 * s, vibrato: 10 });
+  },
+  // Graznido fuerte y áspero.
+  guacamaya: (c, { at = 0, p = 1, s = 1, v = 1 }) => {
+    tone(c, { from: 1050 * p, to: 640 * p, dur: 0.28 * s, type: 'sawtooth', vol: 0.07 * v, at, vibrato: 60 });
+    noise(c, { dur: 0.26 * s, freq: 1800 * p, q: 2, vol: 0.07 * v, at });
+  },
+  // Carraspeo "krrrk" parecido al de una rana.
+  tucan: (c, { at = 0, p = 1, s = 1, v = 1 }) => {
+    const n = Math.round(7 * s);
+    for (let i = 0; i < n; i++) tone(c, { from: 380 * p, to: 330 * p, dur: 0.028, type: 'square', vol: 0.06 * v, at: at + i * 0.045 });
+  },
+  // Gruñidos cortos y graves, como un serrucho.
+  jaguar: (c, { at = 0, p = 1, s = 1, v = 1 }) => {
+    const n = Math.max(1, Math.round(3 * s));
+    for (let i = 0; i < n; i++) {
+      noise(c, { dur: 0.17, freq: 280 * p, q: 0.8, type: 'lowpass', vol: 0.28 * v, at: at + i * 0.3 });
+      tone(c, { from: 95 * p, to: 70 * p, dur: 0.17, type: 'sawtooth', vol: 0.09 * v, at: at + i * 0.3 });
+    }
+  },
+  // Aullido grave que sube y baja.
+  saraguate: (c, { at = 0, p = 1, s = 1, v = 1 }) => {
+    tone(c, { from: 170 * p, to: 290 * p, dur: 0.45 * s, type: 'sawtooth', vol: 0.07 * v, at, vibrato: 14 });
+    tone(c, { from: 290 * p, to: 160 * p, dur: 0.5 * s, type: 'sawtooth', vol: 0.07 * v, at: at + 0.45 * s, vibrato: 14 });
+    noise(c, { dur: 0.9 * s, freq: 260, type: 'lowpass', vol: 0.1 * v, at });
+  },
+  // Chirridos agudos (los manatíes se comunican con chillidos).
+  manati: (c, { at = 0, p = 1, s = 1, v = 1 }) => {
+    const n = Math.max(1, Math.round(2 * s));
+    for (let i = 0; i < n; i++) tone(c, { from: 2800 * p, to: 3900 * p, dur: 0.09, vol: 0.07 * v, at: at + i * 0.16 });
+  },
+  // Silbido agudo (la danta se llama con silbidos).
+  danta: (c, { at = 0, p = 1, s = 1, v = 1 }) => {
+    tone(c, { from: 2100 * p, to: 2500 * p, dur: 0.18 * s, vol: 0.08 * v, at });
+    tone(c, { from: 2500 * p, to: 1900 * p, dur: 0.3 * s, vol: 0.08 * v, at: at + 0.18 * s });
+  },
+  // Chillidos rápidos y un resoplido.
+  pizote: (c, { at = 0, p = 1, s = 1, v = 1 }) => {
+    noise(c, { dur: 0.07, freq: 2500, q: 1.5, vol: 0.09 * v, at });
+    const n = Math.max(1, Math.round(2 * s));
+    for (let i = 0; i < n; i++) tone(c, { from: 1300 * p, to: 1800 * p, dur: 0.06, type: 'triangle', vol: 0.08 * v, at: at + 0.1 + i * 0.1 });
+  },
+  // Gruñiditos graves y olfateo.
+  armadillo: (c, { at = 0, p = 1, s = 1, v = 1 }) => {
+    const n = Math.max(1, Math.round(3 * s));
+    for (let i = 0; i < n; i++) {
+      tone(c, { from: 150 * p, to: 115 * p, dur: 0.08, type: 'triangle', vol: 0.14 * v, at: at + i * 0.14 });
+      noise(c, { dur: 0.05, freq: 3200, q: 2, vol: 0.05 * v, at: at + i * 0.14 + 0.05 });
+    }
+  },
+  // Resoplido suave de tortuga.
+  tortuga: (c, { at = 0, p = 1, s = 1, v = 1 }) => {
+    noise(c, { dur: 0.35 * s, freq: 3000 * p, type: 'highpass', vol: 0.06 * v, at });
+    tone(c, { from: 200 * p, to: 140 * p, dur: 0.15, vol: 0.1 * v, at: at + 0.3 * s });
+  },
+};
+
+// Cómo usa cada emote la voz del animal, según su lugar en la lista de la
+// especie: corto, doble, con el movimiento, con ritmo, llamado fuerte, leyenda.
+function speakForEmote(ctx, species, index) {
+  const voice = VOICES[species] || VOICES.quetzal;
+  switch (index) {
+    case 0: voice(ctx, { p: 1.1, s: 0.8 }); break;
+    case 1: voice(ctx, { p: 1.2, s: 0.7 }); voice(ctx, { at: 0.4, p: 1.3, s: 0.7 }); break;
+    case 2: voice(ctx, { at: 0.35, p: 0.95 }); break;
+    case 3: [0, 0.5, 1].forEach((at, i) => voice(ctx, { at, p: [1, 1.15, 1.3][i], s: 0.6, v: 0.8 })); break;
+    case 4: voice(ctx, { p: 0.9, s: 1.5, v: 1.4 }); break;
+    case 5:
+      voice(ctx, { p: 0.85, s: 1.4, v: 1.3 });
+      [1568, 1976, 2349].forEach((f, i) => tone(ctx, { from: f, dur: 0.3, type: 'triangle', vol: 0.05, at: 0.9 + i * 0.1 }));
+      break;
+    default: voice(ctx, { p: 1.4, s: 0.5, v: 0.5 }); // huevo: una vocecita
+  }
+}
+
+// Vibración por emote (más fuerte que antes: 30 ms casi no se sentía).
+const EMOTE_VIBES = [[60], [50, 60, 50], [80, 60, 120], [40, 50, 40, 50, 40, 50, 90], [200, 80, 250], [80, 50, 80, 50, 300]];
+
+function playPetSound(id, species, index) {
   if (!petSoundOn()) return;
   const ctx = audioCtx();
-  const fn = PET_SOUNDS[id];
-  if (!ctx || !fn) return;
+  if (!ctx) return;
   try {
-    fn(ctx, species);
-    // Las aves pían un poquito además de su emote.
-    if (BIRDS.has(species) && !['sing', 'peck', 'flap', 'fly', 'glide', 'legend'].includes(id)) {
-      tone(ctx, { from: 2200, to: 2800, dur: 0.07, vol: 0.05, at: 0.05 });
+    // Efecto del movimiento, suave, debajo de la voz del animal.
+    const fx = PET_SOUNDS[id];
+    if (fx && !['sing', 'roar', 'legend'].includes(id)) {
+      const master = ctx.createGain();
+      master.gain.value = 0.5;
+      master.connect(ctx.destination);
+      // Mismo contexto de audio, pero con la salida pasando por "master".
+      const quiet = {
+        get currentTime() { return ctx.currentTime; },
+        sampleRate: ctx.sampleRate,
+        destination: master,
+        createOscillator: () => ctx.createOscillator(),
+        createGain: () => ctx.createGain(),
+        createBuffer: (...a) => ctx.createBuffer(...a),
+        createBufferSource: () => ctx.createBufferSource(),
+        createBiquadFilter: () => ctx.createBiquadFilter(),
+      };
+      fx(quiet, species);
     }
+    speakForEmote(ctx, species, index);
   } catch { /* sin audio, no pasa nada */ }
 }
 
@@ -1061,8 +1159,12 @@ window.playCompanionEmote = function playCompanionEmote(svg, opts = {}) {
     bubble.textContent = emote.bubble;
     host.appendChild(bubble);
   }
-  if (!opts.silent) playPetSound(emote.id, species);
-  if (navigator.vibrate && navigator.userActivation?.isActive) navigator.vibrate(30);
+  const index = stage === 0 ? -1 : emotesFor(species).findIndex(e => e.id === emote.id);
+  if (!opts.silent) {
+    playPetSound(emote.id, species, index);
+    // La vibración solo funciona en Android (iPhone no la permite en la web).
+    try { navigator.vibrate?.(EMOTE_VIBES[index] || [40]); } catch { /* sin vibración */ }
+  }
 
   setTimeout(() => {
     svg.classList.remove(`cp-emote-${emote.id}`);
