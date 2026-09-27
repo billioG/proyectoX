@@ -6,6 +6,7 @@ Al publicar una versión nueva, agregá una línea arriba de todo (ver CONTRIBUT
 
 ## 2026-09-27
 
+- Quetzadex: each pet's info card now shows the UN Sustainable Development Goal(s) it illustrates (14 Vida submarina for water species, 15 Vida de ecosistemas terrestres for land/forest species) -- useful content alignment for grant applications, no new species (v1.0.115)
 - Coordinador nav no longer duplicates "Explorar Proyectos" -- nav-docente's own "Inicio" already goes to feed now that both menus show together (v1.0.114)
 - Coordinador is no longer a separate, exclusive role: a coordinador who also teaches keeps their full teacher menu (classes, attendance, evaluate, profile) and gets "Mis Docentes"/"Mi Establecimiento" added on top, instead of losing teacher access entirely (v1.0.113)
 - Per-school project privacy: schools.public_projects switch (a school can opt its projects out of the global Hall of Fame / other schools' feed), enforced by a restrictive RLS policy on projects, editable by admin (Establecimientos) or a coordinador for their own schools; new coordinador "Mi Establecimiento" view (attendance summary + academic report scoped to their assigned teachers/schools). Migration: "migrations/school-project-visibility.sql" (v1.0.112)

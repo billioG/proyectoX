@@ -421,69 +421,81 @@ const COMPANION_SPECIES = {
 
 // Ficha "Quetzadex": datos REALES de cada animal (fauna de Guatemala) --
 // la mascota también enseña. Estado de conservación según la UICN.
+// Objetivos de Desarrollo Sostenible (ONU) que ilustra cada mascota, con
+// el color oficial de cada ODS. Cada especie lleva el ODS 14 (vida
+// submarina) si vive en agua, o el 15 (vida de ecosistemas terrestres)
+// si vive en selva/bosque/tierra -- nunca los dos a la vez salvo que de
+// verdad dependa de ambos ecosistemas (ej. la danta, que vive en selva Y
+// humedales).
+const ODS = {
+  14: { name: 'Vida submarina', c: '#0A97D9' },
+  15: { name: 'Vida de ecosistemas terrestres', c: '#56C02B' },
+};
+
 const COMPANION_DEX = {
   quetzal: {
-    num: 1, sci: 'Pharomachrus mocinno', types: [['Aire', '#29B6F6'], ['Bosque nuboso', '#43A047']],
+    num: 1, sci: 'Pharomachrus mocinno', types: [['Aire', '#29B6F6'], ['Bosque nuboso', '#43A047']], ods: [15],
     about: 'Es el ave nacional de Guatemala y le da nombre a nuestra moneda. Los mayas usaban sus plumas verdes en los tocados de sus gobernantes.',
     weight: 'Unos 200 g', habitat: 'Bosques nubosos (Biotopo del Quetzal, Baja Verapaz)', food: 'Frutas como el aguacatillo, e insectos', status: 'Casi amenazado',
     fact: 'Las plumas largas del macho pueden medir más que todo su cuerpo.',
   },
   jaguar: {
-    num: 2, sci: 'Panthera onca', types: [['Selva', '#2E7D32'], ['Fuerza', '#E65100']],
+    num: 2, sci: 'Panthera onca', types: [['Selva', '#2E7D32'], ['Fuerza', '#E65100']], ods: [15],
     about: 'Es el felino más grande de América. Los mayas lo llamaban Balam y lo veían como guardián de la noche.',
     weight: 'Entre 50 y 100 kg', habitat: 'Selvas de Petén (Reserva de la Biosfera Maya)', food: 'Carnívoro: venados, pecaríes, tortugas', status: 'Casi amenazado',
     fact: 'A diferencia de muchos gatos, al jaguar le gusta el agua: es un gran nadador.',
   },
   tortuga: {
-    num: 3, sci: 'Lepidochelys olivacea (parlama)', types: [['Agua', '#1E88E5'], ['Arena', '#F9A825']],
+    num: 3, sci: 'Lepidochelys olivacea (parlama)', types: [['Agua', '#1E88E5'], ['Arena', '#F9A825']], ods: [14],
     about: 'La tortuga parlama llega a anidar a las playas del Pacífico de Guatemala, como Monterrico, y sus crías caminan solas hasta el mar.',
     weight: 'Unos 35 a 45 kg', habitat: 'Océano Pacífico y sus playas', food: 'Cangrejos, medusas, algas', status: 'Vulnerable',
     fact: 'La temperatura de la arena decide si de los huevos nacen machos o hembras.',
   },
   tucan: {
-    num: 4, sci: 'Ramphastos sulfuratus', types: [['Aire', '#29B6F6'], ['Fruta', '#E53935']],
+    num: 4, sci: 'Ramphastos sulfuratus', types: [['Aire', '#29B6F6'], ['Fruta', '#E53935']], ods: [15],
     about: 'El tucán pico multicolor vive en las selvas del norte de Guatemala. Su pico enorme parece pesado, ¡pero es muy liviano!',
     weight: 'Unos 400 g', habitat: 'Selvas de Petén e Izabal', food: 'Frutas, insectos y a veces huevos', status: 'Preocupación menor',
     fact: 'Su pico es hueco por dentro, con una estructura como de panal que lo hace liviano y fuerte.',
   },
   saraguate: {
-    num: 5, sci: 'Alouatta pigra', types: [['Selva', '#2E7D32'], ['Sonido', '#8E24AA']],
+    num: 5, sci: 'Alouatta pigra', types: [['Selva', '#2E7D32'], ['Sonido', '#8E24AA']], ods: [15],
     about: 'El saraguate o mono aullador negro vive en las selvas de Petén. Los grupos aúllan al amanecer para avisar dónde están.',
     weight: 'Entre 6 y 11 kg', habitat: 'Selvas de Petén (Tikal)', food: 'Hojas, frutas y flores', status: 'En peligro',
     fact: 'Su aullido es uno de los sonidos más fuertes de los animales terrestres y se oye a varios kilómetros.',
   },
   manati: {
-    num: 6, sci: 'Trichechus manatus', types: [['Agua', '#1E88E5'], ['Planta', '#7CB342']],
+    num: 6, sci: 'Trichechus manatus', types: [['Agua', '#1E88E5'], ['Planta', '#7CB342']], ods: [14],
     about: 'El manatí vive en el Río Dulce y el lago de Izabal. Es tan tranquilo que le dicen "vaca marina".',
     weight: 'Entre 400 y 550 kg', habitat: 'Río Dulce y lago de Izabal', food: 'Herbívoro: plantas acuáticas', status: 'Vulnerable',
     fact: 'Aunque vive en el agua, sus parientes más cercanos son los elefantes.',
   },
   guacamaya: {
-    num: 7, sci: 'Ara macao', types: [['Aire', '#29B6F6'], ['Selva', '#2E7D32']],
+    num: 7, sci: 'Ara macao', types: [['Aire', '#29B6F6'], ['Selva', '#2E7D32']], ods: [15],
     about: 'La guacamaya roja es una de las aves más coloridas de América. En Guatemala vive en la selva de Petén y quedan pocas: por eso se protegen sus nidos.',
     weight: 'Alrededor de 1 kg', habitat: 'Selva de Petén (Reserva de la Biosfera Maya)', food: 'Semillas, frutas y nueces', status: 'Preocupación menor (amenazada en Guatemala)',
     fact: 'Usa su pico fuerte como una tercera pata para trepar por las ramas.',
   },
   danta: {
-    num: 8, sci: 'Tapirus bairdii', types: [['Selva', '#2E7D32'], ['Agua', '#1E88E5']],
+    num: 8, sci: 'Tapirus bairdii', types: [['Selva', '#2E7D32'], ['Agua', '#1E88E5']], ods: [14, 15],
     about: 'La danta o tapir es el mamífero terrestre más grande de Centroamérica. Con su trompa corta agarra hojas y frutas, y al caminar siembra semillas por toda la selva.',
     weight: 'Entre 150 y 300 kg', habitat: 'Selvas y humedales de Petén', food: 'Hojas, frutas y brotes', status: 'En peligro',
     fact: 'Las crías nacen con rayas y manchas blancas, como una sandía, que desaparecen al crecer.',
   },
   pizote: {
-    num: 9, sci: 'Nasua narica', types: [['Selva', '#2E7D32'], ['Tierra', '#8D6E63']],
+    num: 9, sci: 'Nasua narica', types: [['Selva', '#2E7D32'], ['Tierra', '#8D6E63']], ods: [15],
     about: 'El pizote es pariente del mapache. Camina con su larga cola levantada, y las hembras andan en grupos grandes con sus crías.',
     weight: 'Entre 4 y 6 kg', habitat: 'Bosques de casi todo el país', food: 'Omnívoro: insectos, frutas y lagartijas', status: 'Preocupación menor',
     fact: 'Usa su hocico largo y flexible para oler y escarbar insectos bajo la tierra.',
   },
   armadillo: {
-    num: 10, sci: 'Dasypus novemcinctus', types: [['Tierra', '#8D6E63'], ['Coraza', '#7E57C2']],
+    num: 10, sci: 'Dasypus novemcinctus', types: [['Tierra', '#8D6E63'], ['Coraza', '#7E57C2']], ods: [15],
     about: 'El armadillo (en Guatemala también "armado") tiene una coraza de placas de hueso cubiertas de piel dura. Es un excelente cavador.',
     weight: 'Entre 3 y 6 kg', habitat: 'Bosques y potreros de todo el país', food: 'Insectos, hormigas y lombrices', status: 'Preocupación menor',
     fact: 'Casi siempre nacen cuatrillizos idénticos: ¡cuatro crías iguales!',
   },
 };
 window.COMPANION_DEX = COMPANION_DEX;
+window.ODS = ODS;
 const EGG_PRICE = 150;
 
 // Más datos reales para el "¿Sabías que?": cada vez que se abre la ficha
@@ -906,6 +918,9 @@ window.ensureCompanionStyles = function ensureCompanionStyles() {
     .dex-sci { color:#94a3b8; font-style:italic; font-size:.72rem; }
     .dex-types { display:flex; flex-wrap:wrap; gap:.4rem; margin:.7rem 0; }
     .dex-type { padding:.3rem .75rem; border-radius:9999px; font-size:.72rem; font-weight:800; color:#fff; }
+    .dex-ods { display:flex; flex-wrap:wrap; gap:.4rem; margin:0 0 .7rem; }
+    .dex-ods-badge { display:flex; align-items:center; gap:.35rem; padding:.25rem .6rem .25rem .35rem; border-radius:9999px; font-size:.62rem; font-weight:800; color:#fff; cursor:help; }
+    .dex-ods-badge b { background:rgba(255,255,255,.28); border-radius:9999px; width:1.1rem; height:1.1rem; display:inline-flex; align-items:center; justify-content:center; font-size:.62rem; }
     .dex-desc { font-size:.85rem; color:#334155; line-height:1.45; margin:0; }
     .dex-stats { display:grid; grid-template-columns:1fr 1fr; gap:.55rem; margin:1rem 0; }
     .dex-stat { border:1px solid #e2e8f0; border-radius:1rem; padding:.5rem .7rem; }
@@ -1574,6 +1589,7 @@ window.openDexCard = function openDexCard(species, mode = 'collection') {
         <div class="dex-name">${sp.label}</div>
         <div class="dex-num">N°${String(dex.num).padStart(3, '0')} · <span class="dex-sci">${dex.sci}</span></div>
         <div class="dex-types">${dex.types.map(([t, c]) => `<span class="dex-type" style="background:${c}">${t}</span>`).join('')}</div>
+        ${dex.ods?.length ? `<div class="dex-ods">${dex.ods.map(n => `<span class="dex-ods-badge" style="background:${ODS[n].c}" title="ODS ${n}: ${ODS[n].name}"><b>${n}</b> ODS ${n}</span>`).join('')}</div>` : ''}
         <p class="dex-desc">${dex.about}</p>
         <div class="dex-stats">
           <div class="dex-stat"><small>⚖️ Peso real</small><b>${dex.weight}</b></div>
