@@ -1164,10 +1164,13 @@ window.openGuardiansModal = async function openGuardiansModal(studentId, student
       ${(history || []).length ? `
       <div class="mt-5">
         <p class="text-[0.65rem] font-black uppercase tracking-widest text-slate-400 mb-2">Últimos avisos</p>
-        ${history.map(h => `<div class="text-xs py-1.5 border-t border-slate-100 dark:border-slate-800 flex gap-2">
-          <span>${h.channel === 'push' ? '🔔' : '💬'}</span>
-          <span class="grow text-slate-600 dark:text-slate-300">${s(h.message)}</span>
-          <span class="shrink-0 font-bold ${h.status === 'sent' ? 'text-emerald-500' : h.status === 'failed' ? 'text-rose-500' : 'text-slate-400'}" title="${s(h.error || '')}">${h.status === 'sent' ? 'Enviado' : h.status === 'failed' ? 'Falló' : 'Pendiente'}</span>
+        ${history.map(h => `<div class="text-xs py-1.5 border-t border-slate-100 dark:border-slate-800">
+          <div class="flex gap-2">
+            <span>${h.channel === 'push' ? '🔔' : '💬'}</span>
+            <span class="grow text-slate-600 dark:text-slate-300">${s(h.message)}</span>
+            <span class="shrink-0 font-bold ${h.status === 'sent' ? 'text-emerald-500' : h.status === 'failed' ? 'text-rose-500' : 'text-slate-400'}">${h.status === 'sent' ? 'Enviado' : h.status === 'failed' ? 'Falló' : 'Pendiente'}</span>
+          </div>
+          ${h.status === 'failed' && h.error ? `<div class="text-[0.65rem] text-rose-500 mt-0.5 pl-6">${s(h.error)}</div>` : ''}
         </div>`).join('')}
       </div>` : ''}
     </div>`;
