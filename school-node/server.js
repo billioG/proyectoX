@@ -80,6 +80,23 @@ function studentFromSession(req) {
   return db.prepare('SELECT * FROM students WHERE id = ?').get(s.student_id) || null;
 }
 
+// ---- Panel del docente (sin internet: código de docente del config.json) ----
+const TEACHER_SESSION_MS = 8 * 3600 * 1000;
+const teacherSessions = new Map(); // token -> vence
+let teacherFails = 0, teacherLockedUntil = 0;
+
+function teacherFromRequest(req) {
+  const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+  const exp = teacherSessions.get(token);
+  if (!exp || exp < Date.now()) { teacherSessions.delete(token); return false; }
+  return true;
+}
+
+const safeEqual = (a, b) => {
+  const x = Buffer.from(String(a)), y = Buffer.from(String(b));
+  return x.length === y.length && crypto.timingSafeEqual(x, y);
+};
+
 const publicStudent = (s) => ({
   id: s.id, username: s.username, full_name: s.full_name, grade: s.grade, section: s.section,
   school_code: getMeta(db, 'school_code'), profile_photo_url: s.profile_photo_url, ...JSON.parse(s.extra || '{}'),
@@ -165,6 +182,70 @@ const api = {
       .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
     const completions = db.prepare('SELECT lesson_id, score, status FROM completions WHERE student_id = ?').all(s.id);
     sendJson(res, 200, { courses, completions });
+  },
+
+  'POST /api/teacher/login': async (req, res) => {
+    const { code } = await readBody(req);
+    if (!config.teacherCode || String(config.teacherCode).length < 6) {
+      return sendJson(res, 400, { error: 'Este nodo no tiene código de docente. Agregá "teacherCode" en config.json.' });
+    }
+    if (teacherLockedUntil > Date.now()) return sendJson(res, 429, { error: 'Demasiados intentos. Esperá unos minutos.' });
+    if (!safeEqual(code, config.teacherCode)) {
+      teacherFails++;
+      if (teacherFails >= 5) { teacherFails = 0; teacherLockedUntil = Date.now() + LOCK_MS; }
+      return sendJson(res, 401, { error: 'Código incorrecto' });
+    }
+    teacherFails = 0;
+    const token = crypto.randomBytes(32).toString('hex');
+    teacherSessions.set(token, Date.now() + TEACHER_SESSION_MS);
+    sendJson(res, 200, { token });
+  },
+
+  // Resumen para el docente: alumnos por clase, estado del PIN, último
+  // ingreso y cuánto avanzaron; y el estado de la sincronización.
+  'GET /api/teacher/overview': (req, res) => {
+    if (!teacherFromRequest(req)) return sendJson(res, 401, { error: 'Sesión de docente vencida' });
+    const students = db.prepare(`
+      SELECT s.id, s.full_name, s.grade, s.section, s.pin_hash IS NOT NULL AS has_pin, s.locked_until,
+        (SELECT MAX(entered_at) FROM session_logs l WHERE l.student_id = s.id) AS last_entry,
+        (SELECT COUNT(*) FROM completions c WHERE c.student_id = s.id AND c.status = 'completed') AS completed
+      FROM students s WHERE IFNULL(s.status,'activo') NOT IN ('egresado','baja')
+      ORDER BY s.grade, s.section, s.full_name`).all()
+      .map(s => ({ ...s, has_pin: !!s.has_pin, locked: s.locked_until > Date.now() }));
+    const logs = db.prepare(`
+      SELECT l.entered_at, l.device, s.full_name, s.grade, s.section
+      FROM session_logs l LEFT JOIN students s ON s.id = l.student_id
+      ORDER BY l.id DESC LIMIT 60`).all();
+    sendJson(res, 200, {
+      node: { name: getMeta(db, 'node_name'), last_sync_at: getMeta(db, 'last_sync_at'), last_usb_sync_at: getMeta(db, 'last_usb_sync_at') },
+      pending: {
+        completions: db.prepare('SELECT COUNT(*) n FROM completions WHERE dirty = 1').get().n,
+        pins: db.prepare('SELECT COUNT(*) n FROM students WHERE pin_dirty = 1').get().n,
+        sessions: db.prepare('SELECT COUNT(*) n FROM session_logs WHERE dirty = 1').get().n,
+        files: db.prepare('SELECT COUNT(*) n FROM files WHERE downloaded = 0').get().n,
+      },
+      students,
+      logs,
+    });
+  },
+
+  // El alumno olvidó su PIN: se borra y crea uno nuevo en su próximo
+  // ingreso. Se sincroniza con la nube (el borrado también viaja).
+  'POST /api/teacher/reset-pin': async (req, res) => {
+    if (!teacherFromRequest(req)) return sendJson(res, 401, { error: 'Sesión de docente vencida' });
+    const { student_id } = await readBody(req);
+    const r = db.prepare(`UPDATE students SET pin_hash = NULL, pin_salt = NULL, pin_updated_at = ?, pin_dirty = 1,
+      failed_attempts = 0, locked_until = 0 WHERE id = ?`).run(new Date().toISOString(), student_id);
+    if (!r.changes) return sendJson(res, 404, { error: 'Alumno no encontrado' });
+    db.prepare('DELETE FROM sessions WHERE student_id = ?').run(student_id);
+    sendJson(res, 200, { ok: true });
+  },
+
+  'POST /api/teacher/unlock': async (req, res) => {
+    if (!teacherFromRequest(req)) return sendJson(res, 401, { error: 'Sesión de docente vencida' });
+    const { student_id } = await readBody(req);
+    db.prepare('UPDATE students SET failed_attempts = 0, locked_until = 0 WHERE id = ?').run(student_id);
+    sendJson(res, 200, { ok: true });
   },
 
   // Progreso: la mejor nota gana y "completado" no vuelve atrás.

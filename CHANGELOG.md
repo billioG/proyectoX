@@ -4,6 +4,10 @@ Cambios publicados en Quetzal LMS, del más reciente al más antiguo. Cada líne
 
 Al publicar una versión nueva, agregá una línea arriba de todo (ver CONTRIBUTING.md).
 
+## 2026-09-27
+
+- School node: one-command installer (quetzal.local, teacher code, USB automount, optional Wi-Fi hotspot), offline teacher panel (entries, PIN reset synced to the cloud, unlock), hide cloud-only UI in node mode, tolerate BOM in config.json (v1.0.106)
+
 ## 2026-09-26
 
 - School node sync by USB drive: node writes pending progress to a QUETZAL folder, a teacher uploads it from any computer (menu Nodo escolar (USB)) and brings back an encrypted reply plus missing course files (v1.0.105)

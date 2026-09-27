@@ -117,13 +117,15 @@ Detalle en el dossier: https://claude.ai/artifact/BoLjSgRTYwfesywaZaxvEq
 - [ ] Correr `migrations/school-nodes.sql`.
 - [ ] Desplegar `node-sync` con **Verify JWT OFF**.
 - [ ] Registrar el nodo desde la consola (RPC `register_school_node`) e instalar en la Pi según `school-node/README.md`.
-- [ ] HTTPS en el nodo (subdominio delegado con deSEC) e instalador de un solo comando (Wi-Fi, `quetzal.local`).
+- [x] Instalador de un solo comando (`school-node/install.sh`: Node.js, servicio, `http://quetzal.local`, código de docente, montaje USB, Wi-Fi propia con `--hotspot`).
+- [ ] Probar el instalador en una Raspberry real.
+- [ ] HTTPS en el nodo (subdominio con certificado). No bloquea el piloto: el nodo funciona por HTTP en la red de la escuela.
 - [x] Sincronización por USB para escuelas donde el docente no llega a zona con señal (`school-node/usb-sync.js` + menú **Nodo escolar (USB)**).
 - [ ] Redesplegar `node-sync` (**Verify JWT OFF**) para activar la sincronización por USB.
 - [ ] Probar la USB con una Raspberry real (en la versión Lite, instalar la regla de montaje del README).
-- [ ] Panel del docente en el nodo: ver registro de ingresos y restablecer PIN.
-- [ ] Ocultar en modo nodo lo que necesita la nube (campana, consejos de la mascota).
-- [ ] Copiar los videos de la Quetzadex (`course-content/companion-videos/`) al nodo en la sincronización.
+- [x] Panel del docente en el nodo: ingresos, restablecer PIN, desbloquear, estado de sincronización.
+- [x] Ocultar en modo nodo lo que necesita la nube (avisos, asistente con IA, perfil).
+- [ ] Videos de la Quetzadex en el nodo: hoy el modo nodo solo muestra Cursos (sin Centro de Juego), así que no aplica hasta llevar los juegos al nodo.
 
 ## 🔵 Mejoras pendientes de la app
 

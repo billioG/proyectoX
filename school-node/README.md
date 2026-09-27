@@ -14,8 +14,40 @@ con la nube cuando consigue señal (cable, hotspot del celular o, más adelante,
 
 - **Sincronización por memoria USB** para escuelas donde la Raspberry nunca
   consigue internet (ver abajo).
+- **Panel del docente** sin internet: botón "Docente" en la pantalla de ingreso,
+  con el código de docente del nodo. Muestra quién entró y desde qué tablet,
+  permite **restablecer el PIN** de un alumno que lo olvidó y **desbloquear** a
+  quien falló 5 veces. El PIN restablecido también se sincroniza con la nube.
+- En modo nodo se oculta lo que necesita internet (avisos, asistente con IA,
+  perfil) y el header muestra el nombre de la escuela.
 
-Todavía falta: HTTPS e instalador de un comando.
+## Instalación en un comando (recomendado)
+
+En la Raspberry, con internet (Raspberry Pi OS 64 bits, con o sin escritorio):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/billioG/proyectoX/main/school-node/install.sh | bash
+```
+
+Pide el **token del nodo** (ver "Obtener el token del nodo") y al final muestra:
+
+- la dirección para las tablets: **http://quetzal.local** (o la IP);
+- el **código de docente** (guardalo: es para el panel del docente).
+
+Escuelas **sin router**: agregá `--hotspot` y la Raspberry crea su propia red
+Wi-Fi "Quetzal-Escuela" (muestra la contraseña al final):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/billioG/proyectoX/main/school-node/install.sh | bash -s -- --hotspot
+```
+
+Actualizar el código más adelante: `bash ~/quetzal/school-node/install.sh --update`
+
+> **Sobre HTTPS.** El nodo funciona por HTTP dentro de la red de la escuela.
+> Todo lo que usan los alumnos en el nodo (cursos, PIN, progreso) anda así.
+> HTTPS solo haría falta para funciones del navegador que lo exigen (modo sin
+> conexión dentro de la tablet, cámara); requiere un subdominio con
+> certificado y queda para una etapa siguiente.
 
 ## Requisitos
 
@@ -23,7 +55,7 @@ Todavía falta: HTTPS e instalador de un comando.
 - Recomendado: SSD por USB en vez de microSD (aguanta mejor los cortes de luz).
 - Node.js 20 o superior.
 
-## Instalación (manual, por ahora)
+## Instalación manual (si no se puede usar el instalador)
 
 ```bash
 # 1. Node.js 22
@@ -37,7 +69,7 @@ npm install --omit=dev
 
 # 3. Configuración
 cp config.example.json config.json
-nano config.json   # pegar el token del nodo
+nano config.json   # pegar el token del nodo y elegir un teacherCode (6 a 12 números)
 ```
 
 ### Obtener el token del nodo

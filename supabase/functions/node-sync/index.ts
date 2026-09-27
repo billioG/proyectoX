@@ -156,15 +156,17 @@ Deno.serve(async (req) => {
     }
 
     for (const p of (push.pins || [])) {
-      if (!studentIds.has(p.student_id) || !p.pin_hash || !p.pin_salt || !p.pin_updated_at) continue;
+      // PIN nuevo (hash + sal) o restablecido por el docente en el nodo
+      // (hash y sal vacíos): gana el cambio más reciente.
+      const isReset = !p.pin_hash && !p.pin_salt;
+      if (!studentIds.has(p.student_id) || !p.pin_updated_at || (!isReset && (!p.pin_hash || !p.pin_salt))) continue;
       const current: any = students.find((s: any) => s.id === p.student_id);
       if (current?.pin_updated_at && new Date(current.pin_updated_at) >= new Date(p.pin_updated_at)) continue;
-      const { error } = await admin.from('students')
-        .update({ pin_hash: p.pin_hash, pin_salt: p.pin_salt, pin_updated_at: p.pin_updated_at })
-        .eq('id', p.student_id);
+      const change = { pin_hash: isReset ? null : p.pin_hash, pin_salt: isReset ? null : p.pin_salt, pin_updated_at: p.pin_updated_at };
+      const { error } = await admin.from('students').update(change).eq('id', p.student_id);
       if (!error) {
         appliedPins++;
-        Object.assign(current, { pin_hash: p.pin_hash, pin_salt: p.pin_salt, pin_updated_at: p.pin_updated_at });
+        Object.assign(current, change);
       }
     }
 
