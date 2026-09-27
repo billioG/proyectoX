@@ -159,8 +159,8 @@ begin
       if extract(isodow from d) < 6 then
         i := i + 1;
         if (r.n + i) % 9 <> 0 then
-          insert into public.attendance (student_id, teacher_id, school_code, grade, section, date, status)
-          values (r.id, v_teacher, v_school, r.grade, r.section, d, 'present')
+          insert into public.attendance (student_id, teacher_id, school_code, grade, section, date, time, status)
+          values (r.id, v_teacher, v_school, r.grade, r.section, d, time '07:30:00', 'present')
           on conflict (student_id, date) do nothing;
         end if;
       end if;

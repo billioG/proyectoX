@@ -8,7 +8,7 @@ del proyecto (necesitan contraseñas o acceso al panel de Supabase).
 
 ## 🔴 Urgente
 
-- [ ] **Cambiar el `CRON_SECRET`.** El valor viejo quedó en el historial de git (`migrations/random-events-cron.sql`).
+- [x] **Cambiar el `CRON_SECRET`.** Hecho el 27/09/2026: secreto nuevo y las 3 tareas (`trigger-random-event`, `settle-random-event`, `notify-inactive-users-daily`) respondiendo 200. El valor viejo quedó en el historial de git (`migrations/random-events-cron.sql`).
   1. Generar uno nuevo (`openssl rand -hex 24`).
   2. Supabase → Edge Functions → Secrets → reemplazar `CRON_SECRET`.
   3. SQL Editor → reprogramar las tareas con el valor nuevo (mismo nombre = se actualizan):
@@ -43,7 +43,7 @@ del proyecto (necesitan contraseñas o acceso al panel de Supabase).
 - [x] Crear `colegios@yoaprendo.online`
 - [ ] Verificar SPF, DKIM y DMARC de ese correo (mail-tester.com ≥ 9/10) y calentar el dominio 2 semanas
 - [x] Correo de contacto y fecha de última revisión en `privacidad.html` (v1.0.108)
-- [ ] Plantel de demostración: crear el docente "Docente Demostración" con `colegios@yoaprendo.online` desde la app, volver a correr `migrations/impact-metrics.sql` (excluye planteles demo del tablero de Impacto) y correr `migrations/demo-school.sql` (poner la clave de clase al inicio). Asignarle una ruta publicada a sus 2 clases. Nunca demostrar con un plantel con menores reales.
+- [x] Plantel de demostración creado (`migrations/demo-school.sql`, 27/09/2026). Falta: asignarle una ruta publicada a las 2 clases. Nunca demostrar con un plantel con menores reales.
 - [ ] Publicar la página para colegios y enlazarla desde el pie de Quetzal ("Para colegios e instituciones")
 - [ ] Nombre legal = DPI = NIT en el acuerdo de piloto y facturas; inscripción SAT / FEL
 - [ ] No prometer en demos el nodo escolar ni la importación SIRE hasta probarlos en vivo

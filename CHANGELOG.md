@@ -6,6 +6,7 @@ Al publicar una versión nueva, agregá una línea arriba de todo (ver CONTRIBUT
 
 ## 2026-09-27
 
+- Fix `migrations/demo-school.sql`: `attendance.time` is NOT NULL with no default; the seed's attendance insert failed. Added an explicit time value.
 - Privacy policy: project contact email (colegios@yoaprendo.online) and last-review date; demo teacher and demo/test schools excluded from admin reports and from the Impact dashboard (re-run `migrations/impact-metrics.sql`) (v1.0.108)
 - Pre-demo polish: teacher profile no longer shows "undefined" and counts schools (not classes); singular/plural in counters; ranking explains its order (votes, then score) and shows students only "Name I."; optional demo school seed with fictitious data (`migrations/demo-school.sql`, `demo-school-remove.sql`) (v1.0.107)
 
