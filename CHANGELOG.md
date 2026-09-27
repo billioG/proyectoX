@@ -6,6 +6,7 @@ Al publicar una versión nueva, agregá una línea arriba de todo (ver CONTRIBUT
 
 ## 2026-09-27
 
+- Fix v1.0.116 regression: a stray JS escape (\`f105\` inside a JS template literal is a form-feed control character, not the two characters "\f105") corrupted the injected companion stylesheet from that rule onward -- buttons, emote pills and the evolution grid all lost their CSS. Also: Selva/Fuerza/ODS badges now share one row, and the description paragraph (redundant with "u00bfSabu00edas que?") was removed (v1.0.117)
 - Quetzadex card is shorter: emotes and evolution line are now collapsible (`<details>`). Season Pass level 18 now grants a free companion (guacamaya) instead of gems -- new 'companion' reward type, easy to point at a future global species. Migration: `season-pass-companion-reward.sql` (v1.0.116)
 - Quetzadex: each pet's info card now shows the UN Sustainable Development Goal(s) it illustrates (14 Vida submarina for water species, 15 Vida de ecosistemas terrestres for land/forest species) -- useful content alignment for grant applications, no new species (v1.0.115)
 - Coordinador nav no longer duplicates "Explorar Proyectos" -- nav-docente's own "Inicio" already goes to feed now that both menus show together (v1.0.114)

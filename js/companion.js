@@ -918,7 +918,6 @@ window.ensureCompanionStyles = function ensureCompanionStyles() {
     .dex-sci { color:#94a3b8; font-style:italic; font-size:.72rem; }
     .dex-types { display:flex; flex-wrap:wrap; gap:.4rem; margin:.7rem 0; }
     .dex-type { padding:.3rem .75rem; border-radius:9999px; font-size:.72rem; font-weight:800; color:#fff; }
-    .dex-ods { display:flex; flex-wrap:wrap; gap:.4rem; margin:0 0 .7rem; }
     .dex-ods-badge { display:flex; align-items:center; gap:.35rem; padding:.25rem .6rem .25rem .35rem; border-radius:9999px; font-size:.62rem; font-weight:800; color:#fff; cursor:help; }
     .dex-ods-badge b { background:rgba(255,255,255,.28); border-radius:9999px; width:1.1rem; height:1.1rem; display:inline-flex; align-items:center; justify-content:center; font-size:.62rem; }
     .dex-desc { font-size:.85rem; color:#334155; line-height:1.45; margin:0; }
@@ -931,7 +930,7 @@ window.ensureCompanionStyles = function ensureCompanionStyles() {
     .dex-details { margin-top:.7rem; border-top:1px solid #f1f5f9; padding-top:.6rem; }
     .dex-details summary { list-style:none; cursor:pointer; font-size:.72rem; font-weight:800; color:#475569; display:flex; align-items:center; gap:.4rem; }
     .dex-details summary::-webkit-details-marker { display:none; }
-    .dex-details summary::before { content:'\f105'; font-family:'Font Awesome 6 Free'; font-weight:900; transition:transform .15s; }
+    .dex-details summary::before { content:'\\f105'; font-family:'Font Awesome 6 Free'; font-weight:900; transition:transform .15s; }
     .dex-details[open] summary::before { transform:rotate(90deg); }
     .dex-emotes { display:flex; flex-wrap:wrap; gap:.3rem; margin-top:.6rem; }
     .dex-emotes span { font-size:.66rem; font-weight:800; padding:.25rem .55rem; border-radius:9999px; background:color-mix(in srgb, var(--dex-c) 15%, #fff); color:#1e293b; }
@@ -1593,9 +1592,7 @@ window.openDexCard = function openDexCard(species, mode = 'collection') {
       <div class="dex-body">
         <div class="dex-name">${sp.label}</div>
         <div class="dex-num">N°${String(dex.num).padStart(3, '0')} · <span class="dex-sci">${dex.sci}</span></div>
-        <div class="dex-types">${dex.types.map(([t, c]) => `<span class="dex-type" style="background:${c}">${t}</span>`).join('')}</div>
-        ${dex.ods?.length ? `<div class="dex-ods">${dex.ods.map(n => `<span class="dex-ods-badge" style="background:${ODS[n].c}" title="ODS ${n}: ${ODS[n].name}"><b>${n}</b> ODS ${n}</span>`).join('')}</div>` : ''}
-        <p class="dex-desc">${dex.about}</p>
+        <div class="dex-types">${dex.types.map(([t, c]) => `<span class="dex-type" style="background:${c}">${t}</span>`).join('')}${dex.ods?.length ? dex.ods.map(n => `<span class="dex-ods-badge" style="background:${ODS[n].c}" title="ODS ${n}: ${ODS[n].name}"><b>${n}</b> ODS ${n}</span>`).join('') : ''}</div>
         <div class="dex-stats">
           <div class="dex-stat"><small>⚖️ Peso real</small><b>${dex.weight}</b></div>
           <div class="dex-stat"><small>🛡️ Conservación</small><b>${dex.status}</b></div>
