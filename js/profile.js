@@ -277,6 +277,10 @@ window.renderTeacherProfileUI = function renderTeacherProfileUI(container, teach
     const schoolsLabel = schoolCount === 0 ? 'Sin establecimiento asignado'
         : `${schoolCount} ${schoolCount === 1 ? 'Centro Educativo' : 'Centros Educativos'}`;
     const identity = teacher.username || teacher.email || '';
+    // "XP Acumulada Mes" y "Objetivos del Periodo" son las metas del programa
+    // de retribución 1bot (asistencia GPS, evaluaciones, evidencia, informe).
+    // No aplican a docentes de otras escuelas ni al docente de demostración.
+    const is1bot = !!teacher.is_1bot_team;
     container.innerHTML = `
     <div class="flex flex-col md:flex-row gap-8 mb-10 items-center text-center md:text-left">
         <div class="w-32 h-32 rounded-3xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center text-5xl shadow-inner border border-indigo-500/20 shrink-0 overflow-hidden">
@@ -303,7 +307,7 @@ window.renderTeacherProfileUI = function renderTeacherProfileUI(container, teach
 
     <div class="flex justify-center md:justify-start mb-8" id="event-notif-toggle-slot"></div>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+    <div class="grid grid-cols-1 ${is1bot ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-6 mb-12">
         <div class="glass-card p-8 overflow-hidden relative group">
             <i class="fas fa-star absolute -right-6 -bottom-6 text-8xl text-slate-50 dark:text-slate-800 transition-transform group-hover:scale-110"></i>
             <div class="relative z-10">
@@ -312,11 +316,12 @@ window.renderTeacherProfileUI = function renderTeacherProfileUI(container, teach
                 <div class="text-xs font-semibold text-slate-500 mt-4">${totalRatings} ${totalRatings === 1 ? 'evaluación recibida' : 'evaluaciones recibidas'}</div>
             </div>
         </div>
+        ${is1bot ? `
         <div class="glass-card p-8 border-l-8 border-emerald-500">
             <div class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-2">XP Acumulada Mes</div>
             <div class="text-4xl font-bold text-emerald-600 dark:text-emerald-400">${kpis.totalXP}</div>
             <div class="text-xs font-semibold text-slate-500 mt-4">Meta mensual: 500 XP</div>
-        </div>
+        </div>` : ''}
         <div class="glass-card p-8">
             <div class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-2">Estado del Perfil</div>
             <div class="text-xl font-bold text-slate-800 dark:text-white uppercase tracking-tighter">Verificado</div>
@@ -327,6 +332,7 @@ window.renderTeacherProfileUI = function renderTeacherProfileUI(container, teach
     </div>
 
     <div class="glass-card p-8">
+        ${is1bot ? `
         <h3 class="text-xl font-bold text-slate-800 dark:text-white mb-6 flex items-center gap-3">
             <i class="fas fa-tasks text-primary"></i> Objetivos del Periodo
         </h3>
@@ -349,8 +355,12 @@ window.renderTeacherProfileUI = function renderTeacherProfileUI(container, teach
                     <div class="h-full bg-indigo-500" style="width: ${Math.min(100, (kpis.evalCount / kpis.evalMeta) * 100)}%"></div>
                 </div>
             </div>
-        </div>
-        <button onclick="window.viewAllTeacherComments && window.viewAllTeacherComments()" class="w-full mt-10 py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold rounded-2xl transition-all uppercase tracking-widest text-xs">
+        </div>` : `
+        <h3 class="text-xl font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-3">
+            <i class="fas fa-comments text-primary"></i> Comentarios de Estudiantes
+        </h3>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">Lo que tus alumnos opinaron de tus clases.</p>`}
+        <button onclick="window.viewAllTeacherComments && window.viewAllTeacherComments()" class="w-full ${is1bot ? 'mt-10' : ''} py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold rounded-2xl transition-all uppercase tracking-widest text-xs">
             VER FEEDBACK DETALLADO DE ESTUDIANTES
         </button>
     </div>

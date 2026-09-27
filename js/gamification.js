@@ -89,6 +89,11 @@ window.initGamification = async function initGamification() {
       // usara la plataforma seguido.
       if (typeof window.updateLoginStreak === 'function') await window.updateLoginStreak();
 
+      // El widget "Métricas de Impacto" (asistencia GPS, evidencia semanal,
+      // informe mensual) es del programa de retribución 1bot -- no aplica
+      // a docentes de otras escuelas ni al docente de demostración.
+      if (!window.userData?.is_1bot_team) return;
+
       const cacheKey = `teacher_kpi_snapshot_${currentUser.id}`;
       // kpi-engine.js se carga perezosamente (solo al entrar a "feed"/"perfil"),
       // pero esto corre justo al hacer login -- si todavía no cargó,
