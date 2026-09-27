@@ -485,6 +485,106 @@ const COMPANION_DEX = {
 };
 window.COMPANION_DEX = COMPANION_DEX;
 const EGG_PRICE = 150;
+
+// Más datos reales para el "¿Sabías que?": cada vez que se abre la ficha
+// sale uno distinto (y hay botón "Otro dato"). El primero de cada especie
+// es COMPANION_DEX[sp].fact.
+const DEX_FACTS = {
+  quetzal: [
+    'Su verde brillante no es pintura de las plumas: es la luz que rebota en su estructura, por eso cambia de tono según cómo lo mires.',
+    'La moneda de Guatemala se llama quetzal en su honor desde 1925.',
+    'Al comer aguacatillos y otras frutas, siembra sus semillas por el bosque nuboso.',
+    'Anida en huecos de troncos viejos, y el macho y la hembra se turnan para cuidar los huevos.',
+    'Aparece en la bandera y en el escudo de Guatemala.',
+  ],
+  jaguar: [
+    'Su mordida es tan fuerte que puede romper el caparazón de una tortuga.',
+    'Cada jaguar tiene un patrón de manchas único, como una huella digital.',
+    'Algunos jaguares son casi negros, pero si los mirás de cerca igual tienen sus manchas.',
+    'Es el felino más grande de América y el tercero del mundo, después del tigre y el león.',
+    'Caza sobre todo al atardecer y de noche.',
+  ],
+  tortuga: [
+    'La tortuga parlama a veces llega en "arribadas": miles de hembras salen a poner huevos a la misma playa en pocos días.',
+    'Las crías nacen de noche y encuentran el mar por su brillo; las luces de las casas las pueden confundir.',
+    'Cada hembra pone alrededor de 100 huevos en un nido que cava con sus aletas.',
+    'En Guatemala hay tortugarios, como el de Monterrico, que cuidan los huevos hasta que nacen las crías.',
+    'Es la tortuga marina más abundante del mundo, pero igual está en peligro por la pesca y la basura en el mar.',
+  ],
+  tucan: [
+    'Es el ave nacional de Belice, nuestro país vecino.',
+    'Para dormir, esconde el pico entre las plumas de la espalda y dobla la cola sobre el cuerpo.',
+    'Tira la fruta al aire y la atrapa con la punta del pico para tragarla.',
+    'Su pico también le ayuda a soltar calor cuando hace mucho sol.',
+    'Vive en grupos pequeños y hace su nido en huecos de los árboles.',
+  ],
+  saraguate: [
+    'Descansa gran parte del día porque las hojas que come le dan poca energía.',
+    'Casi nunca baja al suelo: vive en lo alto de los árboles de la selva.',
+    'Su cola funciona como una mano más: con ella se agarra de las ramas.',
+    'Vive en grupos familiares pequeños que aúllan juntos para marcar su territorio.',
+    'Al comer frutas y soltar las semillas, ayuda a que la selva vuelva a crecer.',
+  ],
+  manati: [
+    'Cuando descansa puede quedarse bajo el agua hasta unos 20 minutos sin respirar.',
+    'Puede comer al día alrededor de la décima parte de su peso en plantas acuáticas.',
+    'Sus crías nacen bajo el agua y la mamá las lleva a la superficie para respirar.',
+    'En Izabal existe el Biotopo Chocón Machacas, creado para proteger al manatí.',
+    'Nada muy despacio y las hélices de las lanchas lo pueden lastimar: donde vive hay que navegar con cuidado.',
+  ],
+  guacamaya: [
+    'Suele formar pareja con la misma guacamaya toda su vida.',
+    'En cautiverio puede vivir más de 50 años.',
+    'Come arcilla de las orillas de los ríos; se cree que le ayuda a digerir semillas que tienen sustancias tóxicas.',
+    'En Petén, guardaparques y científicos vigilan sus nidos para que los pichones no sean robados.',
+    'Su grito es tan fuerte que se escucha a mucha distancia en la selva.',
+  ],
+  danta: [
+    'Es una gran nadadora: se mete al agua para refrescarse y para escapar del peligro.',
+    'Se comunica con silbidos agudos.',
+    'Sus parientes más cercanos son los caballos y los rinocerontes.',
+    'Camina largas distancias comiendo frutas, y así siembra semillas: le dicen la jardinera de la selva.',
+    'Es el mamífero terrestre más grande de Centroamérica.',
+  ],
+  pizote: [
+    'A diferencia de su pariente el mapache, está activo de día.',
+    'Puede bajar de los árboles de cabeza porque sus tobillos giran hacia atrás.',
+    'Usa su cola larga para mantener el equilibrio en las ramas.',
+    'Las hembras andan en grupos con sus crías, y los machos adultos suelen andar solos.',
+    'Duerme en lo alto de los árboles para estar a salvo.',
+  ],
+  armadillo: [
+    'Puede aguantar la respiración varios minutos y cruzar arroyos caminando por el fondo.',
+    'Cuando se asusta, pega un salto hacia arriba.',
+    'Aunque mucha gente lo cree, el armadillo de nueve bandas no puede enrollarse como una bola.',
+    'Ve muy poco, pero su olfato es excelente para encontrar insectos bajo la tierra.',
+    'Para cruzar ríos puede tragar aire y así flotar mejor.',
+  ],
+};
+
+function factsFor(species) {
+  const dex = COMPANION_DEX[species];
+  return [dex?.fact, ...(DEX_FACTS[species] || [])].filter(Boolean);
+}
+
+// Un dato distinto al último que se mostró de esa especie.
+const lastFactIndex = {};
+function nextFact(species) {
+  const list = factsFor(species);
+  if (!list.length) return '';
+  let i = Math.floor(Math.random() * list.length);
+  if (list.length > 1 && i === lastFactIndex[species]) i = (i + 1) % list.length;
+  lastFactIndex[species] = i;
+  return list[i];
+}
+
+window.showAnotherFact = function showAnotherFact(species, btn) {
+  const box = btn.closest('.dex-fact');
+  const span = box?.querySelector('.dex-fact-text');
+  if (!span) return;
+  span.textContent = nextFact(species);
+  box.animate?.([{ opacity: 0.3 }, { opacity: 1 }], { duration: 300 });
+};
 window.COMPANION_SPECIES = COMPANION_SPECIES;
 
 // ---------- accesorios (estilo Free Fire) ----------
@@ -812,6 +912,7 @@ window.ensureCompanionStyles = function ensureCompanionStyles() {
     .dex-stat small { display:block; font-size:.58rem; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:.06em; margin-bottom:.1rem; }
     .dex-stat b { font-size:.8rem; color:#0f172a; line-height:1.25; display:block; }
     .dex-fact { background:#f1f5f9; border-radius:1rem; padding:.7rem .85rem; font-size:.8rem; color:#334155; }
+    .dex-fact-more { display:inline-flex; align-items:center; gap:.3rem; margin-top:.45rem; border:0; background:transparent; color:var(--dex-c); font-weight:900; font-size:.72rem; cursor:pointer; padding:0; filter:brightness(.8); }
     .dex-emotes { display:flex; flex-wrap:wrap; gap:.3rem; margin-top:.8rem; }
     .dex-emotes span { font-size:.66rem; font-weight:800; padding:.25rem .55rem; border-radius:9999px; background:color-mix(in srgb, var(--dex-c) 15%, #fff); color:#1e293b; }
     .dex-emotes span.locked { background:#f1f5f9; color:#94a3b8; }
@@ -918,7 +1019,7 @@ window.togglePetSound = function togglePetSound(btn) {
   const on = !petSoundOn();
   try { localStorage.setItem(PET_SOUND_KEY, on ? 'on' : 'off'); } catch { /* sin almacenamiento */ }
   document.querySelectorAll('[data-pet-sound]').forEach(b => { b.innerHTML = petSoundIcon(); b.title = on ? 'Silenciar mascotas' : 'Activar sonidos'; });
-  if (on) playPetSound('hop', null);
+  if (on) window.testPetSound();
 };
 function petSoundIcon() {
   return petSoundOn() ? '<i class="fas fa-volume-high"></i>' : '<i class="fas fa-volume-xmark"></i>';
@@ -932,11 +1033,61 @@ function audioCtx() {
   if (!petAudio) {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return null;
+    // iPhone: sin esto el interruptor de silencio apaga el audio web.
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* no soportado */ }
     petAudio = new AC();
+    // Los parlantes de celular son chicos: compresor + ganancia para que
+    // las voces se escuchen claras sin distorsionar.
+    const comp = petAudio.createDynamicsCompressor();
+    comp.threshold.value = -20; comp.knee.value = 10; comp.ratio.value = 4;
+    const boost = petAudio.createGain();
+    boost.gain.value = 2.4;
+    comp.connect(boost).connect(petAudio.destination);
+    petAudio.out = comp;
   }
-  if (petAudio.state === 'suspended') petAudio.resume();
+  if (petAudio.state !== 'running') petAudio.resume().catch(() => {});
   return petAudio;
 }
+
+// Los celulares solo dejan arrancar el audio dentro de un toque del
+// usuario. Se "desbloquea" en el primer toque en cualquier parte de la
+// app, con un sonido vacío, para que después la mascota suene al instante.
+function unlockPetAudio() {
+  const ctx = audioCtx();
+  if (!ctx) return;
+  try {
+    const src = ctx.createBufferSource();
+    src.buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
+    src.connect(ctx.destination);
+    src.start(0);
+  } catch { /* sin audio */ }
+  if (ctx.state === 'running') {
+    ['pointerdown', 'touchend', 'keydown'].forEach(ev => document.removeEventListener(ev, unlockPetAudio, true));
+  }
+}
+['pointerdown', 'touchend', 'keydown'].forEach(ev => document.addEventListener(ev, unlockPetAudio, true));
+
+// "Probar sonido": toca la voz de la mascota y dice qué falla si no suena.
+window.testPetSound = async function testPetSound(species = window._myCompanionSpecies || 'quetzal') {
+  if (!petSoundOn()) {
+    try { localStorage.setItem(PET_SOUND_KEY, 'on'); } catch { /* sin almacenamiento */ }
+    document.querySelectorAll('[data-pet-sound]').forEach(b => { b.innerHTML = petSoundIcon(); });
+  }
+  const ctx = audioCtx();
+  if (!ctx) return window.showToast?.('<i class="fas fa-volume-xmark"></i> Este navegador no permite sonidos. Probá con Chrome.', 'error');
+  try { await ctx.resume(); } catch { /* se informa abajo */ }
+  let vibrated = false;
+  try { vibrated = !!navigator.vibrate?.([80, 60, 120]); } catch { /* sin vibración */ }
+  if (ctx.state !== 'running') {
+    return window.showToast?.('<i class="fas fa-volume-xmark"></i> El teléfono bloqueó el sonido. Tocá de nuevo "Probar sonido".', 'error');
+  }
+  speakForEmote(ctx, species, 4);
+  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  window.showToast?.(
+    `<i class="fas fa-volume-high"></i> ¿Se escuchó? Si no: subí el <b>volumen multimedia</b>${isIos ? ' y revisá el interruptor de silencio' : ''}.`
+    + (vibrated ? '' : (isIos ? ' (El iPhone no vibra desde páginas web.)' : ' Tu teléfono no permitió vibrar: revisá que la vibración esté activada.')),
+    'info');
+};
 
 // Tono con barrido de frecuencia (pío, boing, aullido...).
 function tone(ctx, { from, to = from, dur = 0.2, type = 'sine', vol = 0.12, at = 0, vibrato = 0 }) {
@@ -957,7 +1108,7 @@ function tone(ctx, { from, to = from, dur = 0.2, type = 'sine', vol = 0.12, at =
   g.gain.setValueAtTime(0.0001, t0);
   g.gain.exponentialRampToValueAtTime(vol, t0 + 0.015);
   g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-  osc.connect(g).connect(ctx.destination);
+  osc.connect(g).connect(ctx.out || ctx.destination);
   osc.start(t0); osc.stop(t0 + dur + 0.02);
 }
 
@@ -976,7 +1127,7 @@ function noise(ctx, { dur = 0.15, freq = 1500, q = 1, type = 'bandpass', vol = 0
   g.gain.setValueAtTime(0.0001, t0);
   g.gain.exponentialRampToValueAtTime(vol, t0 + 0.01);
   g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-  src.connect(f).connect(g).connect(ctx.destination);
+  src.connect(f).connect(g).connect(ctx.out || ctx.destination);
   src.start(t0); src.stop(t0 + dur + 0.02);
 }
 
@@ -1043,15 +1194,16 @@ const VOICES = {
   jaguar: (c, { at = 0, p = 1, s = 1, v = 1 }) => {
     const n = Math.max(1, Math.round(3 * s));
     for (let i = 0; i < n; i++) {
-      noise(c, { dur: 0.17, freq: 280 * p, q: 0.8, type: 'lowpass', vol: 0.28 * v, at: at + i * 0.3 });
-      tone(c, { from: 95 * p, to: 70 * p, dur: 0.17, type: 'sawtooth', vol: 0.09 * v, at: at + i * 0.3 });
+      // Rango medio a propósito: el parlante del celular casi no da graves.
+      noise(c, { dur: 0.18, freq: 650 * p, q: 1.2, vol: 0.3 * v, at: at + i * 0.3 });
+      tone(c, { from: 190 * p, to: 140 * p, dur: 0.18, type: 'sawtooth', vol: 0.12 * v, at: at + i * 0.3 });
     }
   },
   // Aullido grave que sube y baja.
   saraguate: (c, { at = 0, p = 1, s = 1, v = 1 }) => {
-    tone(c, { from: 170 * p, to: 290 * p, dur: 0.45 * s, type: 'sawtooth', vol: 0.07 * v, at, vibrato: 14 });
-    tone(c, { from: 290 * p, to: 160 * p, dur: 0.5 * s, type: 'sawtooth', vol: 0.07 * v, at: at + 0.45 * s, vibrato: 14 });
-    noise(c, { dur: 0.9 * s, freq: 260, type: 'lowpass', vol: 0.1 * v, at });
+    tone(c, { from: 300 * p, to: 520 * p, dur: 0.45 * s, type: 'sawtooth', vol: 0.09 * v, at, vibrato: 18 });
+    tone(c, { from: 520 * p, to: 280 * p, dur: 0.5 * s, type: 'sawtooth', vol: 0.09 * v, at: at + 0.45 * s, vibrato: 18 });
+    noise(c, { dur: 0.9 * s, freq: 500, q: 0.8, vol: 0.1 * v, at });
   },
   // Chirridos agudos (los manatíes se comunican con chillidos).
   manati: (c, { at = 0, p = 1, s = 1, v = 1 }) => {
@@ -1073,14 +1225,14 @@ const VOICES = {
   armadillo: (c, { at = 0, p = 1, s = 1, v = 1 }) => {
     const n = Math.max(1, Math.round(3 * s));
     for (let i = 0; i < n; i++) {
-      tone(c, { from: 150 * p, to: 115 * p, dur: 0.08, type: 'triangle', vol: 0.14 * v, at: at + i * 0.14 });
+      tone(c, { from: 320 * p, to: 240 * p, dur: 0.08, type: 'sawtooth', vol: 0.1 * v, at: at + i * 0.14 });
       noise(c, { dur: 0.05, freq: 3200, q: 2, vol: 0.05 * v, at: at + i * 0.14 + 0.05 });
     }
   },
   // Resoplido suave de tortuga.
   tortuga: (c, { at = 0, p = 1, s = 1, v = 1 }) => {
     noise(c, { dur: 0.35 * s, freq: 3000 * p, type: 'highpass', vol: 0.06 * v, at });
-    tone(c, { from: 200 * p, to: 140 * p, dur: 0.15, vol: 0.1 * v, at: at + 0.3 * s });
+    tone(c, { from: 420 * p, to: 300 * p, dur: 0.15, type: 'triangle', vol: 0.12 * v, at: at + 0.3 * s });
   },
 };
 
@@ -1109,18 +1261,29 @@ function playPetSound(id, species, index) {
   if (!petSoundOn()) return;
   const ctx = audioCtx();
   if (!ctx) return;
+  // Si el audio todavía no arrancó, esperar a que arranque y recién ahí
+  // programar los sonidos (si no, quedaban agendados en un reloj parado).
+  if (ctx.state !== 'running') {
+    ctx.resume().then(() => { if (ctx.state === 'running') schedulePetSound(ctx, id, species, index); }).catch(() => {});
+    return;
+  }
+  schedulePetSound(ctx, id, species, index);
+}
+
+function schedulePetSound(ctx, id, species, index) {
   try {
     // Efecto del movimiento, suave, debajo de la voz del animal.
     const fx = PET_SOUNDS[id];
     if (fx && !['sing', 'roar', 'legend'].includes(id)) {
       const master = ctx.createGain();
       master.gain.value = 0.5;
-      master.connect(ctx.destination);
+      master.connect(ctx.out || ctx.destination);
       // Mismo contexto de audio, pero con la salida pasando por "master".
       const quiet = {
         get currentTime() { return ctx.currentTime; },
         sampleRate: ctx.sampleRate,
         destination: master,
+        out: master,
         createOscillator: () => ctx.createOscillator(),
         createGain: () => ctx.createGain(),
         createBuffer: (...a) => ctx.createBuffer(...a),
@@ -1130,7 +1293,7 @@ function playPetSound(id, species, index) {
       fx(quiet, species);
     }
     speakForEmote(ctx, species, index);
-  } catch { /* sin audio, no pasa nada */ }
+  } catch (e) { console.warn('Sonido de mascota:', e); }
 }
 
 window.playCompanionEmote = function playCompanionEmote(svg, opts = {}) {
@@ -1358,7 +1521,8 @@ window.openQuetzadex = async function openQuetzadex() {
         <span class="ga-chip"><i class="fas fa-book-open"></i> Quetzadex</span>${window.petSoundButtonHtml()}
         <span class="ga-chip" style="color:#67e8f9"><i class="fas fa-gem"></i> <span data-my-gems>${window.userData?.gems ?? 0}</span></span>
       </div>
-      <p style="color:#cbd5e1;font-size:.8rem;margin:0 0 1rem">Fauna de Guatemala: ${owned.size} de ${Object.keys(COMPANION_SPECIES).length} en tu colección. Tocá una para ver su ficha.</p>
+      <p style="color:#cbd5e1;font-size:.8rem;margin:0 0 .6rem">Fauna de Guatemala: ${owned.size} de ${Object.keys(COMPANION_SPECIES).length} en tu colección. Tocá una para ver su ficha.</p>
+      <button type="button" onclick="window.testPetSound()" style="margin:0 0 1rem;border:1px solid rgba(255,255,255,.2);background:transparent;color:#cbd5e1;border-radius:9999px;padding:.35rem .9rem;font-size:.72rem;font-weight:800;cursor:pointer"><i class="fas fa-volume-high"></i> Probar sonido</button>
       <div class="dex-grid">${cards}</div>
       <button class="ga-btn" style="margin-top:1rem" onclick="document.getElementById('quetzadex-overlay').remove()">Cerrar</button>
     </div>`);
@@ -1417,7 +1581,8 @@ window.openDexCard = function openDexCard(species, mode = 'collection') {
           <div class="dex-stat"><small>📍 Hábitat</small><b>${dex.habitat}</b></div>
           <div class="dex-stat"><small>🍃 Come</small><b>${dex.food}</b></div>
         </div>
-        <div class="dex-fact"><b>💡 ¿Sabías que?</b> ${dex.fact}</div>
+        <div class="dex-fact"><b>💡 ¿Sabías que?</b> <span class="dex-fact-text">${nextFact(species)}</span>
+          <button type="button" class="dex-fact-more" onclick="window.showAnotherFact('${species}', this)"><i class="fas fa-shuffle"></i> Otro dato</button></div>
         <div class="dex-emotes">${emotesFor(species).map(e => {
           const open = mode === 'view' || mode === 'starter' || (have && e.minStage <= myStage);
           return `<span class="${open ? '' : 'locked'}" title="${open ? '' : 'Se desbloquea en: ' + sp.names[e.minStage]}">${open ? e.bubble : '🔒'} ${e.label}</span>`;
@@ -1546,11 +1711,12 @@ function wrapText(text, maxChars) {
 
 const xmlEsc = (v) => String(v ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-function shareCardSvg(species, stageIndex, equipped) {
+function shareCardSvg(species, stageIndex, equipped, fact) {
   const sp = COMPANION_SPECIES[species];
   const dex = COMPANION_DEX[species];
   const font = "'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
-  const factLines = wrapText(dex.fact, 40).slice(0, 4);
+  fact = fact || nextFact(species);
+  const factLines = wrapText(fact, 40).slice(0, 4);
   let px = 90;
   const pills = dex.types.map(([t, c]) => {
     const w = t.length * 19 + 56;
@@ -1592,7 +1758,8 @@ window.shareCompanionCard = async function shareCompanionCard(species = window._
   const original = btn?.innerHTML;
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creando imagen...'; }
   try {
-    const svg = shareCardSvg(species, stageIndex, equipped);
+    const fact = nextFact(species);
+    const svg = shareCardSvg(species, stageIndex, equipped, fact);
     const img = new Image();
     img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
     await img.decode();
@@ -1602,7 +1769,7 @@ window.shareCompanionCard = async function shareCompanionCard(species = window._
     ctx.drawImage(img, 0, 0);
     const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
     const file = new File([blob], `quetzadex-${species}.png`, { type: 'image/png' });
-    const text = `¡Mirá mi ${sp.names[stageIndex]}! 🐾 ${COMPANION_DEX[species].fact} #QuetzalLMS #FaunaDeGuatemala`;
+    const text = `¡Mirá mi ${sp.names[stageIndex]}! 🐾 ${fact} #QuetzalLMS #FaunaDeGuatemala`;
     if (navigator.canShare?.({ files: [file] })) {
       await navigator.share({ files: [file], title: 'Mi mascota en Quetzal LMS', text });
     } else {
