@@ -33,7 +33,7 @@ async function exportStudentsCSV() {
     });
 
     downloadCSV(csvContent, 'estudiantes_export.csv');
-    showToast(`<i class="fas fa-circle-check"></i> ${students.length} estudiantes exportados`, 'success');
+    showToast(`<i class="fas fa-circle-check"></i> ${students.length} ${students.length === 1 ? 'estudiante exportado' : 'estudiantes exportados'}`, 'success');
 
   } catch (err) {
     console.error('Error exportando estudiantes:', err);

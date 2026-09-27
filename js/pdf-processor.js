@@ -89,9 +89,9 @@ window.processPDFFile = async function processPDFFile() {
         progressBar.style.width = '100%';
         progressBar.textContent = '100%';
         statusText.classList.remove('animate-pulse');
-        statusText.innerHTML = `<i class="fas fa-circle-check"></i> ${window.extractedStudents.length} estudiantes extraídos`;
+        statusText.innerHTML = `<i class="fas fa-circle-check"></i> ${window.extractedStudents.length} ${window.extractedStudents.length === 1 ? 'estudiante extraído' : 'estudiantes extraídos'}`;
 
-        window.showToast(`<i class="fas fa-circle-check"></i> Establecimiento y ${window.extractedStudents.length} estudiantes encontrados`, 'success');
+        window.showToast(`<i class="fas fa-circle-check"></i> Establecimiento y ${window.extractedStudents.length} ${window.extractedStudents.length === 1 ? 'estudiante encontrado' : 'estudiantes encontrados'}`, 'success');
 
         displaySchoolPreview(window.extractedSchool);
         displayStudentsPreview(window.extractedStudents);
@@ -709,7 +709,7 @@ window.createUsersFromExtractedData = async function createUsersFromExtractedDat
 
     progressContainer.style.display = 'block';
     progressBar.style.width = '30%';
-    statusText.innerHTML = `<strong>Creando ${toCreate.length} estudiantes en el servidor...</strong>`;
+    statusText.innerHTML = `<strong>Creando ${toCreate.length} ${toCreate.length === 1 ? 'estudiante' : 'estudiantes'} en el servidor...</strong>`;
 
     let successCount = 0;
     let errorCount = 0;
@@ -768,7 +768,7 @@ window.createUsersFromExtractedData = async function createUsersFromExtractedDat
         ${errorDetails ? `<div class="mt-4 max-h-40 overflow-y-auto text-left">${errorDetails}</div>` : ''}
     `;
 
-    if (successCount > 0) window.showToast(`<i class="fas fa-circle-check"></i> ${successCount} estudiantes creados`, 'success');
+    if (successCount > 0) window.showToast(`<i class="fas fa-circle-check"></i> ${successCount} ${successCount === 1 ? 'estudiante creado' : 'estudiantes creados'}`, 'success');
     if (typeof window.loadStudents === 'function') setTimeout(window.loadStudents, 2000);
 }
 

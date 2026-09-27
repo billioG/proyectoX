@@ -374,7 +374,7 @@ window.updateLoginStreak = async function updateLoginStreak() {
       if (typeof showToast === 'function') showToast('<i class="fas fa-cube"></i> ¡Tu Racha fue salvada por un Hielo!', 'info');
       userData.streak_freeze = false;
     } else if (result.streak > (userData.streak || 0)) {
-      if (typeof showToast === 'function') showToast(`<i class="fas fa-fire"></i> ¡Racha de ${result.streak} días! Sigue así.`, 'info');
+      if (typeof showToast === 'function') showToast(`<i class="fas fa-fire"></i> ¡Racha de ${result.streak} ${result.streak === 1 ? 'día' : 'días'}! Sigue así.`, 'info');
     } else if (lastLogin) {
       if (typeof showToast === 'function') showToast('<i class="fas fa-face-sad-tear"></i> Racha perdida. ¡Empieza de nuevo!', 'warning');
     }

@@ -1187,7 +1187,7 @@ window.exportTeachersCSV = async function exportTeachersCSV() {
 
     if (typeof downloadCSV === 'function') {
       downloadCSV(csvContent, 'docentes_export.csv');
-      if (typeof showToast === 'function') showToast(`<i class="fas fa-circle-check"></i> ${teachers.length} docentes exportados`, 'success');
+      if (typeof showToast === 'function') showToast(`<i class="fas fa-circle-check"></i> ${teachers.length} ${teachers.length === 1 ? 'docente exportado' : 'docentes exportados'}`, 'success');
     }
 
   } catch (err) {

@@ -6,6 +6,8 @@ Al publicar una versión nueva, agregá una línea arriba de todo (ver CONTRIBUT
 
 ## 2026-09-27
 
+- Pre-demo polish: teacher profile no longer shows "undefined" and counts schools (not classes); singular/plural in counters; ranking explains its order (votes, then score) and shows students only "Name I."; optional demo school seed with fictitious data (`migrations/demo-school.sql`, `demo-school-remove.sql`) (v1.0.107)
+
 - School node: one-command installer (quetzal.local, teacher code, USB automount, optional Wi-Fi hotspot), offline teacher panel (entries, PIN reset synced to the cloud, unlock), hide cloud-only UI in node mode, tolerate BOM in config.json (v1.0.106)
 
 ## 2026-09-26

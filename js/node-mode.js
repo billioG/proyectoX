@@ -297,13 +297,13 @@ async function renderTeacherPanel(box) {
       </div>
 
       ${Object.entries(byClass).map(([cls, list]) => `
-        <h3 style="font-size:.85rem;font-weight:900;color:#a5b4fc;margin:1rem 0 .5rem">${esc(cls)} · ${list.length} alumnos</h3>
+        <h3 style="font-size:.85rem;font-weight:900;color:#a5b4fc;margin:1rem 0 .5rem">${esc(cls)} · ${list.length} ${list.length === 1 ? 'alumno' : 'alumnos'}</h3>
         <div style="display:grid;gap:.4rem">
           ${list.map(s => `
             <div style="display:flex;align-items:center;gap:.6rem;padding:.6rem .8rem;border-radius:.9rem;background:rgba(255,255,255,.05)">
               <div style="flex:1;min-width:0">
                 <div style="font-weight:800;font-size:.85rem">${esc(s.full_name)}</div>
-                <div style="font-size:.7rem;color:#94a3b8">Último ingreso: ${when(s.last_entry)} · ${s.completed} lecciones</div>
+                <div style="font-size:.7rem;color:#94a3b8">Último ingreso: ${when(s.last_entry)} · ${s.completed} ${s.completed === 1 ? 'lección' : 'lecciones'}</div>
               </div>
               ${s.locked ? chip('Bloqueado', 'rgba(244,63,94,.2)', '#fda4af') : s.has_pin ? chip('Con PIN', 'rgba(16,185,129,.18)', '#6ee7b7') : chip('Sin PIN', 'rgba(251,191,36,.18)', '#fcd34d')}
               ${s.locked ? `<button data-unlock="${esc(s.id)}" style="border:0;border-radius:.6rem;padding:.4rem .6rem;background:rgba(255,255,255,.1);color:#fff;font-size:.7rem;font-weight:800;cursor:pointer">Desbloquear</button>` : ''}

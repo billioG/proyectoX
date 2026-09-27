@@ -34,6 +34,19 @@ del proyecto (necesitan contraseñas o acceso al panel de Supabase).
   3. `$env:SUPABASE_DB_URL = '<cadena>'` y luego `./scripts/dump-schema.ps1`.
   4. Revisar `supabase/schema.sql` (sin datos personales ni secretos) y subirlo al repositorio.
 
+## 🔴 Antes de la primera demo a un colegio
+
+- [x] Perfil docente sin "UNDEFINED"; cuenta establecimientos (no grados) (v1.0.107)
+- [x] Singular/plural en contadores ("1 evaluación recibida") (v1.0.107)
+- [x] Ranking explica el orden (votos primero, luego score) (v1.0.107)
+- [x] Ranking: entre alumnos se ve "Ana L.", no el nombre completo (v1.0.107)
+- [ ] Crear `colegios@yoaprendo.online` y `soporte@` con SPF, DKIM y DMARC; calentar el dominio 2 semanas
+- [ ] Poner ese correo en `privacidad.html` y cambiar "Este texto se revisará con asesoría legal" por la fecha de última revisión
+- [ ] Plantel de demostración: crear el docente demo desde la app y correr `migrations/demo-school.sql` (editar correo y clave al inicio). Asignarle una ruta publicada a sus 2 clases. Nunca demostrar con un plantel con menores reales.
+- [ ] Publicar la página para colegios y enlazarla desde el pie de Quetzal ("Para colegios e instituciones")
+- [ ] Nombre legal = DPI = NIT en el acuerdo de piloto y facturas; inscripción SAT / FEL
+- [ ] No prometer en demos el nodo escolar ni la importación SIRE hasta probarlos en vivo
+
 ## 🟠 Migraciones y funciones de las últimas versiones
 
 Verificá en el SQL Editor que estén corridas, en este orden (todas son

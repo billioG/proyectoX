@@ -150,7 +150,7 @@ window.renderDuelReport = async function renderDuelReport() {
         <div class="p-3 rounded-2xl border border-rose-200 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/20 flex items-center gap-3">
           <div class="text-xl font-black" style="color:${pctColor(t.pct)}">${t.pct}%</div>
           <div class="flex-1 min-w-0"><div class="text-sm font-bold text-slate-800 dark:text-white truncate">${s(t.topic)}</div>
-            <div class="text-[0.65rem] text-slate-500">${t.plays} partidas · ${t.students} alumnos</div></div>
+            <div class="text-[0.65rem] text-slate-500">${t.plays} ${t.plays === 1 ? 'partida' : 'partidas'} · ${t.students} ${t.students === 1 ? 'alumno' : 'alumnos'}</div></div>
           <button class="btn-secondary-tw h-9 px-3 text-[0.6rem] uppercase font-bold shrink-0" onclick="window.useWeakTopicAsWeekly(${i})"><i class="fas fa-bullseye"></i> Tema de la semana</button>
         </div>`).join('')}</div>` : ''}
 

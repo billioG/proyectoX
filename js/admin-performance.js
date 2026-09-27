@@ -124,7 +124,7 @@ function renderTeacherPerformanceHTML(container, data, kpis, opts = {}) {
                     <div class="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-amber-500 flex items-center justify-center text-lg group-hover:bg-amber-500 group-hover:text-white transition-colors"><i class="fas fa-star"></i></div>
                 </div>
                 <div class="text-3xl font-black text-slate-800 dark:text-white mb-1">${kpis.overallAvgRating}</div>
-                <p class="text-[0.6rem] font-bold text-slate-400 uppercase tracking-wide">De ${kpis.totalActiveTeachers} docentes activos</p>
+                <p class="text-[0.6rem] font-bold text-slate-400 uppercase tracking-wide">De ${kpis.totalActiveTeachers} ${kpis.totalActiveTeachers === 1 ? 'docente activo' : 'docentes activos'}</p>
             </div>
 
             <div class="glass-card p-6 border-l-4 border-blue-500 group hover:-translate-y-1 transition-transform">

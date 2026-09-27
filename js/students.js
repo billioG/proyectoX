@@ -162,7 +162,7 @@ window.saveClassPassword = async function saveClassPassword(school_code, grade, 
     if (!res.ok) throw new Error(result.error || 'Error al guardar');
 
     const pwMsg = result.password ? ` · Contraseña: ${result.password}` : '';
-    window.showToast(`<i class="fas fa-circle-check"></i> Guardado${result.updated ? ` (${result.updated} alumnos sincronizados)` : ''}${pwMsg}`, 'success');
+    window.showToast(`<i class="fas fa-circle-check"></i> Guardado${result.updated ? ` (${result.updated} ${result.updated === 1 ? 'alumno sincronizado' : 'alumnos sincronizados'})` : ''}${pwMsg}`, 'success');
     document.querySelector('.fixed.z-\\[300\\]')?.remove();
     window.loadClassPasswordsList();
   } catch (err) {
@@ -388,7 +388,7 @@ window.renderStudentsList = function renderStudentsList(container, students, all
                 <details class="group/class">
                   <summary class="list-none cursor-pointer">
                     <div class="bg-slate-50 dark:bg-slate-800/50 rounded-lg px-4 py-2.5 flex items-center justify-between hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                      <span class="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">${window.sanitizeInput(cg.grade)} ${window.sanitizeInput(cg.section)} <span class="text-slate-400 font-normal normal-case">· ${cg.students.length} alumnos</span></span>
+                      <span class="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">${window.sanitizeInput(cg.grade)} ${window.sanitizeInput(cg.section)} <span class="text-slate-400 font-normal normal-case">· ${cg.students.length} ${cg.students.length === 1 ? 'alumno' : 'alumnos'}</span></span>
                       <div class="flex items-center gap-2">
                         ${userRole === 'admin' && window.isRegularGrade?.(cg.grade) ? `
                           <button onclick="event.preventDefault(); event.stopPropagation(); window.promoteClassToNextGrade('${window.sanitizeAttr(schoolCode)}', '${window.sanitizeAttr(cg.grade)}', '${window.sanitizeAttr(cg.section)}', ${cg.students.length})" class="h-7 px-3 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white transition-colors text-[0.6rem] font-black uppercase tracking-widest flex items-center gap-1.5">

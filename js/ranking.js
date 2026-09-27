@@ -48,6 +48,7 @@ window.renderRankingInterface = function renderRankingInterface(container) {
         <div class="relative z-10">
             <h3 class="text-2xl font-bold mb-1 tracking-tight uppercase">HALL DE LA FAMA</h3>
             <p class="text-white/60 font-medium max-w-2xl leading-relaxed text-[0.7rem] uppercase tracking-widest">Excelencia técnica y validación de la comunidad.</p>
+            <p class="text-white/70 font-medium max-w-2xl leading-relaxed text-xs mt-3"><i class="fas fa-circle-info mr-1"></i> Orden: primero los votos de la comunidad (<i class="fas fa-heart text-rose-400"></i>) y, si empatan, el score técnico del docente. Por eso un proyecto con más votos puede ir arriba de otro con mejor score.</p>
         </div>
     </div>
 
@@ -96,6 +97,17 @@ window.renderRankingInterface = function renderRankingInterface(container) {
   if (grdSelect) grdSelect.innerHTML += grades.map(g => `<option value="${g}">${sanitizeInput(g)}</option>`).join('');
 }
 
+// Privacidad de menores: entre alumnos se muestra "Ana L."; docente y admin ven el nombre completo.
+function rankingLeaderName(fullName, full) {
+  if (!fullName) return '—';
+  if (full) return fullName;
+  const parts = String(fullName).trim().split(/\s+/);
+  if (parts.length < 2) return parts[0];
+  // Nombres de SIRE: "Nombre1 Nombre2 Apellido1 Apellido2" → el apellido es el tercero si hay 4 partes.
+  const surname = parts.length >= 4 ? parts[2] : parts[parts.length - 1];
+  return `${parts[0]} ${surname.charAt(0).toUpperCase()}.`;
+}
+
 window.renderRankingRows = function renderRankingRows(projects) {
   const list = document.getElementById('ranking-list');
   if (!list) return;
@@ -130,7 +142,7 @@ window.renderRankingRows = function renderRankingRows(projects) {
               <span class="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 text-[0.65rem] font-bold uppercase tracking-widest leading-none">${p.bimestre}º Bimestre</span>
           </div>
           <h3 class="text-xl font-bold text-slate-800 dark:text-white leading-tight truncate uppercase tracking-tight mb-1">${sanitizeInput(p.title)}</h3>
-          <p class="text-[0.7rem] font-semibold text-slate-400 uppercase tracking-widest ml-0.5">Líder: ${sanitizeInput(p.students?.full_name)}</p>
+          <p class="text-[0.7rem] font-semibold text-slate-400 uppercase tracking-widest ml-0.5">Líder: ${sanitizeInput(rankingLeaderName(p.students?.full_name, userRole === 'docente' || userRole === 'admin'))}</p>
         </div>
 
         <div class="flex items-center gap-6 md:gap-8 shrink-0 bg-slate-50/50 dark:bg-slate-800/50 p-4 rounded-[1.5rem] border border-slate-100 dark:border-slate-800 shadow-inner">

@@ -187,7 +187,7 @@ window.renderSuccessHubHTML = function renderSuccessHubHTML(container, schools, 
                     <div class="relative z-10">
                         <div class="text-[0.65rem] font-bold uppercase text-amber-600 dark:text-amber-500 tracking-widest mb-2">Nota Promedio</div>
                         <div class="text-4xl font-bold text-amber-700 dark:text-amber-400 mb-1 leading-none">${kpis.overallAvgRating}</div>
-                        <div class="text-[0.6rem] font-bold text-amber-600/70 dark:text-amber-500/70 uppercase tracking-tight">De ${kpis.totalActiveTeachers} docentes activos</div>
+                        <div class="text-[0.6rem] font-bold text-amber-600/70 dark:text-amber-500/70 uppercase tracking-tight">De ${kpis.totalActiveTeachers} ${kpis.totalActiveTeachers === 1 ? 'docente activo' : 'docentes activos'}</div>
                     </div>
                 </div>
 

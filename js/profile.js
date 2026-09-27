@@ -271,6 +271,12 @@ window.loadTeacherProfile = async function loadTeacherProfile() {
 }
 
 window.renderTeacherProfileUI = function renderTeacherProfileUI(container, teacher, assignments, kpis, avgRating, totalRatings, earnedBadgeIds = []) {
+    const sanitizeInput = window.sanitizeInput || ((v) => v);
+    // Una asignación es un grado/sección: se cuentan establecimientos distintos.
+    const schoolCount = new Set(assignments.map(a => a.school_code).filter(Boolean)).size;
+    const schoolsLabel = schoolCount === 0 ? 'Sin establecimiento asignado'
+        : `${schoolCount} ${schoolCount === 1 ? 'Centro Educativo' : 'Centros Educativos'}`;
+    const identity = teacher.username || teacher.email || '';
     container.innerHTML = `
     <div class="flex flex-col md:flex-row gap-8 mb-10 items-center text-center md:text-left">
         <div class="w-32 h-32 rounded-3xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center text-5xl shadow-inner border border-indigo-500/20 shrink-0 overflow-hidden">
@@ -280,9 +286,8 @@ window.renderTeacherProfileUI = function renderTeacherProfileUI(container, teach
             <h2 class="text-4xl font-bold text-slate-800 dark:text-white tracking-tight">${teacher.full_name}</h2>
             <p class="text-lg font-semibold text-indigo-500 mb-2">Docente Autorizado</p>
             <div class="flex justify-center md:justify-start gap-4 text-xs font-semibold text-slate-400 uppercase tracking-widest">
-                <span>${assignments.length} Centros Educativos</span>
-                <span>•</span>
-                <span>${teacher.username}</span>
+                <span>${schoolsLabel}</span>
+                ${identity ? `<span>•</span><span class="normal-case tracking-normal">${sanitizeInput(identity)}</span>` : ''}
             </div>
         </div>
         <div class="flex gap-3">
@@ -304,7 +309,7 @@ window.renderTeacherProfileUI = function renderTeacherProfileUI(container, teach
             <div class="relative z-10">
                 <div class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-2">Rating Estudiantes</div>
                 <div class="text-4xl font-bold text-slate-800 dark:text-white flex items-baseline gap-2">${avgRating} <span class="text-amber-500 text-xl"><i class="fas fa-star"></i></span></div>
-                <div class="text-xs font-semibold text-slate-500 mt-4">${totalRatings} evaluaciones recibidas</div>
+                <div class="text-xs font-semibold text-slate-500 mt-4">${totalRatings} ${totalRatings === 1 ? 'evaluación recibida' : 'evaluaciones recibidas'}</div>
             </div>
         </div>
         <div class="glass-card p-8 border-l-8 border-emerald-500">
