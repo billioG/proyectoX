@@ -222,10 +222,10 @@ export function loadViewContent(view) {
             if (userRole === 'admin' && typeof window.loadAdminRocksManagement === 'function') window.loadAdminRocksManagement();
             break;
         case 'coordinator-dashboard':
-            if (userRole === 'coordinador' && typeof window.loadCoordinatorDashboard === 'function') window.loadCoordinatorDashboard();
+            if (window.isCoordinator && typeof window.loadCoordinatorDashboard === 'function') window.loadCoordinatorDashboard();
             break;
         case 'coordinator-reports':
-            if (userRole === 'coordinador' && typeof window.loadCoordinatorReports === 'function') window.loadCoordinatorReports();
+            if (window.isCoordinator && typeof window.loadCoordinatorReports === 'function') window.loadCoordinatorReports();
             break;
         case 'feed':
             if (typeof window.loadFeed === 'function') window.loadFeed();
@@ -295,7 +295,9 @@ const COORDINADOR_ONLY_VIEWS = new Set(['coordinator-dashboard', 'coordinator-re
 function isViewAllowedForRole(view, role) {
     if (ADMIN_ONLY_VIEWS.has(view)) return role === 'admin';
     if (STAFF_ONLY_VIEWS.has(view)) return role === 'admin' || role === 'docente';
-    if (COORDINADOR_ONLY_VIEWS.has(view)) return role === 'coordinador';
+    // Coordinador ya no es un rol separado de docente (ver auth.js) --
+    // se valida con el flag, no comparando "role".
+    if (COORDINADOR_ONLY_VIEWS.has(view)) return !!window.isCoordinator;
     return true;
 }
 window.isViewAllowedForRole = isViewAllowedForRole;

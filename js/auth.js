@@ -243,6 +243,9 @@ function enterOfflineSession(user, userData, role, { node = false } = {}) {
   updateAppState('currentUser', user);
   updateAppState('userData', userData);
   updateAppState('userRole', role);
+  // userData es la fila completa de teachers cacheada -- de ahí sale si
+  // además es coordinador (ver handleSuccessfulLogin).
+  window.isCoordinator = userData?.role === 'coordinador';
   window.isOfflineCachedSession = true;
 
   document.getElementById('auth-container').style.display = 'none';
@@ -385,8 +388,14 @@ export async function handleSuccessfulLogin(user) {
     const { data: teacherRow } = await _supabase.from('teachers').select('*').eq('id', user.id).maybeSingle();
     if (teacherRow) {
       data = teacherRow;
-      role = teacherRow.role === 'admin' ? 'admin' : teacherRow.role === 'coordinador' ? 'coordinador' : 'docente';
+      // "coordinador" no es un rol aparte: un coordinador puede seguir
+      // dando clases (el rol solo agrega "Mis Docentes"/"Mi
+      // Establecimiento" encima del menú normal de docente -- ver
+      // setupNavigationUI). Solo "admin" excluye lo demás.
+      role = teacherRow.role === 'admin' ? 'admin' : 'docente';
+      window.isCoordinator = teacherRow.role === 'coordinador';
     } else {
+      window.isCoordinator = false;
       const { data: studentRow } = await _supabase.from('students').select('*').eq('id', user.id).maybeSingle();
       if (studentRow) {
         data = studentRow;
@@ -551,6 +560,12 @@ function setupNavigationUI() {
     const el = document.getElementById(id);
     if (el) el.style.display = id === `nav-${userRole}` ? 'block' : 'none';
   });
+
+  // Un coordinador también puede dar clases: no es un rol excluyente, así
+  // que además de su menú normal de docente (el bloque de arriba ya lo
+  // mostró) se le agrega el de "Mis Docentes"/"Mi Establecimiento".
+  const coordNav = document.getElementById('nav-coordinador');
+  if (coordNav && window.isCoordinator && userRole === 'docente') coordNav.style.display = 'block';
 
   // "Bonos y Desempeño" es el programa de retribución de docentes 1bot
   // (asistencia con geocerca, evidencia fotográfica, etc.) -- no aplica a

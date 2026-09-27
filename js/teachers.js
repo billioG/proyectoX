@@ -1062,7 +1062,7 @@ window.setTeacherRole = async function setTeacherRole(teacherId, role) {
   const showToast = window.showToast;
   const loadTeachers = window.loadTeachers;
 
-  if (role === 'coordinador' && !confirm('¿Convertir a este docente en coordinador? Podrá ver la información de los docentes que le asignes.')) return;
+  if (role === 'coordinador' && !confirm('¿Convertir a este docente en coordinador? Podrá ver la información de los docentes que le asignes, sin perder su propio acceso de docente (sus clases, evaluaciones, etc. siguen igual).')) return;
   if (role === 'docente' && !confirm('¿Quitar el rol de coordinador? Perderá acceso a la información de sus docentes asignados.')) return;
 
   try {
