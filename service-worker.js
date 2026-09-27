@@ -2,7 +2,7 @@
 // SERVICE WORKER - PROJECTX PWA
 // ================================================
 
-const CACHE_NAME = 'projectx-v1.0.102';
+const CACHE_NAME = 'projectx-v1.0.103';
 // Caché de archivos de lecciones (video/PDF/imagen/paquetes SCORM-H5P) --
 // separada de CACHE_NAME a propósito: CACHE_NAME se recrea y se BORRA
 // entera en cada deploy (bump de versión) para forzar JS/CSS frescos, pero
@@ -28,7 +28,10 @@ const MEDIA_CACHE_NAME = 'projectx-media-v1';
 // cachearse. Ahora se precachean TODOS los módulos lazy de MODULE_MAP
 // (main.js) en cada instalación, con el mismo ?v= que usa loadModule() --
 // si no, el request real (con query de versión) no matchea esta entrada.
-const APP_VERSION = CACHE_NAME.replace('projectx-', '');
+const APP_VERSION = CACHE_NAME.replace('projectx-', ''); // 'v1.0.X'
+// index.html carga app.js con ?v=1.0.X (SIN la "v"): antes se precacheaba
+// con "v" y, sin internet, el pedido real no encontraba su copia.
+const APP_JS = `js/app.js?v=${APP_VERSION.replace(/^v/, '')}`;
 const LAZY_MODULES = [
   'js/admin-attendance.js', 'js/admin-dashboard.js', 'js/admin-evaluations.js',
   'js/admin-performance.js', 'js/admin-reports.js', 'js/admin-success.js',
@@ -71,8 +74,9 @@ const urlsToCache = [
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
-  `js/app.js?v=${APP_VERSION}`,
+  APP_JS,
   ...EAGER_MODULES,
+  // loadModule() (main.js) pide "?v=" + window.APP_VERSION ('v1.0.X').
   ...LAZY_MODULES.map(f => `${f}?v=${APP_VERSION}`),
   // CDNs de las que depende el arranque de la app -- antes solo se
   // cacheaban 3, el resto (Tailwind, la fuente real que usa el sitio,
@@ -104,14 +108,32 @@ const urlsToCache = [
 // debería dejarlos afuera del precache.
 const CRITICAL_SHELL_URLS = [
   './index.html',
-  `js/app.js?v=${APP_VERSION}`,
+  APP_JS,
   './css/styles.css',
   './css/tailwind.css',
 ];
 
+// BUG REAL: GitHub Pages manda "Cache-Control: max-age=600", y tanto el
+// precache como el fetch normal usaban la caché HTTP del navegador -- hasta
+// 10 minutos después de publicar, el service worker guardaba y servía la
+// versión ANTERIOR de archivos como index.html o los módulos sin ?v=
+// (se escuchaban los sonidos viejos de las mascotas aunque ya estaba la
+// versión nueva). Los archivos propios ahora siempre se piden al servidor
+// ("reload" en la instalación, "no-cache" = revalidar en el resto; si no
+// cambiaron, el servidor responde 304 y casi no gasta datos).
+function sameOrigin(url) {
+  try { return new URL(url, self.location.href).origin === self.location.origin; } catch { return false; }
+}
+
 async function cacheWithRetry(cache, url, retries) {
   for (let attempt = 0; attempt <= retries; attempt++) {
-    try { await cache.add(url); return true; } catch (e) { /* reintenta */ }
+    try {
+      const req = sameOrigin(url) ? new Request(url, { cache: 'reload' }) : url;
+      const res = await fetch(req);
+      if (!res.ok && res.type !== 'opaque') throw new Error(`HTTP ${res.status}`);
+      await cache.put(url, res);
+      return true;
+    } catch (e) { /* reintenta */ }
   }
   console.warn('⚠️ No se pudo precachear tras reintentos:', url);
   return false;
@@ -119,7 +141,7 @@ async function cacheWithRetry(cache, url, retries) {
 
 // Instalación del Service Worker
 self.addEventListener('install', event => {
-  console.log('📦 Service Worker: Instalando v1.0.3...');
+  console.log('📦 Service Worker: Instalando', CACHE_NAME);
 
   event.waitUntil(
     caches.open(CACHE_NAME)
@@ -222,8 +244,16 @@ self.addEventListener('fetch', event => {
     });
   });
 
+  // Archivos propios: revalidar siempre con el servidor (ver cacheWithRetry).
+  let networkRequest = request;
+  if (sameOrigin(request.url)) {
+    networkRequest = request.mode === 'navigate'
+      ? new Request(request.url, { cache: 'no-cache', credentials: 'same-origin' })
+      : new Request(request, { cache: 'no-cache' });
+  }
+
   event.respondWith(
-    fetch(request)
+    fetch(networkRequest)
       .then(response => {
         // Si la respuesta es válida, guardar en caché
         if (response && response.status === 200) {

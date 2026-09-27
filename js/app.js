@@ -92,9 +92,37 @@ document.addEventListener('DOMContentLoaded', async () => {
             .then(r => {
                 console.log('✅ Service Worker:', r.scope);
                 r.update().catch(() => {});
+                // La app queda abierta horas en tablets y celulares: buscar
+                // versión nueva al volver a la app y cada 30 minutos.
+                document.addEventListener('visibilitychange', () => {
+                    if (!document.hidden) r.update().catch(() => {});
+                });
+                setInterval(() => r.update().catch(() => {}), 30 * 60 * 1000);
             })
             .catch(e => console.error('❌ Service Worker:', e));
+
+        // Cuando se instala una versión nueva, la página abierta sigue con
+        // el código viejo en memoria hasta recargar: se avisa con un botón
+        // (no se recarga sola para no cortar a nadie a mitad de un quiz).
+        const hadController = !!navigator.serviceWorker.controller;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (hadController) showUpdateBanner();
+        });
     }
 
     console.log('✨ Sistema Quetzal LMS listo.');
 });
+
+function showUpdateBanner() {
+    if (document.getElementById('px-update-banner')) return;
+    const bar = document.createElement('div');
+    bar.id = 'px-update-banner';
+    bar.setAttribute('role', 'status');
+    bar.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom, 0px) + 1rem);z-index:300;'
+        + 'display:flex;align-items:center;gap:.75rem;padding:.7rem .8rem .7rem 1.1rem;border-radius:9999px;background:#0f172a;color:#fff;'
+        + 'box-shadow:0 10px 30px rgba(0,0,0,.35);font:600 .85rem system-ui,sans-serif;max-width:calc(100% - 2rem)';
+    bar.innerHTML = '<span>✨ Hay una versión nueva</span>'
+        + '<button type="button" style="border:0;border-radius:9999px;padding:.45rem .9rem;background:#00C853;color:#fff;font-weight:800;cursor:pointer">Actualizar</button>';
+    bar.querySelector('button').onclick = () => location.reload();
+    document.body.appendChild(bar);
+}
