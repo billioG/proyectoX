@@ -46,6 +46,8 @@ seguras de re-ejecutar):
 - [ ] `migrations/companion-more.sql` (v1.0.94)
 - [ ] `migrations/guardians.sql` (v1.0.98)
 - [ ] `migrations/announcements-targeting.sql` (v1.0.99) — reemplaza las reglas de acceso de avisos: después de correrla, probar que un alumno siga viendo los avisos de su clase.
+- [ ] `migrations/guardian-consent.sql` (v1.0.100) — **antes** de redesplegar `guardian-portal`.
+- [ ] `migrations/impact-metrics.sql` (v1.0.100) — tablero de impacto del admin.
 
 Redesplegar estas Edge Functions (cambiaron en las últimas versiones):
 
@@ -54,7 +56,7 @@ Redesplegar estas Edge Functions (cambiaron en las últimas versiones):
 - [ ] `ai-proxy` (modo tutor)
 - [ ] `notify-announcement` (avisos por colegio o grupo)
 - [ ] `notify-guardians` — **Verify JWT ON**
-- [ ] `guardian-portal` — **Verify JWT OFF**
+- [ ] `guardian-portal` — **Verify JWT OFF** (redesplegar después de correr `guardian-consent.sql`: ahora registra el consentimiento de padres)
 
 ## 🟠 SMS a padres
 
@@ -75,11 +77,38 @@ Redesplegar estas Edge Functions (cambiaron en las últimas versiones):
 
 ## 🟡 Hoja de ruta (pasos 2 a 6)
 
-- [ ] **Formalizar:** política de privacidad y consentimiento de padres, registro de propiedad intelectual, evaluar figura legal (asociación o empresa).
-- [ ] **Medir:** tablero de impacto (estudiantes activos, aprendizaje, asistencia) y una prueba corta de entrada en las escuelas actuales.
-- [ ] **Piloto rural:** 3 a 5 escuelas con nodo Raspberry, documentar costos y resultados.
-- [ ] **Postular a fondos:** SENACYT/FONACYT con una universidad, HundrED, MIT Solve, UNICEF Venture Fund (requiere licencia abierta), fundaciones locales.
-- [ ] **Sumar equipo:** segundo desarrollador o practicantes, con revisión de código y pruebas automáticas.
+### Paso 2 · Formalizar — guía: `docs/FORMALIZACION.md`
+- [x] Política de privacidad (`privacidad.html`), enlazada desde el login y el Portal de padres
+- [x] Consentimiento de padres en el portal, con fecha y versión; sin avisos a quien no acepta
+- [x] La IA recibe solo el primer nombre
+- [ ] Poner el **correo de contacto** en `privacidad.html` (`id="contact-email"`)
+- [ ] Revisar la política con un abogado (lista de preguntas en la guía)
+- [ ] Registrar el software y la marca en el Registro de la Propiedad Intelectual
+- [ ] Elegir figura legal (asociación, empresa o ambas)
+- [ ] Convenio simple con cada escuela; consentimiento en papel donde no haya celular (modelo en la guía)
+
+### Paso 3 · Medir — guía: `docs/MEDICION_IMPACTO.md`
+- [x] Tablero de impacto del admin (menú **Impacto**): uso, lecciones, duelos, asistencia, familias, tendencia; CSV y resumen para postulaciones
+- [ ] Elegir área y grado para la prueba de entrada y salida y prepararla con docentes
+- [ ] Buscar una universidad aliada para el análisis
+
+### Paso 4 · Piloto rural — protocolo: `docs/PILOTO_RURAL.md`
+- [x] Protocolo: criterios de escuelas, equipo y costos, calendario, roles, riesgos, criterios de éxito
+- [ ] Terminar el nodo escolar (ver sección "Nodo escolar")
+- [ ] Imagen de tarjeta microSD lista para copiar
+- [ ] Presupuesto con precios locales; elegir escuelas y firmar convenios
+
+### Paso 5 · Postular — kit: `docs/fondos/KIT_POSTULACION.md`
+- [x] Resumen de una página, respuestas tipo, guion de 10 diapositivas, presupuesto modelo, convocatorias y lista de control
+- [ ] Completar las cifras con el tablero de impacto y la formación/experiencia del equipo
+- [ ] Video de 2 minutos y cartas de apoyo de directores
+- [ ] Postular (SENACYT con universidad, HundrED, MIT Solve, UNICEF Venture Fund si la licencia es abierta, fundaciones locales)
+
+### Paso 6 · Sumar equipo — guía: `docs/EQUIPO.md`
+- [x] Plan de primera semana, accesos mínimos y lista de primeras tareas
+- [x] Pruebas de humo automáticas (`npm test`, 12 pruebas en celular y computadora) que corren en GitHub en cada cambio
+- [ ] Convenio de práctica con una universidad o convocatoria de voluntariado
+- [ ] Reunión semanal corta con quien se sume
 
 Detalle en el dossier: https://claude.ai/artifact/BoLjSgRTYwfesywaZaxvEq
 

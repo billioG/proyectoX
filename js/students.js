@@ -1132,6 +1132,9 @@ window.openGuardiansModal = async function openGuardiansModal(studentId, student
               </div>
               <div class="flex flex-col items-end gap-1">
                 ${withPush.has(g.id) ? '<span class="text-[0.6rem] font-black text-emerald-500 uppercase">🔔 Notificaciones activas</span>' : '<span class="text-[0.6rem] font-black text-slate-400 uppercase">Sin notificaciones</span>'}
+                ${g.consent_status === 'accepted' ? '<span class="text-[0.6rem] font-black text-emerald-500 uppercase">✓ Aceptó privacidad</span>'
+                  : g.consent_status === 'declined' ? '<span class="text-[0.6rem] font-black text-rose-500 uppercase">No aceptó · sin avisos</span>'
+                  : '<span class="text-[0.6rem] font-black text-amber-500 uppercase">Consentimiento pendiente</span>'}
                 ${g.phone ? `<label class="text-[0.6rem] font-bold text-slate-500 flex items-center gap-1"><input type="checkbox" ${g.sms_enabled ? 'checked' : ''} onchange="window.toggleGuardianSms('${g.id}', this.checked)"> SMS</label>` : ''}
               </div>
             </div>

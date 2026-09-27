@@ -1,0 +1,14 @@
+# Dependencias y resultados de pruebas (solo desarrollo; la app no usa build)
+node_modules/
+test-results/
+playwright-report/
+blob-report/
+
+# Secretos y configuraciones locales: nunca al repositorio
+.env
+.env.*
+*.local.js
+
+# Sistema
+.DS_Store
+Thumbs.db

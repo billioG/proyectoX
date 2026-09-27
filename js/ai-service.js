@@ -43,11 +43,13 @@ const AIService = {
      * Genera un mensaje proactivo para la mascota basado en los datos del usuario
      */
     async getProactiveMessage(userData, userRole) {
+        // Solo el primer nombre: el proveedor de IA no necesita apellidos.
+        const firstName = String(userData?.full_name || '').trim().split(/\s+/)[0];
         const prompt = userRole === 'estudiante'
-            ? `Genera un mensaje corto para un estudiante llamado ${userData.full_name}. Tiene una racha de ${userData.streak || 0} días y está en el nivel ${Math.floor((userData.xp || 0) / 500) + 1}. Alterná entre motivarlo académicamente y preguntarle/validar cómo se siente, como haría un coach educativo y emocional.`
-            : `Genera un mensaje corto de apoyo para un docente llamado ${userData.full_name}. Ayúdale a sentirse valorado por su labor enseñando tecnología.`;
+            ? `Genera un mensaje corto para un estudiante llamado ${firstName}. Tiene una racha de ${userData.streak || 0} días y está en el nivel ${Math.floor((userData.xp || 0) / 500) + 1}. Alterná entre motivarlo académicamente y preguntarle/validar cómo se siente, como haría un coach educativo y emocional.`
+            : `Genera un mensaje corto de apoyo para un docente llamado ${firstName}. Ayúdale a sentirse valorado por su labor enseñando tecnología.`;
 
-        return this.ask(prompt, `Rol: ${userRole}, Nombre: ${userData.full_name}`, true);
+        return this.ask(prompt, `Rol: ${userRole}, Nombre: ${firstName}`, true);
     }
 };
 

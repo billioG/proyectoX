@@ -135,3 +135,5 @@ de producción.
 | 91 | 2026-09-26 | `companion-more.sql` | Quetzadex ampliada: 4 mascotas más (guacamaya, danta, pizote, |
 | 92 | 2026-09-26 | `guardians.sql` | AVISOS A PADRES DE FAMILIA (SMS + notificaciones) |
 | 93 | 2026-09-26 | `announcements-targeting.sql` | AVISOS CON DESTINATARIOS A ELECCIÓN |
+| 94 | 2026-09-26 | `guardian-consent.sql` | Consentimiento de padres desde el Portal de padres; sin avisos a quien no aceptó |
+| 95 | 2026-09-26 | `impact-metrics.sql` | Tablero de impacto del admin: métricas por establecimiento y tendencia mensual |

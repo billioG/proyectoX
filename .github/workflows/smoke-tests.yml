@@ -1,0 +1,35 @@
+name: Pruebas de humo
+
+# Abre la app en un navegador real (celular y computadora) y verifica que
+# las páginas principales cargan sin errores de JavaScript, que el service
+# worker se instala y que la versión coincide con la del caché. No inicia
+# sesión ni toca datos. Ver tests/smoke.spec.js.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm test
+        env:
+          CI: 'true'
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: reporte-playwright
+          path: test-results/
+          retention-days: 7

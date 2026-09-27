@@ -732,7 +732,10 @@ const MascotWidget = {
 
             // Con alumnos el servidor (ai-proxy) lo pone en MODO TUTOR: no da
             // respuestas finales de juegos/quizzes, solo pistas.
-            const context = `Usuario: ${window.userData?.full_name || ''}, Rol: ${window.userRole}, Racha: ${window.userData?.streak || 0}`;
+            // Solo el primer nombre: el proveedor de IA no necesita apellidos
+            // (ver privacidad.html).
+            const firstName = String(window.userData?.full_name || '').trim().split(/\s+/)[0];
+            const context = `Usuario: ${firstName}, Rol: ${window.userRole}, Racha: ${window.userData?.streak || 0}`;
             const response = await AIService.ask(text, context, false, chatHistory);
             document.getElementById(loadingId)?.remove();
 

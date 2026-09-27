@@ -32,6 +32,12 @@ En producción: [clases.yoaprendo.online](https://clases.yoaprendo.online)
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Reglas para colaborar y publicar versiones |
 | [CHANGELOG.md](CHANGELOG.md) | Historial de cambios |
 | [PENDIENTES.md](PENDIENTES.md) | Tareas abiertas y pasos manuales pendientes |
+| [docs/FORMALIZACION.md](docs/FORMALIZACION.md) | Privacidad, consentimiento, propiedad intelectual y figura legal |
+| [docs/MEDICION_IMPACTO.md](docs/MEDICION_IMPACTO.md) | Tablero de impacto y prueba de entrada y salida |
+| [docs/PILOTO_RURAL.md](docs/PILOTO_RURAL.md) | Protocolo del piloto en escuelas sin internet |
+| [docs/fondos/KIT_POSTULACION.md](docs/fondos/KIT_POSTULACION.md) | Textos, presentación y presupuesto para postular a fondos |
+| [docs/EQUIPO.md](docs/EQUIPO.md) | Cómo sumar personas al equipo y primeras tareas |
+| [privacidad.html](privacidad.html) | Política de privacidad |
 | [docs/METRICAS_ADMIN.md](docs/METRICAS_ADMIN.md) | Cómo se calculan las métricas del panel de administración |
 | [MANUAL_DE_USUARIO.md](MANUAL_DE_USUARIO.md) | Uso para docentes y administración |
 | [school-node/README.md](school-node/README.md) | Instalar el nodo escolar en una Raspberry Pi |
@@ -41,7 +47,8 @@ En producción: [clases.yoaprendo.online](https://clases.yoaprendo.online)
 ```bash
 git clone https://github.com/billioG/proyectoX.git
 cd proyectoX
-npx -y http-server -p 8080 -c-1
+npm install
+npm run serve
 ```
 
 Eso sirve la aplicación en `http://localhost:8080`, pero conectada a la base

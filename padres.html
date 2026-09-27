@@ -32,6 +32,16 @@
     <p id="subtitle">Cargando…</p>
   </header>
   <main>
+    <div class="card" id="consent-card" hidden>
+      <p style="margin-top:0"><b>Antes de empezar</b></p>
+      <p class="muted">La escuela usa Quetzal LMS para que <b id="consent-student">tu hijo o hija</b> aprenda con cursos y juegos educativos. Guardamos su nombre, su clase y su avance para que el docente lo acompañe. No vendemos datos ni mostramos publicidad, y podés pedir ver, corregir o borrar sus datos cuando quieras.</p>
+      <p class="muted"><a href="privacidad.html" target="_blank" rel="noopener">Leer la política de privacidad completa</a></p>
+      <div style="display:grid;gap:.5rem">
+        <button class="btn" id="btn-consent-yes">Acepto</button>
+        <button class="btn off" id="btn-consent-no">No acepto</button>
+      </div>
+      <p class="muted" id="consent-note" style="margin-bottom:0"></p>
+    </div>
     <div class="card" id="activate-card" hidden>
       <p style="margin-top:0"><b id="hello">Hola</b></p>
       <p class="muted">Activá las notificaciones para recibir en este teléfono los avisos de la escuela. Si no las activás, te seguirán llegando por mensaje de texto (SMS) si el docente registró tu número.</p>
@@ -50,6 +60,7 @@
     <div class="card" id="error-card" hidden>
       <p id="error" style="margin:0"></p>
     </div>
+    <p class="muted" style="text-align:center"><a href="privacidad.html" target="_blank" rel="noopener">Política de privacidad</a></p>
   </main>
 
   <script type="module">
@@ -158,8 +169,27 @@
         const info = await api({ action: 'info' });
         $('subtitle').textContent = `${info.student}${info.school ? ' · ' + info.school : ''}`;
         $('hello').textContent = `Hola, ${info.guardian}`;
-        $('activate-card').hidden = false;
+        $('consent-student').textContent = info.student;
         $('btn-toggle').onclick = toggle;
+
+        // Consentimiento primero (privacidad.html). Si no acepta, no recibe avisos.
+        const showMain = () => { $('consent-card').hidden = true; $('activate-card').hidden = false; };
+        const answer = async (accepted) => {
+          $('btn-consent-yes').disabled = $('btn-consent-no').disabled = true;
+          try {
+            await api({ action: 'consent', accepted });
+            if (accepted) showMain();
+            else $('consent-note').textContent = 'Entendido. No vas a recibir avisos. Si cambiás de opinión, volvé a abrir este enlace.';
+          } catch (e) {
+            $('consent-note').textContent = e.message;
+          } finally {
+            $('btn-consent-yes').disabled = $('btn-consent-no').disabled = false;
+          }
+        };
+        $('btn-consent-yes').onclick = () => answer(true);
+        $('btn-consent-no').onclick = () => answer(false);
+        if (info.consent === 'accepted') showMain();
+        else $('consent-card').hidden = false;
         if (info.messages?.length) {
           $('inbox').innerHTML = info.messages.map(m => `<div class="msg"><small>${esc(new Date(m.created_at).toLocaleString('es-GT', { dateStyle: 'medium', timeStyle: 'short' }))}</small>${esc(m.message)}</div>`).join('');
           $('inbox-card').hidden = false;

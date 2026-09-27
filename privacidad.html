@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#00C853">
+  <title>Privacidad · Quetzal LMS</title>
+  <link rel="icon" href="icon-192.png">
+  <style>
+    :root { --g: #0B6E4F; --ink: #13201B; --muted: #56665F; --bg: #F3F6F4; --card: #fff; --line: #D6E0DB; }
+    @media (prefers-color-scheme: dark) { :root { --g: #4FC79A; --ink: #E4EEE9; --muted: #9BB0A7; --bg: #0E1714; --card: #15221D; --line: #26382F; color-scheme: dark; } }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--ink); line-height: 1.6; padding-inline: 16px; }
+    main { max-width: 46rem; margin: 0 auto; padding-block: 2rem 4rem; }
+    h1 { font-size: 1.8rem; line-height: 1.15; margin: .3rem 0 .5rem; }
+    h2 { font-size: 1.15rem; margin: 2rem 0 .5rem; color: var(--g); }
+    p, li { max-width: 68ch; }
+    .eyebrow { font-size: .75rem; letter-spacing: .12em; text-transform: uppercase; color: var(--g); font-weight: 700; }
+    .muted { color: var(--muted); font-size: .9rem; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 1rem; padding: 1rem 1.25rem; margin: 1rem 0; }
+    table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+    th, td { text-align: left; padding: .5rem .4rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+    th { color: var(--muted); font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; }
+    .scroll { overflow-x: auto; }
+    a { color: var(--g); }
+  </style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">Quetzal LMS</div>
+  <h1>Política de privacidad</h1>
+  <p class="muted">Versión 1 · vigente desde el 26 de septiembre de 2026</p>
+
+  <div class="card">
+    <b>En resumen.</b> Usamos los datos solo para que estudiantes y docentes aprendan
+    y enseñen. No vendemos datos, no mostramos publicidad y no compartimos nombres
+    completos de estudiantes fuera de la plataforma. Los padres y encargados pueden
+    pedir ver, corregir o borrar los datos de su hijo o hija.
+  </div>
+
+  <h2>Quién es responsable</h2>
+  <p>Quetzal LMS es un proyecto educativo creado en Guatemala por Billy Gómez. Para
+  cualquier consulta sobre datos personales podés hablar con el docente de la clase
+  o escribir al correo de contacto del proyecto: <b id="contact-email">[correo de contacto pendiente]</b>.</p>
+
+  <h2>Qué datos usamos</h2>
+  <div class="scroll"><table>
+    <thead><tr><th>De quién</th><th>Datos</th></tr></thead>
+    <tbody>
+      <tr><td>Estudiantes</td><td>Nombre, usuario, establecimiento, grado y sección. Opcionales: CUI, código personal del MINEDUC, sexo, foto de perfil. Actividad en la plataforma: cursos, proyectos, asistencia, resultados de juegos, gemas, mascota y mensajes al asistente.</td></tr>
+      <tr><td>Docentes</td><td>Nombre, correo, teléfono (opcional), clases asignadas, actividad y reportes.</td></tr>
+      <tr><td>Padres y encargados</td><td>Nombre, parentesco y número de teléfono, registrados por el docente o la administración. Si activan avisos en el Portal de padres, el identificador técnico de notificaciones de su teléfono.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2>Para qué los usamos</h2>
+  <ul>
+    <li>Dar acceso a cursos, proyectos y juegos educativos.</li>
+    <li>Que el docente acompañe el avance, la asistencia y las evaluaciones de su clase.</li>
+    <li>Avisar a estudiantes, docentes y familias sobre actividades de la escuela.</li>
+    <li>Medir, de forma agregada y sin nombres, si la plataforma ayuda a aprender más.</li>
+  </ul>
+  <p>No usamos los datos para publicidad, no los vendemos y no armamos perfiles comerciales.</p>
+
+  <h2>Quién puede verlos</h2>
+  <ul>
+    <li>Cada estudiante ve sus propios datos. Sus compañeros ven solo su nombre, su mascota y sus resultados en juegos y rankings.</li>
+    <li>El docente ve a los estudiantes de sus clases asignadas.</li>
+    <li>La administración del proyecto ve todo para dar soporte y generar reportes.</li>
+    <li>Los padres ven, en su portal personal, los avisos que se les envían. El portal muestra solo el primer nombre del estudiante.</li>
+  </ul>
+
+  <h2>Servicios que usamos para funcionar</h2>
+  <div class="scroll"><table>
+    <thead><tr><th>Servicio</th><th>Para qué</th><th>Qué recibe</th></tr></thead>
+    <tbody>
+      <tr><td>Supabase</td><td>Base de datos, inicio de sesión y archivos</td><td>Todos los datos de la plataforma, guardados con reglas de acceso por usuario</td></tr>
+      <tr><td>GitHub Pages</td><td>Publicar la aplicación</td><td>Datos técnicos de la conexión (no datos de estudiantes)</td></tr>
+      <tr><td>Groq</td><td>Inteligencia artificial: preguntas de juegos, asistente tutor, apoyo a evaluaciones</td><td>El texto de la pregunta o tarea y el primer nombre del usuario. No recibe apellidos ni datos de contacto</td></tr>
+      <tr><td>SMS Gateway for Android</td><td>Enviar SMS a padres desde un teléfono del proyecto</td><td>El número del padre y el texto del aviso</td></tr>
+      <tr><td>Servicios de notificación del navegador</td><td>Entregar notificaciones en el teléfono</td><td>El texto del aviso</td></tr>
+    </tbody>
+  </table></div>
+  <p>Algunos de estos servicios guardan datos en servidores fuera de Guatemala.</p>
+
+  <h2>Menores de edad</h2>
+  <p>La mayoría de usuarios son niños, niñas y adolescentes. Por eso:</p>
+  <ul>
+    <li>Las cuentas de estudiantes las crea la escuela, no el estudiante.</li>
+    <li>Pedimos el consentimiento de un padre, madre o encargado desde el Portal de padres.</li>
+    <li>Lo que se comparte fuera de la plataforma (por ejemplo la tarjeta de la mascota) no lleva el nombre del estudiante.</li>
+    <li>El asistente con inteligencia artificial funciona como tutor: da pistas y explicaciones, no respuestas de evaluaciones, y sugiere hablar con un adulto de confianza ante situaciones serias.</li>
+  </ul>
+
+  <h2>Cuánto tiempo los guardamos</h2>
+  <p>Mientras el estudiante esté inscrito en una escuela que usa la plataforma. Al egresar
+  o darse de baja, la cuenta se desactiva y el historial se conserva para certificados y
+  reportes de la escuela, salvo que se pida borrarlo.</p>
+
+  <h2>Tus derechos</h2>
+  <p>El estudiante, o su padre, madre o encargado, puede pedir <b>ver, corregir o borrar</b>
+  sus datos, o retirar el consentimiento. Se pide al docente de la clase o al correo de
+  contacto del proyecto. Borrar la cuenta elimina también su acceso a la plataforma.</p>
+
+  <h2>Cómo los protegemos</h2>
+  <ul>
+    <li>Reglas de acceso en la base de datos: cada usuario solo puede leer lo que le corresponde.</li>
+    <li>Contraseñas guardadas cifradas por el servicio de inicio de sesión; PIN personal en tablets compartidas.</li>
+    <li>Las acciones con premios, notas o datos de otros se validan en el servidor.</li>
+    <li>Conexiones cifradas (HTTPS).</li>
+  </ul>
+
+  <h2>Cambios a esta política</h2>
+  <p>Si cambia algo importante, lo avisaremos en la plataforma y en el Portal de padres, y
+  pediremos el consentimiento de nuevo cuando corresponda.</p>
+
+  <p class="muted" style="margin-top:2.5rem">Este texto se revisará con asesoría legal. Referencias: Ley de Protección
+  Integral de la Niñez y Adolescencia (Decreto 27-2003) y la Convención sobre los
+  Derechos del Niño.</p>
+</main>
+</body>
+</html>

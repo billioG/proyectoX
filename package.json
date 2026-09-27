@@ -1,0 +1,16 @@
+{
+  "name": "quetzal-lms",
+  "private": true,
+  "description": "Quetzal LMS. La app no necesita build: este archivo solo existe para las herramientas de desarrollo (pruebas y estilos).",
+  "scripts": {
+    "serve": "http-server -p 8080 -c-1",
+    "css": "tailwindcss -c tailwind.config.js -i css/tailwind.src.css -o css/tailwind.css --minify",
+    "test": "playwright test",
+    "test:install": "playwright install --with-deps chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.47.2",
+    "http-server": "14.1.1",
+    "tailwindcss": "3.4.17"
+  }
+}

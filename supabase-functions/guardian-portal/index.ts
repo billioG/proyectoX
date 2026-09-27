@@ -30,12 +30,12 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
 
   try {
-    const { token, action, subscription, endpoint } = await req.json();
+    const { token, action, subscription, endpoint, accepted } = await req.json();
     if (typeof token !== 'string' || !/^[0-9a-f]{32}$/.test(token)) return json({ error: 'Enlace inválido' }, 400);
 
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
     const { data: g } = await admin.from('student_guardians')
-      .select('id, name, student_id, students(full_name, school_code, schools(name))')
+      .select('id, name, student_id, consent_status, consent_version, students(full_name, school_code, schools(name))')
       .eq('portal_token', token).maybeSingle();
     if (!g) return json({ error: 'Este enlace ya no es válido. Pedile uno nuevo al docente.' }, 404);
 
@@ -53,6 +53,18 @@ Deno.serve(async (req) => {
       return json({ ok: true });
     }
 
+    // Consentimiento de la política de privacidad (privacidad.html).
+    if (action === 'consent') {
+      if (typeof accepted !== 'boolean') return json({ error: 'Respuesta inválida' }, 400);
+      const { error } = await admin.from('student_guardians').update({
+        consent_status: accepted ? 'accepted' : 'declined',
+        consent_version: 1,
+        consent_at: new Date().toISOString(),
+      }).eq('id', g.id);
+      if (error) return json({ error: error.message }, 500);
+      return json({ ok: true });
+    }
+
     if (action === 'unsubscribe') {
       if (typeof endpoint === 'string') await admin.from('guardian_push_subscriptions').delete().eq('guardian_id', g.id).eq('endpoint', endpoint);
       return json({ ok: true });
@@ -66,6 +78,7 @@ Deno.serve(async (req) => {
       guardian: g.name,
       student: String(st?.full_name || '').trim().split(/\s+/)[0] || 'tu hijo/a',
       school: st?.schools?.name || '',
+      consent: (g as any).consent_version === 1 ? (g as any).consent_status : null,
       messages: recent || [],
     });
   } catch (e) {
