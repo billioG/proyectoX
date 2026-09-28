@@ -1081,7 +1081,9 @@ window.guardianPortalUrl = function guardianPortalUrl(token) {
   return new URL('padres.html', base).href + '?t=' + token;
 };
 
-// Procesa la cola de avisos que encoló este usuario (push o SMS).
+// Procesa la cola de avisos que encoló este usuario (push o SMS): UN
+// lote (notify-guardians manda como máximo BATCH_SIZE por llamada, con
+// pausa entre cada SMS real para no parecer spam al gateway/operador).
 window.flushGuardianNotifications = async function flushGuardianNotifications() {
   const { data: { session } } = await window._supabase.auth.getSession();
   const res = await fetch(`${window.SUPABASE_URL}/functions/v1/notify-guardians`, {
@@ -1090,6 +1092,21 @@ window.flushGuardianNotifications = async function flushGuardianNotifications() 
     body: '{}',
   });
   return res.json().catch(() => ({}));
+};
+
+// Vacía TODA la cola: llama flushGuardianNotifications las veces que
+// haga falta (con una pausa entre cada llamada) hasta que ya no quede
+// nada pendiente. Así un aviso a un colegio entero de 300 padres sale en
+// varios lotes chicos en vez de un solo envío masivo de una sola vez.
+window.drainGuardianNotifications = async function drainGuardianNotifications() {
+  const totals = { push: 0, sms: 0, failed: 0 };
+  for (let i = 0; i < 50; i++) { // tope de seguridad: 50 lotes (~3000 avisos)
+    const r = await window.flushGuardianNotifications();
+    totals.push += r.push || 0; totals.sms += r.sms || 0; totals.failed += r.failed || 0;
+    if (!r.remaining) break;
+    await new Promise(res => setTimeout(res, 1500));
+  }
+  return totals;
 };
 
 window.openGuardiansModal = async function openGuardiansModal(studentId, studentName) {

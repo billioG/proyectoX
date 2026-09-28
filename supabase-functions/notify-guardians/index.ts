@@ -31,6 +31,15 @@ const ALLOWED_ORIGINS = new Set([
 
 // La app del celular aceptó dos formatos según la versión: se prueba el
 // actual y, si el servidor no lo reconoce, el anterior.
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+// Entre cada SMS real (no entre push): mandar cientos de mensajes de un
+// solo golpe es justo el patrón que hace que un operador o el gateway
+// bloqueen el número por "spam". Con esta pausa y el tope de BATCH_SIZE
+// por llamada, el cliente reintenta la función varias veces para vaciar
+// la cola en lotes chicos (ver announcements.js).
+const SMS_THROTTLE_MS = 350;
+const BATCH_SIZE = 60;
+
 async function sendSms(phone: string, text: string) {
   if (!SMSGATE_USER || !SMSGATE_PASS) throw new Error('Falta configurar SMSGATE_USER / SMSGATE_PASS');
   const auth = 'Basic ' + btoa(`${SMSGATE_USER}:${SMSGATE_PASS}`);
@@ -72,7 +81,10 @@ Deno.serve(async (req) => {
   const { data: pending } = await admin.from('guardian_notifications')
     .select('id, guardian_id, channel, message, student_guardians(phone, sms_enabled)')
     .eq('created_by', caller.id).eq('status', 'pending')
-    .order('created_at').limit(300);
+    .order('created_at').limit(BATCH_SIZE);
+
+  const { count: pendingTotal } = await admin.from('guardian_notifications')
+    .select('id', { count: 'exact', head: true }).eq('created_by', caller.id).eq('status', 'pending');
 
   let push = 0, sms = 0, failed = 0;
   for (const n of (pending || []) as any[]) {
@@ -104,6 +116,7 @@ Deno.serve(async (req) => {
       } catch (e: any) {
         error = String(e?.message || e);
       }
+      await sleep(SMS_THROTTLE_MS);
     }
 
     if (!delivered) failed++;
@@ -114,5 +127,6 @@ Deno.serve(async (req) => {
     }).eq('id', n.id);
   }
 
-  return json({ ok: true, push, sms, failed });
+  const remaining = Math.max(0, (pendingTotal || 0) - (pending?.length || 0));
+  return json({ ok: true, push, sms, failed, remaining });
 });

@@ -506,14 +506,23 @@ window.sendAnnouncement = async function sendAnnouncement() {
       push += counts?.push || 0; sms += counts?.sms || 0; none += counts?.none || 0;
     }
     if (push + sms) {
-      const { data: { session } } = await window._supabase.auth.getSession();
-      fetch(`${window.SUPABASE_URL}/functions/v1/notify-guardians`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token || ''}` },
-        body: '{}',
+      window.showToast(`<i class="fas fa-people-roof"></i> Enviando a padres: ${push} por notificación, ${sms} por SMS...`, 'info');
+      // notify-guardians manda de a lotes chicos (con pausa entre SMS
+      // reales, para no parecer spam al operador/gateway) -- se la llama
+      // varias veces seguidas hasta vaciar la cola en vez de una sola
+      // llamada con todos los padres de golpe. drainGuardianNotifications
+      // vive en students.js, que se carga perezoso -- se fuerza acá si
+      // Avisos se usó sin haber entrado nunca a Estudiantes.
+      (async () => {
+        if (typeof window.drainGuardianNotifications !== 'function' && typeof window.loadModule === 'function') {
+          await window.loadModule('students');
+        }
+        return window.drainGuardianNotifications();
+      })().then(sent => {
+        window.showToast(`<i class="fas fa-people-roof"></i> Avisos a padres enviados (${sent.push} notificación, ${sent.sms} SMS${sent.failed ? `, ${sent.failed} fallaron` : ''})`, sent.failed ? 'warning' : 'success');
       }).catch(err => console.error('Error enviando avisos a padres:', err));
     }
-    window.showToast(`<i class="fas fa-people-roof"></i> Padres: ${push} por notificación, ${sms} por SMS${none ? `, ${none} sin contacto` : ''}${failedGroups ? ` (${failedGroups} grupo(s) con error)` : ''}`, failedGroups ? 'warning' : 'info');
+    if (failedGroups) window.showToast(`<i class="fas fa-triangle-exclamation"></i> ${failedGroups} grupo(s) con error al encolar avisos de padres`, 'warning');
   }
 
   window.showToast('<i class="fas fa-circle-check"></i> Aviso enviado', 'success');
