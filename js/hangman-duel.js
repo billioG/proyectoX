@@ -8,6 +8,11 @@
 const MAX_WRONG_GUESSES = 6;
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
+// Categorías con banco FIJO en la BD (migrations/hangman-word-bank.sql) --
+// palabras curadas a mano sobre fauna/ambiente/ODS de Guatemala, sin pasar
+// por la IA. El resto de temas sigue generándose con ai-generate-hangman-word.
+const BANK_HANGMAN_TOPICS = ['Vida silvestre y ODS de Guatemala'];
+
 // El ahorcado no tenía ninguna señal visual de los errores -- solo un
 // contador de texto. Dibuja la horca de a partes (cabeza, cuerpo, 2 brazos,
 // 2 piernas) según la cantidad de errores, estilo flat sin gradientes.
@@ -193,6 +198,7 @@ window.openCreateHangmanModal = async function openCreateHangmanModal() {
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Categoría</label>
           <select id="hangman-topic" class="input-field-tw h-11 text-sm">
             ${window.topicOptionsHtml(pool)}
+            <optgroup label="🌱 Ambiente y ODS">${BANK_HANGMAN_TOPICS.map(t => `<option value="${t}">${t}</option>`).join('')}</optgroup>
           </select>
         </div>
       </div>
@@ -263,14 +269,21 @@ window.respondHangmanDuel = async function respondHangmanDuel(duelId, accept) {
   if (!window.aiGenerationLock.tryAcquire()) return;
   window.showToast('<i class="fas fa-circle-notch fa-spin"></i> Generando palabra...', 'info');
   try {
-    const { data: { session } } = await window._supabase.auth.getSession();
-    const res = await fetch(`${window.SUPABASE_URL}/functions/v1/ai-generate-hangman-word`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
-      body: JSON.stringify({ duel_id: duelId }),
-    });
-    const result = await res.json();
-    if (!res.ok) throw new Error(result.error || 'Error generando la palabra');
+    if (BANK_HANGMAN_TOPICS.includes(duel?.topic)) {
+      // Categoría con banco fijo (fauna/ODS de Guatemala): elige palabra de
+      // la BD directo, sin llamar a la IA.
+      const { error: rpcErr } = await window._supabase.rpc('assign_hangman_bank_word', { p_duel_id: duelId });
+      if (rpcErr) throw new Error(rpcErr.message);
+    } else {
+      const { data: { session } } = await window._supabase.auth.getSession();
+      const res = await fetch(`${window.SUPABASE_URL}/functions/v1/ai-generate-hangman-word`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ duel_id: duelId }),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || 'Error generando la palabra');
+    }
     window.showToast('<i class="fas fa-circle-check"></i> ¡Reto aceptado! Ya podés jugar', 'success');
     window.loadHangmanSection();
     if (typeof window.sendDuelPushNotification === 'function') window.sendDuelPushNotification(duelId, 'accepted', 'hangman');

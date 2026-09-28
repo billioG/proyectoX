@@ -4,6 +4,10 @@ Cambios publicados en Quetzal LMS, del más reciente al más antiguo. Cada líne
 
 Al publicar una versión nueva, agregá una línea arriba de todo (ver CONTRIBUTING.md).
 
+## 2026-09-28
+
+- Hangman duel ("Ahorcado 1v1"): new topic "Vida silvestre y ODS de Guatemala" backed by a fixed, curated word bank (20 words on Guatemalan wildlife/environment, each with a hint and an educational fact) instead of AI generation -- guaranteed on-topic vocabulary, no dependency on Groq being up (v1.0.123)
+
 ## 2026-09-27
 
 - Fix: course progress bar, done checkmark and sequential unlock all treated ANY lesson_completions row as "finished", including one with status='incomplete' -- which SCORM/H5P write on every partial interaction, not just at the end. A multi-module SCORM course showed 100% (and unlocked the next resource) after the very first activity. Now only a non-'incomplete' status counts as done (v1.0.122)

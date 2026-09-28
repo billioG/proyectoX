@@ -69,6 +69,7 @@ seguras de re-ejecutar):
 - [ ] `migrations/guardian-paper-consent.sql` (v1.0.118) — consentimiento firmado en papel, registrado por el docente/admin.
 - [ ] `migrations/coordinator-see-announcements.sql` — el coordinador ve los avisos de sus docentes y del admin (solo de su establecimiento), sin importar a quién iban dirigidos.
 - [ ] `migrations/lesson-audience.sql` (v1.0.121) — recursos "solo docentes" en los cursos, invisibles para alumnos.
+- [ ] `migrations/hangman-word-bank.sql` (v1.0.123) — requiere `migrations/duel-facts.sql` ya corrida. Categoría "Vida silvestre y ODS de Guatemala" en Ahorcado, banco fijo de 20 palabras.
 
 Redesplegar estas Edge Functions (cambiaron en las últimas versiones):
 
