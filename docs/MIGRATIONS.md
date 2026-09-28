@@ -141,3 +141,4 @@ de producción.
 | 96 | 2026-09-27 | `school-project-visibility.sql` | `schools.public_projects`; política restrictiva en `projects` (privado = solo su escuela, admin y su coordinador); RPC `set_school_public_projects`; lectura de `attendance` para coordinador |
 | 97 | 2026-09-27 | `season-pass-companion-reward.sql` | Nuevo premio de mascota gratis en el Pase de Temporada (nivel 18: guacamaya) |
 | 98 | 2026-09-27 | `guardian-paper-consent.sql` | RPC `record_guardian_paper_consent`: el docente/admin registra el consentimiento firmado en papel en la inscripción, sin depender del portal del padre |
+| 99 | 2026-09-27 | `coordinator-see-announcements.sql` | El coordinador ve los avisos del admin y de sus docentes asignados, sin importar a quién iban dirigidos |
