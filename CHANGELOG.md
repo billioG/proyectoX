@@ -6,6 +6,7 @@ Al publicar una versión nueva, agregá una línea arriba de todo (ver CONTRIBUT
 
 ## 2026-09-27
 
+- Random events: default duration is now 30 minutes (was 15 -- too short between the push notification and someone actually opening it); admin panel warns and offers a one-click relaunch when an active event is about to close with zero participants. Courses: a resource can now be marked "Solo docentes" when uploading (teacher guide, rubric, etc.) -- enforced with a restrictive RLS policy on lessons, not just hidden in the UI (v1.0.121)
 - New migration: a coordinador now sees every announcement from the admin and from their assigned teachers, regardless of who it was addressed to (not just what would already reach them as a teacher). No app version bump -- database-only change (migrations/coordinator-see-announcements.sql)
 - Guardian SMS/push now sends in small throttled batches instead of one big burst: notify-guardians processes at most 60 per call with a pause between real SMS sends, and the client (announcements.js/students.js) calls it repeatedly until the queue drains. Avoids getting flagged as spam by the carrier/gateway when messaging a whole class or school. Bulk send by group or whole school already existed via Avisos -> "Enviar tambien a padres"; this just makes it safe at scale (v1.0.120)
 - Show a failed guardian notification's error message inline in the Padres card instead of only in a hover tooltip (useless on phones) (v1.0.119)

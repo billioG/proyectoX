@@ -542,7 +542,7 @@ window.renderCourseResourcesList = function renderCourseResourcesList() {
         <div class="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0"><i class="fas ${LESSON_TYPE_ICON[l.content_type]}"></i></div>
         <div class="min-w-0 flex-1">
           <h4 class="text-sm font-bold text-slate-800 dark:text-white truncate">${window.sanitizeInput(l.title)}</h4>
-          <p class="text-[0.65rem] text-slate-400">${LESSON_TYPE_LABEL[l.content_type]}</p>
+          <p class="text-[0.65rem] text-slate-400">${LESSON_TYPE_LABEL[l.content_type]}${l.audience === 'docente' ? ' · <span class="text-amber-500 font-bold"><i class="fas fa-lock"></i> Solo docentes</span>' : ''}</p>
         </div>
       </div>
       <div class="flex items-center gap-2 justify-end sm:justify-start shrink-0">
@@ -796,6 +796,13 @@ window.openAddResourceModal = function openAddResourceModal(courseId, editLesson
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Título *</label>
           <input type="text" id="resource-title" class="input-field-tw h-11 text-sm" value="${editing ? window.sanitizeAttr(editing.title) : ''}">
         </div>
+        <div>
+          <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">¿Quién lo ve?</label>
+          <select id="resource-audience" class="input-field-tw h-11 text-sm">
+            <option value="estudiante" ${(!editing || editing.audience !== 'docente') ? 'selected' : ''}>Estudiantes</option>
+            <option value="docente" ${editing?.audience === 'docente' ? 'selected' : ''}>Solo docentes (guía, rúbrica, material de apoyo)</option>
+          </select>
+        </div>
         ${editing ? `<input type="hidden" id="resource-type" value="${editing.content_type}">` : `
         <div>
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Tipo</label>
@@ -1029,9 +1036,11 @@ window.saveResource = async function saveResource(courseId, editingId) {
 
   const course = window._managingCourse;
 
+  const audience = document.getElementById('resource-audience')?.value === 'docente' ? 'docente' : 'estudiante';
+
   if (editingId) {
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
-    const update = { title };
+    const update = { title, audience };
     if (isQuiz) {
       update.quiz_data = window._quizBuilderQuestions.map(({ _id, ...q }) => q);
     } else if (!isZip) {
@@ -1104,6 +1113,7 @@ window.saveResource = async function saveResource(courseId, editingId) {
       quiz_data: isQuiz ? window._quizBuilderQuestions.map(({ _id, ...q }) => q) : null,
       course_id: courseId,
       order_index: nextOrder,
+      audience,
       school_code: course.school_code,
       grade: course.grade,
       section: course.section,

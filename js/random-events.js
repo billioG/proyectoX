@@ -354,7 +354,7 @@ window.openRandomEventsAdminModal = function openRandomEventsAdminModal() {
             </div>
             <div class="col-span-2">
               <label class="text-[0.6rem] font-bold uppercase text-slate-400 mb-1 block">Duración (minutos)</label>
-              <input type="number" id="re-admin-duration" class="input-field-tw h-10 text-sm" value="15" min="5" max="60">
+              <input type="number" id="re-admin-duration" class="input-field-tw h-10 text-sm" value="30" min="5" max="60">
             </div>
           </div>
           <button id="btn-launch-random-event" class="btn-primary-tw w-full h-11 text-xs uppercase font-black" onclick="window.launchRandomEventNow()">
@@ -374,13 +374,22 @@ window.openRandomEventsAdminModal = function openRandomEventsAdminModal() {
   `;
   document.body.appendChild(modal);
   window.loadRandomEventsAdminList();
+
+  // Refresco automático mientras el panel esté abierto: así el aviso de
+  // "casi sin tiempo y nadie jugó" (ver loadRandomEventsAdminList) se
+  // actualiza solo, sin que el admin tenga que cerrar y volver a abrir.
+  clearInterval(window._randomEventsAdminPoll);
+  window._randomEventsAdminPoll = setInterval(() => {
+    if (!document.getElementById('random-events-admin-modal')) { clearInterval(window._randomEventsAdminPoll); return; }
+    window.loadRandomEventsAdminList();
+  }, 20_000);
 }
 
 window.launchRandomEventNow = async function launchRandomEventNow() {
   const topicInput = document.getElementById('re-admin-topic')?.value.trim();
   const gemPool = parseInt(document.getElementById('re-admin-gems')?.value) || 100;
   const questionCount = Math.max(3, Math.min(15, parseInt(document.getElementById('re-admin-questions')?.value) || 8));
-  const duration = parseInt(document.getElementById('re-admin-duration')?.value) || 15;
+  const duration = parseInt(document.getElementById('re-admin-duration')?.value) || 30;
   const targetRole = document.getElementById('re-admin-role')?.value || 'estudiante';
   const topic = topicInput || RANDOM_EVENT_TOPICS[Math.floor(Math.random() * RANDOM_EVENT_TOPICS.length)];
   const btn = document.getElementById('btn-launch-random-event');
@@ -403,6 +412,37 @@ window.launchRandomEventNow = async function launchRandomEventNow() {
 
   if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
   window.showToast('<i class="fas fa-circle-check"></i> Evento programado -- se dispara en menos de 1 minuto', 'success');
+  window.loadRandomEventsAdminList();
+}
+
+// Repite un evento (mismo tema/premio/preguntas/rol) empezando ahora --
+// para el caso de "quedan pocos minutos y nadie jugó" (ver el aviso en
+// loadRandomEventsAdminList). El original sigue su curso solo hasta
+// cerrarse; este es uno nuevo, independiente.
+window.relaunchRandomEvent = async function relaunchRandomEvent(eventId, btn) {
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+  const { data: original, error: readErr } = await window._supabase.from('random_events')
+    .select('topic, gem_pool, question_count, duration_minutes, target_role').eq('id', eventId).single();
+  if (readErr || !original) {
+    window.showToast('<i class="fas fa-circle-xmark"></i> No se pudo leer el evento original', 'error');
+    if (btn) { btn.disabled = false; btn.textContent = 'Relanzar'; }
+    return;
+  }
+  const { error } = await window._supabase.from('random_events').insert({
+    scheduled_for: new Date().toISOString(),
+    duration_minutes: original.duration_minutes,
+    topic: original.topic,
+    question_count: original.question_count,
+    gem_pool: original.gem_pool,
+    target_role: original.target_role,
+    status: 'scheduled',
+  });
+  if (error) {
+    window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
+    if (btn) { btn.disabled = false; btn.textContent = 'Relanzar'; }
+    return;
+  }
+  window.showToast('<i class="fas fa-circle-check"></i> Relanzado -- se dispara en menos de 1 minuto', 'success');
   window.loadRandomEventsAdminList();
 }
 
@@ -452,17 +492,30 @@ window.loadRandomEventsAdminList = async function loadRandomEventsAdminList() {
   listEl.innerHTML = events.map(e => {
     const winner = (participants || []).find(p => p.event_id === e.id && p.rank === 1);
     const count = (participants || []).filter(p => p.event_id === e.id).length;
+
+    // Avisar si está por cerrarse y todavía nadie jugó -- para poder
+    // relanzarlo (mismo tema/premio) antes de que se pierda el evento.
+    const minutesLeft = (new Date(e.scheduled_for).getTime() + e.duration_minutes * 60_000 - Date.now()) / 60_000;
+    const almostOverEmpty = e.status === 'active' && count === 0 && minutesLeft > 0 && minutesLeft <= 10;
+
     return `
-      <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
-        <div class="min-w-0">
-          <div class="text-xs font-bold text-slate-800 dark:text-white truncate">${sanitizeInput(e.topic)} -- ${e.gem_pool} gemas <span class="text-[0.55rem] text-slate-400 uppercase">(${roleLabel[e.target_role] || e.target_role})</span></div>
-          <div class="text-[0.6rem] text-slate-400">${new Date(e.scheduled_for).toLocaleString('es-GT')} · ${count} participante(s)${winner ? ` · 🏆 ${sanitizeInput(nameMap.get(winner.user_id) || '')}` : ''}</div>
+      <div class="p-4 rounded-xl ${almostOverEmpty ? 'bg-amber-50 dark:bg-amber-950/20 border-2 border-amber-400/50' : 'bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800'}">
+        <div class="flex items-center justify-between gap-3">
+          <div class="min-w-0">
+            <div class="text-xs font-bold text-slate-800 dark:text-white truncate">${sanitizeInput(e.topic)} -- ${e.gem_pool} gemas <span class="text-[0.55rem] text-slate-400 uppercase">(${roleLabel[e.target_role] || e.target_role})</span></div>
+            <div class="text-[0.6rem] text-slate-400">${new Date(e.scheduled_for).toLocaleString('es-GT')} · ${count} participante(s)${winner ? ` · 🏆 ${sanitizeInput(nameMap.get(winner.user_id) || '')}` : ''}</div>
+          </div>
+          <div class="shrink-0 flex items-center gap-2">
+            <span class="px-2.5 py-1 rounded-lg text-[0.6rem] font-black uppercase ${statusColor[e.status]}">${statusLabel[e.status]}</span>
+            ${e.status === 'scheduled' ? `<button class="text-rose-500 hover:underline text-[0.6rem] font-bold uppercase" onclick="window.cancelScheduledEvent('${e.id}')">Cancelar</button>` : ''}
+            ${e.status === 'completed' ? `<button class="text-primary hover:underline text-[0.6rem] font-bold uppercase" onclick="window.openEventResultsModal('${e.id}', '${e.target_role}')">Ver Resultados</button>` : ''}
+          </div>
         </div>
-        <div class="shrink-0 flex items-center gap-2">
-          <span class="px-2.5 py-1 rounded-lg text-[0.6rem] font-black uppercase ${statusColor[e.status]}">${statusLabel[e.status]}</span>
-          ${e.status === 'scheduled' ? `<button class="text-rose-500 hover:underline text-[0.6rem] font-bold uppercase" onclick="window.cancelScheduledEvent('${e.id}')">Cancelar</button>` : ''}
-          ${e.status === 'completed' ? `<button class="text-primary hover:underline text-[0.6rem] font-bold uppercase" onclick="window.openEventResultsModal('${e.id}', '${e.target_role}')">Ver Resultados</button>` : ''}
-        </div>
+        ${almostOverEmpty ? `
+        <div class="mt-2 pt-2 border-t border-amber-200 dark:border-amber-900/40 flex items-center justify-between gap-2">
+          <p class="text-[0.65rem] font-bold text-amber-700 dark:text-amber-400"><i class="fas fa-triangle-exclamation"></i> Quedan ${Math.max(1, Math.round(minutesLeft))} min y nadie jugó todavía</p>
+          <button class="h-7 px-3 rounded-lg bg-amber-500 text-white text-[0.6rem] font-black uppercase shrink-0" onclick="window.relaunchRandomEvent('${e.id}', this)">Relanzar</button>
+        </div>` : ''}
       </div>
     `;
   }).join('');

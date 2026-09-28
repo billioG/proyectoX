@@ -142,3 +142,4 @@ de producción.
 | 97 | 2026-09-27 | `season-pass-companion-reward.sql` | Nuevo premio de mascota gratis en el Pase de Temporada (nivel 18: guacamaya) |
 | 98 | 2026-09-27 | `guardian-paper-consent.sql` | RPC `record_guardian_paper_consent`: el docente/admin registra el consentimiento firmado en papel en la inscripción, sin depender del portal del padre |
 | 99 | 2026-09-27 | `coordinator-see-announcements.sql` | El coordinador ve los avisos del admin y de sus docentes asignados, sin importar a quién iban dirigidos |
+| 100 | 2026-09-28 | `lesson-audience.sql` | `lessons.audience` ('estudiante'/'docente'); política restrictiva: un alumno no puede leer una lección marcada "solo docentes" |

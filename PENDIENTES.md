@@ -67,7 +67,8 @@ seguras de re-ejecutar):
 - [ ] `migrations/season-pass.sql` (si no la corriste ya) — necesaria antes de la siguiente.
 - [ ] `migrations/season-pass-companion-reward.sql` (v1.0.116) — el pase de temporada regala una mascota gratis en el nivel 18.
 - [ ] `migrations/guardian-paper-consent.sql` (v1.0.118) — consentimiento firmado en papel, registrado por el docente/admin.
-- [ ] `migrations/coordinator-see-announcements.sql` (v1.0.121) — el coordinador ve los avisos de sus docentes y del admin, sin importar a quién iban dirigidos.
+- [ ] `migrations/coordinator-see-announcements.sql` — el coordinador ve los avisos de sus docentes y del admin (solo de su establecimiento), sin importar a quién iban dirigidos.
+- [ ] `migrations/lesson-audience.sql` (v1.0.121) — recursos "solo docentes" en los cursos, invisibles para alumnos.
 
 Redesplegar estas Edge Functions (cambiaron en las últimas versiones):
 
