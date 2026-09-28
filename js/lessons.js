@@ -1660,7 +1660,7 @@ window.loadStudentCourses = async function loadStudentCourses(container) {
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
       ${courses.map(c => {
         const items = (c.lessons || []).slice().sort((a, b) => a.order_index - b.order_index);
-        const doneCount = items.filter(l => completionsByLesson.has(l.id)).length;
+        const doneCount = items.filter(l => isLessonReallyDone(completionsByLesson.get(l.id))).length;
         const pct = items.length ? Math.round((doneCount / items.length) * 100) : 0;
         return `
         <div class="glass-card p-5 flex flex-col gap-3 cursor-pointer hover:border-primary/30 transition-all" onclick="window.openCoursePlayer('${c.id}')">
@@ -1945,7 +1945,7 @@ window.openCoursePlayer = function openCoursePlayer(courseId) {
   `;
   document.body.appendChild(modal);
 
-  const firstUnlockedIndex = items.findIndex(l => !window._completionsCache.has(l.id));
+  const firstUnlockedIndex = items.findIndex(l => !isLessonReallyDone(window._completionsCache.get(l.id)));
   window.selectCourseResource(firstUnlockedIndex === -1 ? items.length - 1 : firstUnlockedIndex);
 }
 
@@ -1956,17 +1956,27 @@ window.closeCoursePlayer = function closeCoursePlayer() {
   window.loadLessons();
 }
 
+// Un registro en lesson_completions puede existir EN PROGRESO
+// ("incomplete", lo que manda SCORM/H5P cada vez que el alumno interactúa
+// con una sola actividad de varias) sin que el recurso esté REALMENTE
+// terminado -- antes cualquier registro contaba como "hecho", así que un
+// SCORM de 4 módulos con exámen final mostraba 100% y desbloqueaba el
+// siguiente recurso con solo tocar la primera pregunta del primer módulo.
+function isLessonReallyDone(completion) {
+  return !!completion && completion.status !== 'incomplete';
+}
+
 function isCourseResourceUnlocked(items, index) {
   if (index === 0) return true;
   const prev = items[index - 1];
-  return window._completionsCache?.has(prev.id);
+  return isLessonReallyDone(window._completionsCache?.get(prev.id));
 }
 
 window.renderCourseSidebar = function renderCourseSidebar() {
   const { items } = window._activeCourse || {};
   if (!items) return;
   const completions = window._completionsCache;
-  const doneCount = items.filter(l => completions.has(l.id)).length;
+  const doneCount = items.filter(l => isLessonReallyDone(completions.get(l.id))).length;
   const pct = Math.round((doneCount / items.length) * 100);
 
   const pctEl = document.getElementById('course-player-progress-pct');
@@ -1977,7 +1987,7 @@ window.renderCourseSidebar = function renderCourseSidebar() {
   const sidebarEl = document.getElementById('course-player-sidebar');
   if (!sidebarEl) return;
   sidebarEl.innerHTML = items.map((l, i) => {
-    const done = completions.has(l.id);
+    const done = isLessonReallyDone(completions.get(l.id));
     const unlocked = isCourseResourceUnlocked(items, i);
     const isActive = i === window._activeCourseIndex;
     const completion = completions.get(l.id);
@@ -2503,6 +2513,20 @@ window.loadIframeViaFetch = async function loadIframeViaFetch(iframeId, url) {
 window.initScormSession = function initScormSession(lessonId) {
   const cmi = { score: null, status: null };
 
+  // Identidad real del alumno y de esta lección, por los campos ESTÁNDAR
+  // de SCORM (cmi.core.student_id / cmi.learner_id, etc.) -- cualquier
+  // paquete SCORM bien hecho puede leerlos para no depender de guardar su
+  // propio progreso en localStorage. Ese localStorage vive en el ORIGEN
+  // de Quetzal (el iframe es srcdoc del mismo origen para que la llamada
+  // a window.API funcione) y por eso, si un paquete SÍ lo usa con una
+  // clave fija, ese progreso queda compartido entre CUALQUIER lección y
+  // CUALQUIER alumno que use el mismo dispositivo -- justo el bug de
+  // "ya me marca 100% sin haber entrado" que reportó un docente. La
+  // corrección real va en el paquete SCORM (que lea/escriba su progreso
+  // con una clave que incluya cmi.core.student_id), no acá.
+  const studentId = window.currentUser?.id || '';
+  const studentName = window.userData?.full_name || '';
+
   const commit = () => { persistLessonScore(lessonId, cmi.score, cmi.status, { ...cmi }); updateLiveScoreLabel(cmi.score, cmi.status); return 'true'; };
 
   const scorm12 = {
@@ -2512,6 +2536,9 @@ window.initScormSession = function initScormSession(lessonId) {
     LMSGetValue: (key) => {
       if (key === 'cmi.core.score.raw') return cmi.score !== null ? String(cmi.score) : '';
       if (key === 'cmi.core.lesson_status') return cmi.status || 'incomplete';
+      if (key === 'cmi.core.student_id') return studentId;
+      if (key === 'cmi.core.student_name') return studentName;
+      if (key === 'cmi.core.lesson_location') return String(lessonId || '');
       return '';
     },
     LMSSetValue: (key, value) => {
@@ -2531,6 +2558,9 @@ window.initScormSession = function initScormSession(lessonId) {
     GetValue: (key) => {
       if (key === 'cmi.score.raw' || key === 'cmi.score.scaled') return cmi.score !== null ? String(cmi.score) : '';
       if (key === 'cmi.completion_status') return cmi.status || 'incomplete';
+      if (key === 'cmi.learner_id') return studentId;
+      if (key === 'cmi.learner_name') return studentName;
+      if (key === 'cmi.location') return String(lessonId || '');
       return '';
     },
     SetValue: (key, value) => {
