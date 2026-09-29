@@ -74,7 +74,7 @@ window.setOfflineAccountSecret = async function setOfflineAccountSecret(userId, 
 // todavía no tiene un PIN guardado.
 window.offlineAccountNeedsPinSetup = function offlineAccountNeedsPinSetup(userId) {
   const acc = readAccounts()[userId];
-  return !!acc && !acc.secretHash && !acc.pinHash;
+  return !!acc && !acc.secretHash && !acc.pinHash && !acc.pinOfferSeen;
 };
 
 // Se llama online, con el PIN elegido por el alumno (4 a 6 dígitos). Hashea
@@ -86,7 +86,18 @@ window.setOfflinePersonalPin = async function setOfflinePersonalPin(userId, pin)
   const hash = await hashSecret(pin, salt);
 
   const { error } = await window._supabase.rpc('set_student_pin', { p_hash: hash, p_salt: salt });
-  if (error) throw error;
+  if (error) {
+    // "Could not find the function" -- migrations/student-pin-cloud.sql
+    // todavía no se corrió en este proyecto. No tiene sentido mostrarle al
+    // alumno un error de Postgres en crudo: se marca para no insistir en
+    // esta tablet hasta que el mensaje de error cambie (deploy nuevo).
+    if (/Could not find the function|PGRST202/i.test(error.message || '')) {
+      const e = new Error('Esta función todavía no está lista, probá más tarde');
+      e.pinFeatureUnavailable = true;
+      throw e;
+    }
+    throw error;
+  }
 
   const map = readAccounts();
   if (map[userId]) {
@@ -227,6 +238,14 @@ function renderPinKeypad(container, { title, help = '', onDigits, digitCount = 4
 window.openPinSetupPrompt = function openPinSetupPrompt(userId, fullName) {
   const s = window.sanitizeInput || ((v) => v);
   document.getElementById('pin-setup-prompt')?.remove();
+
+  // Se marca como "ya se ofreció" apenas se muestra, pase lo que pase
+  // después (creó el PIN, dijo que no, cerró la app a la mitad, o la
+  // función todavía no existe en el servidor) -- sin esto, mientras no
+  // haya un pinHash guardado, este aviso volvía a aparecer en CADA login,
+  // tapando la pantalla de Cursos cada vez.
+  const map = readAccounts();
+  if (map[userId]) { map[userId].pinOfferSeen = true; writeAccounts(map); }
   const modal = document.createElement('div');
   modal.id = 'pin-setup-prompt';
   modal.style.cssText = 'position:fixed;inset:0;z-index:320;background:rgba(2,6,23,.9);display:flex;align-items:center;justify-content:center;padding:1.5rem';
@@ -265,6 +284,12 @@ window.openPinSetupPrompt = function openPinSetupPrompt(userId, fullName) {
           modal.remove();
           window.showToast?.('<i class="fas fa-circle-check"></i> PIN creado -- ya podés entrar sin internet con él', 'success');
         } catch (e) {
+          if (e.pinFeatureUnavailable) {
+            // No insistir con un teclado atascado -- se cierra solo, sin
+            // culpar al alumno de algo que no puede arreglar él.
+            modal.remove();
+            return;
+          }
           fail(e.message || 'No se pudo guardar el PIN');
         }
       });
