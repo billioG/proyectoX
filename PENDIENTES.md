@@ -53,25 +53,25 @@ del proyecto (necesitan contraseñas o acceso al panel de Supabase).
 Verificá en el SQL Editor que estén corridas, en este orden (todas son
 seguras de re-ejecutar):
 
-- [ ] `migrations/duel-played-ids.sql` (v1.0.84)
-- [ ] `migrations/teacher-self-service.sql` (v1.0.89)
-- [ ] `migrations/duel-rewards-live-gems.sql` (v1.0.91)
-- [ ] `migrations/companion-collection.sql` (v1.0.93)
-- [ ] `migrations/companion-more.sql` (v1.0.94)
-- [ ] `migrations/guardians.sql` (v1.0.98)
-- [ ] `migrations/announcements-targeting.sql` (v1.0.99) — reemplaza las reglas de acceso de avisos: después de correrla, probar que un alumno siga viendo los avisos de su clase.
-- [ ] `migrations/guardian-consent.sql` (v1.0.100) — **antes** de redesplegar `guardian-portal`.
-- [ ] `migrations/impact-metrics.sql` (v1.0.100) — tablero de impacto del admin.
-- [ ] `migrations/coordinador-role.sql` (si no la corriste ya) — necesaria antes de la siguiente.
-- [ ] `migrations/school-project-visibility.sql` (v1.0.112) — switch de Hall de la Fama por establecimiento y reportes del coordinador.
-- [ ] `migrations/season-pass.sql` (si no la corriste ya) — necesaria antes de la siguiente.
-- [ ] `migrations/season-pass-companion-reward.sql` (v1.0.116) — el pase de temporada regala una mascota gratis en el nivel 18.
-- [ ] `migrations/guardian-paper-consent.sql` (v1.0.118) — consentimiento firmado en papel, registrado por el docente/admin.
-- [ ] `migrations/coordinator-see-announcements.sql` — el coordinador ve los avisos de sus docentes y del admin (solo de su establecimiento), sin importar a quién iban dirigidos.
-- [ ] `migrations/lesson-audience.sql` (v1.0.121) — recursos "solo docentes" en los cursos, invisibles para alumnos.
-- [ ] `migrations/hangman-word-bank.sql` (v1.0.123) — requiere `migrations/duel-facts.sql` ya corrida. Categoría "Vida silvestre de Guatemala" en Ahorcado, banco fijo de 20 palabras.
-- [ ] `migrations/timed-math-word-problems.sql` (v1.0.125) — requiere `migrations/student-timed-math-duels.sql` ya corrida. Contrarreloj: los problemas de 4to grado en adelante salen como mini-historia con contexto real (misma cuenta, mismo número).
-- [ ] `migrations/sync-queue-idempotency.sql` (v1.0.127) — junta evaluar proyecto en una sola función atómica y agrega `client_ref` a `tutor_attendance` para que un reintento de la cola offline no duplique el check-in.
+- [x] `migrations/duel-played-ids.sql` (v1.0.84)
+- [x] `migrations/teacher-self-service.sql` (v1.0.89)
+- [x] `migrations/duel-rewards-live-gems.sql` (v1.0.91)
+- [x] `migrations/companion-collection.sql` (v1.0.93)
+- [x] `migrations/companion-more.sql` (v1.0.94)
+- [x] `migrations/guardians.sql` (v1.0.98)
+- [x] `migrations/announcements-targeting.sql` (v1.0.99) — reemplaza las reglas de acceso de avisos: después de correrla, probar que un alumno siga viendo los avisos de su clase.
+- [x] `migrations/guardian-consent.sql` (v1.0.100) — **antes** de redesplegar `guardian-portal`.
+- [x] `migrations/impact-metrics.sql` (v1.0.100) — tablero de impacto del admin.
+- [x] `migrations/coordinador-role.sql` (si no la corriste ya) — necesaria antes de la siguiente.
+- [x] `migrations/school-project-visibility.sql` (v1.0.112) — switch de Hall de la Fama por establecimiento y reportes del coordinador.
+- [x] `migrations/season-pass.sql` (si no la corriste ya) — necesaria antes de la siguiente.
+- [x] `migrations/season-pass-companion-reward.sql` (v1.0.116) — el pase de temporada regala una mascota gratis en el nivel 18.
+- [x] `migrations/guardian-paper-consent.sql` (v1.0.118) — consentimiento firmado en papel, registrado por el docente/admin.
+- [x] `migrations/coordinator-see-announcements.sql` — el coordinador ve los avisos de sus docentes y del admin (solo de su establecimiento), sin importar a quién iban dirigidos.
+- [x] `migrations/lesson-audience.sql` (v1.0.121) — recursos "solo docentes" en los cursos, invisibles para alumnos.
+- [x] `migrations/hangman-word-bank.sql` (v1.0.123) — requiere `migrations/duel-facts.sql` ya corrida. Categoría "Vida silvestre de Guatemala" en Ahorcado, banco fijo de 20 palabras.
+- [x] `migrations/timed-math-word-problems.sql` (v1.0.125) — requiere `migrations/student-timed-math-duels.sql` ya corrida. Contrarreloj: los problemas de 4to grado en adelante salen como mini-historia con contexto real (misma cuenta, mismo número).
+- [x] `migrations/sync-queue-idempotency.sql` (v1.0.127) — junta evaluar proyecto en una sola función atómica y agrega `client_ref` a `tutor_attendance` para que un reintento de la cola offline no duplique el check-in.
 
 Redesplegar estas Edge Functions (cambiaron en las últimas versiones):
 
