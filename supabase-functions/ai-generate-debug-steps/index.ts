@@ -1,9 +1,14 @@
 // Edge Function: ai-generate-debug-steps
-// Genera una secuencia corta de "bloques" de programación (estilo Scratch,
-// mostrados como tarjetas apiladas -- no un editor real) para el desafío
-// "Encontrá el Error" 1v1. Exactamente un paso tiene el error. Igual que
-// los otros generadores: se guarda con service role para que el alumno no
-// pueda inspeccionar la llamada y ver cuál es el error antes de jugar.
+// Genera una secuencia corta de AFIRMACIONES cortas sobre el tema del duelo
+// (mostradas como tarjetas apiladas) para el desafío "Encontrá el Error"
+// 1v1. Exactamente una afirmación tiene un dato falso. Igual que los otros
+// generadores: se guarda con service role para que el alumno no pueda
+// inspeccionar la llamada y ver cuál es el error antes de jugar.
+//
+// Antes esto generaba "bloques de programación estilo Scratch" -- limitaba
+// el juego a un solo tema (robótica/programación). Ahora es contenido
+// real sobre cualquier tema del pool de duelos (ciencia, matemática,
+// ambiente, etc.), como el resto de los retos 1v1.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -60,39 +65,39 @@ Deno.serve(async (req) => {
     const { data: challenger } = await serviceClientRead.from('students').select('grade').eq('id', duel.challenger_id).maybeSingle();
     const grade = challenger?.grade || 'educación básica';
 
-    const system = `Armá una secuencia de 5 a 7 "bloques" de un programa simple estilo
-Scratch/programación por bloques (ej: "Mover 10 pasos", "Repetir 4 veces", "Si toca el
-borde entonces rebotar", "Decir ¡Hola! por 2 segundos"), sobre el tema indicado, para
-un estudiante de ${grade} en Guatemala.
+    const system = `Armá una secuencia de 5 a 7 afirmaciones cortas (una oración cada
+una) sobre el tema indicado, apropiadas para un estudiante de ${grade} en Guatemala.
+Tienen que ser datos concretos y verificables (no opiniones), del estilo "El agua
+hierve a 100°C a nivel del mar", "La Tierra tarda 365 días en dar una vuelta al Sol".
 
-EXACTAMENTE UNO de los bloques tiene un error de lógica evidente (ej: un número que no
-tiene sentido, una condición invertida, un bloque en el orden equivocado, repetir 0
-veces). Los demás bloques tienen que ser perfectamente correctos y coherentes entre sí
--- no generes ambigüedad de cuál es el error.
+EXACTAMENTE UNA de las afirmaciones tiene un dato falso, evidente una vez que se
+explica (ej: un número equivocado, una causa y efecto invertidos, una clasificación
+incorrecta). Las demás afirmaciones tienen que ser perfectamente correctas y
+verificables -- no generes ambigüedad de cuál es la falsa.
 
-MUY IMPORTANTE: revisá vos mismo que haya UN SOLO bloque con el error, y que sea
-claramente identificable (no una opinión, un error objetivo de lógica/orden/valor).
+MUY IMPORTANTE: revisá vos mismo que haya UNA SOLA afirmación falsa, y que el error
+sea un hecho objetivo (no una opinión ni algo discutible).
 
 Responde ÚNICAMENTE con JSON válido, sin texto adicional, con esta forma exacta:
 {"steps":[{"label":"...","isBug":false,"explanation":""},{"label":"...","isBug":true,"explanation":"por qué está mal"}],"fact":"..."}
 
-El campo "fact" es UN dato curioso y educativo sobre programación o el tema (1 o 2
-oraciones, máximo 220 caracteres) que le deje un aprendizaje al estudiante. Tiene que
-ser verdadero y verificable; si no estás seguro de un dato, escribí en su lugar un
-consejo práctico para encontrar errores en un programa.`;
+El campo "fact" es UN dato curioso y educativo sobre el tema (1 o 2 oraciones, máximo
+220 caracteres) que le deje un aprendizaje al estudiante, DISTINTO de la afirmación
+falsa. Tiene que ser verdadero y verificable; si no estás seguro de un dato, escribí
+en su lugar un consejo práctico para verificar información antes de creerla.`;
 
     // Groq a veces rechaza su propia salida en modo JSON estricto, o genera
-    // 0/2+ bloques marcados como bug (inválido para el juego) -- ambos
-    // casos son intermitentes, no dependen del tema. Reintentar 1 vez evita
-    // que el alumno tenga que tocar "generar" de nuevo a mano.
+    // 0/2+ afirmaciones marcadas como falsas (inválido para el juego) --
+    // ambos casos son intermitentes, no dependen del tema. Reintentar 1 vez
+    // evita que el alumno tenga que tocar "generar" de nuevo a mano.
     // Variedad: con el mismo tema (ej. el tema de la semana) la IA armaba
-    // casi siempre el mismo programa. Se le pasan los errores que ya salieron
-    // y un tipo de error al azar.
+    // casi siempre las mismas afirmaciones. Se le pasan los errores que ya
+    // salieron y un tipo de error al azar.
     const { data: recent } = await serviceClientRead.from('student_debug_duels')
       .select('steps').eq('topic', duel.topic).not('steps', 'is', null)
       .order('created_at', { ascending: false }).limit(15);
     const usedBugs = [...new Set((recent || []).flatMap((r: any) => (r.steps || []).filter((s: any) => s.isBug).map((s: any) => String(s.label).slice(0, 80))))];
-    const bugKinds = ['un número que no tiene sentido', 'una condición invertida', 'un bloque en el orden equivocado', 'un bucle que repite una cantidad incorrecta', 'un valor que nunca se actualiza', 'una dirección o ángulo equivocado'];
+    const bugKinds = ['un número o cantidad equivocada', 'una causa y efecto invertidos', 'una clasificación incorrecta (a qué grupo/categoría pertenece algo)', 'un orden de pasos o etapas equivocado', 'una unidad de medida equivocada', 'confundir dos cosas parecidas entre sí'];
     const bugKind = bugKinds[Math.floor(Math.random() * bugKinds.length)];
     const userMsg = `Tema: ${String(duel.topic).slice(0, 200)}\nEsta vez el error tiene que ser: ${bugKind}.`
       + (usedBugs.length ? `\nEstos errores YA salieron en otros retos, hacé un programa distinto:\n- ${usedBugs.join('\n- ')}` : '');

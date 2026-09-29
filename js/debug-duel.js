@@ -1,8 +1,13 @@
 /**
- * ENCONTRÁ EL ERROR 1V1 -- una secuencia corta de "bloques" de programación
- * (estilo Scratch, mostrados como tarjetas apiladas -- no un editor real)
- * generada por IA, uno tiene un error de lógica. Gana quien lo encuentra
+ * ENCONTRÁ EL ERROR 1V1 -- una secuencia corta de afirmaciones sobre el
+ * tema elegido (mostradas como tarjetas apiladas), generada por IA. Todas
+ * son ciertas menos una, que tiene un dato falso. Gana quien la encuentra
  * primero (async, como Ahorcado y Contrarreloj).
+ *
+ * Antes era específicamente "bloques de programación estilo Scratch" --
+ * eso limitaba el juego a un solo tema (robótica/programación) y no
+ * ayudaba con ciencia/matemática como el resto de los retos. Ahora es
+ * "encontrá el dato falso" sobre cualquier tema del pool.
  */
 
 const BLOCK_COLORS = ['bg-indigo-600', 'bg-emerald-600', 'bg-amber-600', 'bg-rose-600', 'bg-cyan-600', 'bg-purple-600', 'bg-orange-600'];
@@ -44,8 +49,8 @@ window.renderDebugSection = function renderDebugSection() {
 
   const createBtnHtml = window.GameArena.heroHtml({
     title: 'Encontrá el Error 1v1',
-    subtitle: 'Un programa en bloques tiene un error. Gana quien lo encuentra primero.',
-    icon: 'fa-bug',
+    subtitle: 'Una de estas afirmaciones es falsa. Gana quien la encuentra primero.',
+    icon: 'fa-magnifying-glass',
     c1: '#059669',
     c2: '#0284c7',
     onclick: 'window.openCreateDebugModal()',
@@ -149,7 +154,7 @@ window.openCreateDebugModal = async function openCreateDebugModal() {
   modal.className = 'fixed inset-0 z-[210] flex items-center justify-center p-6 bg-slate-950/90 backdrop-blur-sm animate-fadeIn';
   modal.innerHTML = `
     <div class="glass-card w-full max-w-md p-8 shadow-2xl animate-slideUp bg-slate-900 border border-white/10">
-      <h2 class="text-lg font-bold text-white uppercase tracking-tighter mb-6"><i class="fas fa-bug text-rose-500 mr-2"></i> Crear "Encontrá el Error" 1v1</h2>
+      <h2 class="text-lg font-bold text-white uppercase tracking-tighter mb-6"><i class="fas fa-magnifying-glass text-rose-500 mr-2"></i> Crear "Encontrá el Error" 1v1</h2>
       <div class="space-y-4">
         <div>
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Rival</label>
@@ -232,7 +237,7 @@ window.respondDebugDuel = async function respondDebugDuel(duelId, accept) {
   }
 
   if (!window.aiGenerationLock.tryAcquire()) return;
-  window.showToast('<i class="fas fa-circle-notch fa-spin"></i> Generando bloques...', 'info');
+  window.showToast('<i class="fas fa-circle-notch fa-spin"></i> Generando afirmaciones...', 'info');
   try {
     const { data: { session } } = await window._supabase.auth.getSession();
     const res = await fetch(`${window.SUPABASE_URL}/functions/v1/ai-generate-debug-steps`, {
@@ -241,7 +246,7 @@ window.respondDebugDuel = async function respondDebugDuel(duelId, accept) {
       body: JSON.stringify({ duel_id: duelId }),
     });
     const result = await res.json();
-    if (!res.ok) throw new Error(result.error || 'Error generando los bloques');
+    if (!res.ok) throw new Error(result.error || 'Error generando las afirmaciones');
     window.showToast('<i class="fas fa-circle-check"></i> ¡Reto aceptado! Ya podés jugar', 'success');
     window.loadDebugSection();
     if (typeof window.sendDuelPushNotification === 'function') window.sendDuelPushNotification(duelId, 'accepted', 'debug');
@@ -277,10 +282,10 @@ window.renderDebugGame = function renderDebugGame() {
   modal.innerHTML = `
     <div class="ga-panel"><div class="ga-card" id="debug-card">
       <div class="ga-topbar">
-        <span class="ga-chip"><i class="fas fa-bug"></i> Encontrá el Error</span>
+        <span class="ga-chip"><i class="fas fa-magnifying-glass"></i> Encontrá el Error</span>
         <span class="ga-clock" id="debug-clock">0.0s</span>
       </div>
-      <p style="font-size:.95rem;font-weight:800;margin-bottom:.25rem">¿Qué bloque está mal?</p>
+      <p style="font-size:.95rem;font-weight:800;margin-bottom:.25rem">¿Cuál afirmación es falsa?</p>
       <p style="font-size:.7rem;color:#94a3b8;margin-bottom:1rem">${sanitizeInput(state.topic)} · Una sola oportunidad</p>
       <div class="space-y-2" style="text-align:left">
         ${state.labels.map((label, i) => `
@@ -333,7 +338,7 @@ window.selectDebugBlock = async function selectDebugBlock(index) {
     title: result.correct ? '¡Bug encontrado!' : 'Se te escapó',
     subtitle: result.correct
       ? 'Cuando tu rival juegue, se define quién ganó.'
-      : `El error estaba en el bloque ${result.bug_index + 1}:`,
+      : `La afirmación falsa era la número ${result.bug_index + 1}:`,
     detailHtml: `<div style="font-size:.85rem;color:#e2e8f0;background:rgba(255,255,255,.06);border-radius:.8rem;padding:.75rem;text-align:left">
       <i class="fas fa-lightbulb" style="color:#facc15"></i> ${s(result.explanation || '')}</div>`,
   });
