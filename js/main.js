@@ -217,68 +217,104 @@ export function nav(view) {
 }
 window.nav = nav;
 
+// Cada vista carga sus datos con su propio loadX()/initX(), llamado acá sin
+// await ni try/catch -- si esa promesa se rechazaba (típicamente sin
+// internet y sin nada cacheado todavía para esa pantalla, ver
+// fetchWithCache en utils.js), quedaba como una rechazada sin manejar:
+// error en consola nada más, pantalla en blanco o a medio renderizar, sin
+// ningún aviso de qué pasó. callViewLoader() la atrapa y muestra un mensaje
+// claro (distinto si es por falta de internet) con un botón para reintentar.
+function callViewLoader(view, fn) {
+    if (typeof fn !== 'function') return;
+    Promise.resolve().then(() => fn()).catch(err => {
+        console.error(`Error cargando la vista "${view}":`, err);
+        showViewLoadError(view);
+    });
+}
+
+function showViewLoadError(view) {
+    const container = document.getElementById(`view-${view}`);
+    const offline = !navigator.onLine;
+    if (container) {
+        container.innerHTML = `
+          <div class="glass-card p-8 text-center max-w-md mx-auto mt-10">
+            <i class="fas ${offline ? 'fa-cloud-slash' : 'fa-triangle-exclamation'} text-4xl text-amber-400 mb-4"></i>
+            <p class="text-sm font-bold text-white mb-2">${offline ? 'Sin conexión' : 'No se pudo cargar esta pantalla'}</p>
+            <p class="text-xs text-slate-400 mb-4">${offline
+              ? 'Esta pantalla todavía no se había abierto con internet en este dispositivo, así que no hay nada guardado para mostrar sin conexión. Conectate una vez y volvé a entrar.'
+              : 'Revisá tu conexión e intentá de nuevo.'}</p>
+            <button class="btn-primary-tw h-10 px-6 text-xs uppercase font-bold" onclick="window.nav('${view}')"><i class="fas fa-rotate-right"></i> Reintentar</button>
+          </div>`;
+    }
+    if (typeof window.showToast === 'function') {
+        window.showToast(offline
+          ? '<i class="fas fa-cloud-slash"></i> Sin conexión: esta pantalla no se había descargado antes'
+          : '<i class="fas fa-circle-xmark"></i> No se pudo cargar esta pantalla', 'error');
+    }
+}
+
 export function loadViewContent(view) {
     const userRole = window.userRole;
     switch (view) {
         case 'admin-dashboard':
-            if (userRole === 'admin' && typeof window.loadAdminDashboard === 'function') window.loadAdminDashboard();
+            if (userRole === 'admin') callViewLoader(view, window.loadAdminDashboard);
             break;
         case 'admin-teacher-performance':
-            if (userRole === 'admin' && typeof window.loadAdminTeacherPerformance === 'function') window.loadAdminTeacherPerformance();
+            if (userRole === 'admin') callViewLoader(view, window.loadAdminTeacherPerformance);
             break;
         case 'admin-success':
-            if (userRole === 'admin' && typeof window.loadAdminSuccessHub === 'function') window.loadAdminSuccessHub();
+            if (userRole === 'admin') callViewLoader(view, window.loadAdminSuccessHub);
             break;
         case 'admin-rocks':
-            if (userRole === 'admin' && typeof window.loadAdminRocksManagement === 'function') window.loadAdminRocksManagement();
+            if (userRole === 'admin') callViewLoader(view, window.loadAdminRocksManagement);
             break;
         case 'coordinator-dashboard':
-            if (window.isCoordinator && typeof window.loadCoordinatorDashboard === 'function') window.loadCoordinatorDashboard();
+            if (window.isCoordinator) callViewLoader(view, window.loadCoordinatorDashboard);
             break;
         case 'coordinator-reports':
-            if (window.isCoordinator && typeof window.loadCoordinatorReports === 'function') window.loadCoordinatorReports();
+            if (window.isCoordinator) callViewLoader(view, window.loadCoordinatorReports);
             break;
         case 'feed':
-            if (typeof window.loadFeed === 'function') window.loadFeed();
+            callViewLoader(view, window.loadFeed);
             break;
         case 'schools':
-            if (userRole === 'admin' && typeof window.loadSchools === 'function') window.loadSchools();
+            if (userRole === 'admin') callViewLoader(view, window.loadSchools);
             break;
         case 'students':
-            if ((userRole === 'admin' || userRole === 'docente') && typeof window.loadStudents === 'function') window.loadStudents();
+            if (userRole === 'admin' || userRole === 'docente') callViewLoader(view, window.loadStudents);
             break;
         case 'teachers':
-            if (userRole === 'admin' && typeof window.loadTeachers === 'function') window.loadTeachers();
+            if (userRole === 'admin') callViewLoader(view, window.loadTeachers);
             break;
         case 'groups':
-            if (typeof window.loadGroups === 'function') window.loadGroups();
+            callViewLoader(view, window.loadGroups);
             break;
         case 'lessons':
-            if (typeof window.loadLessons === 'function') window.loadLessons();
+            callViewLoader(view, window.loadLessons);
             break;
         case 'attendance':
-            if (typeof window.loadAttendance === 'function') window.loadAttendance();
+            callViewLoader(view, window.loadAttendance);
             break;
         case 'admin-attendance-report':
-            if (userRole === 'admin' && typeof window.loadAdminAttendanceReport === 'function') window.loadAdminAttendanceReport();
+            if (userRole === 'admin') callViewLoader(view, window.loadAdminAttendanceReport);
             break;
         case 'admin-eval-report':
-            if (userRole === 'admin' && typeof window.loadAdminEvalReport === 'function') window.loadAdminEvalReport();
+            if (userRole === 'admin') callViewLoader(view, window.loadAdminEvalReport);
             break;
         case 'evaluate':
-            if (typeof window.loadEvaluationProjects === 'function') window.loadEvaluationProjects();
+            callViewLoader(view, window.loadEvaluationProjects);
             break;
         case 'ranking':
-            if (typeof window.loadRanking === 'function') window.loadRanking();
+            callViewLoader(view, window.loadRanking);
             break;
         case 'upload':
-            if (typeof window.initUploadView === 'function') window.initUploadView();
+            callViewLoader(view, window.initUploadView);
             break;
         case 'bonus-system':
-            if (typeof window.loadBonusSystem === 'function') window.loadBonusSystem();
+            callViewLoader(view, window.loadBonusSystem);
             break;
         case 'profile':
-            if (typeof window.loadProfile === 'function') window.loadProfile();
+            callViewLoader(view, window.loadProfile);
             if (typeof window.initGamification === 'function') window.initGamification();
             break;
     }
