@@ -6,6 +6,8 @@ Al publicar una versión nueva, agregá una línea arriba de todo (ver CONTRIBUT
 
 ## 2026-09-28
 
+- Fix: random-event push notification didn't navigate anywhere on click (edge function never sent a "target"), and the in-app banner only lived inside the Inicio view -- invisible if you were somewhere else when it fired even though it was active. Now the click opens the quiz directly, and the banner is a fixed floating bar visible on any screen (v1.0.124)
+- Duel topic pool ("Duelos", Ahorcado, Contrarreloj, Encontrá el Error, Ortografía): removed the pure trivia/general-knowledge topics (history, geography, Mayan culture, traditions, art, world culture) -- kept science, applied math and STEM, which are the ones that actually help with PISA-style competencies instead of rewarding rote fact recall (v1.0.124)
 - Hangman duel ("Ahorcado 1v1"): new topic "Vida silvestre y ODS de Guatemala" backed by a fixed, curated word bank (20 words on Guatemalan wildlife/environment, each with a hint and an educational fact) instead of AI generation -- guaranteed on-topic vocabulary, no dependency on Groq being up (v1.0.123)
 
 ## 2026-09-27

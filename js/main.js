@@ -127,7 +127,7 @@ window.toggleSidebar = toggleSidebar;
 // Centro de Juego) -- ver service-worker.js (notificationclick, manda
 // postMessage) y auth.js (lee ?open= en la URL para el caso de pestaña
 // nueva). "target" es el mismo string en ambos casos.
-window.routeNotificationTarget = async function routeNotificationTarget(target) {
+window.routeNotificationTarget = async function routeNotificationTarget(target, eventId) {
     if (!target) return;
     if (target === 'game-center') {
         if (typeof window.openGamificationHub !== 'function' && typeof window.loadModule === 'function') {
@@ -138,12 +138,23 @@ window.routeNotificationTarget = async function routeNotificationTarget(target) 
         if (typeof window.openAnnouncementsInbox === 'function') window.openAnnouncementsInbox();
     } else if (target === 'rock-pending') {
         nav('admin-rocks');
+    } else if (target === 'random-event') {
+        // El clic en la notificación del evento sorpresa antes no llevaba a
+        // ningún lado (la edge function no mandaba "target") y encima el
+        // banner solo vivía dentro de la vista Inicio -- si el evento seguía
+        // activo pero el alumno estaba en otra vista, no veía nada. Ahora
+        // entra directo al quiz si todavía está activo.
+        if (typeof window.joinRandomEvent === 'function' && eventId) {
+            window.joinRandomEvent(eventId);
+        } else if (typeof window.checkActiveRandomEvent === 'function') {
+            window.checkActiveRandomEvent();
+        }
     }
 };
 
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.addEventListener('message', (event) => {
-        if (event.data?.type === 'PX_NOTIFICATION_CLICK') window.routeNotificationTarget(event.data.target);
+        if (event.data?.type === 'PX_NOTIFICATION_CLICK') window.routeNotificationTarget(event.data.target, event.data.eventId);
     });
 }
 

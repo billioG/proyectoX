@@ -264,17 +264,15 @@ window.toggleDuelHistory = function toggleDuelHistory() {
 // debería toparse con "Electrónica básica" ni C++, pero sí con robótica/
 // programación por bloques a nivel introductorio. Los de cultura general
 // quedan en 0 (cualquier grado).
+//
+// Se sacaron del pool los temas de pura cultura general/trivia (historia,
+// geografía, cultura maya, tradiciones, arte, cultura internacional) --
+// premiaban memorizar un dato suelto, no algo que ayude a mejorar en las
+// competencias que mide PISA (lectura comprensiva, matemática aplicada,
+// pensamiento científico). Quedan ciencia, matemática y STEM aplicado.
 const DUEL_TOPIC_POOL_FULL = [
-  { name: 'Historia de Guatemala', minRank: 0 },
-  { name: 'Geografía de Guatemala', minRank: 0 },
-  { name: 'Cultura maya', minRank: 0 },
-  { name: 'Tradiciones y fiestas de Guatemala', minRank: 0 },
   { name: 'Biodiversidad de Guatemala', minRank: 0 },
-  { name: 'Cultura general internacional', minRank: 0 },
-  { name: 'Historia mundial', minRank: 0 },
-  { name: 'Geografía mundial', minRank: 0 },
   { name: 'Ciencia y descubrimientos', minRank: 0 },
-  { name: 'Arte y cultura general', minRank: 0 },
   { name: 'Robótica educativa', minRank: 4 },
   { name: 'Programación por bloques', minRank: 4 },
   { name: 'Ciencias de la computación', minRank: 4 },

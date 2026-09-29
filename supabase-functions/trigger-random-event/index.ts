@@ -99,6 +99,7 @@ adicional, con esta forma exacta:
     body: `¡${event.gem_pool} gemas en juego! Entrá ahora al quiz relámpago de "${event.topic}".`,
     url: '/',
     eventId: event.id,
+    target: 'random-event',
   });
 
   let sent = 0, cleaned = 0;

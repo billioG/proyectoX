@@ -189,18 +189,23 @@ window.checkActiveRandomEvent = async function checkActiveRandomEvent() {
   window.renderRandomEventBanner(event, !!myEntry);
 }
 
+// Antes vivía DENTRO de #view-feed: si el alumno/docente estaba en otra
+// vista (cursos, duelos, etc.) cuando el evento arrancaba, el banner se
+// insertaba en un contenedor oculto (display:none) y nunca se veía --
+// aunque checkActiveRandomEvent corría igual cada minuto. Ahora es un
+// banner flotante fijo arriba de la pantalla, visible sin importar en
+// qué vista esté.
 window.renderRandomEventBanner = function renderRandomEventBanner(event, alreadyJoined) {
   document.getElementById('random-event-banner')?.remove();
-  const container = document.getElementById('view-feed') || document.body;
   const sanitizeInput = window.sanitizeInput || ((v) => v);
 
   const banner = document.createElement('div');
   banner.id = 'random-event-banner';
-  banner.className = 'glass-card p-6 mb-6 border-2 border-amber-400/40 bg-gradient-to-r from-amber-500/10 to-rose-500/10 animate-fadeIn';
+  banner.className = 'fixed top-3 left-1/2 -translate-x-1/2 z-[150] w-[min(92vw,640px)] glass-card p-4 sm:p-6 border-2 border-amber-400/40 bg-gradient-to-r from-amber-500/10 to-rose-500/10 animate-fadeIn shadow-2xl';
   banner.innerHTML = `
     <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
       <div class="flex items-center gap-4">
-        <div class="w-12 h-12 rounded-2xl bg-amber-400 text-slate-900 flex items-center justify-center text-2xl animate-pulse">⚡</div>
+        <div class="w-12 h-12 rounded-2xl bg-amber-400 text-slate-900 flex items-center justify-center text-2xl animate-pulse shrink-0">⚡</div>
         <div>
           <div class="text-sm font-black uppercase text-slate-800 dark:text-white">Evento Sorpresa: ${sanitizeInput(event.topic)}</div>
           <div class="text-[0.65rem] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-widest">${event.gem_pool} gemas en juego -- top 5 se las reparten</div>
@@ -211,8 +216,7 @@ window.renderRandomEventBanner = function renderRandomEventBanner(event, already
       </button>
     </div>
   `;
-  if (container.firstChild) container.insertBefore(banner, container.firstChild);
-  else container.appendChild(banner);
+  document.body.appendChild(banner);
 }
 
 window.joinRandomEvent = async function joinRandomEvent(eventId) {

@@ -486,10 +486,12 @@ export async function handleSuccessfulLogin(user) {
       // service worker abre la ventana con "?open=<target>" (ver
       // service-worker.js/notificationclick) -- acá se lee y ruteá una vez,
       // limpiando la URL para que un refresh no vuelva a disparar la ruta.
-      const openTarget = new URLSearchParams(location.search).get('open');
+      const openParams = new URLSearchParams(location.search);
+      const openTarget = openParams.get('open');
+      const openEventId = openParams.get('eventId');
       if (openTarget) {
         history.replaceState(null, '', location.pathname);
-        if (typeof window.routeNotificationTarget === 'function') window.routeNotificationTarget(openTarget);
+        if (typeof window.routeNotificationTarget === 'function') window.routeNotificationTarget(openTarget, openEventId);
       }
     }
 

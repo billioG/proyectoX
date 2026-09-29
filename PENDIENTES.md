@@ -77,6 +77,7 @@ Redesplegar estas Edge Functions (cambiaron en las últimas versiones):
 - [ ] `admin-bulk-import-students` (docentes agregan alumnos, usuario con nomenclatura del admin)
 - [ ] `ai-proxy` (modo tutor)
 - [ ] `notify-announcement` (avisos por colegio o grupo)
+- [ ] `trigger-random-event` — **Verify JWT OFF** (protegida con `CRON_SECRET`; desde v1.0.124 manda `target: 'random-event'` en el push para que el clic navegue al quiz)
 - [ ] `notify-guardians` — **Verify JWT ON**
 - [ ] `guardian-portal` — **Verify JWT OFF** (redesplegar después de correr `guardian-consent.sql`: ahora registra el consentimiento de padres; desde v1.0.118 también guarda `consent_method: 'portal'`)
 

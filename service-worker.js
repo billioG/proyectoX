@@ -2,7 +2,7 @@
 // SERVICE WORKER - PROJECTX PWA
 // ================================================
 
-const CACHE_NAME = 'projectx-v1.0.123';
+const CACHE_NAME = 'projectx-v1.0.124';
 // Caché de archivos de lecciones (video/PDF/imagen/paquetes SCORM-H5P) --
 // separada de CACHE_NAME a propósito: CACHE_NAME se recrea y se BORRA
 // entera en cada deploy (bump de versión) para forzar JS/CSS frescos, pero
@@ -311,6 +311,7 @@ self.addEventListener('push', event => {
 self.addEventListener('notificationclick', event => {
   event.notification.close();
   const target = event.notification.data?.target || null;
+  const eventId = event.notification.data?.eventId || null;
   // Las edge functions mandan url: '/' -- en billiog.github.io/proyectoX/
   // eso abría la raíz de GitHub (404) con la app cerrada. El scope del SW
   // siempre es la raíz real de la app en cualquiera de los 2 dominios.
@@ -320,7 +321,10 @@ self.addEventListener('notificationclick', event => {
     event.waitUntil(clients.openWindow(new URL('padres.html', self.registration.scope).href));
     return;
   }
-  if (target) targetUrl += (targetUrl.includes('?') ? '&' : '?') + 'open=' + encodeURIComponent(target);
+  if (target) {
+    targetUrl += (targetUrl.includes('?') ? '&' : '?') + 'open=' + encodeURIComponent(target);
+    if (eventId) targetUrl += '&eventId=' + encodeURIComponent(eventId);
+  }
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
@@ -329,7 +333,7 @@ self.addEventListener('notificationclick', event => {
           // La pestaña ya está abierta -- no navega a targetUrl (recargar
           // rompería el estado de la SPA), así que le avisa por mensaje
           // para que ruteé sin recargar.
-          if (target && 'postMessage' in client) client.postMessage({ type: 'PX_NOTIFICATION_CLICK', target });
+          if (target && 'postMessage' in client) client.postMessage({ type: 'PX_NOTIFICATION_CLICK', target, eventId });
           return client.focus();
         }
       }
