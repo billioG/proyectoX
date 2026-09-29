@@ -6,6 +6,7 @@ Al publicar una versión nueva, agregá una línea arriba de todo (ver CONTRIBUT
 
 ## 2026-09-28
 
+- Publicada `colegios.html`: página para colegios, municipalidades y organizaciones que quieran probar Quetzal LMS, enlazada desde el pie de la pantalla de login (v1.0.129)
 - Fix: si una vista fallaba al cargar sus datos (típicamente sin internet y sin nada cacheado todavía en ese dispositivo para esa pantalla), quedaba en blanco o a medio renderizar sin ningún aviso -- solo un error en consola. Ahora loadViewContent() atrapa el fallo de cualquier vista y muestra un mensaje claro (distinto si es por falta de conexión) con botón de reintentar (v1.0.128)
 - Cola de sincronización offline: save_evaluation (evaluar proyecto) juntaba evaluación+score del proyecto en 2 llamadas sueltas -- si la red caía entre medio quedaban desincronizadas; ahora es una sola función atómica. tutor_checkin (check-in de tutor sin internet) usaba insert() plano -- un reintento de la cola podía duplicar el check-in; ahora el cliente genera un client_ref al encolar y el reintento hace upsert por esa columna (v1.0.127)
 - "Encontrá el Error" 1v1 dejó de ser específicamente sobre programación (bloques estilo Scratch): ahora genera afirmaciones cortas y verificables sobre el tema elegido del pool (ciencia, matemática, ambiente, etc.), una de ellas falsa -- mismo formato de tarjetas, mismo mecanismo de juego, contenido real en vez de código (v1.0.126)

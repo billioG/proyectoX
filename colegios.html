@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#00C853">
+  <title>Para colegios e instituciones · Quetzal LMS</title>
+  <meta name="description" content="Quetzal LMS: plataforma educativa gamificada, hecha en Guatemala, que funciona con o sin internet. Información para colegios, municipalidades y organizaciones.">
+  <link rel="icon" href="icon-192.png">
+  <style>
+    :root { --g: #0B6E4F; --g-light: #E7F3EE; --ink: #13201B; --muted: #56665F; --bg: #F3F6F4; --card: #fff; --line: #D6E0DB; --accent: #C99A2E; }
+    @media (prefers-color-scheme: dark) {
+      :root { --g: #4FC79A; --g-light: #16261F; --ink: #E4EEE9; --muted: #9BB0A7; --bg: #0E1714; --card: #15221D; --line: #26382F; --accent: #E0B24A; color-scheme: dark; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--ink); line-height: 1.6; padding-inline: 16px; }
+    main { max-width: 46rem; margin: 0 auto; padding-block: 2.5rem 4rem; }
+    h1 { font-size: 2rem; line-height: 1.15; margin: .3rem 0 .6rem; }
+    h2 { font-size: 1.2rem; margin: 2.2rem 0 .6rem; color: var(--g); }
+    p, li { max-width: 68ch; }
+    .eyebrow { font-size: .75rem; letter-spacing: .12em; text-transform: uppercase; color: var(--g); font-weight: 700; }
+    .lead { font-size: 1.05rem; color: var(--muted); max-width: 60ch; }
+    .muted { color: var(--muted); font-size: .9rem; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 1rem; padding: 1.1rem 1.3rem; margin: 1rem 0; }
+    .grid { display: grid; gap: .9rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin: 1rem 0 1.5rem; }
+    .feat { background: var(--card); border: 1px solid var(--line); border-radius: .9rem; padding: 1rem 1.1rem; }
+    .feat b { display: block; margin-bottom: .3rem; }
+    .feat span { color: var(--muted); font-size: .88rem; }
+    .steps { counter-reset: step; list-style: none; padding: 0; margin: 1rem 0; }
+    .steps li { counter-increment: step; position: relative; padding-left: 2.4rem; margin-bottom: .9rem; }
+    .steps li::before { content: counter(step); position: absolute; left: 0; top: 0; width: 1.7rem; height: 1.7rem; border-radius: 50%; background: var(--g-light); color: var(--g); font-weight: 800; font-size: .85rem; display: flex; align-items: center; justify-content: center; }
+    .cta { background: var(--g-light); border: 1px solid var(--line); border-radius: 1rem; padding: 1.5rem; text-align: center; margin-top: 2rem; }
+    .cta a.btn { display: inline-block; margin-top: .8rem; background: var(--g); color: #fff; text-decoration: none; font-weight: 700; padding: .8rem 1.6rem; border-radius: .7rem; }
+    a { color: var(--g); }
+    .badges { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0; }
+    .badge { font-size: .75rem; font-weight: 700; color: var(--accent); border: 1px solid var(--line); border-radius: 999px; padding: .3rem .8rem; }
+    footer { text-align: center; margin-top: 3rem; font-size: .8rem; }
+  </style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">Quetzal LMS</div>
+  <h1>Aprender jugando, con o sin internet</h1>
+  <p class="lead">Plataforma educativa gamificada hecha en Guatemala. Sirve cursos, proyectos STEAM y juegos de conocimiento incluso en escuelas sin señal, y se sincroniza sola cuando vuelve la conexión.</p>
+
+  <div class="badges">
+    <span class="badge">Funciona sin internet</span>
+    <span class="badge">Fauna guatemalteca real</span>
+    <span class="badge">Avisos por SMS</span>
+    <span class="badge">Hecho en Guatemala</span>
+  </div>
+
+  <h2>El problema</h2>
+  <p>En muchas escuelas de Guatemala, sobre todo en el área rural, no hay internet estable ni suficientes recursos digitales de calidad. Las plataformas educativas que existen necesitan conexión constante y no involucran a las familias, que muchas veces solo tienen un teléfono básico.</p>
+
+  <h2>Qué ofrece Quetzal LMS</h2>
+  <div class="grid">
+    <div class="feat"><b>🔌 Funciona sin internet</b><span>Un nodo escolar de bajo costo (una Raspberry Pi) sirve la plataforma por Wi-Fi local a toda la escuela y sincroniza solo cuando el docente llega a una zona con señal.</span></div>
+    <div class="feat"><b>🎮 Aprender compitiendo</b><span>Duelos de conocimiento 1v1, ligas semanales y una colección de mascotas de la fauna guatemalteca con datos reales -- el estudiante quiere volver a entrar.</span></div>
+    <div class="feat"><b>🤖 Tutor con IA</b><span>Genera práctica variada y guía al estudiante sin darle la respuesta directa.</span></div>
+    <div class="feat"><b>📱 Familias sin costo</b><span>Avisos importantes a padres y encargados por SMS, sin necesidad de que tengan internet ni instalen nada.</span></div>
+    <div class="feat"><b>📊 Panel para docentes y dirección</b><span>Asistencia, avance por curso, evaluación de proyectos y un tablero de impacto para la coordinación.</span></div>
+    <div class="feat"><b>🔒 Datos de menores protegidos</b><span>Consentimiento de padres registrado, sin nombres completos visibles fuera del aula, y la IA solo recibe el primer nombre del estudiante.</span></div>
+  </div>
+
+  <h2>Cómo empezar</h2>
+  <ol class="steps">
+    <li>Nos escribís contando el contexto de tu colegio o institución (cuántos estudiantes, si hay internet estable o no).</li>
+    <li>Coordinamos una demostración con un plantel de prueba -- nunca con datos de estudiantes reales.</li>
+    <li>Si tiene sentido para ambos, armamos un convenio simple y una fecha de arranque.</li>
+  </ol>
+
+  <div class="cta">
+    <b>¿Tu colegio, municipalidad u organización quiere probar Quetzal LMS?</b>
+    <p class="muted">Escribinos y coordinamos una demostración.</p>
+    <a class="btn" href="mailto:colegios@yoaprendo.online">colegios@yoaprendo.online</a>
+  </div>
+
+  <footer class="muted">
+    Quetzal LMS · <a href="privacidad.html" target="_blank" rel="noopener">Política de privacidad</a> · <a href="index.html">Volver al inicio</a>
+  </footer>
+</main>
+</body>
+</html>

@@ -44,7 +44,7 @@ del proyecto (necesitan contraseñas o acceso al panel de Supabase).
 - [x] Verificar SPF, DKIM y DMARC de ese correo
 - [x] Correo de contacto y fecha de última revisión en `privacidad.html` (v1.0.108)
 - [x] Plantel de demostración creado (`migrations/demo-school.sql`, 27/09/2026). Falta: asignarle una ruta publicada a las 2 clases. Nunca demostrar con un plantel con menores reales.
-- [ ] Publicar la página para colegios y enlazarla desde el pie de Quetzal ("Para colegios e instituciones")
+- [x] Publicar la página para colegios y enlazarla desde el pie de Quetzal (`colegios.html`, v1.0.129)
 - [x] Nombre legal ante la SAT: Billy Abraham Gómez Sac. Falta inscripción FEL/facturas.
 - [ ] No prometer en demos el nodo escolar ni la importación SIRE hasta probarlos en vivo
 

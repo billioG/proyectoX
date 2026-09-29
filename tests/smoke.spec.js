@@ -47,6 +47,12 @@ test('la política de privacidad carga', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Política de privacidad' })).toBeVisible();
 });
 
+test('la página para colegios carga', async ({ page }) => {
+  await page.goto('/colegios.html');
+  await expect(page.getByRole('heading', { name: 'Aprender jugando, con o sin internet' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'colegios@yoaprendo.online' })).toBeVisible();
+});
+
 test('el portal de padres rechaza un enlace inválido', async ({ page }) => {
   const errors = collectPageErrors(page);
   await page.goto('/padres.html?t=no-es-un-token');
