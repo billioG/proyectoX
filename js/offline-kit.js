@@ -8,7 +8,17 @@
  * 2. Contraseña offline: al entrar online se guarda un hash PBKDF2 de la
  *    contraseña (nunca la contraseña) para poder verificarla sin servidor.
  *    Si la clase no usa contraseña, se entra tocando el nombre.
- * 3. Almacenamiento persistente: se le pide al navegador que no borre los
+ * 3. PIN personal (mismo mecanismo que el nodo escolar, ver
+ *    school-node/server.js hashPin): para clases SIN contraseña, cualquiera
+ *    que tenga la tablet en la mano podía elegir el nombre de cualquier
+ *    alumno guardado y entrar como esa persona sin ningún control. El PIN
+ *    es un candado propio que el alumno crea una vez -- se guarda como
+ *    hash (nunca el PIN) tanto acá (localStorage, para verificarlo sin
+ *    conexión) como en Supabase vía set_student_pin() (para que funcione
+ *    igual si esta tablet se queda sin la cuenta guardada y hay que
+ *    recrearlo, y comparte fila con el PIN del nodo si la escuela usa los
+ *    dos modos).
+ * 4. Almacenamiento persistente: se le pide al navegador que no borre los
  *    cursos descargados cuando falta espacio.
  */
 
@@ -57,6 +67,39 @@ window.setOfflineAccountSecret = async function setOfflineAccountSecret(userId, 
     map[userId].secretHash = await hashSecret(secret, salt);
   }
   writeAccounts(map);
+};
+
+// Solo tiene sentido ofrecer crear un PIN si la cuenta NO tiene ya
+// contraseña de clase cacheada (esa ya protege la entrada offline) y
+// todavía no tiene un PIN guardado.
+window.offlineAccountNeedsPinSetup = function offlineAccountNeedsPinSetup(userId) {
+  const acc = readAccounts()[userId];
+  return !!acc && !acc.secretHash && !acc.pinHash;
+};
+
+// Se llama online, con el PIN elegido por el alumno (4 a 6 dígitos). Hashea
+// local (mismo esquema que setOfflineAccountSecret) y manda SOLO el hash a
+// set_student_pin() -- el servidor nunca ve el PIN real.
+window.setOfflinePersonalPin = async function setOfflinePersonalPin(userId, pin) {
+  if (!/^\d{4,6}$/.test(pin || '')) throw new Error('El PIN tiene que ser de 4 a 6 números');
+  const salt = toHex(crypto.getRandomValues(new Uint8Array(16)));
+  const hash = await hashSecret(pin, salt);
+
+  const { error } = await window._supabase.rpc('set_student_pin', { p_hash: hash, p_salt: salt });
+  if (error) throw error;
+
+  const map = readAccounts();
+  if (map[userId]) {
+    map[userId].pinHash = hash;
+    map[userId].pinSalt = salt;
+    writeAccounts(map);
+  }
+};
+
+window.verifyOfflinePersonalPin = async function verifyOfflinePersonalPin(userId, pin) {
+  const acc = readAccounts()[userId];
+  if (!acc?.pinHash) return false;
+  return (await hashSecret(pin, acc.pinSalt)) === acc.pinHash;
 };
 
 window.listOfflineAccounts = function listOfflineAccounts() {
@@ -137,17 +180,111 @@ window.openOfflineAccountPicker = function openOfflineAccountPicker() {
           <button onclick="window.pickOfflineAccount('${a.user.id}')" style="display:flex;flex-direction:column;align-items:center;gap:.5rem;padding:1rem .5rem;border-radius:1.25rem;border:2px solid rgba(255,255,255,.08);background:rgba(255,255,255,.05);color:#fff;cursor:pointer">
             <span style="width:4rem;height:4rem;border-radius:9999px;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:1.6rem;font-weight:900;background:linear-gradient(135deg,#6366f1,#ec4899)">${avatar(a)}</span>
             <span style="font-size:.8rem;font-weight:800;line-height:1.2;text-align:center">${s(a.userData?.full_name || a.user.email || 'Usuario')}</span>
-            ${a.secretHash ? '<span style="font-size:.6rem;color:#94a3b8"><i class="fas fa-lock"></i> con contraseña</span>' : ''}
+            ${a.secretHash ? '<span style="font-size:.6rem;color:#94a3b8"><i class="fas fa-lock"></i> con contraseña</span>' : a.pinHash ? '<span style="font-size:.6rem;color:#94a3b8"><i class="fas fa-shield-halved"></i> con PIN</span>' : ''}
           </button>`).join('')}
       </div>` : `<p style="color:#94a3b8;text-align:center;padding:2rem 0">Nadie entró todavía en esta tablet con internet.</p>`}
     </div>`;
   document.body.appendChild(modal);
 };
 
+// Teclado numérico grande reusado para crear/confirmar y para pedir el PIN
+// al entrar offline -- mismo espíritu que el teclado del nodo escolar
+// (js/node-mode.js renderPinPad), reescrito acá porque este archivo no
+// comparte módulo con node-mode.js.
+function renderPinKeypad(container, { title, help = '', onDigits, digitCount = 4 }) {
+  const s = window.sanitizeInput || ((v) => v);
+  let pin = '';
+  function draw(error = '') {
+    container.innerHTML = `
+      <div style="font-weight:900;font-size:1rem;color:#a5b4fc;margin:.5rem 0 .25rem">${s(title)}</div>
+      <p style="color:#94a3b8;font-size:.75rem;min-height:1rem;margin:0 0 1rem">${s(help)}</p>
+      <div style="display:flex;justify-content:center;gap:.6rem;margin-bottom:.75rem">
+        ${Array.from({ length: digitCount }).map((_, i) => `<span style="width:1rem;height:1rem;border-radius:9999px;${i < pin.length ? 'background:#facc15' : 'border:2px solid rgba(255,255,255,.35)'}"></span>`).join('')}
+      </div>
+      <p style="color:#fb7185;font-size:.8rem;min-height:1.2rem;margin:0 0 .5rem">${s(error)}</p>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;max-width:16rem;margin:0 auto">
+        ${['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '⌫'].map(k => k
+          ? `<button data-k="${k}" style="height:3.4rem;border-radius:.9rem;border:0;background:rgba(255,255,255,.08);color:#fff;font-size:1.3rem;font-weight:900;cursor:pointer">${k}</button>`
+          : '<span></span>').join('')}
+      </div>`;
+    container.querySelectorAll('[data-k]').forEach(b => b.onclick = () => press(b.dataset.k));
+  }
+  function press(k) {
+    if (k === '⌫') { pin = pin.slice(0, -1); return draw(); }
+    if (pin.length >= digitCount) return;
+    pin += k;
+    draw();
+    if (pin.length === digitCount) onDigits(pin, (error) => { pin = ''; draw(error); });
+  }
+  draw();
+  return { reset: (error) => { pin = ''; draw(error); } };
+}
+
+// Ofrecido una vez tras entrar online, solo si la clase no tiene
+// contraseña (offlineAccountNeedsPinSetup) -- sin esto, en una tablet
+// compartida cualquiera podía elegir el nombre de cualquier alumno
+// guardado y entrar sin ningún control estando sin internet.
+window.openPinSetupPrompt = function openPinSetupPrompt(userId, fullName) {
+  const s = window.sanitizeInput || ((v) => v);
+  document.getElementById('pin-setup-prompt')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'pin-setup-prompt';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:320;background:rgba(2,6,23,.9);display:flex;align-items:center;justify-content:center;padding:1.5rem';
+  const body = document.createElement('div');
+  body.style.cssText = 'width:100%;max-width:22rem;background:#1e293b;border-radius:1.5rem;padding:1.5rem;color:#fff;text-align:center';
+  modal.appendChild(body);
+
+  function showOffer() {
+    body.innerHTML = `
+      <i class="fas fa-shield-halved" style="font-size:1.6rem;color:#facc15;margin-bottom:.5rem"></i>
+      <div style="font-weight:900;font-size:1.05rem;margin-bottom:.4rem">Protegé tu cuenta en esta tablet</div>
+      <p style="color:#94a3b8;font-size:.82rem;margin:0 0 1.1rem">Tu clase no usa contraseña -- sin un PIN, cualquiera que use esta tablet sin internet podría entrar como ${s(fullName)}. Creá uno de 4 números que solo vos sepas.</p>
+      <div style="display:flex;gap:.5rem">
+        <button id="pin-setup-skip" style="flex:1;height:2.75rem;border-radius:.9rem;border:0;background:rgba(255,255,255,.08);color:#cbd5e1;font-weight:800;cursor:pointer">Ahora no</button>
+        <button id="pin-setup-start" style="flex:1;height:2.75rem;border-radius:.9rem;border:0;background:#facc15;color:#1e293b;font-weight:900;cursor:pointer">Crear PIN</button>
+      </div>`;
+    body.querySelector('#pin-setup-skip').onclick = () => modal.remove();
+    body.querySelector('#pin-setup-start').onclick = showCreate;
+  }
+
+  function showCreate() {
+    let firstPin = '';
+    const pad = document.createElement('div');
+    body.innerHTML = '';
+    body.appendChild(pad);
+    const step = (title, help, onOk) => renderPinKeypad(pad, {
+      title, help,
+      onDigits: (pin, fail) => onOk(pin, fail),
+    });
+    step('Creá tu PIN secreto', 'Son 4 números que solo vos sabés.', (pin) => {
+      firstPin = pin;
+      const confirmPad = step('Repetí tu PIN', 'Para confirmar que lo escribiste bien.', async (pin2, fail) => {
+        if (pin2 !== firstPin) return fail('No coincidían. Probá de nuevo.');
+        try {
+          await window.setOfflinePersonalPin(userId, pin2);
+          modal.remove();
+          window.showToast?.('<i class="fas fa-circle-check"></i> PIN creado -- ya podés entrar sin internet con él', 'success');
+        } catch (e) {
+          fail(e.message || 'No se pudo guardar el PIN');
+        }
+      });
+    });
+  }
+
+  showOffer();
+  document.body.appendChild(modal);
+};
+
 window.pickOfflineAccount = function pickOfflineAccount(userId) {
   const acc = readAccounts()[userId];
   if (!acc) return;
-  if (!acc.secretHash) return window.enterOfflineAccount(userId);
+  if (acc.secretHash) return openOfflinePasswordPrompt(userId);
+  if (acc.pinHash) return openOfflinePinPrompt(userId);
+  return window.enterOfflineAccount(userId);
+};
+
+function openOfflinePasswordPrompt(userId) {
+  const acc = readAccounts()[userId];
 
   const s = window.sanitizeInput || ((v) => v);
   const box = document.createElement('div');
@@ -183,6 +320,40 @@ window.verifyOfflinePassword = async function verifyOfflinePassword(userId) {
   document.getElementById('offline-pass')?.remove();
   window.enterOfflineAccount(userId);
 };
+
+function openOfflinePinPrompt(userId) {
+  const acc = readAccounts()[userId];
+  const s = window.sanitizeInput || ((v) => v);
+  document.getElementById('offline-pin')?.remove();
+  const box = document.createElement('div');
+  box.id = 'offline-pin';
+  box.style.cssText = 'position:fixed;inset:0;z-index:310;background:rgba(2,6,23,.85);display:flex;align-items:center;justify-content:center;padding:1.5rem';
+  const body = document.createElement('div');
+  body.style.cssText = 'width:100%;max-width:22rem;background:#1e293b;border-radius:1.5rem;padding:1.5rem;color:#fff;text-align:center';
+  const name = document.createElement('div');
+  name.style.cssText = 'font-weight:900;font-size:1.1rem;margin-bottom:.25rem';
+  name.textContent = acc.userData?.full_name || '';
+  const pad = document.createElement('div');
+  body.appendChild(name);
+  body.appendChild(pad);
+  const back = document.createElement('button');
+  back.textContent = 'Volver';
+  back.style.cssText = 'margin-top:.75rem;height:2.5rem;padding:0 1.2rem;border-radius:.9rem;border:0;background:rgba(255,255,255,.08);color:#cbd5e1;font-weight:800;cursor:pointer';
+  back.onclick = () => box.remove();
+  body.appendChild(back);
+  box.appendChild(body);
+  document.body.appendChild(box);
+
+  renderPinKeypad(pad, {
+    title: 'Escribí tu PIN',
+    onDigits: async (pin, fail) => {
+      const ok = await window.verifyOfflinePersonalPin(userId, pin);
+      if (!ok) return fail('PIN incorrecto');
+      box.remove();
+      window.enterOfflineAccount(userId);
+    },
+  });
+}
 
 window.enterOfflineAccount = function enterOfflineAccount(userId) {
   const acc = readAccounts()[userId];

@@ -356,6 +356,12 @@ export async function handleLogin() {
       if (error) throw error;
       await handleSuccessfulLogin(data.user);
       await window.setOfflineAccountSecret?.(data.user.id, password);
+      // Clase sin contraseña: sin esto, en una tablet compartida cualquiera
+      // podía elegir este nombre en el selector offline y entrar sin ningún
+      // control. Se ofrece (no se obliga) crear un PIN propio una sola vez.
+      if (!password && window.offlineAccountNeedsPinSetup?.(data.user.id)) {
+        window.openPinSetupPrompt?.(data.user.id, window.userData?.full_name || username);
+      }
     }
   } catch (err) {
     // Sin internet (o WiFi sin salida): ofrecer entrar con una cuenta

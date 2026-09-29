@@ -88,7 +88,7 @@ Redesplegar estas Edge Functions (cambiaron en las últimas versiones):
 - [x] Documentación: README, ARCHITECTURE, SETUP, MIGRATIONS, CONTRIBUTING, CHANGELOG
 - [x] Script para volcar el esquema
 - [x] Quitar el secreto del repositorio
-- [ ] Subir `supabase/schema.sql` (ver Urgente)
+- [x] Subir `supabase/schema.sql` (ver Urgente, 29/09/2026)
 - [ ] Crear el **proyecto Supabase de prueba** siguiendo `docs/SETUP.md`
 - [ ] Proteger la rama `main` en GitHub (cambios solo por pull request revisado)
 - [ ] **Decidir la licencia** (propietaria, código abierto o núcleo abierto) y agregar el archivo `LICENSE`
@@ -147,7 +147,7 @@ Detalle en el dossier: https://claude.ai/artifact/BoLjSgRTYwfesywaZaxvEq
 
 ## 🔵 Mejoras pendientes de la app
 
-- [ ] PIN personal también en el modo sin conexión de la nube (hoy solo en el nodo).
+- [x] PIN personal también en el modo sin conexión de la nube (v1.0.131). Requiere correr `migrations/student-pin-cloud.sql`.
 - [ ] Avisos automáticos a padres (por ejemplo: no asistió, subió su proyecto, logro semanal). Definir cuáles.
 - [ ] SQL para renombrar al estándar los usuarios de alumnos creados en pruebas con el formato viejo (`ana.lopez`).
 - [ ] Mostrar al admin quién creó cada alumno (columna `created_by`).

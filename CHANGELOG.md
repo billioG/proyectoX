@@ -6,6 +6,7 @@ Al publicar una versión nueva, agregá una línea arriba de todo (ver CONTRIBUT
 
 ## 2026-09-29
 
+- PIN personal también en el modo sin conexión de la app normal (antes solo en el nodo escolar): en una tablet compartida, si la clase no usa contraseña, cualquiera podía elegir el nombre de cualquier alumno guardado y entrar sin ningún control estando offline. Ahora, tras el primer login online, se ofrece crear un PIN de 4 dígitos (mismo mecanismo de hash que ya usa el nodo); si lo crea, el selector "¿Quién sos?" pide ese PIN antes de entrar sin internet. Requiere `migrations/student-pin-cloud.sql` (v1.0.131)
 - Limpieza de la revisión de código: banco fijo de temas de Ahorcado ahora vive en un registro genérico por juego (duels.js) en vez de un array aparte; 3 pantallas de resultado (Ahorcado/Contrarreloj/Encontrá el Error) consultan en paralelo en vez de secuencial; el aviso de evento sorpresa y el refresco del panel admin ya no consultan cada tick si la pestaña está en segundo plano; variable sin usar eliminada de los 5 formularios de reto; nombres de "bloques de Scratch" renombrados a "afirmaciones" en Encontrá el Error (v1.0.130)
 
 ## 2026-09-28
