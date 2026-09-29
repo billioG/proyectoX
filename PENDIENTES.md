@@ -41,11 +41,11 @@ del proyecto (necesitan contraseñas o acceso al panel de Supabase).
 - [x] Ranking explica el orden (votos primero, luego score) (v1.0.107)
 - [x] Ranking: entre alumnos se ve "Ana L.", no el nombre completo (v1.0.107)
 - [x] Crear `colegios@yoaprendo.online`
-- [ ] Verificar SPF, DKIM y DMARC de ese correo (mail-tester.com ≥ 9/10) y calentar el dominio 2 semanas
+- [x] Verificar SPF, DKIM y DMARC de ese correo
 - [x] Correo de contacto y fecha de última revisión en `privacidad.html` (v1.0.108)
 - [x] Plantel de demostración creado (`migrations/demo-school.sql`, 27/09/2026). Falta: asignarle una ruta publicada a las 2 clases. Nunca demostrar con un plantel con menores reales.
 - [ ] Publicar la página para colegios y enlazarla desde el pie de Quetzal ("Para colegios e instituciones")
-- [ ] Nombre legal = DPI = NIT en el acuerdo de piloto y facturas; inscripción SAT / FEL
+- [x] Nombre legal ante la SAT: Billy Abraham Gómez Sac. Falta inscripción FEL/facturas.
 - [ ] No prometer en demos el nodo escolar ni la importación SIRE hasta probarlos en vivo
 
 ## 🟠 Migraciones y funciones de las últimas versiones
@@ -75,20 +75,17 @@ seguras de re-ejecutar):
 
 Redesplegar estas Edge Functions (cambiaron en las últimas versiones):
 
-- [ ] `ai-generate-quiz`, `ai-generate-hangman-word`, `ai-generate-spelling-word`, `ai-generate-debug-steps` (retos sin repetir)
-- [ ] `admin-bulk-import-students` (docentes agregan alumnos, usuario con nomenclatura del admin)
-- [ ] `ai-proxy` (modo tutor)
-- [ ] `notify-announcement` (avisos por colegio o grupo)
-- [ ] `trigger-random-event` — **Verify JWT OFF** (protegida con `CRON_SECRET`; desde v1.0.124 manda `target: 'random-event'` en el push para que el clic navegue al quiz)
-- [ ] `notify-guardians` — **Verify JWT ON**
-- [ ] `guardian-portal` — **Verify JWT OFF** (redesplegar después de correr `guardian-consent.sql`: ahora registra el consentimiento de padres; desde v1.0.118 también guarda `consent_method: 'portal'`)
+- [x] `ai-generate-quiz`, `ai-generate-hangman-word`, `ai-generate-spelling-word`, `ai-generate-debug-steps` (retos sin repetir)
+- [x] `admin-bulk-import-students` (docentes agregan alumnos, usuario con nomenclatura del admin)
+- [x] `ai-proxy` (modo tutor)
+- [x] `notify-announcement` (avisos por colegio o grupo)
+- [x] `trigger-random-event` — **Verify JWT OFF** (protegida con `CRON_SECRET`; desde v1.0.124 manda `target: 'random-event'` en el push para que el clic navegue al quiz)
+- [x] `notify-guardians` — **Verify JWT ON**
+- [x] `guardian-portal` — **Verify JWT OFF** (redesplegar después de correr `guardian-consent.sql`: ahora registra el consentimiento de padres; desde v1.0.118 también guarda `consent_method: 'portal'`)
 
 ## 🟠 SMS a padres
 
-- [ ] Instalar **SMS Gateway for Android** (proyecto `capcom6/android-sms-gateway`) en el celular con SMS ilimitados. Si no aparece en Play Store, bajar el `.apk` solo desde `github.com/capcom6/android-sms-gateway/releases`.
-- [ ] Activar modo **Cloud server** y cargar su usuario y contraseña como secretos `SMSGATE_USER` y `SMSGATE_PASS`.
-- [ ] Batería de esa app en **"Sin restricciones"**.
-- [ ] Prueba: registrar tu número como padre de un alumno de prueba y tocar "Enviar enlace por SMS". Si falla, revisar el error en el historial del padre.
+- [x] Instalar **SMS Gateway for Android** y activar Cloud server (`SMSGATE_USER`/`SMSGATE_PASS`). Funcionando.
 
 ## 🟡 Paso 1 de la hoja de ruta (ordenar la casa)
 
