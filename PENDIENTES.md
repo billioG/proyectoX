@@ -28,11 +28,7 @@ del proyecto (necesitan contraseñas o acceso al panel de Supabase).
      ```
   4. Si `notify-inactive-users` está programada desde el panel, actualizarle el secreto también.
 
-- [ ] **Volcar el esquema de producción** (sin esto nadie puede reconstruir la base).
-  1. Instalar PostgreSQL (solo se usa `pg_dump`) o abrir Docker Desktop.
-  2. Supabase → **Connect** → **Session pooler** → copiar la cadena de conexión.
-  3. `$env:SUPABASE_DB_URL = '<cadena>'` y luego `./scripts/dump-schema.ps1`.
-  4. Revisar `supabase/schema.sql` (sin datos personales ni secretos) y subirlo al repositorio.
+- [x] **Volcar el esquema de producción.** Hecho el 29/09/2026 (`supabase/schema.sql`, servidor PostgreSQL 17.6). Revisado: sin filas de datos, sin emails ni secretos -- solo estructura. Recordá volver a correr `dump-schema.ps1` después de migraciones grandes para no dejarlo desactualizado.
 
 ## 🔴 Antes de la primera demo a un colegio
 
