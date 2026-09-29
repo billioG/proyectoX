@@ -302,8 +302,55 @@ window.openHangmanGame = async function openHangmanGame(duelId) {
   const { data, error } = await window._supabase.rpc('start_hangman_duel', { p_duel_id: duelId });
   if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
 
-  window._activeHangman = { duelId, hint: data.hint, wordLength: data.wordLength, guessed: [], hits: new Set(), wrong: 0, revealed: {}, busy: false };
-  window.renderHangmanGame();
+  // clockStart se fija una sola vez acá (no en cada pantalla) -- el reloj
+  // visual tiene que seguir corriendo desde que arranca de verdad (mismo
+  // momento en que el servidor empieza a contar), no reiniciarse a 0.0s al
+  // pasar de la pantalla de la pista al teclado.
+  window._activeHangman = { duelId, hint: data.hint, wordLength: data.wordLength, guessed: [], hits: new Set(), wrong: 0, revealed: {}, busy: false, clockStart: performance.now() };
+  window.renderHangmanIntro();
+};
+
+// Reloj compartido por la pantalla de pista y la del teclado -- sigue la
+// misma referencia de tiempo (state.clockStart) en vez de reiniciar el
+// cronómetro visual cuando cambia de pantalla.
+function startHangmanClock(el) {
+  const state = window._activeHangman;
+  const id = setInterval(() => {
+    if (!document.body.contains(el) || !window._activeHangman) return clearInterval(id);
+    el.textContent = ((performance.now() - state.clockStart) / 1000).toFixed(1) + 's';
+  }, 100);
+  return () => clearInterval(id);
+}
+
+// Pantalla previa con la pista/definición, como una tarjeta que se lee
+// ANTES de arrancar a adivinar (antes se mostraba junto al teclado, a la
+// vez que se jugaba) -- el reloj visual ya corre acá, así que leer rápido
+// sigue conviniendo, pero ahora es un paso propio en vez de estar mezclado
+// con el teclado.
+window.renderHangmanIntro = function renderHangmanIntro() {
+  const state = window._activeHangman;
+  if (!state) return;
+  const sanitizeInput = window.sanitizeInput || ((v) => v);
+  window.GameArena.ensureStyles();
+
+  document.getElementById('hangman-game-modal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'hangman-game-modal';
+  modal.className = 'ga-overlay';
+  modal.innerHTML = `
+    <div class="ga-panel"><div class="ga-card" id="hangman-card">
+      <div class="ga-topbar">
+        <span class="ga-chip"><i class="fas fa-spider"></i> Ahorcado</span>
+        <span class="ga-clock" id="hangman-clock">0.0s</span>
+      </div>
+      <p style="font-size:.65rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;font-weight:800;margin-bottom:.6rem">Leé antes de adivinar</p>
+      <p style="font-size:1.05rem;font-weight:800;line-height:1.5;margin-bottom:1.5rem">"${sanitizeInput(state.hint)}"</p>
+      <button class="ga-btn" id="hangman-start-guessing">Listo, a adivinar <i class="fas fa-arrow-right"></i></button>
+    </div></div>
+  `;
+  document.body.appendChild(modal);
+  startHangmanClock(document.getElementById('hangman-clock'));
+  document.getElementById('hangman-start-guessing').onclick = () => window.renderHangmanGame();
 };
 
 // Se arma una sola vez; cada jugada solo actualiza las partes (antes se
@@ -334,7 +381,7 @@ window.renderHangmanGame = function renderHangmanGame() {
     </div></div>
   `;
   document.body.appendChild(modal);
-  state.stopClock = window.GameArena.startStopwatch(document.getElementById('hangman-clock'));
+  state.stopClock = startHangmanClock(document.getElementById('hangman-clock'));
   window.updateHangmanGame();
 };
 
