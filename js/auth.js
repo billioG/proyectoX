@@ -38,7 +38,18 @@ export async function initAuth() {
       // de nómina), un estudiante que entra después aterriza ahí en vez de
       // en su feed.
       sessionStorage.removeItem('PX_LAST_VIEW');
-      showLoginScreen();
+      // BUG REAL: este evento puede dispararse sin pasar por window.logout()
+      // (ej. el token se invalida solo) -- volvía a la pantalla de login SIN
+      // recargar la página. Todo lo que quedó en variables globales de otro
+      // módulo (ej. window._myCompanionSpecies en companion.js) seguía en
+      // memoria: el siguiente usuario que entraba en el mismo dispositivo
+      // veía la mascota, o cualquier otro estado en memoria, del usuario
+      // anterior. window.logout() ya recargaba la página para evitar esto;
+      // acá faltaba. Recargar es lo único que garantiza borrar TODO estado
+      // en memoria de la sesión anterior, no solo lo que cada módulo se
+      // acuerde de limpiar a mano.
+      location.reload();
+      return;
     }
     if (event === 'PASSWORD_RECOVERY') {
       openSetNewPasswordModal();
