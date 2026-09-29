@@ -11,7 +11,7 @@ const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 // Categorías con banco FIJO en la BD (migrations/hangman-word-bank.sql) --
 // palabras curadas a mano sobre fauna/ambiente/ODS de Guatemala, sin pasar
 // por la IA. El resto de temas sigue generándose con ai-generate-hangman-word.
-const BANK_HANGMAN_TOPICS = ['Vida silvestre y ODS de Guatemala'];
+const BANK_HANGMAN_TOPICS = ['Vida silvestre de Guatemala'];
 
 // El ahorcado no tenía ninguna señal visual de los errores -- solo un
 // contador de texto. Dibuja la horca de a partes (cabeza, cuerpo, 2 brazos,

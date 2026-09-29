@@ -272,6 +272,7 @@ window.toggleDuelHistory = function toggleDuelHistory() {
 // pensamiento científico). Quedan ciencia, matemática y STEM aplicado.
 const DUEL_TOPIC_POOL_FULL = [
   { name: 'Biodiversidad de Guatemala', minRank: 0 },
+  { name: 'Cuidado del ambiente y los recursos naturales', minRank: 0 },
   { name: 'Ciencia y descubrimientos', minRank: 0 },
   { name: 'Robótica educativa', minRank: 4 },
   { name: 'Programación por bloques', minRank: 4 },

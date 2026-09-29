@@ -287,7 +287,7 @@ window.renderTimedMathGame = function renderTimedMathGame() {
       <div style="height:.6rem;border-radius:9999px;background:rgba(255,255,255,.1);overflow:hidden;margin-bottom:1.5rem">
         <div id="timed-math-bar" style="height:100%;width:100%;border-radius:9999px;background:linear-gradient(90deg,#facc15,#22c55e);transition:width 1s linear"></div>
       </div>
-      <div id="timed-math-question" style="font-size:2.6rem;font-weight:900;margin-bottom:1rem"></div>
+      <div id="timed-math-question" style="font-weight:900;margin-bottom:1rem;line-height:1.25"></div>
       <input type="text" inputmode="none" id="timed-math-answer-input" class="ga-input" placeholder="?" autocomplete="off"
         onkeydown="if(event.key==='Enter') window.submitTimedMathAnswer()">
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.45rem;margin:.9rem 0">
@@ -304,7 +304,13 @@ window.updateTimedMathQuestion = function updateTimedMathQuestion() {
   const state = window._activeTimedMath;
   if (!state) return;
   const q = document.getElementById('timed-math-question');
-  q.textContent = String(state.questions[state.index]);
+  const text = String(state.questions[state.index]);
+  q.textContent = text;
+  // Los problemas cortos ("15 × 4") van gigantes y centrados; los que ahora
+  // vienen como mini-historia con contexto real son más largos y necesitan
+  // letra más chica para no desbordar la tarjeta (ver
+  // migrations/timed-math-word-problems.sql).
+  q.style.fontSize = text.length > 20 ? '1.15rem' : '2.6rem';
   q.style.animation = 'none';
   void q.offsetWidth;
   q.style.animation = 'ga-pop .35s cubic-bezier(.2,1.6,.4,1)';

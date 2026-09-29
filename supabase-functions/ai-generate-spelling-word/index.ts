@@ -65,9 +65,11 @@ Deno.serve(async (req) => {
 para un estudiante de ${grade} en Guatemala, que sea un buen desafío de ORTOGRAFÍA
 (con tilde, ñ, b/v, s/c/z, h muda, o alguna dificultad ortográfica típica), entre 4
 y 14 letras, una sola palabra (sin espacios ni guiones). También escribí una pista
-corta (una oración, SIN mencionar la palabra ni deletrearla) que ayude a saber a qué
-palabra se refiere. Responde ÚNICAMENTE con JSON válido, sin texto adicional, con
-esta forma exacta:
+en formato de TEXTO CON ESPACIO EN BLANCO (cloze): una oración corta, real y
+específica sobre el tema (no una definición genérica ni un acertijo tipo "animal
+grande y gris"), donde la palabra falta y se marca con "_____". Ejemplo de formato
+(no copiar el contenido): "La caza ilegal amenaza a los _____ de Petén." Responde
+ÚNICAMENTE con JSON válido, sin texto adicional, con esta forma exacta:
 {"word":"...","hint":"...","fact":"..."}
 
 El campo "fact" es UN dato curioso y educativo sobre la palabra (su origen, una regla

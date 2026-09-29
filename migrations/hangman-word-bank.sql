@@ -34,26 +34,26 @@ revoke all on public.hangman_word_bank from anon, authenticated;
 -- normalizeWord() en la función de IA.
 insert into public.hangman_word_bank (category, word, hint, fact)
 select * from (values
-  ('Vida silvestre y ODS de Guatemala', 'QUETZAL', 'Ave nacional de Guatemala, símbolo de libertad.', 'El quetzal no sobrevive en cautiverio -- prefiere dejar de comer antes que perder su libertad, por eso es símbolo de independencia.'),
-  ('Vida silvestre y ODS de Guatemala', 'JAGUAR', 'El felino más grande de las selvas de Petén.', 'El jaguar es clave para el ODS 15: como depredador tope, controla otras poblaciones y mantiene sano el ecosistema.'),
-  ('Vida silvestre y ODS de Guatemala', 'MANATI', 'Mamífero acuático que vive en los ríos de Izabal.', 'El manatí está en peligro de extinción en Guatemala -- protegerlo es parte del ODS 14 (vida submarina).'),
-  ('Vida silvestre y ODS de Guatemala', 'CEIBA', 'Árbol nacional de Guatemala, sagrado para los mayas.', 'La ceiba puede vivir más de 300 años y sostiene decenas de especies de aves e insectos en sus ramas.'),
-  ('Vida silvestre y ODS de Guatemala', 'TAPIR', 'Mamífero de nariz larga que habita la selva de Petén.', 'El tapir dispersa semillas al comer frutas, ayudando a que el bosque se regenere solo.'),
-  ('Vida silvestre y ODS de Guatemala', 'TORTUGA', 'Reptil que anida en las playas del Pacífico guatemalteco.', 'Las tortugas marinas ayudan a mantener sanos los pastos marinos, comiéndolos antes de que crezcan demasiado.'),
-  ('Vida silvestre y ODS de Guatemala', 'MANGLAR', 'Bosque costero que crece entre agua salada y dulce.', 'Los manglares protegen la costa de inundaciones y son criadero de peces -- perderlos afecta el ODS 14.'),
-  ('Vida silvestre y ODS de Guatemala', 'ARRECIFE', 'Estructura submarina de coral que protege las costas.', 'Los arrecifes cubren menos del 1% del océano pero albergan cerca del 25% de toda la vida marina.'),
-  ('Vida silvestre y ODS de Guatemala', 'CORAL', 'Organismo marino que forma los arrecifes, no es piedra.', 'El coral es un animal, no una planta ni roca -- vive en colonias y es muy sensible al aumento de temperatura del mar.'),
-  ('Vida silvestre y ODS de Guatemala', 'GUACAMAYA', 'Ave de colores vivos que habita Petén, casi extinta ahí.', 'La guacamaya roja está en peligro crítico en Guatemala -- quedan pocas parejas silvestres en la Reserva de la Biosfera Maya.'),
-  ('Vida silvestre y ODS de Guatemala', 'COATI', 'Mamífero de cola larga y anillada, pariente del mapache.', 'El coatí (o pizote) es omnívoro y ayuda a controlar insectos y a dispersar semillas en el bosque.'),
-  ('Vida silvestre y ODS de Guatemala', 'MARIPOSA', 'Insecto polinizador que empieza su vida como oruga.', 'Sin polinizadores como las mariposas y abejas, muchas plantas no podrían reproducirse ni dar fruto.'),
-  ('Vida silvestre y ODS de Guatemala', 'ABEJA', 'Insecto que polinza flores y vive en colmenas.', 'Casi 1 de cada 3 bocados de comida en el mundo depende de la polinización de abejas y otros insectos.'),
-  ('Vida silvestre y ODS de Guatemala', 'ATITLAN', 'Lago rodeado de tres volcanes en Sololá.', 'El lago de Atitlán sufre de exceso de nutrientes (fósforo) que provoca proliferación de algas -- un caso real de eutrofización.'),
-  ('Vida silvestre y ODS de Guatemala', 'PETEN', 'Departamento con la selva tropical más grande de Guatemala.', 'Petén alberga la Reserva de la Biosfera Maya, uno de los pulmones forestales más grandes de Centroamérica.'),
-  ('Vida silvestre y ODS de Guatemala', 'HABITAT', 'Lugar donde vive y se reproduce naturalmente una especie.', 'Perder el hábitat es la principal causa de extinción de especies a nivel mundial, más que la caza.'),
-  ('Vida silvestre y ODS de Guatemala', 'ECOSISTEMA', 'Conjunto de seres vivos y su ambiente interactuando.', 'En un ecosistema sano, cada especie cumple un rol -- quitar una sola puede desordenar todo el equilibrio.'),
-  ('Vida silvestre y ODS de Guatemala', 'BIODIVERSIDAD', 'Variedad de especies vivas que hay en un lugar.', 'Guatemala es uno de los países con mayor biodiversidad del mundo en relación a su tamaño territorial.'),
-  ('Vida silvestre y ODS de Guatemala', 'DEFORESTACION', 'Tala masiva de árboles que destruye el bosque.', 'Guatemala pierde miles de hectáreas de bosque cada año, sobre todo por avance de tierras agrícolas y ganaderas.'),
-  ('Vida silvestre y ODS de Guatemala', 'RECICLAJE', 'Proceso de reusar materiales en vez de tirarlos.', 'Reciclar plástico ayuda directo al ODS 14: buena parte de la basura marina es plástico que llegó desde tierra.')
+  ('Vida silvestre de Guatemala', 'QUETZAL', 'Ave nacional de Guatemala, símbolo de libertad.', 'El quetzal no sobrevive en cautiverio -- prefiere dejar de comer antes que perder su libertad, por eso es símbolo de independencia.'),
+  ('Vida silvestre de Guatemala', 'JAGUAR', 'El felino más grande de las selvas de Petén.', 'El jaguar es clave para el ODS 15: como depredador tope, controla otras poblaciones y mantiene sano el ecosistema.'),
+  ('Vida silvestre de Guatemala', 'MANATI', 'Mamífero acuático que vive en los ríos de Izabal.', 'El manatí está en peligro de extinción en Guatemala -- protegerlo es parte del ODS 14 (vida submarina).'),
+  ('Vida silvestre de Guatemala', 'CEIBA', 'Árbol nacional de Guatemala, sagrado para los mayas.', 'La ceiba puede vivir más de 300 años y sostiene decenas de especies de aves e insectos en sus ramas.'),
+  ('Vida silvestre de Guatemala', 'TAPIR', 'Mamífero de nariz larga que habita la selva de Petén.', 'El tapir dispersa semillas al comer frutas, ayudando a que el bosque se regenere solo.'),
+  ('Vida silvestre de Guatemala', 'TORTUGA', 'Reptil que anida en las playas del Pacífico guatemalteco.', 'Las tortugas marinas ayudan a mantener sanos los pastos marinos, comiéndolos antes de que crezcan demasiado.'),
+  ('Vida silvestre de Guatemala', 'MANGLAR', 'Bosque costero que crece entre agua salada y dulce.', 'Los manglares protegen la costa de inundaciones y son criadero de peces -- perderlos afecta el ODS 14.'),
+  ('Vida silvestre de Guatemala', 'ARRECIFE', 'Estructura submarina de coral que protege las costas.', 'Los arrecifes cubren menos del 1% del océano pero albergan cerca del 25% de toda la vida marina.'),
+  ('Vida silvestre de Guatemala', 'CORAL', 'Organismo marino que forma los arrecifes, no es piedra.', 'El coral es un animal, no una planta ni roca -- vive en colonias y es muy sensible al aumento de temperatura del mar.'),
+  ('Vida silvestre de Guatemala', 'GUACAMAYA', 'Ave de colores vivos que habita Petén, casi extinta ahí.', 'La guacamaya roja está en peligro crítico en Guatemala -- quedan pocas parejas silvestres en la Reserva de la Biosfera Maya.'),
+  ('Vida silvestre de Guatemala', 'COATI', 'Mamífero de cola larga y anillada, pariente del mapache.', 'El coatí (o pizote) es omnívoro y ayuda a controlar insectos y a dispersar semillas en el bosque.'),
+  ('Vida silvestre de Guatemala', 'MARIPOSA', 'Insecto polinizador que empieza su vida como oruga.', 'Sin polinizadores como las mariposas y abejas, muchas plantas no podrían reproducirse ni dar fruto.'),
+  ('Vida silvestre de Guatemala', 'ABEJA', 'Insecto que polinza flores y vive en colmenas.', 'Casi 1 de cada 3 bocados de comida en el mundo depende de la polinización de abejas y otros insectos.'),
+  ('Vida silvestre de Guatemala', 'ATITLAN', 'Lago rodeado de tres volcanes en Sololá.', 'El lago de Atitlán sufre de exceso de nutrientes (fósforo) que provoca proliferación de algas -- un caso real de eutrofización.'),
+  ('Vida silvestre de Guatemala', 'PETEN', 'Departamento con la selva tropical más grande de Guatemala.', 'Petén alberga la Reserva de la Biosfera Maya, uno de los pulmones forestales más grandes de Centroamérica.'),
+  ('Vida silvestre de Guatemala', 'HABITAT', 'Lugar donde vive y se reproduce naturalmente una especie.', 'Perder el hábitat es la principal causa de extinción de especies a nivel mundial, más que la caza.'),
+  ('Vida silvestre de Guatemala', 'ECOSISTEMA', 'Conjunto de seres vivos y su ambiente interactuando.', 'En un ecosistema sano, cada especie cumple un rol -- quitar una sola puede desordenar todo el equilibrio.'),
+  ('Vida silvestre de Guatemala', 'BIODIVERSIDAD', 'Variedad de especies vivas que hay en un lugar.', 'Guatemala es uno de los países con mayor biodiversidad del mundo en relación a su tamaño territorial.'),
+  ('Vida silvestre de Guatemala', 'DEFORESTACION', 'Tala masiva de árboles que destruye el bosque.', 'Guatemala pierde miles de hectáreas de bosque cada año, sobre todo por avance de tierras agrícolas y ganaderas.'),
+  ('Vida silvestre de Guatemala', 'RECICLAJE', 'Proceso de reusar materiales en vez de tirarlos.', 'Reciclar plástico ayuda directo al ODS 14: buena parte de la basura marina es plástico que llegó desde tierra.')
 ) as v(category, word, hint, fact)
 where not exists (
   select 1 from public.hangman_word_bank b where b.category = v.category and b.word = v.word
