@@ -696,10 +696,15 @@ window.handleTutorCheckIn = async function handleTutorCheckIn(schoolId) {
             const dist = calculateDist(latitude, longitude, sch.latitude, sch.longitude);
             if (dist > (sch.geofence_radius || 150)) throw new Error(`Fuera de rango (${Math.round(dist)}m)`);
 
-            const checkinData = { tutor_id: currentUser.id, school_id: schoolId, latitude, longitude, distance_meters: dist, is_valid_entry: true };
+            // client_ref generado acá: si esto se encola sin internet y el
+            // reintento automático se dispara más de una vez (ver
+            // sync-manager.js/tutor_checkin), el mismo client_ref hace que
+            // el reintento sea un upsert sobre la misma fila, no una
+            // duplicada (migrations/sync-queue-idempotency.sql).
+            const checkinData = { client_ref: crypto.randomUUID(), tutor_id: currentUser.id, school_id: schoolId, latitude, longitude, distance_meters: dist, is_valid_entry: true };
 
             if (navigator.onLine) {
-                const { error } = await _supabase.from('tutor_attendance').insert(checkinData);
+                const { error } = await _supabase.from('tutor_attendance').upsert(checkinData, { onConflict: 'client_ref' });
                 if (error) throw error;
                 showToast('<i class="fas fa-circle-check"></i> Asistencia confirmada', 'success');
             } else {

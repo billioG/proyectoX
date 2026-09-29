@@ -318,9 +318,12 @@ class SyncManager {
                     return true;
 
                 case 'save_evaluation':
-                    const { error: evalError } = await _supabase.from('evaluations').upsert(data, { onConflict: 'project_id' });
+                    // Antes eran 2 llamadas sueltas (upsert evaluación + update
+                    // score del proyecto) -- si la red se caía entre medio,
+                    // quedaban desincronizadas. sync_save_evaluation() hace las
+                    // 2 en una sola transacción (ver migrations/sync-queue-idempotency.sql).
+                    const { error: evalError } = await _supabase.rpc('sync_save_evaluation', { p_evaluation: data });
                     if (evalError) throw evalError;
-                    await _supabase.from('projects').update({ score: data.total_score }).eq('id', data.project_id);
 
                     // Verificar insignias tras evaluar
                     if (typeof checkAndAwardBadges === 'function') {
@@ -353,7 +356,13 @@ class SyncManager {
                     return await this.handleFileUploadSync('audit_photos', data, 'photo_url', 'asset_audits');
 
                 case 'tutor_checkin':
-                    const { error: checkinError } = await _supabase.from('tutor_attendance').insert(data);
+                    // data.client_ref lo genera el cliente al encolar
+                    // (crypto.randomUUID(), ver bonus-system.js) -- upsert por
+                    // esa columna en vez de insert() plano: si la respuesta del
+                    // intento anterior se perdió pero el insert ya había
+                    // llegado al servidor, el reintento no duplica el check-in
+                    // (sync-queue-idempotency.sql).
+                    const { error: checkinError } = await _supabase.from('tutor_attendance').upsert(data, { onConflict: 'client_ref' });
                     if (checkinError) throw checkinError;
                     return true;
 
