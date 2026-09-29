@@ -290,6 +290,22 @@ const DUEL_TOPIC_POOL_FULL = [
   { name: 'Funciones, métodos y objetos en programación', minRank: 7 },
 ];
 
+// Temas con banco FIJO en la BD (sin IA) para algún juego puntual -- hoy
+// solo Ahorcado (migrations/hangman-word-bank.sql). Antes esto vivía
+// hardcodeado como un array aparte dentro de hangman-duel.js, sin relación
+// con el resto del sistema de temas -- si otro juego necesitara lo mismo,
+// tocaba copiar el mismo patrón de cero. Ahora es un registro genérico por
+// juego: agregar un banco nuevo es una entrada acá, no un mecanismo nuevo.
+const BANK_BACKED_TOPICS = {
+  hangman: ['Vida silvestre de Guatemala'],
+};
+window.getBankTopicsFor = function getBankTopicsFor(game) {
+  return BANK_BACKED_TOPICS[game] || [];
+};
+window.isBankTopic = function isBankTopic(game, topic) {
+  return (BANK_BACKED_TOPICS[game] || []).includes(topic);
+};
+
 // Filtra el pool completo al grado del alumno actual -- se usa en los 5
 // desafíos 1v1 (Duelos, Ahorcado, Contrarreloj, Encontrá el Error, Ortografía).
 function getDuelTopicPoolForCurrentUser() {
@@ -419,7 +435,6 @@ window.sendDuelChallenge = async function sendDuelChallenge() {
   const opponentId = document.getElementById('duel-opponent')?.value;
   const wager = parseInt(document.getElementById('duel-wager')?.value) || 0;
   const chosenTopic = document.getElementById('duel-topic')?.value;
-  const pool = getDuelTopicPoolForCurrentUser();
   const topic = window.resolveDuelTopic(chosenTopic);
   const questionCount = computeDuelQuestionCount(wager);
   const btn = document.getElementById('btn-send-duel');

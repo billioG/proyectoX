@@ -376,8 +376,10 @@ window.finishTimedMathGame = async function finishTimedMathGame() {
 };
 
 window.showTimedMathReview = async function showTimedMathReview(duelId) {
-  const { data: duel } = await window._supabase.from('student_timed_math_duels').select('winner_id, problem_count').eq('id', duelId).maybeSingle();
-  const { data: results } = await window._supabase.from('student_timed_math_results').select('student_id, score, time_ms').eq('duel_id', duelId);
+  const [{ data: duel }, { data: results }] = await Promise.all([
+    window._supabase.from('student_timed_math_duels').select('winner_id, problem_count').eq('id', duelId).maybeSingle(),
+    window._supabase.from('student_timed_math_results').select('student_id, score, time_ms').eq('duel_id', duelId),
+  ]);
   if (!results?.length) return window.showToast('<i class="fas fa-circle-xmark"></i> No se pudo cargar la retroalimentación', 'error');
 
   const modal = document.createElement('div');

@@ -180,7 +180,6 @@ window.sendSpellingChallenge = async function sendSpellingChallenge() {
   const opponentId = document.getElementById('spelling-opponent')?.value;
   const wager = parseInt(document.getElementById('spelling-wager')?.value) || 0;
   const chosenTopic = document.getElementById('spelling-topic')?.value;
-  const pool = window.getDuelTopicPoolForCurrentUser ? window.getDuelTopicPoolForCurrentUser() : [];
   const topic = window.resolveDuelTopic(chosenTopic);
   const btn = document.getElementById('btn-send-spelling');
   const userData = window.userData;

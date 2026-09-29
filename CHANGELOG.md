@@ -4,6 +4,10 @@ Cambios publicados en Quetzal LMS, del más reciente al más antiguo. Cada líne
 
 Al publicar una versión nueva, agregá una línea arriba de todo (ver CONTRIBUTING.md).
 
+## 2026-09-29
+
+- Limpieza de la revisión de código: banco fijo de temas de Ahorcado ahora vive en un registro genérico por juego (duels.js) en vez de un array aparte; 3 pantallas de resultado (Ahorcado/Contrarreloj/Encontrá el Error) consultan en paralelo en vez de secuencial; el aviso de evento sorpresa y el refresco del panel admin ya no consultan cada tick si la pestaña está en segundo plano; variable sin usar eliminada de los 5 formularios de reto; nombres de "bloques de Scratch" renombrados a "afirmaciones" en Encontrá el Error (v1.0.130)
+
 ## 2026-09-28
 
 - Publicada `colegios.html`: página para colegios, municipalidades y organizaciones que quieran probar Quetzal LMS, enlazada desde el pie de la pantalla de login (v1.0.129)

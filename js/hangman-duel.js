@@ -9,9 +9,10 @@ const MAX_WRONG_GUESSES = 6;
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
 // Categorías con banco FIJO en la BD (migrations/hangman-word-bank.sql) --
-// palabras curadas a mano sobre fauna/ambiente/ODS de Guatemala, sin pasar
-// por la IA. El resto de temas sigue generándose con ai-generate-hangman-word.
-const BANK_HANGMAN_TOPICS = ['Vida silvestre de Guatemala'];
+// palabras curadas a mano sobre fauna/ambiente de Guatemala, sin pasar por
+// la IA. El resto de temas sigue generándose con ai-generate-hangman-word.
+// La lista vive en duels.js (getBankTopicsFor/isBankTopic) -- registro
+// genérico por juego, no un array aparte solo para este archivo.
 
 // El ahorcado no tenía ninguna señal visual de los errores -- solo un
 // contador de texto. Dibuja la horca de a partes (cabeza, cuerpo, 2 brazos,
@@ -198,7 +199,7 @@ window.openCreateHangmanModal = async function openCreateHangmanModal() {
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Categoría</label>
           <select id="hangman-topic" class="input-field-tw h-11 text-sm">
             ${window.topicOptionsHtml(pool)}
-            <optgroup label="🌱 Ambiente y ODS">${BANK_HANGMAN_TOPICS.map(t => `<option value="${t}">${t}</option>`).join('')}</optgroup>
+            <optgroup label="🌱 Ambiente y ODS">${window.getBankTopicsFor('hangman').map(t => `<option value="${t}">${t}</option>`).join('')}</optgroup>
           </select>
         </div>
       </div>
@@ -215,7 +216,6 @@ window.sendHangmanChallenge = async function sendHangmanChallenge() {
   const opponentId = document.getElementById('hangman-opponent')?.value;
   const wager = parseInt(document.getElementById('hangman-wager')?.value) || 0;
   const chosenTopic = document.getElementById('hangman-topic')?.value;
-  const pool = window.getDuelTopicPoolForCurrentUser ? window.getDuelTopicPoolForCurrentUser() : [];
   const topic = window.resolveDuelTopic(chosenTopic);
   const btn = document.getElementById('btn-send-hangman');
   const userData = window.userData;
@@ -269,7 +269,7 @@ window.respondHangmanDuel = async function respondHangmanDuel(duelId, accept) {
   if (!window.aiGenerationLock.tryAcquire()) return;
   window.showToast('<i class="fas fa-circle-notch fa-spin"></i> Generando palabra...', 'info');
   try {
-    if (BANK_HANGMAN_TOPICS.includes(duel?.topic)) {
+    if (window.isBankTopic('hangman', duel?.topic)) {
       // Categoría con banco fijo (fauna/ODS de Guatemala): elige palabra de
       // la BD directo, sin llamar a la IA.
       const { error: rpcErr } = await window._supabase.rpc('assign_hangman_bank_word', { p_duel_id: duelId });
@@ -422,8 +422,10 @@ window.finishHangmanGame = async function finishHangmanGame() {
 };
 
 window.showHangmanReview = async function showHangmanReview(duelId) {
-  const { data: duel } = await window._supabase.from('student_hangman_duels').select('topic, winner_id').eq('id', duelId).maybeSingle();
-  const { data: results } = await window._supabase.from('student_hangman_results').select('student_id, solved, wrong_guesses, time_ms').eq('duel_id', duelId);
+  const [{ data: duel }, { data: results }] = await Promise.all([
+    window._supabase.from('student_hangman_duels').select('topic, winner_id').eq('id', duelId).maybeSingle(),
+    window._supabase.from('student_hangman_results').select('student_id, solved, wrong_guesses, time_ms').eq('duel_id', duelId),
+  ]);
   if (!results?.length) return window.showToast('<i class="fas fa-circle-xmark"></i> No se pudo cargar la retroalimentación', 'error');
 
   const sanitizeInput = window.sanitizeInput || ((v) => v);

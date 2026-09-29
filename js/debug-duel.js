@@ -10,7 +10,7 @@
  * "encontrá el dato falso" sobre cualquier tema del pool.
  */
 
-const BLOCK_COLORS = ['bg-indigo-600', 'bg-emerald-600', 'bg-amber-600', 'bg-rose-600', 'bg-cyan-600', 'bg-purple-600', 'bg-orange-600'];
+const STATEMENT_COLORS = ['bg-indigo-600', 'bg-emerald-600', 'bg-amber-600', 'bg-rose-600', 'bg-cyan-600', 'bg-purple-600', 'bg-orange-600'];
 
 window.loadDebugSection = async function loadDebugSection() {
   const { data, error } = await window._supabase.from('student_debug_duels')
@@ -187,7 +187,6 @@ window.sendDebugChallenge = async function sendDebugChallenge() {
   const opponentId = document.getElementById('debug-opponent')?.value;
   const wager = parseInt(document.getElementById('debug-wager')?.value) || 0;
   const chosenTopic = document.getElementById('debug-topic')?.value;
-  const pool = window.getDuelTopicPoolForCurrentUser ? window.getDuelTopicPoolForCurrentUser() : [];
   const topic = window.resolveDuelTopic(chosenTopic);
   const btn = document.getElementById('btn-send-debug');
   const userData = window.userData;
@@ -289,7 +288,7 @@ window.renderDebugGame = function renderDebugGame() {
       <p style="font-size:.7rem;color:#94a3b8;margin-bottom:1rem">${sanitizeInput(state.topic)} · Una sola oportunidad</p>
       <div class="space-y-2" style="text-align:left">
         ${state.labels.map((label, i) => `
-          <button id="debug-block-${i}" class="debug-block w-full text-left p-4 rounded-xl ${BLOCK_COLORS[i % BLOCK_COLORS.length]} text-white text-sm font-bold shadow-lg hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-3" onclick="window.selectDebugBlock(${i})">
+          <button id="debug-statement-${i}" class="debug-statement w-full text-left p-4 rounded-xl ${STATEMENT_COLORS[i % STATEMENT_COLORS.length]} text-white text-sm font-bold shadow-lg hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-3" onclick="window.selectDebugStatement(${i})">
             <span class="w-6 h-6 rounded-full bg-black/20 flex items-center justify-center text-[0.65rem] shrink-0">${i + 1}</span>
             ${sanitizeInput(label)}
           </button>
@@ -301,12 +300,12 @@ window.renderDebugGame = function renderDebugGame() {
   state.stopClock = window.GameArena.startStopwatch(document.getElementById('debug-clock'));
 };
 
-window.selectDebugBlock = async function selectDebugBlock(index) {
+window.selectDebugStatement = async function selectDebugStatement(index) {
   const state = window._activeDebug;
   if (!state || state.busy) return;
   state.busy = true;
   if (state.stopClock) state.stopClock();
-  document.querySelectorAll('.debug-block').forEach(b => { b.disabled = true; });
+  document.querySelectorAll('.debug-statement').forEach(b => { b.disabled = true; });
 
   const { data: result, error } = await window._supabase.rpc('submit_debug_result', {
     p_duel_id: state.duelId,
@@ -323,7 +322,7 @@ window.selectDebugBlock = async function selectDebugBlock(index) {
   window.GameArena.notifyResult('debug', state.duelId);
 
   // Marca el elegido y el correcto antes de pasar al resultado.
-  document.querySelectorAll('.debug-block').forEach((b, i) => {
+  document.querySelectorAll('.debug-statement').forEach((b, i) => {
     if (i === result.bug_index) b.style.outline = '4px solid #4ade80';
     else if (i === index) b.style.outline = '4px solid #f43f5e';
     else b.style.opacity = '.35';
@@ -346,8 +345,10 @@ window.selectDebugBlock = async function selectDebugBlock(index) {
 };
 
 window.showDebugReview = async function showDebugReview(duelId) {
-  const { data: duel } = await window._supabase.from('student_debug_duels').select('winner_id').eq('id', duelId).maybeSingle();
-  const { data: results } = await window._supabase.from('student_debug_results').select('student_id, correct, time_ms').eq('duel_id', duelId);
+  const [{ data: duel }, { data: results }] = await Promise.all([
+    window._supabase.from('student_debug_duels').select('winner_id').eq('id', duelId).maybeSingle(),
+    window._supabase.from('student_debug_results').select('student_id, correct, time_ms').eq('duel_id', duelId),
+  ]);
   if (!results?.length) return window.showToast('<i class="fas fa-circle-xmark"></i> No se pudo cargar la retroalimentación', 'error');
 
   const modal = document.createElement('div');

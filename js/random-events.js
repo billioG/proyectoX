@@ -382,10 +382,13 @@ window.openRandomEventsAdminModal = function openRandomEventsAdminModal() {
   // Refresco automático mientras el panel esté abierto: así el aviso de
   // "casi sin tiempo y nadie jugó" (ver loadRandomEventsAdminList) se
   // actualiza solo, sin que el admin tenga que cerrar y volver a abrir.
+  // No refresca si la pestaña está en segundo plano (ej. el admin cambió de
+  // pestaña con el panel abierto) -- antes seguía consultando 4 tablas cada
+  // 20s aunque nadie estuviera mirando.
   clearInterval(window._randomEventsAdminPoll);
   window._randomEventsAdminPoll = setInterval(() => {
     if (!document.getElementById('random-events-admin-modal')) { clearInterval(window._randomEventsAdminPoll); return; }
-    window.loadRandomEventsAdminList();
+    if (document.visibilityState === 'visible') window.loadRandomEventsAdminList();
   }, 20_000);
 }
 
@@ -583,7 +586,18 @@ if (typeof window !== 'undefined') {
     setTimeout(() => {
       if (window.currentUser && (window.userRole === 'estudiante' || window.userRole === 'docente')) {
         window.checkActiveRandomEvent();
-        setInterval(window.checkActiveRandomEvent, 60_000);
+        // Antes consultaba cada 60s SIEMPRE, aunque la pestaña estuviera en
+        // segundo plano -- gasto de batería/datos continuo en un dispositivo
+        // de gama baja para un aviso que la gran mayoría de los minutos no
+        // tiene nada que mostrar. Ahora salta el tick si la pestaña no está
+        // visible, y revisa de una al volver (para no hacer esperar hasta el
+        // próximo tick si justo se perdió un evento mientras estaba oculta).
+        setInterval(() => {
+          if (document.visibilityState === 'visible') window.checkActiveRandomEvent();
+        }, 60_000);
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') window.checkActiveRandomEvent();
+        });
       }
     }, 3000);
   });

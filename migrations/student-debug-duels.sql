@@ -1,8 +1,10 @@
 -- ============================================================
--- Encontrá el Error 1v1 -- se muestra una secuencia corta de "bloques" de
--- programación (estilo Scratch, pero como tarjetas apiladas, no un editor
--- real) generada por IA, uno de los pasos tiene un error de lógica. Gana
--- quien lo encuentra primero (async, como Ahorcado y Contrarreloj).
+-- Encontrá el Error 1v1 -- se muestra una secuencia corta de afirmaciones
+-- sobre el tema del duelo (tarjetas apiladas) generada por IA, una tiene un
+-- dato falso. Gana quien lo encuentra primero (async, como Ahorcado y
+-- Contrarreloj). Antes era específicamente "bloques de programación estilo
+-- Scratch" -- desde v1.0.126 es contenido real sobre cualquier tema del
+-- pool (ver js/debug-duel.js y supabase/functions/ai-generate-debug-steps).
 --
 -- ADITIVO/NO DESTRUCTIVO. Seguro de re-ejecutar. Pegar completo en el
 -- SQL Editor de Supabase.
