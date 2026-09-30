@@ -335,6 +335,47 @@ function armadillo(g) {
   </g>`;
 }
 
+// ---------- PANDA (Temporada 2 -- fauna global, ODS 15) ----------
+// Sentado, orejas pegadas arriba de la cabeza, manchas grandes, bambú
+// sostenido con las 2 patas delante del pecho -- estilo pedido por el
+// usuario (referencia: panda "sentado con bambú" tipo clipart), mismo
+// lenguaje visual (formas planas, sin degradados) que el resto del dex.
+function panda(g) {
+  const sc = [0.66, 0.82, 0.96][g - 1];
+  // De cachorro (gris, todavía sin su color definitivo) a adulto (negro
+  // sólido) -- mismo criterio que otras especies de ir sumando detalle.
+  const patch = g >= 2 ? '#1F2937' : '#8D8377';
+  const bamboo = g >= 3
+    ? `<g>
+         <rect x="140" y="192" width="8" height="56" rx="4" fill="#8BC34A" transform="rotate(4 144 220)"/>
+         <ellipse cx="132" cy="200" rx="10" ry="5" fill="#AED581" transform="rotate(-25 132 200)"/>
+         <ellipse cx="156" cy="218" rx="10" ry="5" fill="#AED581" transform="rotate(25 156 218)"/>
+       </g>`
+    : '';
+  return `<g transform="translate(150 170) scale(${sc}) translate(-150 -170)">
+    <!-- sentado: pies bien abiertos hacia afuera, no parado -->
+    <ellipse cx="76" cy="256" rx="34" ry="20" fill="${patch}" transform="rotate(-18 76 256)"/>
+    <circle cx="58" cy="252" r="4" fill="#FAFAFA"/><circle cx="70" cy="248" r="4" fill="#FAFAFA"/><circle cx="82" cy="250" r="4" fill="#FAFAFA"/>
+    <ellipse cx="224" cy="256" rx="34" ry="20" fill="${patch}" transform="rotate(18 224 256)"/>
+    <circle cx="242" cy="252" r="4" fill="#FAFAFA"/><circle cx="230" cy="248" r="4" fill="#FAFAFA"/><circle cx="218" cy="250" r="4" fill="#FAFAFA"/>
+    <path class="cp-body" d="M150 150 C 206 150, 240 186, 236 226 C 233 260, 210 280, 150 280
+      C 90 280, 67 260, 64 226 C 60 186, 94 150, 150 150 Z" fill="#FAFAFA"/>
+    ${bamboo}
+    <ellipse cx="118" cy="208" rx="20" ry="28" fill="${patch}" transform="rotate(-16 118 208)"/>
+    <ellipse cx="182" cy="208" rx="20" ry="28" fill="${patch}" transform="rotate(16 182 208)"/>
+    <g class="cp-head">
+      <g class="cp-ear-l"><circle cx="112" cy="108" r="25" fill="${patch}"/></g>
+      <g class="cp-ear-r"><circle cx="188" cy="108" r="25" fill="${patch}"/></g>
+      <circle cx="150" cy="140" r="63" fill="#FAFAFA"/>
+      <ellipse cx="123" cy="138" rx="21" ry="27" fill="${patch}" transform="rotate(-10 123 138)"/>
+      <ellipse cx="177" cy="138" rx="21" ry="27" fill="${patch}" transform="rotate(10 177 138)"/>
+      ${eyePair(123, 177, 140, 11)}
+      <ellipse cx="150" cy="166" rx="11" ry="8" fill="#1F2937"/>
+      <path d="M150 174 Q150 182 143 186" stroke="#1F2937" stroke-width="3" fill="none" stroke-linecap="round"/>
+    </g>
+  </g>`;
+}
+
 // ---------- catálogo ----------
 const COMPANION_SPECIES = {
   quetzal: {
@@ -417,6 +458,14 @@ const COMPANION_SPECIES = {
     names: ['Huevo de Armadillo', 'Armadillito', 'Armadillo Joven', 'Armadillo', 'Armadillo Guardián', 'Armadillo Blindado'],
     draw: armadillo,
   },
+  panda: {
+    label: 'Panda',
+    desc: 'Tranquilo y curioso. Cuida los bosques de bambú.',
+    color: '#7CB342',
+    egg: { shell: '#F1F8E9', stroke: '#7CB342', spot: '#37474F' },
+    names: ['Huevo de Panda', 'Cachorro', 'Osezno', 'Panda', 'Panda Guardián', 'Panda Sabio'],
+    draw: panda,
+  },
 };
 
 // Ficha "Quetzadex": datos REALES de cada animal (fauna de Guatemala) --
@@ -492,6 +541,12 @@ const COMPANION_DEX = {
     about: 'El armadillo (en Guatemala también "armado") tiene una coraza de placas de hueso cubiertas de piel dura. Es un excelente cavador.',
     weight: 'Entre 3 y 6 kg', habitat: 'Bosques y potreros de todo el país', food: 'Insectos, hormigas y lombrices', status: 'Preocupación menor',
     fact: 'Casi siempre nacen cuatrillizos idénticos: ¡cuatro crías iguales!',
+  },
+  panda: {
+    num: 11, sci: 'Ailuropoda melanoleuca', types: [['Bosque', '#4CAF50'], ['Bambú', '#8BC34A']], ods: [15],
+    about: 'El panda gigante vive en los bosques de bambú de las montañas de China. Es uno de los símbolos mundiales de la conservación -- no es de Guatemala, pero cuida el mismo ODS 15 que la fauna local.',
+    weight: 'Hasta 100 kg (adulto)', habitat: 'Bosques de bambú de las montañas de China', food: '99% de su dieta es bambú', status: 'Vulnerable',
+    fact: 'Un panda adulto puede comer hasta 12 kg de bambú al día.',
   },
 };
 window.COMPANION_DEX = COMPANION_DEX;
@@ -571,6 +626,12 @@ const DEX_FACTS = {
     'Aunque mucha gente lo cree, el armadillo de nueve bandas no puede enrollarse como una bola.',
     'Ve muy poco, pero su olfato es excelente para encontrar insectos bajo la tierra.',
     'Para cruzar ríos puede tragar aire y así flotar mejor.',
+  ],
+  panda: [
+    'Nace rosado, ciego y del tamaño de una barra de mantequilla -- 900 veces más chico que su mamá.',
+    'Tiene un "sexto dedo" (un hueso de la muñeca alargado) que usa como pulgar para sujetar el bambú.',
+    'Pasa hasta 14 horas al día comiendo.',
+    'Gracias a los esfuerzos de conservación en China, en 2016 dejó de estar "en peligro" y pasó a "vulnerable".',
   ],
 };
 
@@ -660,6 +721,11 @@ const ANCHORS = {
     1: { top: [150, 170], eyes: [150, 191], back: [150, 170], hw: 50 },
     2: { top: [150, 170], eyes: [150, 197], back: [150, 170], hw: 64 },
     3: { top: [150, 170], eyes: [150, 202], back: [150, 170], hw: 76 },
+  },
+  panda: {
+    1: { top: [150, 113], eyes: [150, 150], back: [150, 170], hw: 41 },
+    2: { top: [150, 100], eyes: [150, 145], back: [150, 170], hw: 51 },
+    3: { top: [150, 87], eyes: [150, 141], back: [150, 170], hw: 60 },
   },
 };
 
@@ -1016,6 +1082,7 @@ const EMOTE_SETS = {
   danta: [['ears', 'Orejas', '👂'], ['shake', 'Sacudida', '💦'], ['sniff', 'Trompa curiosa', '👃'], ['walk', 'Paseo por la selva', '🌿'], ['swim', 'Chapuzón', '🏊'], ['legend', 'Jardinera ancestral', '🌳']],
   pizote: [['sniff', 'Olfateo', '👃'], ['tailwhip', 'Cola arriba', '〰️'], ['dig', 'Escarbar', '🪱'], ['stand', 'En dos patas', '🧐'], ['bounce', 'Brinquitos', '✨'], ['legend', 'Rey pizote', '👑']],
   armadillo: [['dig', 'Escarbar', '🕳️'], ['peek', 'Asomarse', '👀'], ['roll', 'Voltereta', '🌀'], ['hop', 'Salto sorpresa', '😲'], ['shell', 'Coraza', '🛡️'], ['legend', 'Armadillo blindado', '💠']],
+  panda: [['wobble', 'Bamboleo', '🐼'], ['roll', 'Voltereta', '🌀'], ['stretch', 'Estirarse', '🙆'], ['shake', 'Sacudida', '💫'], ['zzz', 'Siesta', '😴'], ['legend', 'Panda sabio', '🎋']],
 };
 const EMOTE_STAGES = [1, 1, 2, 3, 4, 5];
 
@@ -1258,6 +1325,11 @@ const VOICES = {
   tortuga: (c, { at = 0, p = 1, s = 1, v = 1 }) => {
     noise(c, { dur: 0.35 * s, freq: 3000 * p, type: 'highpass', vol: 0.06 * v, at });
     tone(c, { from: 420 * p, to: 300 * p, dur: 0.15, type: 'triangle', vol: 0.12 * v, at: at + 0.3 * s });
+  },
+  // Gruñido corto y suave de panda -- una sola nota grave, sin agresividad.
+  panda: (c, { at = 0, p = 1, s = 1, v = 1 }) => {
+    tone(c, { from: 220 * p, to: 160 * p, dur: 0.3 * s, type: 'triangle', vol: 0.14 * v, at });
+    noise(c, { dur: 0.15 * s, freq: 1200 * p, type: 'lowpass', vol: 0.04 * v, at: at + 0.05 });
   },
 };
 
@@ -1522,7 +1594,7 @@ async function loadOwnedCompanions() {
   return own;
 }
 
-const DEX_BG = { quetzal: '🪶', jaguar: '🐾', tortuga: '🌊', tucan: '🌈', saraguate: '🌳', manati: '🫧', guacamaya: '🦜', danta: '🌿', pizote: '🍂', armadillo: '🪨' };
+const DEX_BG = { quetzal: '🪶', jaguar: '🐾', tortuga: '🌊', tucan: '🌈', saraguate: '🌳', manati: '🫧', guacamaya: '🦜', danta: '🌿', pizote: '🍂', armadillo: '🪨', panda: '🎋' };
 
 window.openQuetzadex = async function openQuetzadex() {
   if (window._myCompanionSpecies === undefined) await window.loadMyCompanion();
