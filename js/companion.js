@@ -590,6 +590,13 @@ function nextFact(species) {
   return list[i];
 }
 
+window.switchDexTab = function switchDexTab(btn, tab) {
+  const card = btn.closest('.dex-card');
+  if (!card) return;
+  card.querySelectorAll('.dex-tab').forEach(t => t.classList.toggle('active', t === btn));
+  card.querySelectorAll('.dex-tab-panel').forEach(p => p.hidden = p.dataset.panel !== tab);
+};
+
 window.showAnotherFact = function showAnotherFact(species, btn) {
   const box = btn.closest('.dex-fact');
   const span = box?.querySelector('.dex-fact-text');
@@ -927,11 +934,10 @@ window.ensureCompanionStyles = function ensureCompanionStyles() {
     .dex-stat b { font-size:.8rem; color:#0f172a; line-height:1.25; display:block; }
     .dex-fact { background:#f1f5f9; border-radius:1rem; padding:.7rem .85rem; font-size:.8rem; color:#334155; }
     .dex-fact-more { display:inline-flex; align-items:center; gap:.3rem; margin-top:.45rem; border:0; background:transparent; color:var(--dex-c); font-weight:900; font-size:.72rem; cursor:pointer; padding:0; filter:brightness(.8); }
-    .dex-details { margin-top:.7rem; border-top:1px solid #f1f5f9; padding-top:.6rem; }
-    .dex-details summary { list-style:none; cursor:pointer; font-size:.72rem; font-weight:800; color:#475569; display:flex; align-items:center; gap:.4rem; }
-    .dex-details summary::-webkit-details-marker { display:none; }
-    .dex-details summary::before { content:'\\f105'; font-family:'Font Awesome 6 Free'; font-weight:900; transition:transform .15s; }
-    .dex-details[open] summary::before { transform:rotate(90deg); }
+    .dex-tabs { display:flex; gap:1.1rem; border-bottom:1px solid #f1f5f9; margin:.9rem 0 0; }
+    .dex-tab { border:0; background:transparent; padding:0 0 .6rem; font-size:.78rem; font-weight:800; color:#94a3b8; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; }
+    .dex-tab.active { color:var(--dex-c); border-bottom-color:var(--dex-c); }
+    .dex-tab-panel { padding-top:.9rem; }
     .dex-emotes { display:flex; flex-wrap:wrap; gap:.3rem; margin-top:.6rem; }
     .dex-emotes span { font-size:.66rem; font-weight:800; padding:.25rem .55rem; border-radius:9999px; background:color-mix(in srgb, var(--dex-c) 15%, #fff); color:#1e293b; }
     .dex-emotes span.locked { background:#f1f5f9; color:#94a3b8; }
@@ -1593,23 +1599,30 @@ window.openDexCard = function openDexCard(species, mode = 'collection') {
         <div class="dex-name">${sp.label}</div>
         <div class="dex-num">N°${String(dex.num).padStart(3, '0')} · <span class="dex-sci">${dex.sci}</span></div>
         <div class="dex-types">${dex.types.map(([t, c]) => `<span class="dex-type" style="background:${c}">${t}</span>`).join('')}${dex.ods?.length ? dex.ods.map(n => `<span class="dex-ods-badge" style="background:${ODS[n].c}" title="ODS ${n}: ${ODS[n].name}"><b>${n}</b> ODS ${n}</span>`).join('') : ''}</div>
-        <div class="dex-stats">
-          <div class="dex-stat"><small>⚖️ Peso real</small><b>${dex.weight}</b></div>
-          <div class="dex-stat"><small>🛡️ Conservación</small><b>${dex.status}</b></div>
-          <div class="dex-stat"><small>📍 Hábitat</small><b>${dex.habitat}</b></div>
-          <div class="dex-stat"><small>🍃 Come</small><b>${dex.food}</b></div>
+        <div class="dex-tabs" role="tablist">
+          <button type="button" class="dex-tab active" data-tab="info" onclick="window.switchDexTab(this,'info')">Info</button>
+          <button type="button" class="dex-tab" data-tab="evo" onclick="window.switchDexTab(this,'evo')">Evolución</button>
+          <button type="button" class="dex-tab" data-tab="emotes" onclick="window.switchDexTab(this,'emotes')">Emotes</button>
         </div>
-        <div class="dex-fact"><b>💡 ¿Sabías que?</b> <span class="dex-fact-text">${nextFact(species)}</span>
-          <button type="button" class="dex-fact-more" onclick="window.showAnotherFact('${species}', this)"><i class="fas fa-shuffle"></i> Otro dato</button></div>
-        <details class="dex-details"><summary>Emotes (${emotesFor(species).length})</summary>
+        <div class="dex-tab-panel" data-panel="info">
+          <div class="dex-stats">
+            <div class="dex-stat"><small>⚖️ Peso real</small><b>${dex.weight}</b></div>
+            <div class="dex-stat"><small>🛡️ Conservación</small><b>${dex.status}</b></div>
+            <div class="dex-stat"><small>📍 Hábitat</small><b>${dex.habitat}</b></div>
+            <div class="dex-stat"><small>🍃 Come</small><b>${dex.food}</b></div>
+          </div>
+          <div class="dex-fact"><b>💡 ¿Sabías que?</b> <span class="dex-fact-text">${nextFact(species)}</span>
+            <button type="button" class="dex-fact-more" onclick="window.showAnotherFact('${species}', this)"><i class="fas fa-shuffle"></i> Otro dato</button></div>
+        </div>
+        <div class="dex-tab-panel" data-panel="evo" hidden>
+          <div class="dex-evo">${evo}</div>
+        </div>
+        <div class="dex-tab-panel" data-panel="emotes" hidden>
           <div class="dex-emotes">${emotesFor(species).map(e => {
     const open = mode === 'view' || mode === 'starter' || (have && e.minStage <= myStage);
     return `<span class="${open ? '' : 'locked'}" title="${open ? '' : 'Se desbloquea en: ' + sp.names[e.minStage]}">${open ? e.bubble : '🔒'} ${e.label}</span>`;
   }).join('')}</div>
-        </details>
-        <details class="dex-details"><summary>Línea evolutiva</summary>
-          <div class="dex-evo">${evo}</div>
-        </details>
+        </div>
         <div class="dex-actions">${actions}</div>
       </div>
     </div>`);
