@@ -216,9 +216,9 @@ window.openCreateCourseModal = async function openCreateCourseModal(editCourseId
   const modal = document.createElement('div');
   modal.className = 'fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-sm animate-fadeIn';
   modal.innerHTML = `
-    <div class="glass-card w-full max-w-lg p-8 shadow-2xl animate-slideUp">
-      <h2 class="text-lg font-bold text-slate-800 dark:text-white uppercase tracking-tighter mb-6"><i class="fas fa-book-open text-primary mr-2"></i> ${editing ? 'Editar Curso' : 'Nuevo Curso'}</h2>
-      <div class="space-y-4">
+    <div class="glass-card w-full max-w-lg max-h-[85vh] flex flex-col p-8 shadow-2xl animate-slideUp">
+      <h2 class="text-lg font-bold text-slate-800 dark:text-white uppercase tracking-tighter mb-6 shrink-0"><i class="fas fa-book-open text-primary mr-2"></i> ${editing ? 'Editar Curso' : 'Nuevo Curso'}</h2>
+      <div class="space-y-4 overflow-y-auto custom-scrollbar pr-1 -mr-1">
         <div>
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Clase</label>
           <select id="course-class" class="input-field-tw h-11 text-sm" onchange="window.refreshCourseCnbAreaOptions()">
@@ -262,7 +262,7 @@ window.openCreateCourseModal = async function openCreateCourseModal(editCourseId
           <p class="text-[0.65rem] text-slate-400 mt-1">Si lo llenás, los estudiantes de este curso ven un botón para entrar a tu clase de Tinkercad.</p>
         </div>
       </div>
-      <div class="flex gap-3 mt-8">
+      <div class="flex gap-3 mt-8 shrink-0">
         <button class="btn-secondary-tw flex-1 h-11 text-xs uppercase font-bold" onclick="this.closest('.fixed').remove()">Cancelar</button>
         <button class="btn-primary-tw flex-1 h-11 text-xs uppercase font-bold" id="btn-save-course" onclick="window.saveCourse('${editing ? editing.id : ''}')">${editing ? 'Guardar Cambios' : 'Crear y Agregar Recursos'}</button>
       </div>

@@ -6,6 +6,7 @@ Al publicar una versión nueva, agregá una línea arriba de todo (ver CONTRIBUT
 
 ## 2026-10-01
 
+- Fix: el modal "Nuevo Curso / Editar Curso" no tenía límite de altura ni scroll propio -- en pantallas bajas (laptop con barra de tareas, ventana chica) el formulario se cortaba abajo del todo y no se podía llegar a los botones Cancelar/Crear. Ahora el modal tiene alto máximo y los campos scrollean, con el título arriba y los botones abajo siempre visibles (v1.0.139)
 - Gestión de curso (docente): botón para descargar el archivo de un recurso (PDF, imagen, video subido) desde la lista de recursos y desde la vista previa -- antes solo se podía ver, no bajar el archivo original. No aplica a H5P/SCORM (son paquetes, no un archivo único) ni a links externos (YouTube, Tinkercad) (v1.0.138)
 
 ## 2026-09-30
