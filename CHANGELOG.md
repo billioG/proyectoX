@@ -4,8 +4,9 @@ Cambios publicados en Quetzal LMS, del más reciente al más antiguo. Cada líne
 
 Al publicar una versión nueva, agregá una línea arriba de todo (ver CONTRIBUTING.md).
 
-## 2026-09-29
+## 2026-09-30
 
+- Chat del Asistente IA (burbuja de 1BOT): las respuestas de OpenAI venían en Markdown crudo y se mostraban tal cual (asteriscos, barras de tablas, etc. visibles como texto). Ahora se renderizan: negritas, cursivas, código en línea, listas y tablas. De paso, tanto el texto del alumno como el de la IA se escapan antes de insertarse (ya no se mete HTML sin filtrar al chat) (v1.0.137)
 - Quetzadex: primera mascota de Temporada 2 -- Panda (fauna global, ODS 15), dibujada en el mismo estilo que las 10 de Guatemala, con ficha, datos reales, sonido y emotes propios. Se compra con huevo (150 gemas) como el resto de las no iniciales. Requiere `migrations/companion-panda.sql` (v1.0.136)
 - Quetzadex: la ficha de cada mascota ahora tiene pestañas (Info / Evolución / Emotes) en vez de todo apilado en una sola pantalla con secciones plegables -- más parecido a una tarjeta de Pokédex (v1.0.135)
 - Ahorcado: la pista ahora es una pantalla propia que se lee ANTES de empezar a adivinar (botón "Listo, a adivinar"), en vez de mostrarse junto al teclado a la vez que se juega -- último punto pendiente de la tabla de comparación con PISA. El reloj visual sigue corriendo continuo entre las dos pantallas, no se reinicia (v1.0.134)

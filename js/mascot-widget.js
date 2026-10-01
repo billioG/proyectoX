@@ -655,12 +655,69 @@ const MascotWidget = {
         input.onkeypress = (e) => { if (e.key === 'Enter') this.sendAIMessage(); };
     },
 
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = String(text ?? '');
+        return div.innerHTML;
+    },
+
+    // Markdown liviano para respuestas de la IA (negritas, listas, tablas, etc).
+    // Siempre escapa el texto crudo primero: el markdown se arma sobre HTML seguro.
+    renderMarkdown(raw) {
+        const lines = this.escapeHtml(raw).split('\n');
+        const html = [];
+        let listBuf = [];
+        let tableBuf = [];
+
+        const inline = (s) => s
+            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.+?)\*/g, '<em>$1</em>')
+            .replace(/`(.+?)`/g, '<code class="bg-slate-100 dark:bg-slate-700 px-1 rounded">$1</code>');
+
+        const flushList = () => {
+            if (listBuf.length) { html.push(`<ul class="list-disc pl-5 space-y-1">${listBuf.join('')}</ul>`); listBuf = []; }
+        };
+        const flushTable = () => {
+            if (!tableBuf.length) return;
+            const rows = tableBuf.filter(r => !/^\s*\|?[\s:|-]+\|?\s*$/.test(r));
+            const cells = rows.map(r => r.replace(/^\||\|$/g, '').split('|').map(c => c.trim()));
+            if (cells.length) {
+                const [head, ...body] = cells;
+                html.push('<div class="overflow-x-auto"><table class="w-full text-left border-collapse my-1">');
+                html.push(`<thead><tr>${head.map(c => `<th class="border-b border-slate-200 dark:border-slate-700 pb-1 pr-3 font-bold">${inline(c)}</th>`).join('')}</tr></thead>`);
+                html.push(`<tbody>${body.map(r => `<tr>${r.map(c => `<td class="pr-3 py-1 align-top">${inline(c)}</td>`).join('')}</tr>`).join('')}</tbody>`);
+                html.push('</table></div>');
+            }
+            tableBuf = [];
+        };
+
+        for (const line of lines) {
+            if (/^\s*\|.*\|\s*$/.test(line)) { flushList(); tableBuf.push(line); continue; }
+            flushTable();
+            const heading = line.match(/^(#{1,3})\s+(.*)/);
+            const bullet = line.match(/^\s*[-*•]\s+(.*)/);
+            if (heading) {
+                flushList();
+                const sizes = { 1: 'text-base', 2: 'text-sm', 3: 'text-sm' };
+                html.push(`<p class="font-black ${sizes[heading[1].length]} mt-1">${inline(heading[2])}</p>`);
+            } else if (bullet) {
+                listBuf.push(`<li>${inline(bullet[1])}</li>`);
+            } else {
+                flushList();
+                if (line.trim()) html.push(`<p>${inline(line)}</p>`);
+            }
+        }
+        flushList();
+        flushTable();
+        return html.join('') || this.escapeHtml(raw);
+    },
+
     userBubbleHtml(text) {
-        return `<div class="flex gap-3 justify-end"><div class="bg-primary text-white p-4 rounded-2xl rounded-tr-none shadow-md text-sm font-bold max-w-[80%]">${text}</div></div>`;
+        return `<div class="flex gap-3 justify-end"><div class="bg-primary text-white p-4 rounded-2xl rounded-tr-none shadow-md text-sm font-bold max-w-[80%]">${this.escapeHtml(text)}</div></div>`;
     },
 
     assistantBubbleHtml(text) {
-        return `<div class="flex gap-3"><div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-xs shrink-0"><i class="fas fa-feather"></i></div><div class="bg-white dark:bg-slate-800 p-4 rounded-2xl rounded-tl-none shadow-sm text-sm font-medium text-slate-700 dark:text-slate-200 border border-slate-100 dark:border-slate-800">${text}</div></div>`;
+        return `<div class="flex gap-3"><div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-xs shrink-0"><i class="fas fa-feather"></i></div><div class="bg-white dark:bg-slate-800 p-4 rounded-2xl rounded-tl-none shadow-sm text-sm font-medium text-slate-700 dark:text-slate-200 border border-slate-100 dark:border-slate-800 space-y-1">${this.renderMarkdown(text)}</div></div>`;
     },
 
     async renderChatHistory() {
