@@ -547,6 +547,7 @@ window.renderCourseResourcesList = function renderCourseResourcesList() {
       </div>
       <div class="flex items-center gap-2 justify-end sm:justify-start shrink-0">
         <button class="w-7 h-7 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-primary transition-colors flex items-center justify-center shrink-0" onclick="window.previewCourseResource('${l.id}')" title="Ver recurso"><i class="fas fa-eye text-[0.65rem]"></i></button>
+        ${resourceDownloadUrl(l) ? `<a href="${resourceDownloadUrl(l)}" class="w-7 h-7 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-primary transition-colors flex items-center justify-center shrink-0" title="Descargar archivo"><i class="fas fa-download text-[0.65rem]"></i></a>` : ''}
         <button class="w-7 h-7 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-primary transition-colors flex items-center justify-center shrink-0 ${i === 0 ? 'opacity-30 pointer-events-none' : ''}" onclick="window.moveCourseResource('${l.id}', -1)"><i class="fas fa-arrow-up text-[0.65rem]"></i></button>
         <button class="w-7 h-7 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-primary transition-colors flex items-center justify-center shrink-0 ${i === lessons.length - 1 ? 'opacity-30 pointer-events-none' : ''}" onclick="window.moveCourseResource('${l.id}', 1)"><i class="fas fa-arrow-down text-[0.65rem]"></i></button>
         <button class="w-7 h-7 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-primary transition-colors flex items-center justify-center shrink-0" onclick="window.openAddResourceModal('${window._managingCourse.id}', '${l.id}')"><i class="fas fa-pen text-[0.6rem]"></i></button>
@@ -620,7 +621,10 @@ window.previewCourseResource = function previewCourseResource(lessonId) {
           <h3 class="text-sm font-black text-slate-800 dark:text-white">${sanitizeInput(lesson.title)}</h3>
           <p class="text-[0.6rem] text-slate-400 uppercase">${LESSON_TYPE_LABEL[lesson.content_type]} · Vista previa docente</p>
         </div>
-        <button class="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500 flex items-center justify-center" onclick="this.closest('.fixed').remove()"><i class="fas fa-times"></i></button>
+        <div class="flex items-center gap-2 shrink-0">
+          ${resourceDownloadUrl(lesson) ? `<a href="${resourceDownloadUrl(lesson)}" class="h-9 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-primary flex items-center gap-2 text-[0.65rem] font-black uppercase"><i class="fas fa-download"></i> Descargar</a>` : ''}
+          <button class="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500 flex items-center justify-center" onclick="this.closest('.fixed').remove()"><i class="fas fa-times"></i></button>
+        </div>
       </div>
       <div class="flex-1 overflow-y-auto custom-scrollbar p-5">
         ${mediaHtml || '<p class="text-slate-400 text-sm text-center py-10">No hay contenido para previsualizar.</p>'}
@@ -1752,6 +1756,22 @@ async function listStorageFilesRecursive(bucket, path) {
 function isOwnStorageUrl(url) {
   try { return new URL(url).hostname === new URL(window.SUPABASE_URL).hostname; }
   catch { return false; }
+}
+
+// Link de descarga directa para recursos que son un archivo propio (video
+// subido, PDF, imagen) -- H5P/SCORM son carpetas descomprimidas, no un
+// archivo único, y YouTube/Tinkercad son links externos: ninguno de esos
+// tiene sentido "descargar". El query param ?download fuerza
+// Content-Disposition: attachment en el storage de Supabase.
+function resourceDownloadUrl(lesson) {
+  if (!lesson.content_url || !['video', 'pdf', 'image'].includes(lesson.content_type)) return null;
+  if (lesson.content_type === 'video' && /youtu\.?be/i.test(lesson.content_url)) return null;
+  if (!isOwnStorageUrl(lesson.content_url)) return null;
+  const ext = (lesson.content_url.split('.').pop() || '').split('?')[0].split('#')[0].slice(0, 8);
+  const safeTitle = (lesson.title || 'recurso').replace(/[^a-z0-9áéíóúñü _-]/gi, '').trim() || 'recurso';
+  const filename = ext ? `${safeTitle}.${ext}` : safeTitle;
+  const sep = lesson.content_url.includes('?') ? '&' : '?';
+  return `${lesson.content_url}${sep}download=${encodeURIComponent(filename)}`;
 }
 
 async function getCourseOfflineUrls(course) {

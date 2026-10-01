@@ -4,6 +4,10 @@ Cambios publicados en Quetzal LMS, del más reciente al más antiguo. Cada líne
 
 Al publicar una versión nueva, agregá una línea arriba de todo (ver CONTRIBUTING.md).
 
+## 2026-10-01
+
+- Gestión de curso (docente): botón para descargar el archivo de un recurso (PDF, imagen, video subido) desde la lista de recursos y desde la vista previa -- antes solo se podía ver, no bajar el archivo original. No aplica a H5P/SCORM (son paquetes, no un archivo único) ni a links externos (YouTube, Tinkercad) (v1.0.138)
+
 ## 2026-09-30
 
 - Chat del Asistente IA (burbuja de 1BOT): las respuestas de OpenAI venían en Markdown crudo y se mostraban tal cual (asteriscos, barras de tablas, etc. visibles como texto). Ahora se renderizan: negritas, cursivas, código en línea, listas y tablas. De paso, tanto el texto del alumno como el de la IA se escapan antes de insertarse (ya no se mete HTML sin filtrar al chat) (v1.0.137)
