@@ -44,7 +44,7 @@ begin
     v_mine := p_reaction;
   end if;
 
-  select count(*) into v_votes from public.project_likes where project_id = p_project_id and reaction = 'like';
+  select count(*) into v_votes from public.project_likes where project_id = p_project_id and reaction in ('like', 'excelente');
   update public.projects set votes = v_votes where id = p_project_id;
 
   return jsonb_build_object('mine', v_mine, 'votes', v_votes);

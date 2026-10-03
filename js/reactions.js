@@ -32,7 +32,7 @@ function renderReactionRows(picker, projectId, counts, mine) {
       <span class="text-xl leading-none w-7 text-center">${r.emoji}</span>
       <span class="grow text-xs font-bold">${r.label}</span>
       <span class="text-[0.7rem] font-black text-slate-400">${counts?.[r.key] || 0}</span>
-    </button>`).join('');
+    </button>`).join('') + '<p class="px-3 pt-2 pb-1 text-[0.6rem] font-bold text-slate-400 leading-snug">❤️ y ⭐ suman votos para el Ranking.</p>';
   picker.querySelectorAll('[data-reaction]').forEach(btn => {
     btn.onclick = () => window.reactToProject(projectId, btn.dataset.reaction);
   });

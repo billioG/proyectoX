@@ -50,7 +50,7 @@ window.renderRankingInterface = function renderRankingInterface(container) {
         <div class="relative z-10">
             <h3 class="text-2xl font-bold mb-1 tracking-tight uppercase">HALL DE LA FAMA</h3>
             <p class="text-white/60 font-medium max-w-2xl leading-relaxed text-[0.7rem] uppercase tracking-widest">Excelencia técnica y validación de la comunidad.</p>
-            <p class="text-white/70 font-medium max-w-2xl leading-relaxed text-xs mt-3"><i class="fas fa-circle-info mr-1"></i> Orden: primero los "Me gusta" de la comunidad (<i class="fas fa-heart text-rose-400"></i>) y, si empatan, el score técnico del docente. Las demás reacciones (⭐ 🤩 🏅 💪) se ven al tocar el botón, pero no mueven el puesto. Tocá "Me gusta" en cualquier proyecto para reaccionar.</p>
+            <p class="text-white/70 font-medium max-w-2xl leading-relaxed text-xs mt-3"><i class="fas fa-circle-info mr-1"></i> Orden: primero los votos de la comunidad (❤️ Me gusta y ⭐ ¡Excelente, A+!) y, si empatan, el score técnico del docente. Las demás reacciones (🤩 🏅 💪) se ven al tocar el botón de votos, pero no mueven el puesto.</p>
         </div>
     </div>
 
@@ -156,7 +156,7 @@ window.renderRankingRows = function renderRankingRows(projects) {
           </div>
           
           <button type="button" onclick="window.openReactionPicker && window.openReactionPicker(${p.id}, this)" title="Reaccionar" class="text-center min-w-[50px] rounded-xl hover:bg-rose-500/10 transition-colors px-1 py-0.5">
-              <div class="text-[0.5rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5">Me gusta</div>
+              <div class="text-[0.5rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5">Votos</div>
               <div class="text-2xl font-bold text-rose-500 leading-none flex items-center justify-center gap-1.5">
                   <span class="text-xs opacity-70" data-react-icon="${p.id}"><i class="fas fa-heart"></i></span> <span data-votes-id="${p.id}">${p.votes || 0}</span>
               </div>

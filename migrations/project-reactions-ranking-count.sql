@@ -1,7 +1,7 @@
--- El Ranking solo debe contar los "Me gusta": projects.votes pasa a ser el
--- número de reacciones 'like' (las demás reacciones se ven en el selector pero
--- no mueven el puesto). Reemplaza react_to_project de project-reactions.sql y
--- recalcula votes con los datos actuales.
+-- El Ranking cuenta "Me gusta" Y "Excelente, A+": projects.votes = número de
+-- reacciones 'like' + 'excelente'. Las otras (wow, destacar, animo) se ven en
+-- el selector pero no mueven el puesto. Reemplaza react_to_project de
+-- project-reactions.sql / project-reactions-likes-only.sql y recalcula votes.
 --
 -- Seguro de re-ejecutar. Pegar completo en el SQL Editor de Supabase.
 
