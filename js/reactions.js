@@ -69,6 +69,21 @@ window.openReactionPicker = async function openReactionPicker(projectId, anchorE
   }
 };
 
+// El aviso en la campana lo crea un trigger en la base; esto solo pide el push
+// al dueño/equipo (notify-reaction). Best effort: si falla, no pasa nada.
+async function sendReactionPush(projectId) {
+  try {
+    const { data: { session } } = await window._supabase.auth.getSession();
+    await fetch(`${window.SUPABASE_URL}/functions/v1/notify-reaction`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
+      body: JSON.stringify({ project_id: projectId }),
+    });
+  } catch (err) {
+    console.warn('No se pudo enviar el push de reacción:', err);
+  }
+}
+
 window.reactToProject = async function reactToProject(projectId, reaction) {
   const showToast = window.showToast;
   closeReactionPicker();
@@ -77,6 +92,7 @@ window.reactToProject = async function reactToProject(projectId, reaction) {
     if (error) throw error;
 
     const info = window.PROJECT_REACTIONS.find(r => r.key === result.mine);
+    if (info) sendReactionPush(projectId);
     if (typeof showToast === 'function') {
       showToast(info ? `${info.emoji} ${info.label}` : '<i class="fas fa-heart-crack"></i> Reacción removida', info ? 'success' : 'default');
     }

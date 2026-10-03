@@ -68,9 +68,13 @@ seguras de re-ejecutar):
 - [x] `migrations/hangman-word-bank.sql` (v1.0.123) — requiere `migrations/duel-facts.sql` ya corrida. Categoría "Vida silvestre de Guatemala" en Ahorcado, banco fijo de 20 palabras.
 - [x] `migrations/timed-math-word-problems.sql` (v1.0.125) — requiere `migrations/student-timed-math-duels.sql` ya corrida. Contrarreloj: los problemas de 4to grado en adelante salen como mini-historia con contexto real (misma cuenta, mismo número).
 - [x] `migrations/sync-queue-idempotency.sql` (v1.0.127) — junta evaluar proyecto en una sola función atómica y agrega `client_ref` a `tutor_attendance` para que un reintento de la cola offline no duplique el check-in.
+- [ ] `migrations/fix-is-staff-coordinador.sql`, `migrations/fix-coordinator-own-schools.sql`, `migrations/fix-cross-school-public-projects.sql` (v1.0.142-145) — coordinador con acceso de docente y proyectos públicos entre colegios.
+- [ ] `migrations/project-reactions.sql` y después `migrations/project-reactions-ranking-count.sql` (v1.0.147-150) — reacciones en proyectos; el Ranking cuenta Me gusta + Excelente A+.
+- [ ] `migrations/project-reaction-notifications.sql` (v1.0.153) — aviso en la campanita al dueño/equipo cuando reaccionan a su proyecto.
 
 Redesplegar estas Edge Functions (cambiaron en las últimas versiones):
 
+- [ ] `notify-reaction` (nueva, v1.0.153) — **Verify JWT ON**; push al dueño/equipo del proyecto (sin nombre de quien reaccionó, máx. 1 cada 10 min por persona)
 - [x] `ai-generate-quiz`, `ai-generate-hangman-word`, `ai-generate-spelling-word`, `ai-generate-debug-steps` (retos sin repetir)
 - [x] `admin-bulk-import-students` (docentes agregan alumnos, usuario con nomenclatura del admin)
 - [x] `ai-proxy` (modo tutor)

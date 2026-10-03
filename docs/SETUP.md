@@ -100,7 +100,7 @@ for f in admin-bulk-import-students admin-create-teacher admin-delete-students \
   ai-generate-hangman-word ai-generate-spelling-word ai-generate-debug-steps \
   ai-evaluate-project ai-evaluate-mblock ai-generate-general-report \
   generate-team-match-quiz submit-team-match-answer submit-event-answer \
-  notify-duel notify-announcement notify-rock-pending notify-guardians; do
+  notify-duel notify-announcement notify-rock-pending notify-guardians notify-reaction; do
   npx supabase functions deploy $f
 done
 ```

@@ -119,7 +119,7 @@ manda el navegador.
 | `ai-evaluate-project`, `ai-evaluate-mblock`, `ai-generate-general-report` | IA para docentes y admin | JWT |
 | `generate-team-match-quiz`, `submit-team-match-answer` | Torneos | JWT |
 | `submit-event-answer` | Eventos sorpresa (puntaje en servidor) | JWT |
-| `notify-duel`, `notify-announcement`, `notify-rock-pending` | Notificaciones push | JWT |
+| `notify-duel`, `notify-announcement`, `notify-rock-pending`, `notify-reaction` | Notificaciones push | JWT |
 | `notify-guardians` | Envía avisos a padres (push o SMS) | JWT |
 | `guardian-portal` | Backend del Portal de padres (token personal) | Sin JWT |
 | `student-login` | Login de alumnos por usuario y clases sin contraseña | Sin JWT |

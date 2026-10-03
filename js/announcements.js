@@ -33,7 +33,9 @@ window.loadAnnouncementsUnreadCount = async function loadAnnouncementsUnreadCoun
   // "te retaron" solo prendía el punto rojo del botón Centro de Juego, que
   // el alumno no siempre asocia con "tengo una notificación nueva".
   const pendingChallenges = await getPendingChallengeCards();
-  const unread = unreadAnnouncements + pendingSurveys.length + (unreadCommentNotifs?.length || 0) + pendingChallenges.length;
+  const { data: unreadReactionNotifs } = await _supabase.from('project_reaction_notifications')
+    .select('id').eq('read', false).not('reaction', 'is', null);
+  const unread = unreadAnnouncements + pendingSurveys.length + (unreadCommentNotifs?.length || 0) + pendingChallenges.length + (unreadReactionNotifs?.length || 0);
 
   if (unread > 0) {
     badge.textContent = unread;
@@ -100,13 +102,36 @@ window.openAnnouncementsInbox = async function openAnnouncementsInbox() {
   `;
   document.body.appendChild(modal);
 
-  const [{ data: announcements, error }, pendingSurveys, adminSurveys, { data: commentNotifs }, pendingChallenges] = await Promise.all([
+  const [{ data: announcements, error }, pendingSurveys, adminSurveys, { data: commentNotifs }, pendingChallenges, { data: reactionNotifs }] = await Promise.all([
     _supabase.from('announcements').select('id, title, message, sender_id, sender_role, created_at').order('created_at', { ascending: false }).limit(50),
     typeof window.getPendingSurveys === 'function' ? window.getPendingSurveys() : Promise.resolve([]),
     window.userRole === 'admin' ? _supabase.from('surveys').select('id, title, created_at').order('created_at', { ascending: false }).limit(10) : Promise.resolve({ data: [] }),
     _supabase.from('comment_notifications').select('id, type, actor_name, content_preview, lesson_id, read, created_at').order('created_at', { ascending: false }).limit(30),
     getPendingChallengeCards(),
+    _supabase.from('project_reaction_notifications').select('id, reaction, read, created_at, projects(title)')
+      .not('reaction', 'is', null).order('created_at', { ascending: false }).limit(30),
   ]);
+
+  const unreadReactionIds = (reactionNotifs || []).filter(n => !n.read).map(n => n.id);
+  if (unreadReactionIds.length) {
+    await _supabase.from('project_reaction_notifications').update({ read: true }).in('id', unreadReactionIds);
+    window.loadAnnouncementsUnreadCount();
+  }
+
+  // El aviso no dice QUIÉN reaccionó (menores) -- solo con qué y a qué proyecto.
+  const reactionCards = (reactionNotifs || []).map(n => {
+    const info = (window.PROJECT_REACTIONS || []).find(r => r.key === n.reaction);
+    const title = (Array.isArray(n.projects) ? n.projects[0] : n.projects)?.title || 'tu proyecto';
+    return `
+    <div class="p-4 rounded-xl border cursor-pointer hover:border-primary/30 transition-colors ${n.read ? 'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-800' : 'bg-rose-500/5 border-rose-400/30'}" onclick="this.closest('.fixed').remove(); window.nav && window.nav('ranking')">
+      <div class="flex items-center gap-2">
+        <span class="text-lg leading-none">${info ? info.emoji : '❤️'}</span>
+        <p class="text-xs text-slate-600 dark:text-slate-300 font-bold">Alguien reaccionó con "${sanitizeInput(info ? info.label : 'Me gusta')}" a «${sanitizeInput(title)}»</p>
+        ${!n.read ? '<span class="w-2 h-2 rounded-full bg-rose-500 ml-auto shrink-0"></span>' : ''}
+      </div>
+      <p class="text-[0.6rem] text-slate-400 uppercase font-bold mt-1 pl-7">${new Date(n.created_at).toLocaleDateString('es-GT')}</p>
+    </div>`;
+  }).join('');
 
   const challengeCards = (pendingChallenges || []).map(c => {
     const challengerName = (Array.isArray(c.challenger) ? c.challenger[0] : c.challenger)?.full_name || 'Alguien';
@@ -190,7 +215,7 @@ window.openAnnouncementsInbox = async function openAnnouncementsInbox() {
     ? `<p class="text-[0.6rem] font-black uppercase text-slate-400 tracking-widest mt-4 mb-1">Mis Encuestas</p>${adminSurveyCards}`
     : '';
 
-  listEl.innerHTML = challengeCards + commentNotifCards + surveyCards + announcementCards + adminSurveysBlock
+  listEl.innerHTML = challengeCards + reactionCards + commentNotifCards + surveyCards + announcementCards + adminSurveysBlock
     || '<p class="text-slate-400 text-sm text-center py-10">Todavía no tenés avisos.</p>';
 
   // Marcar todos como leídos al abrir la bandeja.
