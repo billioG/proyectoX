@@ -418,5 +418,27 @@ window.sanitizeAttr = sanitizeAttr;
 window.showToast = showToast;
 window.getStatusBadge = getStatusBadge;
 window.fetchWithCache = fetchWithCache;
+
+// El embed students(...) de un proyecto llega null cuando el autor es de otra
+// clase (la RLS de students solo deja ver a uno mismo/compañeros/personal).
+// Esto completa nombre/curso/escuela con una función que devuelve solo esos
+// campos de autores de proyectos visibles (migrations/fix-cross-school-public-projects.sql).
+window.attachProjectAuthors = async function attachProjectAuthors(projects) {
+    const missing = (projects || []).filter(p => !p.students && p.user_id);
+    if (!missing.length) return projects;
+    const ids = [...new Set(missing.map(p => p.user_id))];
+    const { data, error } = await window._supabase.rpc('public_project_authors', { p_user_ids: ids });
+    if (error) {
+        console.warn('No se pudieron completar los autores de proyectos:', error.message);
+        return projects;
+    }
+    const byId = new Map((data || []).map(a => [a.id, {
+        id: a.id, full_name: a.full_name, school_code: a.school_code, grade: a.grade,
+        section: a.section, profile_photo_url: a.profile_photo_url,
+        schools: { code: a.school_code, name: a.school_name }
+    }]));
+    missing.forEach(p => { p.students = byId.get(p.user_id) || null; });
+    return projects;
+};
 window.compressData = compressData;
 window.decompressData = decompressData;

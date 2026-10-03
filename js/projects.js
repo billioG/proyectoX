@@ -32,6 +32,7 @@ window.loadFeed = async function loadFeed() {
         .order('votes', { ascending: false })
         .order('score', { ascending: false });
       if (error) throw error;
+      await window.attachProjectAuthors(data);
       return data;
     }, (allProjects) => {
       if (allProjects) window.processAndRenderFeed(container, allProjects);

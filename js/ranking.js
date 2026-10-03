@@ -21,12 +21,14 @@ window.loadRanking = async function loadRanking() {
   try {
     await fetchWithCache('global_ranking_top_20', async () => {
       // Para el ranking, mostramos los top 20 más innovadores (combinación de likes y puntaje)
-      return await _supabase.from('projects')
+      const res = await _supabase.from('projects')
         .select(`*, students(id, full_name, school_code, grade, section, schools(name)), groups(name)`)
         .not('score', 'is', null)
         .order('votes', { ascending: false })
         .order('score', { ascending: false })
         .limit(20);
+      if (res.data) await window.attachProjectAuthors(res.data);
+      return res;
     }, (projects) => {
       window.allRankingProjects = projects;
       window.renderRankingInterface(container);

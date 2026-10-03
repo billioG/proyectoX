@@ -22,6 +22,7 @@ window.viewProjectDetails = async function viewProjectDetails(projectId) {
       .single();
 
     if (error) throw error;
+    await window.attachProjectAuthors?.([project]);
     console.log("PROYECTO CARGADO:", project);
 
     // REINTENTO DE CARGA DE EVALUACIÓN (Si el join falló o el score es > 0)
