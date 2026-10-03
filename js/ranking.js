@@ -19,11 +19,22 @@ window.loadRanking = async function loadRanking() {
   }
 
   try {
-    await fetchWithCache('global_ranking_top_20', async () => {
+    // Estudiantes: interruptor "Todos / Mi grupo". Mi grupo = su misma clase
+    // (establecimiento + grado + sección); se consulta aparte para que el top
+    // sea de SU clase y no los pocos de ella que cayeron en el top global.
+    const me = window.userData;
+    const onlyMine = isStudentRanking() && rankingScope() === 'mine' && me?.school_code;
+    const cacheKey = onlyMine ? `ranking_class_${me.school_code}_${me.grade}_${me.section}` : 'global_ranking_top_20';
+
+    await fetchWithCache(cacheKey, async () => {
       // Para el ranking, mostramos los top 20 más innovadores (combinación de likes y puntaje)
-      const res = await _supabase.from('projects')
-        .select(`*, students(id, full_name, school_code, grade, section, schools(name)), groups(name)`)
-        .not('score', 'is', null)
+      let query = _supabase.from('projects')
+        .select(`*, students${onlyMine ? '!inner' : ''}(id, full_name, school_code, grade, section, schools(name)), groups(name)`)
+        .not('score', 'is', null);
+      if (onlyMine) {
+        query = query.eq('students.school_code', me.school_code).eq('students.grade', me.grade).eq('students.section', me.section);
+      }
+      const res = await query
         .order('votes', { ascending: false })
         .order('score', { ascending: false })
         .limit(20);
@@ -41,6 +52,37 @@ window.loadRanking = async function loadRanking() {
   }
 }
 
+function isStudentRanking() {
+  return window.userRole === 'estudiante';
+}
+
+function rankingScope() {
+  try { return localStorage.getItem('px_ranking_scope') === 'mine' ? 'mine' : 'all'; }
+  catch { return 'all'; }
+}
+
+window.setRankingScope = function setRankingScope(scope) {
+  try { localStorage.setItem('px_ranking_scope', scope); } catch { /* sin storage: queda en "todos" */ }
+  window.loadRanking();
+};
+
+function rankingScopeToggleHtml() {
+  const me = window.userData;
+  const scope = rankingScope();
+  const btn = (key, icon, label) => `
+    <button type="button" onclick="window.setRankingScope('${key}')" aria-pressed="${scope === key}"
+      class="flex-1 min-w-0 md:flex-none h-11 px-3 sm:px-5 rounded-xl text-[0.65rem] sm:text-xs font-bold uppercase tracking-wider sm:tracking-widest whitespace-nowrap flex items-center justify-center gap-2 transition-all ${scope === key ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'text-slate-500 hover:text-primary'}">
+      <i class="fas ${icon}"></i> ${label}
+    </button>`;
+  return `
+    <div class="flex mb-8 animate-fadeIn">
+      <div class="w-full md:w-auto flex gap-1 p-1 rounded-2xl bg-slate-100 dark:bg-slate-800/60">
+        ${btn('all', 'fa-earth-americas', 'Ver todos')}
+        ${btn('mine', 'fa-users', `Mi grupo${me?.grade ? `<span class="hidden sm:inline normal-case tracking-normal opacity-80">· ${window.sanitizeInput(me.grade)} ${window.sanitizeInput(me.section || '')}</span>` : ''}`)}
+      </div>
+    </div>`;
+}
+
 window.renderRankingInterface = function renderRankingInterface(container) {
   const userRole = window.userRole;
   const sanitizeInput = window.sanitizeInput;
@@ -55,6 +97,7 @@ window.renderRankingInterface = function renderRankingInterface(container) {
     </div>
 
     <!-- Filtros -->
+    ${userRole === 'estudiante' ? rankingScopeToggleHtml() : ''}
     ${userRole !== 'estudiante' ? `
     <div class="flex flex-col md:flex-row gap-4 mb-8 animate-fadeIn">
         <div class="grow flex flex-col md:flex-row gap-4">
@@ -185,5 +228,6 @@ function filterRanking() {
 
   renderRankingRows(filtered);
 }
+window.filterRanking = filterRanking;
 
 console.log('✅ ranking.js refacturado (Top 20 Hall of Fame)');
