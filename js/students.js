@@ -337,6 +337,8 @@ window.renderStudentsList = function renderStudentsList(container, students, all
         </div>
       </div>
 
+      <div id="students-online-total" class="flex items-center gap-2 mb-4 px-1 text-xs font-bold text-emerald-500"></div>
+
       ${userRole === 'admin' ? `
       <div class="flex items-center justify-between mb-6 px-1">
         <label class="flex items-center gap-2 text-xs font-bold text-slate-500 cursor-pointer">
@@ -390,6 +392,7 @@ window.renderStudentsList = function renderStudentsList(container, students, all
                     <div class="bg-slate-50 dark:bg-slate-800/50 rounded-lg px-4 py-2.5 flex items-center justify-between hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                       <span class="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">${window.sanitizeInput(cg.grade)} ${window.sanitizeInput(cg.section)} <span class="text-slate-400 font-normal normal-case">· ${cg.students.length} ${cg.students.length === 1 ? 'alumno' : 'alumnos'}</span></span>
                       <div class="flex items-center gap-2">
+                        <span class="class-online text-[0.65rem]" data-room="${window.sanitizeAttr(window.StudentPresence?.roomName(schoolCode, cg.grade, cg.section) || '')}"></span>
                         ${userRole === 'admin' && window.isRegularGrade?.(cg.grade) ? `
                           <button onclick="event.preventDefault(); event.stopPropagation(); window.promoteClassToNextGrade('${window.sanitizeAttr(schoolCode)}', '${window.sanitizeAttr(cg.grade)}', '${window.sanitizeAttr(cg.section)}', ${cg.students.length})" class="h-7 px-3 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white transition-colors text-[0.6rem] font-black uppercase tracking-widest flex items-center gap-1.5">
                             <i class="fas fa-graduation-cap"></i> Promover
@@ -402,20 +405,23 @@ window.renderStudentsList = function renderStudentsList(container, students, all
                   <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 mt-3">
                     ${cg.students.map(s => `
                 <div class="student-card bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 p-3 flex items-center gap-3 group relative overflow-hidden hover:border-primary/30 transition-all shadow-sm"
+                     data-id="${window.sanitizeAttr(s.id)}"
                      data-name="${window.sanitizeAttr(s.full_name?.toLowerCase() || '')}"
                      data-cui="${window.sanitizeAttr(s.cui || '')}"
                      data-username="${window.sanitizeAttr(s.username?.toLowerCase() || '')}">
                   ${window.userRole === 'admin' ? `
                     <input type="checkbox" class="student-select-checkbox w-4 h-4 shrink-0" value="${window.sanitizeAttr(s.id)}" onchange="window.updateBulkDeleteBar()">
                   ` : ''}
-                  <div class="w-10 h-10 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-500 group-hover:bg-primary group-hover:text-white transition-colors flex items-center justify-center font-bold text-sm shrink-0">
+                  <div class="relative w-10 h-10 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-500 group-hover:bg-primary group-hover:text-white transition-colors flex items-center justify-center font-bold text-sm shrink-0">
                     ${window.sanitizeInput((s.full_name || 'A')[0])}
+                    <span class="presence-dot hidden absolute -top-1 -right-1 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900" title="En línea ahora"></span>
                   </div>
                   <div class="min-w-0 flex-1">
                     <h4 class="text-xs font-black text-slate-800 dark:text-white truncate uppercase tracking-tight">${window.sanitizeInput(s.full_name || '')}</h4>
                     <div class="flex items-center gap-2 mt-1">
                         <span class="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[0.55rem] font-bold text-slate-500 uppercase tracking-widest">${s.grade} ${s.section}</span>
                         <span class="text-[0.6rem] font-mono text-slate-400">@${s.username || 'sin-usuario'}</span>
+                        <span class="presence-pill hidden px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/30 text-[0.55rem] font-bold text-emerald-600 uppercase tracking-widest">En línea</span>
                         ${s.status === 'baja' ? '<span class="px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-900/30 text-[0.55rem] font-bold text-rose-500 uppercase tracking-widest">Baja</span>' : ''}
                         ${s.status === 'egresado' ? '<span class="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/30 text-[0.55rem] font-bold text-amber-600 uppercase tracking-widest">Egresado</span>' : ''}
                     </div>
@@ -458,6 +464,7 @@ window.renderStudentsList = function renderStudentsList(container, students, all
         `;}).join('')}
       </div>
   `;
+  window.StudentPresence?.watch(students);
 }
 
 window.filterStudents = function filterStudents() {

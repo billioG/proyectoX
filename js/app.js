@@ -35,6 +35,7 @@ import './surveys.js';
 import './activity-tracker.js';
 import './admin-dashboard.js';
 import './teachers.js';
+import './student-presence.js';
 import './students.js';
 import './schools.js';
 import './ranking.js';

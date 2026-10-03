@@ -4,6 +4,10 @@ Cambios publicados en Quetzal LMS, del más reciente al más antiguo. Cada líne
 
 Al publicar una versión nueva, agregá una línea arriba de todo (ver CONTRIBUTING.md).
 
+## 2026-10-03
+
+- Gestionar estudiantes: el docente (y el admin) ahora ve quién está en línea -- punto verde sobre el avatar, etiqueta "En línea", un contador por clase y el total arriba de la lista. Usa la misma sala de presencia en tiempo real que ya publican los alumnos (app abierta y visible), así que no requiere SQL ni tablas nuevas; el docente solo escucha, no aparece conectado él. Se suscribe como máximo a 40 clases a la vez (v1.0.146)
+
 ## 2026-10-02
 
 - **Fix**: el Hall de la Fama / Ranking y el feed solo mostraban proyectos de la propia clase aunque los otros establecimientos tuvieran los proyectos públicos. Era una regresión de `fix-students-and-notifications-rls.sql`: la política que oculta proyectos de colegios privados consultaba `students`, y al restringir esa tabla dejaba de ver al autor de proyectos de otras clases (y los mostraba sin nombre). Ahora la visibilidad pasa por una función SECURITY DEFINER y el nombre/curso/escuela del autor se completa con `public_project_authors()`, que devuelve solo esos campos (nada de CUI, correo, contraseñas ni PIN). Requiere `migrations/fix-cross-school-public-projects.sql` (v1.0.145)
