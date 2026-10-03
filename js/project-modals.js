@@ -50,7 +50,18 @@ window.viewProjectDetails = async function viewProjectDetails(projectId) {
     // ajenos no.
     const canSeeFeedback = isOwner || isGroupMember || userRole === 'admin';
 
+    // Eliminar: el admin siempre; un docente solo proyectos de alumnos de un
+    // establecimiento donde tiene clase asignada (ej. se subió con la cuenta
+    // equivocada).
+    let canDelete = userRole === 'admin';
+    if (userRole === 'docente' && project.students?.school_code) {
+      const { data: mine } = await _supabase.from('teacher_assignments').select('school_code')
+        .eq('teacher_id', currentUser.id).eq('school_code', project.students.school_code).limit(1);
+      canDelete = !!mine?.length;
+    }
+
     const modal = document.createElement('div');
+    modal.dataset.projectModal = project.id;
     modal.className = 'fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-300';
     modal.innerHTML = `
       <div class="glass-card w-full max-w-4xl max-h-[90vh] overflow-y-auto overflow-x-hidden p-0 dark:bg-slate-900 shadow-2xl animate-in zoom-in-95 duration-300">
@@ -69,6 +80,10 @@ window.viewProjectDetails = async function viewProjectDetails(projectId) {
                     <div class="bg-primary text-white font-bold px-4 py-2 rounded-xl shadow-lg shadow-primary/30">
                         ${project.score}<span class="text-[0.7rem] opacity-70 ml-1">/100</span>
                     </div>` : ''}
+                ${canDelete ? `
+                <button class="h-10 px-3 rounded-xl text-rose-500 hover:bg-rose-500 hover:text-white flex items-center gap-2 text-[0.65rem] font-black uppercase tracking-widest transition-colors" title="Eliminar proyecto" onclick="window.deleteProject(${project.id}, '${window.sanitizeAttr ? window.sanitizeAttr(project.title).replace(/'/g, "\\'") : ''}')">
+                    <i class="fas fa-trash-alt"></i> Eliminar
+                </button>` : ''}
                 <button class="w-10 h-10 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center text-slate-500 transition-colors" onclick="this.closest('.fixed').remove()">
                     <i class="fas fa-times text-xl"></i>
                 </button>
@@ -258,6 +273,44 @@ window.openStudentChallengeModal = async function openStudentChallengeModal(chal
       </div>
   `;
   document.body.appendChild(modal);
+}
+
+// Borra el proyecto (la evaluación, reacciones y avisos se borran en cascada
+// en la base) y, si se puede, su archivo en Storage. El .select() sirve para
+// notar un borrado bloqueado por permisos: sin error pero con 0 filas.
+window.deleteProject = async function deleteProject(projectId, title) {
+  const _supabase = window._supabase;
+  const showToast = window.showToast;
+  if (!confirm(`¿Eliminar el proyecto "${title || ''}"?\n\nSe borra también su evaluación, reacciones y archivo. No se puede deshacer.`)) return;
+
+  try {
+    const { data: project } = await _supabase.from('projects').select('video_url').eq('id', projectId).maybeSingle();
+
+    const { data: deleted, error } = await _supabase.from('projects').delete().eq('id', projectId).select('id');
+    if (error) throw error;
+    if (!deleted?.length) throw new Error('Sin permiso para eliminar este proyecto');
+
+    try {
+      const path = project?.video_url ? decodeURIComponent(new URL(project.video_url).pathname.split('/project-videos/')[1] || '') : '';
+      if (path) await _supabase.storage.from('project-videos').remove([path]);
+    } catch (e) { console.warn('No se pudo borrar el archivo del proyecto:', e); }
+
+    // El feed y el ranking muestran primero lo que tienen en caché: se saca de ahí.
+    for (const key of ['projects_feed_cache', 'global_ranking_top_20']) {
+      try {
+        const cached = await window._syncManager?.getCache(key);
+        if (Array.isArray(cached)) await window._syncManager.setCache(key, cached.filter(p => p.id !== projectId));
+      } catch (e) { /* sin caché */ }
+    }
+
+    document.querySelectorAll(`[data-project-modal="${projectId}"]`).forEach(m => m.remove());
+    if (typeof showToast === 'function') showToast('<i class="fas fa-trash-alt"></i> Proyecto eliminado', 'success');
+    if (document.getElementById('ranking-list')) window.loadRanking?.();
+    window.loadFeed?.();
+  } catch (err) {
+    console.error('Error eliminando proyecto:', err);
+    if (typeof showToast === 'function') showToast(`<i class="fas fa-circle-xmark"></i> No se pudo eliminar: ${window.sanitizeInput ? window.sanitizeInput(err.message || 'error') : 'error'}`, 'error');
+  }
 }
 
 window.uploadProject = async function uploadProject() {
