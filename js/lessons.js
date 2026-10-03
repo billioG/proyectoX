@@ -640,7 +640,7 @@ window.previewCourseResource = function previewCourseResource(lessonId) {
   window.loadTeacherResourceComments(lessonId);
 
   if (lesson.content_type === 'scorm' || lesson.content_type === 'html5') {
-    window.loadIframeViaFetch('teacher-preview-frame', lesson.content_url);
+    window.loadIframeViaFetch('teacher-preview-frame', lesson.content_url, lesson.id);
   } else if (lesson.content_type === 'h5p') {
     // Mismo reproductor aislado que el alumno, pero sin escuchar notas --
     // es solo vista previa, no crea lesson_completions.
@@ -2166,10 +2166,10 @@ window.selectCourseResource = function selectCourseResource(index) {
   }
 
   if (lesson.content_type === 'scorm') {
-    window.loadIframeViaFetch('scorm-frame', lesson.content_url);
+    window.loadIframeViaFetch('scorm-frame', lesson.content_url, lesson.id);
     window.initScormSession(lesson.id);
   } else if (lesson.content_type === 'html5') {
-    window.loadIframeViaFetch('html5-frame', lesson.content_url);
+    window.loadIframeViaFetch('html5-frame', lesson.content_url, lesson.id);
   } else if (lesson.content_type === 'h5p') {
     window.initH5PSession(lesson);
   }
@@ -2568,13 +2568,34 @@ function updateLiveScoreLabel(score, status) {
 // largo en selectCourseResource() sobre por qué src="" no funciona (Supabase
 // pisa el Content-Type a text/plain + CSP sandbox en cualquier respuesta
 // HTML servida a un cliente, y de paso deja el iframe en otro origen).
-window.loadIframeViaFetch = async function loadIframeViaFetch(iframeId, url) {
+// El iframe srcdoc comparte ORIGEN con Quetzal, así que el localStorage del
+// paquete (que guarda su avance con una clave fija por curso) lo veían todos:
+// el alumno anterior en el mismo navegador, o el docente al previsualizar. Eso
+// era el "al entrar ya marca 100%" con "Nota actual: --" (la barra leía un
+// avance ajeno y el paquete aún no había reportado ninguna nota). Se inyecta
+// antes de cualquier script del paquete un localStorage/sessionStorage con
+// prefijo por usuario+lección: cada alumno ve solo lo suyo, sin tocar el ZIP.
+function withIsolatedStorage(html, scopeKey) {
+  const patch = `<script>(function(){var P=${JSON.stringify('px:' + scopeKey + ':')};
+function mk(real){function mine(){return Object.keys(real).filter(function(k){return k.indexOf(P)===0;});}
+return{getItem:function(k){return real.getItem(P+k);},setItem:function(k,v){real.setItem(P+k,v);},
+removeItem:function(k){real.removeItem(P+k);},clear:function(){mine().forEach(function(k){real.removeItem(k);});},
+key:function(i){var ks=mine();return ks[i]===undefined?null:ks[i].slice(P.length);},get length(){return mine().length;}};}
+try{Object.defineProperty(window,'localStorage',{value:mk(window.localStorage),configurable:true});
+Object.defineProperty(window,'sessionStorage',{value:mk(window.sessionStorage),configurable:true});}catch(e){}})();<\/script>`;
+  const head = html.match(/<head[^>]*>/i);
+  return head ? html.replace(head[0], head[0] + patch) : patch + html;
+}
+
+window.loadIframeViaFetch = async function loadIframeViaFetch(iframeId, url, scope) {
   const iframe = document.getElementById(iframeId);
   if (!iframe || !url) return;
   try {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    iframe.srcdoc = await res.text();
+    const html = await res.text();
+    const userId = window.currentUser?.id;
+    iframe.srcdoc = scope && userId ? withIsolatedStorage(html, `${userId}:${scope}`) : html;
   } catch (e) {
     console.error('Error cargando contenido embebido:', e);
     iframe.srcdoc = '<p style="font-family:sans-serif;color:#e11d48;padding:24px;text-align:center;">No se pudo cargar el contenido.</p>';
