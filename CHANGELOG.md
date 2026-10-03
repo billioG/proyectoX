@@ -6,6 +6,7 @@ Al publicar una versión nueva, agregá una línea arriba de todo (ver CONTRIBUT
 
 ## 2026-10-03
 
+- Proyectos: además del "me gusta" ahora hay 5 reacciones -- ❤️ Me gusta, ⭐ ¡Excelente, A+!, 🤩 ¡WOW!, 🏅 Merece destacarse y 💪 ¡Sigue adelante!. Al tocar el botón de la tarjeta se abre un selector con cuántas lleva cada una. Cada persona tiene una sola reacción por proyecto (cambiarla la reemplaza, tocar la misma la quita) y el total sigue siendo `votes`, así que el Ranking no cambia. El botón muestra tu reacción en vez del corazón. Requiere `migrations/project-reactions.sql` (v1.0.147)
 - Gestionar estudiantes: el docente (y el admin) ahora ve quién está en línea -- punto verde sobre el avatar, etiqueta "En línea", un contador por clase y el total arriba de la lista. Usa la misma sala de presencia en tiempo real que ya publican los alumnos (app abierta y visible), así que no requiere SQL ni tablas nuevas; el docente solo escucha, no aparece conectado él. Se suscribe como máximo a 40 clases a la vez (v1.0.146)
 
 ## 2026-10-02

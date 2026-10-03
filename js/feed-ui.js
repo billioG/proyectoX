@@ -146,8 +146,8 @@ window.renderProjectCard = function renderProjectCard(p) {
             </div>
 
             ${currentUser ? `
-              <button onclick="window.toggleLike && window.toggleLike(${p.id})" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-500/5 text-rose-500 hover:bg-rose-500 hover:text-white transition-all group/like shrink-0">
-                  <i class="fas fa-heart text-xs group-hover/like:scale-125 transition-transform"></i>
+              <button onclick="window.openReactionPicker && window.openReactionPicker(${p.id}, this)" title="Reaccionar" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-500/5 text-rose-500 hover:bg-rose-500 hover:text-white transition-all group/like shrink-0">
+                  <span class="text-xs leading-none group-hover/like:scale-125 transition-transform" data-react-icon="${p.id}"><i class="fas fa-heart"></i></span>
                   <span class="text-[0.7rem] font-black" data-votes-id="${p.id}">${p.votes || 0}</span>
               </button>
             ` : ''}
