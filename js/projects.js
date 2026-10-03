@@ -71,6 +71,7 @@ window.processAndRenderFeed = async function processAndRenderFeed(container, all
   const cardsHTML = `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 pb-20">${projects.map(p => (typeof window.renderProjectCard === 'function') ? window.renderProjectCard(p) : '').join('')}</div>`;
   container.innerHTML = headerHTML + cardsHTML;
 
+  restoreFeedFilters();
   window.setupVideoAudioControl();
   window.applyMyReactionIcons();
 }
@@ -207,8 +208,19 @@ window.renderFeedFilters = function renderFeedFilters(projects) {
   const userRole = window.userRole;
   const sanitizeInput = window.sanitizeInput || ((v) => v);
 
-  if (userRole !== 'docente' && userRole !== 'admin') return '';
-  const schools = [...new Set(projects.map(p => p.students?.schools?.name).filter(Boolean))].sort();
+  const sanitizeAttr = window.sanitizeAttr || ((v) => v);
+
+  // Establecimientos presentes en el feed, por código (el nombre puede
+  // repetirse o diferir en mayúsculas entre filas).
+  const schoolsByCode = new Map();
+  projects.forEach(p => {
+    const code = p.students?.school_code;
+    if (code && !schoolsByCode.has(code)) schoolsByCode.set(code, p.students?.schools?.name || code);
+  });
+  const myCode = userRole === 'estudiante' ? window.userData?.school_code : null;
+  const options = [...schoolsByCode].filter(([code]) => code !== myCode).sort((a, b) => a[1].localeCompare(b[1]));
+  const mine = myCode ? [[myCode, schoolsByCode.get(myCode) || 'Mi establecimiento']] : [];
+
   return `
         <div class="col-span-full glass-card p-4 mb-8 flex flex-col md:flex-row gap-4 items-center animate-slideUp border-none shadow-sm">
             <div class="relative grow w-full">
@@ -217,23 +229,40 @@ window.renderFeedFilters = function renderFeedFilters(projects) {
             </div>
             <select id="filter-school" class="w-full md:w-64 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl text-[0.65rem] font-bold uppercase tracking-widest focus:ring-2 focus:ring-primary/20 transition-all" onchange="window.applyFeedFilters()">
                 <option value="">TODAS LAS ENTIDADES</option>
-                ${schools.map(s => `<option value="${s}">${sanitizeInput(s)}</option>`).join('')}
+                ${mine.map(([code, name]) => `<option value="${sanitizeAttr(code)}">★ Mi establecimiento (${sanitizeInput(name)})</option>`).join('')}
+                ${options.map(([code, name]) => `<option value="${sanitizeAttr(code)}">${sanitizeInput(name)}</option>`).join('')}
             </select>
         </div>
     `;
 }
 
-window.applyFeedFilters = function applyFeedFilters() {
-  const title = (document.getElementById('filter-title')?.value || '').toLowerCase();
-  const school = document.getElementById('filter-school')?.value || '';
-  const cards = document.querySelectorAll('.project-card');
+// El feed se pinta dos veces (primero desde caché, luego con datos frescos) y
+// cada pintado recrea los controles: el filtro se guarda acá y se reaplica
+// después de cada render, si no se perdía apenas llegaban los datos nuevos.
+window._feedFilters = { title: '', school: '' };
 
-  cards.forEach(card => {
+window.applyFeedFilters = function applyFeedFilters() {
+  const titleEl = document.getElementById('filter-title');
+  const schoolEl = document.getElementById('filter-school');
+  if (titleEl) window._feedFilters.title = titleEl.value;
+  if (schoolEl) window._feedFilters.school = schoolEl.value;
+
+  const title = window._feedFilters.title.trim().toLowerCase();
+  const school = window._feedFilters.school;
+
+  document.querySelectorAll('.project-card').forEach(card => {
     const cardTitle = (card.getAttribute('data-title') || '').toLowerCase();
-    const cardSchool = card.getAttribute('data-school') || '';
-    const match = cardTitle.includes(title) && (!school || cardSchool === school);
-    card.style.display = match ? 'flex' : 'none';
+    const match = cardTitle.includes(title) && (!school || card.getAttribute('data-school-code') === school);
+    card.style.display = match ? '' : 'none';
   });
+}
+
+function restoreFeedFilters() {
+  const titleEl = document.getElementById('filter-title');
+  const schoolEl = document.getElementById('filter-school');
+  if (titleEl) titleEl.value = window._feedFilters.title;
+  if (schoolEl) schoolEl.value = window._feedFilters.school;
+  window.applyFeedFilters();
 }
 
 window.setupVideoAudioControl = function setupVideoAudioControl() {

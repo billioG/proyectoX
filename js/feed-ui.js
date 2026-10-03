@@ -94,7 +94,7 @@ window.renderProjectCard = function renderProjectCard(p) {
   const canSeeFeedback = isOwner || isGroupMember || userRole === 'admin';
 
   return `
-    <div class="project-card group bg-white dark:bg-slate-900 rounded-2xl overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col border border-slate-100 dark:border-slate-800" data-title="${(p.title || '').toLowerCase()}" data-school="${p.students?.schools?.name || ''}">
+    <div class="project-card group bg-white dark:bg-slate-900 rounded-2xl overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col border border-slate-100 dark:border-slate-800" data-title="${(p.title || '').toLowerCase()}" data-school="${p.students?.schools?.name || ''}" data-school-code="${p.students?.school_code || ''}">
 
       <!-- Media Header -->
       <div class="relative aspect-video bg-slate-950 overflow-hidden">
