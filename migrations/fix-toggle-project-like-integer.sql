@@ -1,12 +1,7 @@
--- Fix: projects.votes se escribía con un número calculado en el cliente
--- (newVotes = votes actual +/- 1) -- como RLS deja que el DUEÑO del
--- proyecto haga UPDATE, cualquiera podía inflar su propio contador de
--- votos directo por consola (update({votes: 999999})).
---
--- ADITIVO/NO DESTRUCTIVO. Seguro de re-ejecutar. Pegar completo en el SQL
--- Editor de Supabase.
-
-revoke update (votes) on public.projects from authenticated;
+-- toggle_project_like() se creó con p_project_id uuid, pero projects.id y
+-- project_likes.project_id son integer: todo voto fallaba con
+-- "invalid input syntax for type uuid: "27"". Se recrea con integer.
+drop function if exists public.toggle_project_like(uuid);
 
 create or replace function public.toggle_project_like(p_project_id integer)
 returns jsonb
