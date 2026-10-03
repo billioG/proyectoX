@@ -6,6 +6,7 @@ Al publicar una versión nueva, agregá una línea arriba de todo (ver CONTRIBUT
 
 ## 2026-10-02
 
+- **Fix**: un docente con rol "coordinador" perdía el acceso a casi todo -- Equipos mostraba 0 alumnos y se caía ("Cannot read properties of null (reading 'id')"), Establecimientos decía "sin establecimientos asignados". Causa: `is_staff()` en la base solo reconocía `admin` y `docente`, así que al cambiarle el rol a `coordinador` todas las policies RLS lo trataban como un usuario cualquiera. Requiere `migrations/fix-is-staff-coordinador.sql`. Además la pantalla de Equipos ya no se rompe si un integrante llega sin datos del alumno (v1.0.142)
 - Subir proyecto: ahora acepta modelos 3D (STL, que es lo que exporta Tinkercad, además de OBJ y GLB) en vez de solo video. Al votar/evaluar se ve un visor 3D interactivo (arrastrar para girar, zoom, giro automático, botón descargar); en el feed y en el panel admin el proyecto muestra un ícono de cubo. El visor (three.js) se baja del CDN solo cuando aparece un modelo. La extensión se conserva en el nombre del archivo en Storage para poder distinguirlo de un video. Si el bucket `project-videos` restringe tipos MIME a video/*, hay que permitir `application/octet-stream` (v1.0.141)
 
 ## 2026-10-01

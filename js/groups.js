@@ -174,7 +174,7 @@ window.renderTeamCard = function renderTeamCard(g) {
             ${roles.map(role => {
     const member = members.find(m => m.role === role);
     // Serialización segura para evitar SyntaxErrors con comillas o caracteres especiales
-    const mObj = member ? { id: member.students.id, name: member.students.full_name, role: member.role, groupId: g.id } : null;
+    const mObj = member ? { id: member.students?.id, name: member.students?.full_name || 'Alumno', role: member.role, groupId: g.id } : null;
     const attrData = mObj ? `data-member='${JSON.stringify(mObj).replace(/'/g, "&apos;")}'` : '';
 
     return `
@@ -188,7 +188,7 @@ window.renderTeamCard = function renderTeamCard(g) {
                             <i class="fas fa-${role === 'planner' ? 'clipboard-list' : (role === 'maker' ? 'tools' : (role === 'speaker' ? 'microphone' : 'hands-helping'))}"></i>
                         </div>
                         <div class="min-w-0 grow">
-                            <p class="text-[0.75rem] font-bold text-slate-700 dark:text-slate-200 truncate leading-none">${member ? sanitizeInput(member.students.full_name) : 'VACANTE'}</p>
+                            <p class="text-[0.75rem] font-bold text-slate-700 dark:text-slate-200 truncate leading-none">${member ? sanitizeInput(member.students?.full_name || 'Alumno') : 'VACANTE'}</p>
                         </div>
                     </div>
                 `;
