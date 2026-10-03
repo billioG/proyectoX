@@ -141,8 +141,25 @@ async function saveThumbFromViewer(el, renderer, scene, camera) {
   const id = Number(el.dataset.projectId);
   if (!id || !window._supabase) return;
   try {
-    renderer.render(scene, camera);
-    const thumb = canvasToThumb(renderer.domElement);
+    // Render propio 16:9 con la misma escena: el lienzo del visor puede tener
+    // otra proporción (y aún no estar orientado) y saldría deformado.
+    const THREE = window.THREE;
+    const thumbRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: true });
+    let thumb;
+    try {
+      thumbRenderer.setPixelRatio(1);
+      thumbRenderer.setSize(THUMB_W, THUMB_H);
+      thumbRenderer.setClearColor(0x0b1220, 1);
+      const cam = camera.clone();
+      cam.aspect = THUMB_W / THUMB_H;
+      cam.updateProjectionMatrix();
+      cam.lookAt(0, 0, 0);
+      thumbRenderer.render(scene, cam);
+      thumb = canvasToThumb(thumbRenderer.domElement);
+    } finally {
+      thumbRenderer.dispose();
+      thumbRenderer.forceContextLoss?.();
+    }
     await window._supabase.from('projects').update({ thumbnail_url: thumb }).eq('id', id);
     el.dataset.needsThumb = '';
   } catch (e) { /* sin miniatura, no pasa nada */ }
