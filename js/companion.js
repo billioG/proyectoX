@@ -1674,7 +1674,7 @@ window.openDexCard = function openDexCard(species, mode = 'collection') {
         <div class="dex-tabs" role="tablist">
           <button type="button" class="dex-tab active" data-tab="info" onclick="window.switchDexTab(this,'info')">Info</button>
           <button type="button" class="dex-tab" data-tab="evo" onclick="window.switchDexTab(this,'evo')">Evolución</button>
-          <button type="button" class="dex-tab" data-tab="emotes" onclick="window.switchDexTab(this,'emotes')">Emotes</button>
+          <button type="button" class="dex-tab" data-tab="emotes" onclick="window.switchDexTab(this,'emotes')">Trucos</button>
         </div>
         <div class="dex-tab-panel" data-panel="info">
           <div class="dex-stats">
@@ -2144,7 +2144,7 @@ window.renderCompanionCard = async function renderCompanionCard(containerId, stu
           <p class="text-xs text-amber-500 font-bold uppercase tracking-widest"><i class="fas fa-crown"></i> ¡Evolución máxima alcanzada! (${total} gemas ganadas en total)</p>
         `}
         <div class="mt-4">
-          <div class="text-[0.6rem] font-black uppercase tracking-widest text-slate-400 mb-2">Emotes ${isMe ? '-- tocá tu mascota' : ''}</div>
+          <div class="text-[0.6rem] font-black uppercase tracking-widest text-slate-400 mb-2">Trucos ${isMe ? '-- tocá tu mascota' : ''}</div>
           <div class="flex flex-wrap gap-1.5">${emoteChips}</div>
         </div>
         <div class="flex flex-wrap gap-2 mt-4 justify-center sm:justify-start">
