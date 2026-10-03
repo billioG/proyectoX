@@ -3,6 +3,10 @@
 // (tabla coordinator_assignments). Reusa el render de desempeño de
 // admin-performance.js, solo filtrando el set de docentes.
 // ================================================
+function coordinatorTeacherIds(assignments) {
+    return [...new Set([window.currentUser.id, ...(assignments || []).map(a => a.teacher_id)])];
+}
+
 window.loadCoordinatorDashboard = async function loadCoordinatorDashboard() {
     const container = document.getElementById('coordinator-dashboard-container');
     if (!container || !window.currentUser) return;
@@ -12,18 +16,8 @@ window.loadCoordinatorDashboard = async function loadCoordinatorDashboard() {
         .select('teacher_id')
         .eq('coordinator_id', window.currentUser.id);
 
-    const teacherIds = (assignments || []).map(a => a.teacher_id);
-
-    if (teacherIds.length === 0) {
-        container.innerHTML = `
-            <div class="glass-card p-16 text-center border-2 border-dashed border-slate-100 dark:border-slate-800">
-                <i class="fas fa-users-slash text-6xl text-slate-200 dark:text-slate-800 mb-4 mx-auto block"></i>
-                <p class="text-slate-500 font-bold uppercase tracking-widest text-sm">Todavía no tenés docentes asignados</p>
-                <p class="text-slate-400 text-xs mt-2">Pedile a un administrador que te asigne docentes desde el panel de Docentes.</p>
-            </div>
-        `;
-        return;
-    }
+    // Un coordinador también es docente: él mismo cuenta, con sus propias clases.
+    const teacherIds = coordinatorTeacherIds(assignments);
 
     if (typeof window.loadAdminTeacherPerformance !== 'function') return;
     await window.loadAdminTeacherPerformance({
@@ -51,17 +45,7 @@ window.loadCoordinatorReports = async function loadCoordinatorReports() {
         .from('coordinator_assignments')
         .select('teacher_id')
         .eq('coordinator_id', window.currentUser.id);
-    const teacherIds = (assignments || []).map(a => a.teacher_id);
-
-    if (!teacherIds.length) {
-        container.innerHTML = `
-            <div class="glass-card p-16 text-center border-2 border-dashed border-slate-100 dark:border-slate-800">
-                <i class="fas fa-school-flag text-6xl text-slate-200 dark:text-slate-800 mb-4 mx-auto block"></i>
-                <p class="text-slate-500 font-bold uppercase tracking-widest text-sm">Todavía no tenés docentes asignados</p>
-            </div>
-        `;
-        return;
-    }
+    const teacherIds = coordinatorTeacherIds(assignments);
 
     const { data: teacherAssignments } = await _supabase
         .from('teacher_assignments')
