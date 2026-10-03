@@ -25,6 +25,7 @@ import './birthday-logic.js';
 import './teacher-rocks.js';
 import './admin-rocks.js';
 import './rocks-notifications.js';
+import './model-viewer.js';
 import './project-modals.js';
 import './ai-service.js';
 import './mascot-widget.js';

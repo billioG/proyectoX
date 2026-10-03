@@ -4,6 +4,10 @@ Cambios publicados en Quetzal LMS, del más reciente al más antiguo. Cada líne
 
 Al publicar una versión nueva, agregá una línea arriba de todo (ver CONTRIBUTING.md).
 
+## 2026-10-02
+
+- Subir proyecto: ahora acepta modelos 3D (STL, que es lo que exporta Tinkercad, además de OBJ y GLB) en vez de solo video. Al votar/evaluar se ve un visor 3D interactivo (arrastrar para girar, zoom, giro automático, botón descargar); en el feed y en el panel admin el proyecto muestra un ícono de cubo. El visor (three.js) se baja del CDN solo cuando aparece un modelo. La extensión se conserva en el nombre del archivo en Storage para poder distinguirlo de un video. Si el bucket `project-videos` restringe tipos MIME a video/*, hay que permitir `application/octet-stream` (v1.0.141)
+
 ## 2026-10-01
 
 - Gestión de curso (docente): el botón de descarga ahora también funciona en recursos H5P/SCORM/HTML5. Como esos se guardan descomprimidos en Storage (no queda el .zip original en ningún lado), arma el .zip de nuevo en el navegador bajando cada archivo del paquete y empaquetándolo -- puede tardar unos segundos en paquetes grandes (v1.0.140)

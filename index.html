@@ -60,7 +60,7 @@
          index.html pero el navegador puede seguir sirviendo desde caché HTTP
          una versión vieja de un módulo lazy-loaded (ej. pdf-processor.js),
          aunque el tag de versión visible ya muestre la última. -->
-    <script>window.APP_VERSION = 'v1.0.140';</script>
+    <script>window.APP_VERSION = 'v1.0.141';</script>
 
     <!-- Silenciar console.log/info/debug en producción (activar con localStorage.PX_DEBUG='true').
          Va antes de todo lo demás porque los console.log de cada módulo corren
@@ -505,7 +505,7 @@
                         Q</div>
                     Quetzal <span class="text-primary-dark dark:text-primary">LMS</span>
                 </div>
-                <span id="app-version-tag" class="text-[0.65rem] text-slate-500 dark:text-slate-400 font-medium mt-1">v1.0.140</span>
+                <span id="app-version-tag" class="text-[0.65rem] text-slate-500 dark:text-slate-400 font-medium mt-1">v1.0.141</span>
             </div>
 
             <div id="login-error"
@@ -568,7 +568,7 @@
                 <div class="text-2xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent transform hover:scale-105 transition-transform leading-none">
                     Quetzal LMS
                 </div>
-                <span class="text-[0.6rem] text-slate-400 font-medium mt-0.5">v1.0.140</span>
+                <span class="text-[0.6rem] text-slate-400 font-medium mt-0.5">v1.0.141</span>
             </div>
 
             <div class="flex items-center gap-4 sm:gap-6">
@@ -867,25 +867,26 @@
                             <div>
                                 <label
                                     class="text-[0.7rem] font-black uppercase text-slate-400 mb-2 block tracking-widest">Demostración
-                                    en Video</label>
+                                    en Video o Modelo 3D</label>
                                 <div class="relative group">
                                     <div
                                         class="absolute inset-0 bg-slate-50 dark:bg-slate-800/50 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl group-hover:border-primary transition-colors flex flex-col items-center justify-center p-8 pointer-events-none">
                                         <i
                                             class="fas fa-cloud-upload-alt text-3xl text-slate-300 dark:text-slate-600 mb-2 group-hover:text-primary transition-colors"></i>
                                         <span class="text-xs font-bold text-slate-400 group-hover:text-primary">Click
-                                            para seleccionar video (Máx 150MB)</span>
+                                            para seleccionar video o modelo 3D (STL, OBJ, GLB · Máx 150MB)</span>
                                     </div>
-                                    <input type="file" id="project-video" accept="video/*"
+                                    <input type="file" id="project-video" accept="video/*,.stl,.obj,.glb"
                                         class="w-full h-32 opacity-0 cursor-pointer"
                                         onchange="previewUploadVideo(this)">
                                 </div>
                                 <div id="video-preview-container"
                                     class="hidden mt-4 rounded-2xl overflow-hidden shadow-lg border border-slate-100 dark:border-slate-800">
                                     <video id="video-preview-player" controls class="w-full"></video>
+                                    <div id="model-preview-slot" class="hidden"></div>
                                     <button
                                         class="w-full py-2 bg-rose-500/10 text-rose-500 text-[0.6rem] font-black uppercase tracking-widest hover:bg-rose-500 hover:text-white transition-all"
-                                        onclick="clearVideoPreview()">Eliminar Video</button>
+                                        onclick="clearVideoPreview()">Eliminar archivo</button>
                                 </div>
                             </div>
                         </div>
@@ -1144,7 +1145,7 @@
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
 
     <!-- Punto de Entrada del Sistema -->
-    <script type="module" src="js/app.js?v=1.0.140"></script>
+    <script type="module" src="js/app.js?v=1.0.141"></script>
 
     <meta name="mobile-web-app-capable" content="yes">
 </body>

@@ -72,9 +72,11 @@ window.openEvaluationModal = async function openEvaluationModal(projectId) {
 
                   <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div class="rounded-3xl overflow-hidden bg-black shadow-2xl ring-1 ring-slate-800">
-                        <video controls class="w-full aspect-video">
+                        ${window.isModel3D?.(project.video_url)
+                          ? window.model3DViewerHtml(project.video_url)
+                          : `<video controls class="w-full aspect-video">
                             <source src="${project.video_url}" type="video/mp4">
-                        </video>
+                        </video>`}
                     </div>
 
                     <div class="bg-white dark:bg-slate-800/50 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 flex flex-col">

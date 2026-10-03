@@ -91,9 +91,11 @@ window.viewProjectDetails = async function viewProjectDetails(projectId) {
           </div>
           
           <div class="rounded-3xl overflow-hidden bg-black mb-8 shadow-2xl ring-1 ring-slate-200 dark:ring-slate-800">
-              <video controls class="w-full aspect-video">
+              ${window.isModel3D?.(project.video_url)
+                ? window.model3DViewerHtml(project.video_url)
+                : `<video controls class="w-full aspect-video">
                 <source src="${project.video_url}" type="video/mp4">
-              </video>
+              </video>`}
           </div>
 
           <div class="bg-primary/5 dark:bg-primary/10 p-6 rounded-3xl border border-primary/10 mb-10">
@@ -289,9 +291,10 @@ window.uploadProject = async function uploadProject() {
   // antes de poder subir es fricción innecesaria.
   const MAX_SIZE = 150 * 1024 * 1024;
   if (videoFile.size > MAX_SIZE) {
-    if (typeof showToast === 'function') showToast('<i class="fas fa-circle-xmark"></i> Video muy pesado (Máx 150MB)', 'error');
+    if (typeof showToast === 'function') showToast('<i class="fas fa-circle-xmark"></i> Archivo muy pesado (Máx 150MB)', 'error');
     return;
   }
+  const modelExt = uploadModelExt(videoFile);
 
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-2"></i> Guardando Proyecto...';
@@ -320,7 +323,8 @@ window.uploadProject = async function uploadProject() {
       bimestre: parseInt(bimestre),
       upload_ip: clientIP,
       client_metadata: { agent: navigator.userAgent, platform: navigator.platform },
-      _fileBlob: videoFile // El archivo se guardará en IndexedDB
+      _fileBlob: videoFile, // El archivo se guardará en IndexedDB
+      ...(modelExt ? { _fileExt: modelExt } : {})
     };
 
     // USAR EL GESTOR DE SINCRONIZACIÓN (MODO KOLIBRI / OFFLINE)
@@ -382,25 +386,45 @@ window.previewUploadVideo = function previewUploadVideo(input) {
   const container = document.getElementById('video-preview-container');
   const player = document.getElementById('video-preview-player');
 
+  const slot = document.getElementById('model-preview-slot');
+
   if (input.files && input.files[0]) {
     const file = input.files[0];
     const url = URL.createObjectURL(file);
-    if (player) {
+    const modelExt = uploadModelExt(file);
+    if (modelExt) {
+      if (player) { player.classList.add('hidden'); player.removeAttribute('src'); }
+      if (slot) {
+        slot.innerHTML = window.model3DViewerHtml(url, { ext: modelExt });
+        slot.classList.remove('hidden');
+      }
+      if (container) container.classList.remove('hidden');
+    } else if (player) {
+      player.classList.remove('hidden');
+      if (slot) { slot.innerHTML = ''; slot.classList.add('hidden'); }
       player.src = url;
       if (container) container.classList.remove('hidden');
     }
   }
 }
 
+function uploadModelExt(file) {
+  const ext = (file?.name?.split('.').pop() || '').toLowerCase();
+  return ['stl', 'obj', 'glb'].includes(ext) ? ext : null;
+}
+
 window.clearVideoPreview = function clearVideoPreview() {
   const input = document.getElementById('project-video');
   const container = document.getElementById('video-preview-container');
   const player = document.getElementById('video-preview-player');
+  const slot = document.getElementById('model-preview-slot');
   if (input) input.value = '';
   if (player) {
     URL.revokeObjectURL(player.src);
     player.src = '';
+    player.classList.remove('hidden');
   }
+  if (slot) { slot.innerHTML = ''; slot.classList.add('hidden'); }
   if (container) container.classList.add('hidden');
 }
 

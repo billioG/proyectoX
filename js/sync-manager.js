@@ -444,10 +444,15 @@ class SyncManager {
                 data[urlField] = JSON.stringify(urls);
                 delete data._fileBlobs;
             } else if (data._fileBlob) {
-                const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}`;
+                // Modelos 3D (STL/OBJ/GLB): el visor decide por la extensión
+                // de la URL, así que acá SÍ se conserva. Los videos siguen
+                // sin extensión, como siempre.
+                const modelExt = /^(stl|obj|glb)$/i.test(data._fileExt || '') ? data._fileExt.toLowerCase() : '';
+                const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}${modelExt ? '.' + modelExt : ''}`;
+                const uploadOpts = modelExt ? { contentType: 'application/octet-stream' } : undefined;
                 const { error: uploadError } = await _supabase.storage
                     .from(bucket)
-                    .upload(fileName, data._fileBlob);
+                    .upload(fileName, data._fileBlob, uploadOpts);
 
                 if (uploadError) throw uploadError;
 
@@ -460,6 +465,7 @@ class SyncManager {
             }
 
             // 3. Insertar registro final
+            delete data._fileExt;
             const { error } = await _supabase.from(table).insert(data);
             if (error) throw error;
             return true;

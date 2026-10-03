@@ -98,7 +98,12 @@ window.renderProjectCard = function renderProjectCard(p) {
 
       <!-- Media Header -->
       <div class="relative aspect-video bg-slate-950 overflow-hidden">
-        ${p.video_url ? `
+        ${window.isModel3D?.(p.video_url) ? `
+            <div class="w-full h-full flex flex-col items-center justify-center text-primary bg-gradient-to-br from-slate-900 to-slate-950 group-hover:scale-105 transition-transform duration-500">
+                <i class="fas fa-cube text-4xl mb-2"></i>
+                <span class="text-[0.6rem] font-black uppercase tracking-[0.2em] text-slate-400">Modelo 3D</span>
+            </div>
+        ` : p.video_url ? `
             <video preload="metadata" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-all duration-500">
               <source src="${p.video_url}" type="video/mp4">
             </video>

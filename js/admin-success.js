@@ -829,7 +829,9 @@ window.showDigitalTalentMap = async function showDigitalTalentMap(schoolCode) {
                     ${schoolProjects.map(p => `
                         <div class="section-card" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 0; overflow: hidden;">
                             <div style="height: 180px; background: #000; position: relative; display: flex; align-items: center; justify-content: center;">
-                                ${p.video_url ? `
+                                ${window.isModel3D?.(p.video_url) ? `
+                                    <i class="fas fa-cube" style="font-size: 2.5rem; color: #4ade80; opacity: 0.8;"></i>
+                                ` : p.video_url ? `
                                     <video style="width: 100%; height: 100%; object-fit: cover; opacity: 0.5;">
                                         <source src="${p.video_url}" type="video/mp4">
                                     </video>
