@@ -98,12 +98,15 @@ window.renderProjectCard = function renderProjectCard(p) {
 
       <!-- Media Header -->
       <div class="relative aspect-video bg-slate-950 overflow-hidden">
-        ${window.isModel3D?.(p.video_url) ? `
+        ${window.isModel3D?.(p.video_url) ? (/^data:image\/jpeg;base64,[A-Za-z0-9+\/=]+$/.test(p.thumbnail_url || '') ? `
+            <img src="${p.thumbnail_url}" alt="Vista previa del modelo 3D" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+            <span class="absolute top-2 left-2 text-[0.55rem] font-black uppercase tracking-widest text-white bg-black/50 px-2 py-1 rounded-md"><i class="fas fa-cube"></i> 3D</span>
+        ` : `
             <div class="w-full h-full flex flex-col items-center justify-center text-primary bg-gradient-to-br from-slate-900 to-slate-950 group-hover:scale-105 transition-transform duration-500">
                 <i class="fas fa-cube text-4xl mb-2"></i>
                 <span class="text-[0.6rem] font-black uppercase tracking-[0.2em] text-slate-400">Modelo 3D</span>
             </div>
-        ` : p.video_url ? `
+        `) : p.video_url ? `
             <video preload="metadata" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-all duration-500">
               <source src="${p.video_url}" type="video/mp4">
             </video>

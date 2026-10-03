@@ -73,7 +73,7 @@ window.openEvaluationModal = async function openEvaluationModal(projectId) {
                   <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div class="rounded-3xl overflow-hidden bg-black shadow-2xl ring-1 ring-slate-800">
                         ${window.isModel3D?.(project.video_url)
-                          ? window.model3DViewerHtml(project.video_url)
+                          ? window.model3DViewerHtml(project.video_url, { projectId: project.id, needsThumb: !project.thumbnail_url })
                           : `<video controls class="w-full aspect-video">
                             <source src="${project.video_url}" type="video/mp4">
                         </video>`}

@@ -466,7 +466,13 @@ class SyncManager {
 
             // 3. Insertar registro final
             delete data._fileExt;
-            const { error } = await _supabase.from(table).insert(data);
+            let { error } = await _supabase.from(table).insert(data);
+            // Migración project-thumbnails.sql sin correr: el proyecto no puede
+            // quedar atascado por una miniatura -- se reintenta sin ella.
+            if (error && data.thumbnail_url && /thumbnail_url/.test(error.message || '')) {
+                delete data.thumbnail_url;
+                ({ error } = await _supabase.from(table).insert(data));
+            }
             if (error) throw error;
             return true;
         } catch (err) {

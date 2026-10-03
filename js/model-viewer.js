@@ -38,10 +38,10 @@ window.modelExtOf = function modelExtOf(url) {
 };
 window.isModel3D = (url) => !!window.modelExtOf(url);
 
-window.model3DViewerHtml = function model3DViewerHtml(url, { ext, className = 'w-full aspect-video' } = {}) {
+window.model3DViewerHtml = function model3DViewerHtml(url, { ext, className = 'w-full aspect-video', projectId, needsThumb } = {}) {
   const safe = String(url).replace(/"/g, '&quot;');
   const e = ext || window.modelExtOf(url) || 'stl';
-  return `<div class="model3d-viewer relative bg-slate-950 ${className}" data-model-url="${safe}" data-model-ext="${e}"></div>`;
+  return `<div class="model3d-viewer relative bg-slate-950 ${className}" data-model-url="${safe}" data-model-ext="${e}"${projectId ? ` data-project-id="${Number(projectId)}"` : ''}${needsThumb ? ' data-needs-thumb="1"' : ''}></div>`;
 };
 
 function downloadHref(url) {
@@ -54,6 +54,100 @@ function showViewerMessage(el, html) {
   el.innerHTML = `<div class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate-400 text-xs text-center p-4">${html}</div>`;
 }
 
+// Escena lista (luces, modelo centrado y escalado, cámara encuadrada). La usan
+// el visor interactivo y el generador de miniaturas.
+async function buildModelScene(url, ext, aspect) {
+  await loadThree(ext);
+  const THREE = window.THREE;
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 1000);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x334155, 0.9));
+  const key = new THREE.DirectionalLight(0xffffff, 0.8);
+  key.position.set(3, 5, 4);
+  scene.add(key);
+
+  const object = await new Promise((resolve, reject) => {
+    const loader = new THREE[LOADER_FILE[ext]]();
+    const material = new THREE.MeshStandardMaterial({ color: 0x4ade80, roughness: 0.55, metalness: 0.1 });
+    loader.load(url, (res) => {
+      if (ext === 'stl') {
+        res.computeVertexNormals();
+        resolve(new THREE.Mesh(res, material));
+      } else if (ext === 'obj') {
+        res.traverse(c => { if (c.isMesh) c.material = material; });
+        resolve(res);
+      } else {
+        resolve(res.scene);
+      }
+    }, undefined, reject);
+  });
+
+  // Tinkercad (y casi todo el CAD) exporta con Z hacia arriba; three usa Y.
+  const pivot = new THREE.Group();
+  if (ext !== 'glb') object.rotation.x = -Math.PI / 2;
+  pivot.add(object);
+  scene.add(pivot);
+
+  const box = new THREE.Box3().setFromObject(pivot);
+  const center = box.getCenter(new THREE.Vector3());
+  const size = box.getSize(new THREE.Vector3());
+  object.position.sub(center);
+  const radius = Math.max(size.x, size.y, size.z) / 2 || 1;
+  const dist = radius / Math.tan((camera.fov * Math.PI) / 360) * 1.3;
+  camera.position.set(dist * 0.8, dist * 0.6, dist);
+  camera.near = dist / 100;
+  camera.far = dist * 100;
+  camera.updateProjectionMatrix();
+
+  return { THREE, scene, camera };
+}
+
+// Miniatura 16:9 en JPEG (data URL, ~10-20 KB): se guarda en projects.thumbnail_url
+// para que el feed muestre una vista previa sin bajar el modelo completo.
+const THUMB_W = 480, THUMB_H = 270;
+const THUMB_BG = '#0b1220';
+
+function canvasToThumb(source) {
+  const out = document.createElement('canvas');
+  out.width = THUMB_W; out.height = THUMB_H;
+  const ctx = out.getContext('2d');
+  ctx.fillStyle = THUMB_BG;
+  ctx.fillRect(0, 0, THUMB_W, THUMB_H);
+  ctx.drawImage(source, 0, 0, THUMB_W, THUMB_H);
+  return out.toDataURL('image/jpeg', 0.8);
+}
+
+window.captureModelThumbnail = async function captureModelThumbnail(url, ext) {
+  const { THREE, scene, camera } = await buildModelScene(url, ext, THUMB_W / THUMB_H);
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: true });
+  try {
+    renderer.setPixelRatio(1);
+    renderer.setSize(THUMB_W, THUMB_H);
+    renderer.setClearColor(0x0b1220, 1);
+    camera.lookAt(0, 0, 0);
+    renderer.render(scene, camera);
+    return canvasToThumb(renderer.domElement);
+  } finally {
+    renderer.dispose();
+    renderer.forceContextLoss?.();
+  }
+};
+
+// Proyectos subidos antes de las miniaturas: al abrir el visor el dueño (o el
+// personal) deja guardada la vista que ya está dibujada. Si no tiene permiso
+// el update no toca ninguna fila; si la columna no existe, se ignora.
+async function saveThumbFromViewer(el, renderer, scene, camera) {
+  const id = Number(el.dataset.projectId);
+  if (!id || !window._supabase) return;
+  try {
+    renderer.render(scene, camera);
+    const thumb = canvasToThumb(renderer.domElement);
+    await window._supabase.from('projects').update({ thumbnail_url: thumb }).eq('id', id);
+    el.dataset.needsThumb = '';
+  } catch (e) { /* sin miniatura, no pasa nada */ }
+}
+
 async function mountModelViewer(el) {
   if (el.dataset.mounted) return;
   el.dataset.mounted = '1';
@@ -62,55 +156,14 @@ async function mountModelViewer(el) {
   showViewerMessage(el, '<i class="fas fa-cube fa-beat text-2xl text-primary"></i><span>Cargando modelo 3D...</span>');
 
   try {
-    await loadThree(ext);
-    const THREE = window.THREE;
-
     const width = el.clientWidth || 400;
     const height = el.clientHeight || 300;
+    const { THREE, scene, camera } = await buildModelScene(url, ext, width / height);
+
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.setSize(width, height);
     renderer.domElement.style.cssText = 'display:block;width:100%;height:100%;touch-action:none;cursor:grab';
-
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-    scene.add(new THREE.HemisphereLight(0xffffff, 0x334155, 0.9));
-    const key = new THREE.DirectionalLight(0xffffff, 0.8);
-    key.position.set(3, 5, 4);
-    scene.add(key);
-
-    const object = await new Promise((resolve, reject) => {
-      const loader = new THREE[LOADER_FILE[ext]]();
-      const material = new THREE.MeshStandardMaterial({ color: 0x4ade80, roughness: 0.55, metalness: 0.1 });
-      loader.load(url, (res) => {
-        if (ext === 'stl') {
-          res.computeVertexNormals();
-          resolve(new THREE.Mesh(res, material));
-        } else if (ext === 'obj') {
-          res.traverse(c => { if (c.isMesh) c.material = material; });
-          resolve(res);
-        } else {
-          resolve(res.scene);
-        }
-      }, undefined, reject);
-    });
-
-    // Tinkercad (y casi todo el CAD) exporta con Z hacia arriba; three usa Y.
-    const pivot = new THREE.Group();
-    if (ext !== 'glb') object.rotation.x = -Math.PI / 2;
-    pivot.add(object);
-    scene.add(pivot);
-
-    const box = new THREE.Box3().setFromObject(pivot);
-    const center = box.getCenter(new THREE.Vector3());
-    const size = box.getSize(new THREE.Vector3());
-    object.position.sub(center);
-    const radius = Math.max(size.x, size.y, size.z) / 2 || 1;
-    const dist = radius / Math.tan((camera.fov * Math.PI) / 360) * 1.3;
-    camera.position.set(dist * 0.8, dist * 0.6, dist);
-    camera.near = dist / 100;
-    camera.far = dist * 100;
-    camera.updateProjectionMatrix();
 
     const controls = new THREE.OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
@@ -128,6 +181,8 @@ async function mountModelViewer(el) {
         <span class="text-[0.6rem] font-bold uppercase tracking-widest text-white/60 bg-black/40 px-2 py-1 rounded-md"><i class="fas fa-hand-pointer"></i> Arrastrá para girar</span>
         ${dl ? `<a href="${dl}" class="pointer-events-auto text-[0.6rem] font-black uppercase tracking-widest text-white bg-black/50 hover:bg-primary px-2 py-1 rounded-md transition-colors"><i class="fas fa-download"></i> Descargar</a>` : ''}
       </div>`);
+
+    if (el.dataset.needsThumb && el.dataset.projectId) saveThumbFromViewer(el, renderer, scene, camera);
 
     const resize = () => {
       const w = el.clientWidth, h = el.clientHeight;

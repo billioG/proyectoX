@@ -93,7 +93,7 @@ window.viewProjectDetails = async function viewProjectDetails(projectId) {
           
           <div class="rounded-3xl overflow-hidden bg-black mb-8 shadow-2xl ring-1 ring-slate-200 dark:ring-slate-800">
               ${window.isModel3D?.(project.video_url)
-                ? window.model3DViewerHtml(project.video_url)
+                ? window.model3DViewerHtml(project.video_url, { projectId: project.id, needsThumb: !project.thumbnail_url })
                 : `<video controls class="w-full aspect-video">
                 <source src="${project.video_url}" type="video/mp4">
               </video>`}
@@ -315,6 +315,17 @@ window.uploadProject = async function uploadProject() {
 
     const bimestre = document.getElementById('project-bimestre')?.value || 1;
 
+    // Modelos 3D: miniatura para el feed, generada ahora mientras el archivo
+    // está a mano. Si falla (sin internet para bajar three.js, sin WebGL...)
+    // el proyecto se sube igual y la miniatura se completa al abrirlo.
+    let thumbnail_url = null;
+    if (modelExt && window.captureModelThumbnail) {
+      const localUrl = URL.createObjectURL(videoFile);
+      try { thumbnail_url = await window.captureModelThumbnail(localUrl, modelExt); }
+      catch (e) { console.warn('No se pudo generar la miniatura 3D:', e); }
+      finally { URL.revokeObjectURL(localUrl); }
+    }
+
     // Preparar datos del proyecto
     const projectData = {
       user_id: currentUser.id,
@@ -325,7 +336,8 @@ window.uploadProject = async function uploadProject() {
       upload_ip: clientIP,
       client_metadata: { agent: navigator.userAgent, platform: navigator.platform },
       _fileBlob: videoFile, // El archivo se guardará en IndexedDB
-      ...(modelExt ? { _fileExt: modelExt } : {})
+      ...(modelExt ? { _fileExt: modelExt } : {}),
+      ...(thumbnail_url ? { thumbnail_url } : {})
     };
 
     // USAR EL GESTOR DE SINCRONIZACIÓN (MODO KOLIBRI / OFFLINE)
