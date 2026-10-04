@@ -166,7 +166,7 @@ window.openAnnouncementsInbox = async function openAnnouncementsInbox() {
   `).join('');
 
   const listEl = document.getElementById('announcements-list');
-  if (error) { listEl.innerHTML = `<p class="text-rose-500 text-xs">${error.message}</p>`; return; }
+  if (error) { listEl.innerHTML = `<p class="text-rose-500 text-xs">${sanitizeInput(window.friendlyErrorText?.(error.message) || 'No se pudieron cargar los avisos. Revisa tu conexión e inténtalo de nuevo.')}</p>`; return; }
 
   const { data: reads } = await _supabase.from('announcement_reads')
     .select('announcement_id').eq('user_id', currentUser.id);

@@ -4,6 +4,10 @@ Cambios publicados en Quetzal LMS, del más reciente al más antiguo. Cada líne
 
 Al publicar una versión nueva, agregá una línea arriba de todo (ver CONTRIBUTING.md).
 
+## 2026-10-04
+
+- Errores en español claro: los avisos rojos con texto técnico ("violates row-level security policy", "Failed to fetch", "Could not find the function", "JWT expired", "duplicate key", archivo muy pesado, tipo de archivo no permitido...) ahora se traducen a un mensaje que dice qué pasó y qué hacer ("No tienes permiso para hacer esto. Si crees que sí deberías, avisa al administrador", "Parece que no hay conexión. Revisa tu internet y vuelve a intentarlo"). Se hace en un solo lugar (`showToast`), así cubre los ~120 avisos de error de toda la app; los mensajes que ya estaban en español normal no cambian. El texto técnico original queda en la consola (F12) para soporte, y los avisos de error duran 6 segundos en vez de 3 para poder leerlos (v1.0.158)
+
 ## 2026-10-03
 
 - Proyectos: botón "Eliminar" en el detalle del proyecto, para el admin y para el docente que tenga clase asignada en el establecimiento del alumno (caso real: un alumno entró con la cuenta de otro y el proyecto quedó a nombre equivocado). Pide confirmación, borra el proyecto con su evaluación, reacciones y avisos (en cascada en la base) y su archivo de Storage, y lo saca del feed y del Ranking al instante. Si la base lo bloquea por permisos, avisa en vez de fingir que borró. No requiere SQL (v1.0.157)

@@ -96,6 +96,41 @@ export function sanitizeAttr(str) {
     return sanitizeInput(str).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+// Errores técnicos (Postgres/Supabase/red) -> mensaje claro + qué hacer. Un
+// docente que ve "violates row-level security policy" piensa que rompió algo y
+// no vuelve a tocar nada. Los mensajes que ya están en español normal no
+// coinciden con ningún patrón y se muestran tal cual.
+const FRIENDLY_ERRORS = [
+    [/failed to fetch|networkerror|network request failed|load failed|fetch failed|timed out|timeout/i,
+        'Parece que no hay conexión. Revisa tu internet y vuelve a intentarlo.'],
+    [/jwt expired|invalid jwt|invalid token|refresh token|not authenticated|no autenticado/i,
+        'Tu sesión venció. Cierra sesión, vuelve a entrar e inténtalo otra vez.'],
+    [/row-level security|permission denied|permiso denegado|not authorized|forbidden|\b42501\b/i,
+        'No tienes permiso para hacer esto. Si crees que sí deberías, avisa al administrador.'],
+    [/could not find the function|\bPGRST20[24]\b|schema cache|does not exist|no existe la (columna|funci|relaci)/i,
+        'Esta función todavía no está lista en el sistema. Avisa al administrador.'],
+    [/duplicate key|unique constraint|\b23505\b|already exists/i,
+        'Eso ya existe (está repetido). Revisa que no lo hayas creado antes.'],
+    [/foreign key|\b23503\b/i,
+        'No se puede hacer porque hay otros datos que dependen de esto.'],
+    [/payload too large|entity too large|exceeded the maximum allowed size|file size/i,
+        'El archivo es demasiado pesado. Prueba con uno más pequeño.'],
+    [/mime type|invalid mime|unsupported media/i,
+        'Ese tipo de archivo no está permitido.'],
+    [/too many requests|rate limit/i,
+        'Hiciste muchas acciones seguidas. Espera un momento y vuelve a intentar.'],
+    [/invalid input syntax|violates check constraint|null value in column|\b2(2P02|3502|3514)\b/i,
+        'Falta algún dato o tiene un formato incorrecto. Revisa el formulario.'],
+    [/internal server error|bad gateway|service unavailable|non-2xx|infinite recursion/i,
+        'Hubo un problema en el servidor. Espera un minuto y vuelve a intentar.'],
+];
+
+export function friendlyErrorText(raw) {
+    const text = String(raw ?? '');
+    const hit = FRIENDLY_ERRORS.find(([re]) => re.test(text));
+    return hit ? hit[1] : null;
+}
+
 export function showToast(message, type = 'default') {
     let container = document.getElementById('toast-container');
     if (!container) {
@@ -104,16 +139,26 @@ export function showToast(message, type = 'default') {
         document.body.appendChild(container);
     }
 
+    if (type === 'error') {
+        const plain = String(message).replace(/<[^>]*>/g, ' ');
+        const friendly = friendlyErrorText(plain);
+        if (friendly) {
+            console.warn('Error original:', plain.replace(/\s+/g, ' ').trim());
+            message = `<i class="fas fa-circle-xmark"></i> ${friendly}`;
+        }
+    }
+
     const toast = document.createElement('div');
     toast.className = `toast toast-${type} show`;
     toast.innerHTML = message;
 
     container.appendChild(toast);
 
+    // Los errores llevan más texto y hay que poder leerlos con calma.
     setTimeout(() => {
         toast.classList.remove('show');
         setTimeout(() => toast.remove(), 300);
-    }, 3000);
+    }, type === 'error' ? 6000 : 3000);
 }
 
 export function getStatusBadge(status) {
@@ -416,6 +461,7 @@ window.debounce = debounce;
 window.sanitizeInput = sanitizeInput;
 window.sanitizeAttr = sanitizeAttr;
 window.showToast = showToast;
+window.friendlyErrorText = friendlyErrorText;
 window.getStatusBadge = getStatusBadge;
 window.fetchWithCache = fetchWithCache;
 
