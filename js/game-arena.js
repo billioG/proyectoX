@@ -150,6 +150,46 @@ window.GameArena = {
     spelling: { table: 'student_spelling_duels', label: 'Ortografía', icon: 'fa-spell-check', cache: '_spellingDuelsCache', reload: 'loadSpellingSection', topic: true },
   },
 
+  // Función que abre el formulario de "retar a un compañero" de cada juego.
+  CREATORS: {
+    quiz: 'openCreateDuelModal', hangman: 'openCreateHangmanModal', timed_math: 'openCreateTimedMathModal',
+    debug: 'openCreateDebugModal', spelling: 'openCreateSpellingModal',
+  },
+
+  // Cada juego se puede jugar de dos formas: PRÁCTICA (solo, sin rival ni
+  // gemas, las veces que quieras) o RETO (contra un compañero, con apuesta; el
+  // rival juega cuando pueda).
+  chooseMode(game) {
+    this.ensureStyles();
+    const g = this.GAMES[game];
+    if (!g) return;
+    document.getElementById('ga-mode-modal')?.remove();
+    const modal = document.createElement('div');
+    modal.id = 'ga-mode-modal';
+    modal.className = 'fixed inset-0 z-[210] flex items-center justify-center p-6 bg-slate-950/90 backdrop-blur-sm animate-fadeIn';
+    const card = (mode, icon, color, title, text) => `
+      <button type="button" data-mode="${mode}" style="display:flex;gap:.9rem;align-items:center;width:100%;text-align:left;padding:1rem;border-radius:1.1rem;border:1px solid ${color}55;background:${color}1f;color:#fff;cursor:pointer">
+        <span style="flex:none;width:2.8rem;height:2.8rem;border-radius:.9rem;display:flex;align-items:center;justify-content:center;background:${color};font-size:1.2rem"><i class="fas ${icon}"></i></span>
+        <span><b style="display:block;font-size:.95rem;font-weight:900">${title}</b><span style="font-size:.74rem;color:#cbd5e1;line-height:1.35;display:block">${text}</span></span>
+      </button>`;
+    modal.innerHTML = `
+      <div class="glass-card w-full max-w-md p-6 shadow-2xl animate-slideUp bg-slate-900 border border-white/10">
+        <h2 class="text-lg font-bold text-white mb-1"><i class="fas ${g.icon} text-primary mr-2"></i> ${g.label}</h2>
+        <p class="text-xs text-slate-400 mb-4">¿Cómo querés jugar?</p>
+        <div style="display:grid;gap:.7rem">
+          ${card('practice', 'fa-dumbbell', '#10b981', 'Práctica', 'Solo vos. Sin rival, sin gemas en juego y sin esperar a nadie. Para repasar las veces que quieras.')}
+          ${card('duel', 'fa-swords', '#e11d48', 'Reto', 'Contra un compañero. Apostás gemas y el rival juega cuando pueda; gana quien lo haga mejor.')}
+        </div>
+        <button class="w-full mt-4 py-2 text-xs font-bold text-slate-400" data-close>Cancelar</button>
+      </div>`;
+    document.body.appendChild(modal);
+    const close = () => modal.remove();
+    modal.querySelector('[data-close]').onclick = close;
+    modal.onclick = (e) => { if (e.target === modal) close(); };
+    modal.querySelector('[data-mode="practice"]').onclick = () => { close(); window.PracticeMode?.start(game); };
+    modal.querySelector('[data-mode="duel"]').onclick = () => { close(); window[this.CREATORS[game]]?.(); };
+  },
+
   async createChallenge(game, { opponentId, wager, topic }) {
     const g = this.GAMES[game];
     const gems = window.userData?.gems ?? 0;
@@ -212,6 +252,9 @@ window.GameArena = {
       <div class="ga-quick-row">${Object.entries(this.GAMES).map(([key, g]) =>
         `<button class="ga-quick-btn" onclick="window.GameArena.quickChallenge('${key}')"><i class="fas ${g.icon}"></i><span>${g.label}</span></button>`).join('')}</div>
       <div class="ga-online" id="ga-online">${this.onlineHtml()}</div>
+      <div class="ga-quick-title" style="margin-top:1rem;color:#6ee7b7"><i class="fas fa-dumbbell"></i> Práctica <span>solo vos: sin rival, sin gemas, las veces que quieras</span></div>
+      <div class="ga-quick-row">${Object.entries(this.GAMES).map(([key, g]) =>
+        `<button class="ga-quick-btn" onclick="window.PracticeMode && window.PracticeMode.start('${key}')"><i class="fas ${g.icon}" style="color:#6ee7b7"></i><span>${g.label}</span></button>`).join('')}</div>
     </div>`;
   },
 

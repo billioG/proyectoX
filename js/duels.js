@@ -167,7 +167,8 @@ window.renderDuelsSection = function renderDuelsSection() {
     icon: 'fa-code',
     c1: '#2563eb',
     c2: '#9333ea',
-    onclick: 'window.openCreateDuelModal()',
+    onclick: "window.GameArena.chooseMode('quiz')",
+    cta: '<i class="fas fa-bolt"></i> Practicar o retar',
   });
 
   if (!duels.length) {
@@ -613,11 +614,24 @@ window.selectDuelAnswer = function selectDuelAnswer(optionIndex, btn) {
   state.busy = true;
   state.selections.push(optionIndex);
 
-  // El acierto recién lo sabe el servidor al final -- acá solo se confirma
-  // visualmente la elección y se pasa a la siguiente.
-  document.querySelectorAll('.duel-opt').forEach(b => { if (b !== btn) b.style.opacity = '.3'; });
-  if (btn) btn.style.transform = 'scale(1.03)';
-  if (navigator.vibrate) navigator.vibrate(25);
+  // Reto: el acierto recién lo sabe el servidor al final -- acá solo se
+  // confirma visualmente la elección y se pasa a la siguiente.
+  // Práctica: no hay nada que esconder, se muestra al instante cuál era la
+  // correcta (así se aprende de cada pregunta).
+  const practiceQ = state.practice ? state.duel.questions[state.index] : null;
+  if (practiceQ) {
+    const ok = optionIndex === practiceQ.correctIndex;
+    document.querySelectorAll('.duel-opt').forEach((b, i) => {
+      if (i === practiceQ.correctIndex) b.style.outline = '4px solid #4ade80';
+      else if (b === btn) b.style.outline = '4px solid #f43f5e';
+      else b.style.opacity = '.3';
+    });
+    window.GameArena.feedback(document.getElementById('duel-quiz-card'), ok);
+  } else {
+    document.querySelectorAll('.duel-opt').forEach(b => { if (b !== btn) b.style.opacity = '.3'; });
+    if (btn) btn.style.transform = 'scale(1.03)';
+    if (navigator.vibrate) navigator.vibrate(25);
+  }
 
   setTimeout(() => {
     state.busy = false;
@@ -627,14 +641,37 @@ window.selectDuelAnswer = function selectDuelAnswer(optionIndex, btn) {
     } else {
       window.submitDuelAnswers();
     }
-  }, 350);
+  }, practiceQ ? 1300 : 350);
 }
+
+// Práctica solo (sin rival): las preguntas vienen con la respuesta correcta
+// porque no hay nada en juego (sin gemas, sin ranking). Ver js/practice.js.
+window.startPracticeQuiz = function startPracticeQuiz({ topic, questions, fact }) {
+  window._activeDuel = { duel: { id: null, topic, questions }, index: 0, selections: [], practice: { fact } };
+  window.renderDuelQuizQuestion();
+};
 
 window.submitDuelAnswers = async function submitDuelAnswers() {
   const state = window._activeDuel;
   if (!state) return;
   const { duel, selections } = state;
   if (state.stopClock) state.stopClock();
+
+  if (state.practice) {
+    const total = duel.questions.length;
+    const score = selections.filter((sel, i) => sel === duel.questions[i].correctIndex).length;
+    window._activeDuel = null;
+    document.getElementById('duel-quiz-modal')?.remove();
+    const good = score >= Math.ceil(total / 2);
+    await window.GameArena.result({
+      ok: good,
+      title: score === total ? '¡Perfecto!' : good ? '¡Bien hecho!' : 'Seguí practicando',
+      subtitle: 'Práctica: no cuenta para el ranking ni gasta gemas. ¡Practicá las veces que quieras!',
+      detailHtml: `<div style="font-size:2.4rem;font-weight:900;margin:.25rem 0">${score}<span style="font-size:1.2rem;color:#94a3b8"> / ${total}</span></div>`,
+      fact: state.practice.fact,
+    });
+    return;
+  }
 
   // El score se calcula EN SERVIDOR (RPC) comparando contra el correctIndex
   // real -- el cliente nunca lo tuvo, así que no puede falsificar el score.

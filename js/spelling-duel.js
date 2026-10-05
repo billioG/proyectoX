@@ -45,7 +45,8 @@ window.renderSpellingSection = function renderSpellingSection() {
     icon: 'fa-spell-check',
     c1: '#7c3aed',
     c2: '#db2777',
-    onclick: 'window.openCreateSpellingModal()',
+    onclick: "window.GameArena.chooseMode('spelling')",
+    cta: '<i class="fas fa-bolt"></i> Practicar o retar',
   });
 
   if (!duels.length) {
@@ -267,6 +268,12 @@ window.openSpellingGame = async function openSpellingGame(duelId) {
   window.renderSpellingGame();
 };
 
+// Práctica solo (sin rival): ver js/practice.js.
+window.startPracticeSpelling = function startPracticeSpelling({ word, hint, fact }) {
+  window._activeSpelling = { duelId: null, practice: { word, fact }, hint, t0: performance.now() };
+  window.renderSpellingGame();
+};
+
 window.renderSpellingGame = function renderSpellingGame() {
   const state = window._activeSpelling;
   if (!state) return;
@@ -340,19 +347,31 @@ window.submitSpellingAnswer = async function submitSpellingAnswer() {
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
   if (state.stopClock) state.stopClock();
 
-  const { data: result, error } = await window._supabase.rpc('submit_spelling_answer', {
-    p_duel_id: state.duelId,
-    p_answer: answer,
-  });
+  let result, error;
+  if (state.practice) {
+    // Práctica: se compara acá mismo (con tildes y ñ, igual que el servidor).
+    result = {
+      correct: answer.toLowerCase() === state.practice.word.trim().toLowerCase(),
+      time_ms: Math.round(performance.now() - state.t0),
+      word: state.practice.word,
+    };
+  } else {
+    ({ data: result, error } = await window._supabase.rpc('submit_spelling_answer', {
+      p_duel_id: state.duelId,
+      p_answer: answer,
+    }));
+  }
   window._activeSpelling = null;
   if (error) {
     document.getElementById('spelling-game-modal')?.remove();
     return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
   }
 
-  window._mySpellingPlayed = window._mySpellingPlayed || new Set();
-  window._mySpellingPlayed.add(state.duelId);
-  window.GameArena.notifyResult('spelling', state.duelId);
+  if (!state.practice) {
+    window._mySpellingPlayed = window._mySpellingPlayed || new Set();
+    window._mySpellingPlayed.add(state.duelId);
+    window.GameArena.notifyResult('spelling', state.duelId);
+  }
 
   window.GameArena.feedback(document.getElementById('spelling-card'), result.correct);
   await new Promise(r => setTimeout(r, 600));
@@ -360,7 +379,10 @@ window.submitSpellingAnswer = async function submitSpellingAnswer() {
 
   const s = window.sanitizeInput || ((v) => v);
   const seconds = (result.time_ms / 1000).toFixed(1);
-  await window.GameArena.resultWithFact('spelling', state.duelId, result.correct
+  const showResult = state.practice
+    ? (opts) => window.GameArena.result({ ...opts, subtitle: opts.ok ? 'Práctica: no cuenta para el ranking ni gasta gemas.' : opts.subtitle, fact: state.practice.fact })
+    : (opts) => window.GameArena.resultWithFact('spelling', state.duelId, opts);
+  await showResult(result.correct
     ? {
         ok: true,
         title: '¡Perfecta!',
@@ -376,7 +398,7 @@ window.submitSpellingAnswer = async function submitSpellingAnswer() {
           <div style="font-size:.8rem;color:#94a3b8;margin-top:.5rem">Escribiste: <b style="color:#e2e8f0">${s(answer)}</b></div>`,
       });
 
-  window.loadSpellingSection();
+  if (!state.practice) window.loadSpellingSection();
 };
 
 window.showSpellingReview = async function showSpellingReview(duelId) {

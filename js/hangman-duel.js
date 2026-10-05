@@ -81,7 +81,8 @@ window.renderHangmanSection = function renderHangmanSection() {
     icon: 'fa-spider',
     c1: '#e11d48',
     c2: '#7c3aed',
-    onclick: 'window.openCreateHangmanModal()',
+    onclick: "window.GameArena.chooseMode('hangman')",
+    cta: '<i class="fas fa-bolt"></i> Practicar o retar',
   });
 
   if (!duels.length) {
@@ -416,9 +417,18 @@ window.guessHangmanLetter = async function guessHangmanLetter(letter) {
   state.busy = true;
 
   const nextGuessed = [...state.guessed, letter];
-  const { data, error } = await window._supabase.rpc('check_hangman_letter', {
-    p_duel_id: state.duelId, p_letter: letter, p_guessed_letters: nextGuessed,
-  });
+  let data, error;
+  if (state.practice) {
+    // Práctica: la palabra ya está en el cliente (no hay nada en juego).
+    const w = state.practice.word.toLowerCase();
+    const positions = [...w].map((c, i) => (c === letter.toLowerCase() ? i : -1)).filter(i => i >= 0);
+    const tried = nextGuessed.map(l => l.toLowerCase());
+    data = { correct: positions.length > 0, positions, solved: [...new Set(w)].every(c => tried.includes(c)) };
+  } else {
+    ({ data, error } = await window._supabase.rpc('check_hangman_letter', {
+      p_duel_id: state.duelId, p_letter: letter, p_guessed_letters: nextGuessed,
+    }));
+  }
   state.busy = false;
   if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
 
@@ -437,10 +447,38 @@ window.guessHangmanLetter = async function guessHangmanLetter(letter) {
   }
 };
 
+// Práctica solo (sin rival): la palabra viene del generador y se juega igual
+// que un reto, pero se evalúa acá mismo. Ver js/practice.js.
+window.startPracticeHangman = function startPracticeHangman({ word, hint, fact }) {
+  window._activeHangman = {
+    duelId: null, practice: { word, fact }, hint, wordLength: word.length,
+    guessed: [], hits: new Set(), wrong: 0, revealed: {}, busy: false, clockStart: performance.now(),
+  };
+  window.renderHangmanIntro();
+};
+
 window.finishHangmanGame = async function finishHangmanGame() {
   const state = window._activeHangman;
   if (!state) return;
   if (state.stopClock) state.stopClock();
+
+  if (state.practice) {
+    const solved = state.wrong < MAX_WRONG_GUESSES;
+    const timeMs = Math.round(performance.now() - state.clockStart);
+    window._activeHangman = null;
+    await new Promise(r => setTimeout(r, 600));
+    document.getElementById('hangman-game-modal')?.remove();
+    const s = window.sanitizeInput || ((v) => v);
+    await window.GameArena.result({
+      ok: solved,
+      title: solved ? '¡Adivinada!' : '¡Te ahorcaron!',
+      subtitle: solved ? 'Práctica: no cuenta para el ranking ni gasta gemas.' : 'La palabra era:',
+      detailHtml: `<div style="font-size:1.7rem;font-weight:900;letter-spacing:.12em;margin:.5rem 0">${s(state.practice.word)}</div>
+        <div style="font-size:.8rem;color:#facc15;font-weight:800"><i class="fas fa-stopwatch"></i> ${(timeMs / 1000).toFixed(1)}s · ${state.wrong} error(es)</div>`,
+      fact: state.practice.fact,
+    });
+    return;
+  }
 
   const { data: result, error } = await window._supabase.rpc('submit_hangman_result', {
     p_duel_id: state.duelId,

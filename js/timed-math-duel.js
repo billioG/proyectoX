@@ -49,7 +49,8 @@ window.renderTimedMathSection = function renderTimedMathSection() {
     icon: 'fa-stopwatch',
     c1: '#f97316',
     c2: '#dc2626',
-    onclick: 'window.openCreateTimedMathModal()',
+    onclick: "window.GameArena.chooseMode('timed_math')",
+    cta: '<i class="fas fa-bolt"></i> Practicar o retar',
   });
 
   if (!duels.length) {
@@ -247,6 +248,18 @@ window.openTimedMathGame = async function openTimedMathGame(duelId) {
   window._activeTimedMath.timerId = setInterval(window.tickTimedMathClock, 1000);
 };
 
+// Práctica solo (sin rival): los problemas vienen con su respuesta (no hay
+// nada en juego) y se corrigen al final. Ver js/practice.js.
+window.startPracticeTimedMath = function startPracticeTimedMath(problems) {
+  window._activeTimedMath = {
+    duelId: null, practice: { solutions: problems.map(p => p.answer) },
+    questions: problems.map(p => p.question), index: 0, answers: [],
+    secondsLeft: MATH_TIME_LIMIT_SECONDS, timerId: null,
+  };
+  window.renderTimedMathGame();
+  window._activeTimedMath.timerId = setInterval(window.tickTimedMathClock, 1000);
+};
+
 window.tickTimedMathClock = function tickTimedMathClock() {
   const state = window._activeTimedMath;
   if (!state) return;
@@ -350,6 +363,30 @@ window.finishTimedMathGame = async function finishTimedMathGame() {
   if (!state) return;
   clearInterval(state.timerId);
   window._activeTimedMath = null;
+
+  if (state.practice) {
+    // Práctica: se corrige acá mismo y se muestran las que fallaste con su respuesta.
+    const isRight = (i) => state.answers[i] !== undefined && state.answers[i] !== '' && Number(state.answers[i]) === Number(state.practice.solutions[i]);
+    const total = state.practice.solutions.length;
+    const score = state.practice.solutions.filter((_, i) => isRight(i)).length;
+    document.getElementById('timed-math-modal')?.remove();
+    const s = window.sanitizeInput || ((v) => v);
+    const misses = state.practice.solutions.map((sol, i) => ({ q: state.questions[i], sol, given: state.answers[i], right: isRight(i) })).filter(m => !m.right);
+    const good = score >= Math.ceil(total / 2);
+    await window.GameArena.result({
+      ok: good,
+      title: score === total ? '¡Perfecto!' : good ? '¡Bien hecho!' : 'Seguí practicando',
+      subtitle: 'Práctica: no cuenta para el ranking ni gasta gemas.',
+      detailHtml: `<div style="font-size:2.4rem;font-weight:900;margin:.25rem 0">${score}<span style="font-size:1.2rem;color:#94a3b8"> / ${total}</span></div>
+        ${misses.length ? `<div style="text-align:left;margin-top:.75rem;max-height:11rem;overflow:auto;font-size:.78rem;color:#cbd5e1">
+          <div style="font-weight:900;color:#fda4af;margin-bottom:.25rem">Para repasar:</div>
+          ${misses.map(m => `<div style="padding:.35rem .5rem;margin-bottom:.25rem;border-radius:.6rem;background:rgba(255,255,255,.06)">${s(m.q)}<br>
+            <span style="color:#86efac;font-weight:800">Respuesta: ${s(String(m.sol))}</span>${m.given ? ` <span style="color:#94a3b8">(escribiste ${s(m.given)})</span>` : ' <span style="color:#94a3b8">(sin responder)</span>'}</div>`).join('')}
+        </div>` : ''}`,
+      fact: window.GameArena.MATH_TIPS[Math.floor(Math.random() * window.GameArena.MATH_TIPS.length)],
+    });
+    return;
+  }
 
   // Si se acabó el tiempo antes de responder todas, las que faltan quedan
   // vacías -- el servidor las cuenta como mal, no rompe el submit.

@@ -53,7 +53,8 @@ window.renderDebugSection = function renderDebugSection() {
     icon: 'fa-magnifying-glass',
     c1: '#059669',
     c2: '#0284c7',
-    onclick: 'window.openCreateDebugModal()',
+    onclick: "window.GameArena.chooseMode('debug')",
+    cta: '<i class="fas fa-bolt"></i> Practicar o retar',
   });
 
   if (!duels.length) {
@@ -268,6 +269,12 @@ window.openDebugGame = async function openDebugGame(duelId) {
   window.renderDebugGame();
 };
 
+// Práctica solo (sin rival): ver js/practice.js.
+window.startPracticeDebug = function startPracticeDebug({ steps, topic, fact }) {
+  window._activeDebug = { duelId: null, practice: { steps, fact }, labels: steps.map(s => s.label), topic: topic || '', t0: performance.now() };
+  window.renderDebugGame();
+};
+
 window.renderDebugGame = function renderDebugGame() {
   const state = window._activeDebug;
   if (!state) return;
@@ -307,19 +314,32 @@ window.selectDebugStatement = async function selectDebugStatement(index) {
   if (state.stopClock) state.stopClock();
   document.querySelectorAll('.debug-statement').forEach(b => { b.disabled = true; });
 
-  const { data: result, error } = await window._supabase.rpc('submit_debug_result', {
-    p_duel_id: state.duelId,
-    p_selected_index: index,
-  });
+  let result, error;
+  if (state.practice) {
+    // Práctica: la secuencia ya está en el cliente (no hay nada en juego).
+    const bugIndex = state.practice.steps.findIndex(st => st.isBug);
+    result = {
+      correct: index === bugIndex, bug_index: bugIndex,
+      time_ms: Math.round(performance.now() - state.t0),
+      explanation: state.practice.steps[bugIndex]?.explanation || '',
+    };
+  } else {
+    ({ data: result, error } = await window._supabase.rpc('submit_debug_result', {
+      p_duel_id: state.duelId,
+      p_selected_index: index,
+    }));
+  }
   window._activeDebug = null;
   if (error) {
     document.getElementById('debug-game-modal')?.remove();
     return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
   }
 
-  window._myDebugPlayed = window._myDebugPlayed || new Set();
-  window._myDebugPlayed.add(state.duelId);
-  window.GameArena.notifyResult('debug', state.duelId);
+  if (!state.practice) {
+    window._myDebugPlayed = window._myDebugPlayed || new Set();
+    window._myDebugPlayed.add(state.duelId);
+    window.GameArena.notifyResult('debug', state.duelId);
+  }
 
   // Marca el elegido y el correcto antes de pasar al resultado.
   document.querySelectorAll('.debug-statement').forEach((b, i) => {
@@ -332,16 +352,19 @@ window.selectDebugStatement = async function selectDebugStatement(index) {
   document.getElementById('debug-game-modal')?.remove();
 
   const s = window.sanitizeInput || ((v) => v);
-  await window.GameArena.resultWithFact('debug', state.duelId, {
+  const showResult = state.practice
+    ? (opts) => window.GameArena.result({ ...opts, fact: state.practice.fact })
+    : (opts) => window.GameArena.resultWithFact('debug', state.duelId, opts);
+  await showResult({
     ok: result.correct,
     title: result.correct ? '¡Bug encontrado!' : 'Se te escapó',
     subtitle: result.correct
-      ? 'Cuando tu rival juegue, se define quién ganó.'
+      ? (state.practice ? 'Práctica: no cuenta para el ranking ni gasta gemas.' : 'Cuando tu rival juegue, se define quién ganó.')
       : `La afirmación falsa era la número ${result.bug_index + 1}:`,
     detailHtml: `<div style="font-size:.85rem;color:#e2e8f0;background:rgba(255,255,255,.06);border-radius:.8rem;padding:.75rem;text-align:left">
       <i class="fas fa-lightbulb" style="color:#facc15"></i> ${s(result.explanation || '')}</div>`,
   });
-  window.loadDebugSection();
+  if (!state.practice) window.loadDebugSection();
 };
 
 window.showDebugReview = async function showDebugReview(duelId) {

@@ -1,5 +1,8 @@
 // Edge Function: ai-generate-quiz
 // Genera preguntas de opcion multiple para un Desafio 1v1 entre estudiantes.
+// Genera DOS juegos de preguntas distintos, uno para cada jugador (asi, sentados
+// juntos, uno no le puede copiar al otro ni ver sus respuestas). Tambien genera
+// un juego para el modo practica (sin rival).
 // Guarda las preguntas en student_duels usando la service role (asi el
 // alumno que las pide no puede inspeccionar la llamada para ver las
 // respuestas correctas antes de jugar -- solo se guardan en la fila del duelo).
@@ -19,6 +22,52 @@ const ALLOWED_ORIGINS = new Set([
   'https://clases.yoaprendo.online',
   'https://billiog.github.io',
 ]);
+
+type Q = { question: string; options: string[]; correctIndex: number };
+
+// Para comparar "ya salio" ignorando mayusculas, tildes y puntuacion.
+const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 80);
+
+// La IA tiende a poner la respuesta correcta casi siempre en las primeras
+// posiciones: se mezclan las 4 opciones (Fisher-Yates) y se recalcula
+// correctIndex, para que la posicion correcta sea realmente al azar.
+function shuffleOptions(q: Q): Q {
+  const order = [0, 1, 2, 3];
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [order[i], order[j]] = [order[j], order[i]];
+  }
+  return {
+    question: q.question,
+    options: order.map((k) => q.options[k]),
+    correctIndex: order.indexOf(q.correctIndex),
+  };
+}
+
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// Valida lo que devolvio la IA y descarta las que ya salieron ("relax" = ultimo
+// intento: acepta repetidas antes que dejar al alumno sin juego).
+function pickQuestions(raw: any[], need: number, seen: Set<string>, picked: Q[], relax: boolean) {
+  for (const q of raw || []) {
+    const question = String(q?.question || '').trim();
+    const options = Array.isArray(q?.options) ? q.options.slice(0, 4).map((o: unknown) => String(o)) : [];
+    if (!question || options.length !== 4 || new Set(options.map(norm)).size !== 4) continue;
+    const key = norm(question);
+    if (picked.some((p) => norm(p.question) === key)) continue;
+    if (!relax && seen.has(key)) continue;
+    const correctIndex = Math.min(3, Math.max(0, parseInt(q?.correctIndex) || 0));
+    picked.push(shuffleOptions({ question, options, correctIndex }));
+    if (picked.length >= need) break;
+  }
+}
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin') || '';
@@ -43,32 +92,89 @@ Deno.serve(async (req) => {
   if (authErr || !user) return json({ error: 'Invalid token' }, 401);
 
   try {
-    const { duel_id } = await req.json();
-    if (!duel_id) return json({ error: 'duel_id requerido' }, 400);
+    const body = await req.json();
+    const practice = body?.practice === true;
+    const duel_id = body?.duel_id;
+    if (!practice && !duel_id) return json({ error: 'duel_id requerido' }, 400);
 
     // La columna "questions" ya no es legible por el cliente (RLS/columnas
     // -- ver migrations/duel-harden.sql), así que acá se lee con service
     // role y se valida el permiso a mano en vez de confiar en RLS.
-    const serviceClientRead = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
-    const { data: duel, error: duelErr } = await serviceClientRead
-      .from('student_duels')
-      .select('id, topic, question_count, questions, challenger_id, opponent_id')
-      .eq('id', duel_id)
-      .single();
-    if (duelErr || !duel) return json({ error: 'No se pudo leer el duelo (¿permisos?)' }, 403);
-    if (user.id !== duel.challenger_id && user.id !== duel.opponent_id) return json({ error: 'No autorizado' }, 403);
-    if (duel.questions) return json({ ok: true }); // ya generado, no regenerar
+    const db = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
 
-    // Nivel de dificultad segun el grado de quien retó (challenger) -- se lee
-    // server-side (no del cliente) para que no se pueda pedir un grado falso
-    // y así preguntas más fáciles/difíciles de lo que corresponde.
-    const { data: challenger } = await serviceClientRead.from('students').select('grade').eq('id', duel.challenger_id).maybeSingle();
-    const grade = challenger?.grade || 'educación básica';
+    let topic = '';
+    let grade = 'educación básica';
+    let n = 5;
+    let total = 5;
+    const seen = new Set<string>();
+    const seenText: string[] = [];
+    const remember = (qs: any[] | null) => (qs || []).forEach((q: any) => {
+      const t = String(q?.question || '');
+      if (!t) return;
+      seen.add(norm(t));
+      if (seenText.length < 40) seenText.push(t.slice(0, 110));
+    });
 
-    const n = Math.min(15, Math.max(1, duel.question_count || 5));
+    if (practice) {
+      // Práctica solo: un juego para quien lo pide, sin tocar ninguna tabla.
+      topic = String(body?.topic || '').slice(0, 200).trim();
+      if (!topic) return json({ error: 'topic requerido' }, 400);
+      n = Math.min(10, Math.max(3, parseInt(body?.count) || 5));
+      total = n;
+      (Array.isArray(body?.avoid) ? body.avoid : []).slice(0, 40).forEach((t: unknown) => remember([{ question: String(t) }]));
+      const { data: me } = await db.from('students').select('grade').eq('id', user.id).maybeSingle();
+      if (me?.grade) grade = me.grade;
+    } else {
+      const { data: duel, error: duelErr } = await db
+        .from('student_duels')
+        .select('id, topic, question_count, questions, challenger_id, opponent_id')
+        .eq('id', duel_id)
+        .single();
+      if (duelErr || !duel) return json({ error: 'No se pudo leer el duelo (¿permisos?)' }, 403);
+      if (user.id !== duel.challenger_id && user.id !== duel.opponent_id) return json({ error: 'No autorizado' }, 403);
+      if (duel.questions) return json({ ok: true }); // ya generado, no regenerar
+      topic = duel.topic;
+      n = Math.min(15, Math.max(1, duel.question_count || 5));
+      total = n * 2; // uno para cada jugador
+
+      // Nivel de dificultad segun el grado de quien retó (challenger) -- se lee
+      // server-side (no del cliente) para que no se pueda pedir un grado falso
+      // y así preguntas más fáciles/difíciles de lo que corresponde.
+      const { data: challenger } = await db.from('students').select('grade').eq('id', duel.challenger_id).maybeSingle();
+      if (challenger?.grade) grade = challenger.grade;
+
+      // Preguntas que ya vieron los DOS jugadores (cualquier tema) y las más
+      // recientes del tema: no se repiten entre duelos ni con el mismo rival.
+      // questions_b puede no existir si todavía no corrieron el SQL.
+      const ids = [duel.challenger_id, duel.opponent_id];
+      const filter = `challenger_id.in.(${ids.join(',')}),opponent_id.in.(${ids.join(',')})`;
+      const r = await db.from('student_duels').select('questions, questions_b').or(filter)
+        .not('questions', 'is', null).order('created_at', { ascending: false }).limit(12);
+      const rows = r.error
+        ? (await db.from('student_duels').select('questions').or(filter)
+            .not('questions', 'is', null).order('created_at', { ascending: false }).limit(12)).data
+        : r.data;
+      (rows || []).forEach((row: any) => { remember(row.questions); remember(row.questions_b); });
+      const { data: recent } = await db.from('student_duels')
+        .select('questions').eq('topic', topic).not('questions', 'is', null)
+        .order('created_at', { ascending: false }).limit(8);
+      (recent || []).forEach((row: any) => remember(row.questions));
+    }
+
+    // Las preguntas apuntan a las competencias que mide PISA (lectura, matemática
+    // y ciencias aplicadas): una situación o texto corto y algo que interpretar,
+    // calcular o decidir -- no repetir un dato memorizado.
     const system = `Genera un quiz de opción múltiple en español sobre el tema indicado, para un
 estudiante de ${grade} en Guatemala -- ajustá la dificultad y el vocabulario a ese
-grado exacto. Exactamente ${n} preguntas, 4 opciones cada una, solo UNA correcta.
+grado exacto. Exactamente ${total} preguntas, 4 opciones cada una, solo UNA correcta.
+
+ESTILO DE LAS PREGUNTAS (que ejerciten comprensión y razonamiento, no memoria):
+- Cada pregunta plantea primero una SITUACIÓN real breve, un texto corto (1 a 3
+  oraciones) o un dato/cifra, y después pide interpretarlo, calcularlo, compararlo,
+  explicar una causa o decidir qué hacer.
+- Evitá las preguntas de pura memoria ("¿Quién descubrió...?", "¿En qué año...?").
+- Las 4 opciones tienen que ser plausibles y distintas entre sí.
+- Las preguntas no pueden repetirse ni parecerse entre sí.
 
 MUY IMPORTANTE -- exactitud de los datos:
 - Usá solo hechos que sepas con certeza. Si dudás de un dato exacto (una fecha,
@@ -88,81 +194,71 @@ El campo "fact" es UN dato curioso y educativo sobre el tema (1 o 2 oraciones, m
 verificable; si no estás seguro de un dato, escribí en su lugar un consejo práctico
 para aprender o recordar este tema.`;
 
+    const angles = ['interpretar un texto corto o un dato', 'resolver una situación de la vida diaria en Guatemala', 'comparar dos opciones con un criterio', 'leer una lista o tabla sencilla y sacar una conclusión', 'explicar una causa o una consecuencia', 'aplicar un concepto a un caso nuevo', 'calcular o estimar con datos reales', 'decidir la mejor acción en un problema'];
+    const angle = shuffle(angles).slice(0, 3).join('; ');
+    const userMsg = `Tema: ${topic.slice(0, 200)}\nEnfoques sugeridos para esta ronda (mezclalos): ${angle}.`
+      + (seenText.length ? `\nEstas preguntas YA salieron, NO las repitas ni las reformules:\n- ${seenText.join('\n- ')}` : '');
+
     // Groq a veces rechaza su propia salida en modo JSON estricto ("Failed
     // to validate JSON") o el content viene truncado/mal formado -- es
-    // intermitente, no depende del tema. Reintentar 1 vez antes de fallar
-    // le ahorra al alumno tener que tocar "generar" de nuevo a mano (que
-    // era el único remedio real: la segunda vez casi siempre funciona).
-    // Variedad: con el mismo tema (ej. el tema de la semana) y temperatura
-    // baja salían casi las mismas preguntas en cada duelo. Se le pasan las
-    // que ya salieron y un enfoque al azar.
-    const { data: recent } = await serviceClientRead.from('student_duels')
-      .select('questions').eq('topic', duel.topic).not('questions', 'is', null)
-      .order('created_at', { ascending: false }).limit(8);
-    const usedQs = [...new Set((recent || []).flatMap((r: any) => (r.questions || []).map((q: any) => String(q.question || '').slice(0, 110))))].slice(0, 40);
-    const angles = ['ejemplos de la vida diaria en Guatemala', 'vocabulario y definiciones', 'causas y consecuencias', 'datos y cifras seguras', 'aplicaciones prácticas', 'personajes, inventores o descubrimientos', 'comparaciones y diferencias', 'situaciones para resolver'];
-    const angle = angles[Math.floor(Math.random() * angles.length)];
-    const userMsg = `Tema: ${String(duel.topic).slice(0, 200)}\nEnfoque sugerido para esta ronda: ${angle}.`
-      + (usedQs.length ? `\nEstas preguntas YA salieron en otros duelos, NO las repitas ni las reformules:\n- ${usedQs.join('\n- ')}` : '');
-
-    let data: any, parsed: any;
+    // intermitente, no depende del tema. Se reintenta hasta 3 veces (el
+    // último acepta repetidas antes que dejar al alumno sin juego).
+    const picked: Q[] = [];
+    let fact = '';
     let lastError = 'La IA no generó una respuesta válida';
-    for (let attempt = 1; attempt <= 2; attempt++) {
+    for (let attempt = 1; attempt <= 3 && picked.length < total; attempt++) {
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${GROQ_API_KEY}`,
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_API_KEY}` },
         body: JSON.stringify({
           model: GROQ_MODEL,
-          messages: [
-            { role: 'system', content: system },
-            { role: 'user', content: userMsg },
-          ],
-          max_tokens: 3000,
+          messages: [{ role: 'system', content: system }, { role: 'user', content: userMsg }],
+          // 2 juegos de hasta 15 preguntas = hasta 30 preguntas.
+          max_tokens: Math.min(9000, 1500 + total * 260),
           reasoning_effort: 'low',
           // Bajado de 0.7 -- menos "creatividad" implica menos hechos
-          // inventados/mezclados en preguntas de cultura general e historia.
-          temperature: 0.3,
+          // inventados/mezclados; la variedad viene del enfoque y las excluidas.
+          temperature: 0.4,
           response_format: { type: 'json_object' },
         }),
       });
-
-      data = await res.json();
+      const data = await res.json();
       if (data.error) { lastError = data.error.message; continue; }
-
       try {
-        parsed = JSON.parse(data.choices?.[0]?.message?.content || '{}');
-        break;
+        const parsed = JSON.parse(data.choices?.[0]?.message?.content || '{}');
+        pickQuestions(parsed.questions || [], total, seen, picked, attempt === 3);
+        if (!fact) fact = String(parsed.fact || '').trim().slice(0, 300);
       } catch {
         lastError = 'La IA devolvió una respuesta no válida';
-        parsed = null;
       }
     }
-    if (!parsed) return json({ error: lastError }, 500);
+    if (!picked.length) return json({ error: lastError }, 500);
 
-    const questions = (parsed.questions || []).slice(0, n).map((q: any) => ({
-      question: String(q.question || ''),
-      options: Array.isArray(q.options) ? q.options.slice(0, 4).map(String) : [],
-      correctIndex: Math.min(3, Math.max(0, parseInt(q.correctIndex) || 0)),
-    })).filter((q: any) => q.question && q.options.length === 4);
+    if (practice) {
+      return json({ ok: true, questions: picked.slice(0, n), fact: fact || null });
+    }
 
-    if (!questions.length) return json({ error: 'La IA no generó preguntas válidas' }, 500);
+    // Retador: las primeras n. Rival: las siguientes n (si no alcanzaron, el
+    // rival usa las mismas -- el servidor lo resuelve solo).
+    const questions = picked.slice(0, n);
+    const questionsB = picked.length >= n * 2 ? picked.slice(n, n * 2) : null;
 
-    const serviceClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
-    const { error: updateErr } = await serviceClient
-      .from('student_duels')
-      .update({ questions, status: 'active' })
-      .eq('id', duel_id);
+    const update: Record<string, unknown> = { questions, status: 'active' };
+    if (questionsB) update.questions_b = questionsB;
+    let { error: updateErr } = await db.from('student_duels').update(update).eq('id', duel_id);
+    if (updateErr && questionsB && /questions_b/.test(updateErr.message)) {
+      // Todavía no corrieron migrations/duel-per-player-content.sql: se guarda
+      // como antes (mismas preguntas para los dos) hasta que lo corran.
+      ({ error: updateErr } = await db.from('student_duels')
+        .update({ questions, status: 'active' }).eq('id', duel_id));
+    }
     if (updateErr) return json({ error: updateErr.message }, 500);
 
     // Dato para el "¿Sabías que?" del resultado -- solo se entrega después
     // de jugar, vía get_duel_fact (ver migrations/duel-facts.sql).
-    const factText = String(parsed.fact || '').trim().slice(0, 300);
-    if (factText) await serviceClient.from('duel_facts').upsert({ game: 'quiz', duel_id, fact: factText });
+    if (fact) await db.from('duel_facts').upsert({ game: 'quiz', duel_id, fact });
 
-    return json({ ok: true, count: questions.length });
+    return json({ ok: true, count: questions.length, separate: !!questionsB });
   } catch (e) {
     return json({ error: String(e) }, 500);
   }
