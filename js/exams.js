@@ -81,22 +81,59 @@ async function loadExamList() {
     const { data, error } = await sb().from('exams').select('*, exam_results(count)').order('created_at', { ascending: false });
     if (error) throw error;
     return data;
-  }, (data) => { S.exams = data || []; if (!S.exam) renderList(); });
+  }, (data, fromCache) => {
+    S.exams = data || [];
+    if (!S.exam) renderList();
+    if (!fromCache) warmExamsOffline(S.exams);
+  });
 }
 
-async function loadClassStudents(exam) {
+function fetchClassStudents(exam, onUpdate = null) {
   const key = `exam_students_${exam.school_code}_${exam.grade}_${exam.section}`;
-  await window.fetchWithCache(key, async () => {
+  return window.fetchWithCache(key, async () => {
     const { data, error } = await sb().from('students').select('id, full_name, status')
       .eq('school_code', exam.school_code).eq('grade', exam.grade).eq('section', exam.section).order('full_name');
     if (error) throw error;
     return data;
-  }, (data) => { S.students = (data || []).filter((s) => s.status !== 'baja' && s.status !== 'egresado'); });
+  }, onUpdate);
+}
+
+async function loadClassStudents(exam) {
+  await fetchClassStudents(exam, (data) => { S.students = (data || []).filter((s) => s.status !== 'baja' && s.status !== 'egresado'); });
 }
 
 async function loadResults(exam) {
-  const { data } = await sb().from('exam_results').select('*').eq('exam_id', exam.id);
-  S.results = new Map((data || []).map((r) => [r.student_id, r]));
+  const key = `exam_results_${exam.id}`;
+  let rows = [];
+  await window.fetchWithCache(key, async () => {
+    const { data, error } = await sb().from('exam_results').select('*').eq('exam_id', exam.id);
+    if (error) throw error;
+    return data || [];
+  }, (data) => { rows = data || []; });
+  S.results = new Map(rows.map((r) => [r.student_id, r]));
+  // Notas guardadas sin conexión que aún no suben: siguen viéndose.
+  try {
+    const pend = await window._syncManager?.getOwnedItems(window.currentUser.id, 'save_exam_result') || [];
+    pend.filter((p) => p.data?.exam_id === exam.id).forEach((p) => S.results.set(p.data.student_id, p.data));
+  } catch (_) { /* sin cola: se muestra lo de la red/caché */ }
+}
+
+// Con conexión, deja en el dispositivo los alumnos y notas de cada examen para
+// poder calificar después en un salón sin señal, aunque no se haya abierto antes.
+let warming = false;
+async function warmExamsOffline(exams) {
+  if (warming || !navigator.onLine) return;
+  warming = true;
+  try {
+    for (const e of exams) {
+      await fetchClassStudents(e).catch(() => {});
+      await window.fetchWithCache(`exam_results_${e.id}`, async () => {
+        const { data, error } = await sb().from('exam_results').select('*').eq('exam_id', e.id);
+        if (error) throw error;
+        return data || [];
+      }).catch(() => {});
+    }
+  } finally { warming = false; }
 }
 
 // ---------- Vista: lista ----------
@@ -578,6 +615,7 @@ async function saveCurrent() {
     else { btn.disabled = false; return scMsg(error.message); }
   }
   S.results.set(row.student_id, row);
+  window._syncManager?.setCache(`exam_results_${e.id}`, [...S.results.values()]).catch(() => {});
   const name = S.students.find((s) => s.id === row.student_id)?.full_name || '';
   toast(queued
     ? '<i class="fas fa-cloud-slash"></i> Nota guardada en este dispositivo: se sincroniza al reconectar'
