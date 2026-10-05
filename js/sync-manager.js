@@ -369,6 +369,12 @@ class SyncManager {
                 // El alumno marcó una lección como vista/completada (o el
                 // runtime SCORM/H5P le puso nota) sin internet -- se guardó
                 // localmente al toque y esto solo reintenta el upsert real.
+                // Nota de un examen escaneado sin internet (js/exams.js).
+                case 'save_exam_result':
+                    const { error: examResultError } = await _supabase.from('exam_results').upsert(data, { onConflict: 'exam_id,student_id' });
+                    if (examResultError) throw examResultError;
+                    return true;
+
                 case 'mark_lesson_complete':
                     const { error: completionError } = await _supabase.from('lesson_completions').upsert(data, { onConflict: 'lesson_id,student_id' });
                     if (completionError) throw completionError;

@@ -60,7 +60,7 @@
          index.html pero el navegador puede seguir sirviendo desde caché HTTP
          una versión vieja de un módulo lazy-loaded (ej. pdf-processor.js),
          aunque el tag de versión visible ya muestre la última. -->
-    <script>window.APP_VERSION = 'v1.0.158';</script>
+    <script>window.APP_VERSION = 'v1.0.159';</script>
 
     <!-- Silenciar console.log/info/debug en producción (activar con localStorage.PX_DEBUG='true').
          Va antes de todo lo demás porque los console.log de cada módulo corren
@@ -505,7 +505,7 @@
                         Q</div>
                     Quetzal <span class="text-primary-dark dark:text-primary">LMS</span>
                 </div>
-                <span id="app-version-tag" class="text-[0.65rem] text-slate-500 dark:text-slate-400 font-medium mt-1">v1.0.158</span>
+                <span id="app-version-tag" class="text-[0.65rem] text-slate-500 dark:text-slate-400 font-medium mt-1">v1.0.159</span>
             </div>
 
             <div id="login-error"
@@ -568,7 +568,7 @@
                 <div class="text-2xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent transform hover:scale-105 transition-transform leading-none">
                     Quetzal LMS
                 </div>
-                <span class="text-[0.6rem] text-slate-400 font-medium mt-0.5">v1.0.158</span>
+                <span class="text-[0.6rem] text-slate-400 font-medium mt-0.5">v1.0.159</span>
             </div>
 
             <div class="flex items-center gap-4 sm:gap-6">
@@ -672,6 +672,10 @@
                     <div id="nav-doc-evaluate" class="nav-item" onclick="nav('evaluate')">
                         <i class="fas fa-clipboard-check"></i>
                         <span>Evaluar Proyectos</span>
+                    </div>
+                    <div id="nav-doc-exams" class="nav-item" onclick="nav('exams')">
+                        <i class="fas fa-file-circle-check"></i>
+                        <span>Exámenes</span>
                     </div>
                     <div id="nav-doc-groups" class="nav-item" onclick="nav('groups')">
                         <i class="fas fa-users"></i>
@@ -986,6 +990,11 @@
                 <div id="teachers-container"></div>
             </section>
 
+            <!-- EXÁMENES (hoja de respuestas) -->
+            <section id="view-exams" class="view-section">
+                <div class="flex items-center gap-3 mb-6"><div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center text-lg shrink-0"><i class="fas fa-file-circle-check"></i></div><h2 class="mb-0">Exámenes</h2></div>
+                <div id="exams-container"></div>
+            </section>
             <!-- GRUPOS -->
             <section id="view-groups" class="view-section">
                 <div class="flex items-center gap-3 mb-6"><div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center text-lg shrink-0"><i class="fas fa-users"></i></div><h2 class="mb-0">Gestión de Equipos</h2></div>
@@ -1145,7 +1154,7 @@
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
 
     <!-- Punto de Entrada del Sistema -->
-    <script type="module" src="js/app.js?v=1.0.158"></script>
+    <script type="module" src="js/app.js?v=1.0.159"></script>
 
     <meta name="mobile-web-app-capable" content="yes">
 </body>

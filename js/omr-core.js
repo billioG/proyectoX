@@ -46,7 +46,19 @@
   // ---------- Hoja en SVG (para imprimir y para las pruebas) ----------
   const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-  function svgSheet({ n, title = 'Evaluación', examId = '', group = '' } = {}) {
+  // Texto que nunca se sale de su caja: si no cabe, se comprime con textLength.
+  function fitText(text, x, y, size, maxW, extra = '') {
+    const approx = String(text).length * size * 0.55;
+    const fit = approx > maxW ? ` textLength="${maxW}" lengthAdjust="spacingAndGlyphs"` : '';
+    return `<text x="${x}" y="${y}" font-size="${size}"${fit} ${extra}>${esc(text)}</text>`;
+  }
+
+  /**
+   * opciones: { n, title, group, examId }
+   * Hoja por alumno: + studentName (impreso en grande) y qr (matriz de booleanos
+   * de la librería de QR) arriba a la derecha. Sin ellos, es la hoja genérica.
+   */
+  function svgSheet({ n, title = 'Evaluación', examId = '', group = '', studentName = '', qr = null } = {}) {
     const L = layout(n);
     const ox = MARGIN.x, oy = MARGIN.y;
     const p = [];
@@ -57,12 +69,33 @@
       p.push(`<rect x="${ox + x - MARK / 2}" y="${oy + y - MARK / 2}" width="${MARK}" height="${MARK}" fill="#000"/>`);
     });
 
-    p.push(`<text x="${ox + 11}" y="${oy + 7}" font-size="6" font-weight="700">${esc(title)}</text>`);
-    p.push(`<text x="${ox + 11}" y="${oy + 12.5}" font-size="3" fill="#444">${esc(group)}${group && examId ? ' · ' : ''}${examId ? 'Examen ' + esc(examId) : ''} · ${L.n} preguntas</text>`);
-    p.push(`<text x="${ox + 11}" y="${oy + 22}" font-size="3.6">Nombre:</text><line x1="${ox + 28}" y1="${oy + 22}" x2="${ox + 125}" y2="${oy + 22}" stroke="#000" stroke-width=".3"/>`);
-    p.push(`<text x="${ox + 130}" y="${oy + 22}" font-size="3.6">Fecha:</text><line x1="${ox + 142}" y1="${oy + 22}" x2="${ox + 179}" y2="${oy + 22}" stroke="#000" stroke-width=".3"/>`);
-    p.push(`<text x="${ox + 11}" y="${oy + 30}" font-size="3.6">Grado y sección:</text><line x1="${ox + 43}" y1="${oy + 30}" x2="${ox + 90}" y2="${oy + 30}" stroke="#000" stroke-width=".3"/>`);
-    p.push(`<text x="${ox + 96}" y="${oy + 30}" font-size="3.6">Nota:</text><line x1="${ox + 106}" y1="${oy + 30}" x2="${ox + 125}" y2="${oy + 30}" stroke="#000" stroke-width=".3"/>`);
+    const textW = qr ? 138 : 168;
+    p.push(fitText(title, ox + 11, oy + 7, 6, textW, 'font-weight="700"'));
+    p.push(fitText(`${group}${group && examId ? ' · ' : ''}${examId ? 'Examen ' + examId : ''} · ${L.n} preguntas`, ox + 11, oy + 12.5, 3, textW, 'fill="#444"'));
+
+    if (qr) {
+      // QR a la derecha (zona blanca alrededor para que se lea bien)
+      const size = 28, qx = SHEET.w - 8 - size, qy = 6, m = size / qr.length;
+      p.push(`<rect x="${ox + qx - 2}" y="${oy + qy - 2}" width="${size + 4}" height="${size + 4}" fill="#fff"/>`);
+      qr.forEach((row, r) => {
+        let c = 0;
+        while (c < row.length) {
+          if (!row[c]) { c++; continue; }
+          let end = c; while (end < row.length && row[end]) end++;
+          p.push(`<rect x="${(ox + qx + c * m).toFixed(3)}" y="${(oy + qy + r * m).toFixed(3)}" width="${((end - c) * m + 0.02).toFixed(3)}" height="${(m + 0.02).toFixed(3)}" fill="#000"/>`);
+          c = end;
+        }
+      });
+      p.push(`<text x="${ox + 11}" y="${oy + 20}" font-size="3.2" fill="#444">Alumno:</text>`);
+      p.push(fitText(studentName, ox + 11, oy + 26.5, 5, textW, 'font-weight="700"'));
+      p.push(`<text x="${ox + 11}" y="${oy + 32.5}" font-size="3.4">Fecha:</text><line x1="${ox + 23}" y1="${oy + 32.5}" x2="${ox + 70}" y2="${oy + 32.5}" stroke="#000" stroke-width=".3"/>`);
+      p.push(`<text x="${ox + 78}" y="${oy + 32.5}" font-size="3.4">Nota:</text><line x1="${ox + 88}" y1="${oy + 32.5}" x2="${ox + 112}" y2="${oy + 32.5}" stroke="#000" stroke-width=".3"/>`);
+    } else {
+      p.push(`<text x="${ox + 11}" y="${oy + 22}" font-size="3.6">Nombre:</text><line x1="${ox + 28}" y1="${oy + 22}" x2="${ox + 125}" y2="${oy + 22}" stroke="#000" stroke-width=".3"/>`);
+      p.push(`<text x="${ox + 130}" y="${oy + 22}" font-size="3.6">Fecha:</text><line x1="${ox + 142}" y1="${oy + 22}" x2="${ox + 179}" y2="${oy + 22}" stroke="#000" stroke-width=".3"/>`);
+      p.push(`<text x="${ox + 11}" y="${oy + 30}" font-size="3.6">Grado y sección:</text><line x1="${ox + 43}" y1="${oy + 30}" x2="${ox + 90}" y2="${oy + 30}" stroke="#000" stroke-width=".3"/>`);
+      p.push(`<text x="${ox + 96}" y="${oy + 30}" font-size="3.6">Nota:</text><line x1="${ox + 106}" y1="${oy + 30}" x2="${ox + 125}" y2="${oy + 30}" stroke="#000" stroke-width=".3"/>`);
+    }
     p.push(`<text x="${ox + 11}" y="${oy + 38}" font-size="2.8" fill="#333">Rellena por completo UN círculo por pregunta, con lápiz o lapicero oscuro. No dobles ni manches la hoja.</text>`);
     p.push(`<circle cx="${ox + 150}" cy="${oy + 37.2}" r="1.8" fill="#000"/><text x="${ox + 154}" y="${oy + 38.2}" font-size="2.6">bien</text>`);
     p.push(`<circle cx="${ox + 165}" cy="${oy + 37.2}" r="1.8" fill="none" stroke="#000" stroke-width=".3"/><path d="M${ox + 163.8} ${oy + 36} l2.4 2.4 m0 -2.4 l-2.4 2.4" stroke="#000" stroke-width=".3"/><text x="${ox + 169}" y="${oy + 38.2}" font-size="2.6">mal</text>`);

@@ -70,6 +70,7 @@ seguras de re-ejecutar):
 - [x] `migrations/sync-queue-idempotency.sql` (v1.0.127) — junta evaluar proyecto en una sola función atómica y agrega `client_ref` a `tutor_attendance` para que un reintento de la cola offline no duplique el check-in.
 - [ ] `migrations/fix-is-staff-coordinador.sql`, `migrations/fix-coordinator-own-schools.sql`, `migrations/fix-cross-school-public-projects.sql` (v1.0.142-145) — coordinador con acceso de docente y proyectos públicos entre colegios.
 - [ ] `migrations/project-reactions.sql` y después `migrations/project-reactions-ranking-count.sql` (v1.0.147-150) — reacciones en proyectos; el Ranking cuenta Me gusta + Excelente A+.
+- [ ] `migrations/exams.sql` (v1.0.159) — Exámenes con hoja de respuestas (tablas `exams`/`exam_results`, permisos y `my_exam_results()`).
 - [ ] `migrations/project-thumbnails.sql` (v1.0.155) — miniatura de los proyectos con modelo 3D (columna `projects.thumbnail_url`).
 - [ ] `migrations/project-reaction-notifications.sql` (v1.0.153) — aviso en la campanita al dueño/equipo cuando reaccionan a su proyecto.
 

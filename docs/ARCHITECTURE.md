@@ -91,6 +91,7 @@ manda el navegador.
 | `gamification.js` | Centro de Juego, cofre diario, gemas en vivo, guía de gemas |
 | `game-arena.js` | Capa común de los juegos 1v1 (VS, resultados, retos rápidos, presencia) |
 | `duels.js`, `hangman-duel.js`, `timed-math-duel.js`, `debug-duel.js`, `spelling-duel.js` | Los 5 juegos 1v1 |
+| `exams.js`, `omr-core.js` | Exámenes con hoja de respuestas: crear, imprimir hojas con QR por alumno, escanear con la cámara y calificar (lector de burbujas sin dependencias) |
 | `companion.js` | Mascotas, Quetzadex, trucos (emotes en el código), vestidor, tarjeta para redes, videos |
 | `season-pass.js`, `leagues.js`, `tournaments.js`, `random-events.js` | Pase, ligas, torneos, eventos sorpresa |
 | `badges.js`, `ranking.js`, `certificates.js` | Insignias, ranking, diplomas |

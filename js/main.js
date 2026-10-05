@@ -16,6 +16,7 @@ const MODULE_MAP = {
     'students': ['js/students.js', 'js/pdf-processor.js'],
     'teachers': ['js/teachers.js'],
     'groups': ['js/groups.js'],
+    'exams': ['js/omr-core.js', 'js/exams.js'],
     'attendance': ['js/attendance.js', 'js/data/challenges.js'],
     'admin-attendance-report': ['js/admin-attendance.js', 'js/attendance-summary-view.js'],
     'admin-eval-report': ['js/admin-evaluations.js'],
@@ -289,6 +290,9 @@ export function loadViewContent(view) {
         case 'groups':
             callViewLoader(view, window.loadGroups);
             break;
+        case 'exams':
+            if (userRole === 'admin' || userRole === 'docente') callViewLoader(view, window.loadExams);
+            break;
         case 'lessons':
             callViewLoader(view, window.loadLessons);
             break;
@@ -336,7 +340,7 @@ const ADMIN_ONLY_VIEWS = new Set([
     'admin-dashboard', 'admin-teacher-performance', 'admin-success', 'admin-rocks',
     'schools', 'teachers', 'admin-attendance-report', 'admin-eval-report'
 ]);
-const STAFF_ONLY_VIEWS = new Set(['students']);
+const STAFF_ONLY_VIEWS = new Set(['students', 'exams']);
 const COORDINADOR_ONLY_VIEWS = new Set(['coordinator-dashboard', 'coordinator-reports']);
 
 function isViewAllowedForRole(view, role) {

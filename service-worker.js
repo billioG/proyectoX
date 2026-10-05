@@ -2,7 +2,7 @@
 // SERVICE WORKER - PROJECTX PWA
 // ================================================
 
-const CACHE_NAME = 'projectx-v1.0.158';
+const CACHE_NAME = 'projectx-v1.0.159';
 // Caché de archivos de lecciones (video/PDF/imagen/paquetes SCORM-H5P) --
 // separada de CACHE_NAME a propósito: CACHE_NAME se recrea y se BORRA
 // entera en cada deploy (bump de versión) para forzar JS/CSS frescos, pero
@@ -38,7 +38,7 @@ const LAZY_MODULES = [
   'js/admin-waivers.js', 'js/attendance-summary-view.js', 'js/attendance.js',
   'js/badges.js', 'js/bonus-system.js', 'js/certificates.js', 'js/companion.js',
   'js/coordinator.js', 'js/data/challenges.js', 'js/debug-duel.js', 'js/duels.js',
-  'js/evaluation-modals.js', 'js/evaluation-notifications.js', 'js/evaluation.js',
+  'js/exams.js', 'js/omr-core.js', 'js/evaluation-modals.js', 'js/evaluation-notifications.js', 'js/evaluation.js',
   'js/feed-ui.js', 'js/gamification.js', 'js/groups.js', 'js/hangman-duel.js',
   'js/kpi-engine.js', 'js/lessons.js', 'js/pdf-processor.js', 'js/spelling-duel.js', 'js/game-arena.js', 'js/season-pass.js', 'js/leagues.js', 'js/weekly-topic.js',
   'js/profile-modals.js', 'js/profile.js', 'js/programs.js', 'js/project-modals.js',
