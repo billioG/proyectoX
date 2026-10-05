@@ -1,6 +1,9 @@
 /**
- * DUELOS 1V1 -- quiz de trivia generado por IA entre estudiantes, con
- * apuesta de gemas.
+ * COMPRENSIÓN LECTORA 1V1 -- la IA escribe un texto corto (distinto para cada
+ * jugador) y 4 a 8 preguntas sobre él: idea principal, datos explícitos,
+ * inferencias, vocabulario en contexto y opinión sobre el texto. Gana quien
+ * responde mejor. Con apuesta de gemas, o en modo Práctica sin rival.
+ * (Antes era el "Desafío de Código": un quiz de programación.)
  */
 
 window.loadDuelsSection = async function loadDuelsSection() {
@@ -134,6 +137,9 @@ window.showDuelReview = async function showDuelReview(duelId) {
         <button class="w-9 h-9 rounded-xl bg-white/5 text-slate-400 hover:text-rose-500 flex items-center justify-center" onclick="this.closest('.fixed').remove()"><i class="fas fa-times"></i></button>
       </div>
       <div class="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-3">
+        ${questions[0]?.passage ? `<div class="p-4 rounded-xl bg-white/5 border border-white/10">
+          ${questions[0].title ? `<p class="text-sm font-black text-white mb-2">${sanitizeInput(questions[0].title)}</p>` : ''}
+          <p class="text-xs text-slate-300 leading-relaxed" style="white-space:pre-line">${sanitizeInput(questions[0].passage)}</p></div>` : ''}
         ${questions.map((q, i) => {
     const mine = myAnswers[i];
     const correct = mine === q.correctIndex;
@@ -162,9 +168,9 @@ window.renderDuelsSection = function renderDuelsSection() {
   const sanitizeInput = window.sanitizeInput || ((v) => v);
 
   const createBtnHtml = window.GameArena.heroHtml({
-    title: 'Desafío de Código 1v1',
-    subtitle: 'Quiz de preguntas sobre el tema que elijas. Gana quien acierta más.',
-    icon: 'fa-code',
+    title: 'Comprensión Lectora 1v1',
+    subtitle: 'Leé un texto y respondé preguntas sobre lo que dice. Gana quien comprende mejor.',
+    icon: 'fa-book-open',
     c1: '#2563eb',
     c2: '#9333ea',
     onclick: "window.GameArena.chooseMode('quiz')",
@@ -271,25 +277,38 @@ window.toggleDuelHistory = function toggleDuelHistory() {
 // premiaban memorizar un dato suelto, no algo que ayude a mejorar en las
 // competencias que mide PISA (lectura comprensiva, matemática aplicada,
 // pensamiento científico). Quedan ciencia, matemática y STEM aplicado.
+// Se quitaron los temas de programación/robótica/C++: la plataforma ya no es
+// solo para enseñar código, y estos retos apuntan a competencias generales.
 const DUEL_TOPIC_POOL_FULL = [
   { name: 'Biodiversidad de Guatemala', minRank: 0 },
   { name: 'Cuidado del ambiente y los recursos naturales', minRank: 0 },
   { name: 'Ciencia y descubrimientos', minRank: 0 },
-  { name: 'Robótica educativa', minRank: 4 },
-  { name: 'Programación por bloques', minRank: 4 },
-  { name: 'Ciencias de la computación', minRank: 4 },
+  { name: 'Cuerpo humano y salud', minRank: 0 },
+  { name: 'Agua, clima y cambio climático', minRank: 0 },
+  { name: 'El universo y el sistema solar', minRank: 0 },
   { name: 'Matemática aplicada', minRank: 4 },
   { name: 'Física básica', minRank: 4 },
-  // Pedido puntual de un docente: temas técnicos concretos de los kits y del
-  // curso de programación, para repasar vocabulario que no suelen repasar
-  // solos -- reservados a Básico/Diversificado (ya vieron esto en clase).
-  { name: 'Electrónica básica', minRank: 7 },
   { name: 'Inteligencia artificial', minRank: 7 },
-  { name: 'Componentes de kits de robótica (sensores, actuadores, controladores)', minRank: 7 },
-  { name: 'Sintaxis básica de C++ (variables, tipos de datos, operadores)', minRank: 7 },
-  { name: 'Estructuras de control en C++ (condicionales, bucles)', minRank: 7 },
-  { name: 'Funciones, métodos y objetos en programación', minRank: 7 },
 ];
+
+// Temas para los TEXTOS de Comprensión Lectora: el texto trae la información,
+// así que sirven temas de cultura y vida diaria (no se pide recordar datos,
+// se pide entender lo que dice el texto). Variedad de tipos de texto la
+// pone la IA (informativo, cuento, instructivo, opinión, noticia).
+const READING_TOPIC_POOL = [
+  'Biodiversidad de Guatemala',
+  'Cuidado del ambiente y los recursos naturales',
+  'Ciencia y descubrimientos',
+  'Cuerpo humano y salud',
+  'Alimentación y vida sana',
+  'Agua, clima y cambio climático',
+  'Convivencia y valores',
+  'Tradiciones y cultura de Guatemala',
+  'Cuentos y fábulas',
+  'Tecnología en la vida diaria',
+  'Deporte y trabajo en equipo',
+];
+window.getReadingTopicPool = () => READING_TOPIC_POOL;
 
 // Temas con banco FIJO en la BD (sin IA) para algún juego puntual -- hoy
 // solo Ahorcado (migrations/hangman-word-bank.sql). Antes esto vivía
@@ -361,8 +380,8 @@ window.topicOptionsHtml = function topicOptionsHtml(pool) {
 
 // '__class__' = tema al azar de la clase (si no hay, cae a cultura general);
 // '' = cultura general al azar; cualquier otro valor = ese tema.
-window.resolveDuelTopic = function resolveDuelTopic(chosen) {
-  const pool = getDuelTopicPoolForCurrentUser();
+window.resolveDuelTopic = function resolveDuelTopic(chosen, poolOverride = null) {
+  const pool = poolOverride || getDuelTopicPoolForCurrentUser();
   const cls = window._classTopics || [];
   const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
   if (chosen === '__weekly__') return window._weeklyTopic || (cls.length ? pick(cls) : pick(pool));
@@ -370,8 +389,9 @@ window.resolveDuelTopic = function resolveDuelTopic(chosen) {
   return chosen || pick(pool);
 };
 
+// Preguntas sobre UN texto: 4 a 8 (más gemas, más preguntas).
 function computeDuelQuestionCount(wager) {
-  return Math.max(5, Math.min(15, 5 + Math.floor((wager || 0) / 10)));
+  return Math.max(4, Math.min(8, 4 + Math.floor((wager || 0) / 15)));
 }
 window.computeDuelQuestionCount = computeDuelQuestionCount;
 
@@ -398,7 +418,7 @@ window.openCreateDuelModal = async function openCreateDuelModal() {
   modal.className = 'fixed inset-0 z-[210] flex items-center justify-center p-6 bg-slate-950/90 backdrop-blur-sm animate-fadeIn';
   modal.innerHTML = `
     <div class="glass-card w-full max-w-md p-8 shadow-2xl animate-slideUp bg-slate-900 border border-white/10">
-      <h2 class="text-lg font-bold text-white uppercase tracking-tighter mb-6"><i class="fas fa-swords text-rose-500 mr-2"></i> Crear Desafío 1v1</h2>
+      <h2 class="text-lg font-bold text-white uppercase tracking-tighter mb-6"><i class="fas fa-book-open text-rose-500 mr-2"></i> Crear Comprensión Lectora 1v1</h2>
       <div class="space-y-4">
         <div>
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Rival</label>
@@ -412,15 +432,15 @@ window.openCreateDuelModal = async function openCreateDuelModal() {
           <p class="text-[0.6rem] text-slate-500 mt-1">Tenés ${userData?.gems ?? 0} gemas.</p>
         </div>
         <div>
-          <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Categoría</label>
+          <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Tema del texto</label>
           <select id="duel-topic" class="input-field-tw h-11 text-sm">
-            ${window.topicOptionsHtml(getDuelTopicPoolForCurrentUser())}
+            ${window.topicOptionsHtml(READING_TOPIC_POOL)}
           </select>
         </div>
         <div class="p-4 rounded-xl bg-white/5 border border-white/10 text-center">
-          <p class="text-[0.6rem] font-black uppercase text-slate-400 tracking-widest mb-1">Preguntas de este duelo</p>
+          <p class="text-[0.6rem] font-black uppercase text-slate-400 tracking-widest mb-1">Preguntas sobre el texto</p>
           <p id="duel-wager-preview" class="text-2xl font-black text-primary">${computeDuelQuestionCount(10)}</p>
-          <p class="text-[0.6rem] text-slate-500 mt-1">Ajusta la cantidad de preguntas según lo que apuestes -- más gemas, más preguntas.</p>
+          <p class="text-[0.6rem] text-slate-500 mt-1">Cada uno lee un texto distinto sobre el mismo tema. Más gemas, más preguntas.</p>
         </div>
       </div>
       <div class="flex gap-3 mt-8">
@@ -436,7 +456,7 @@ window.sendDuelChallenge = async function sendDuelChallenge() {
   const opponentId = document.getElementById('duel-opponent')?.value;
   const wager = parseInt(document.getElementById('duel-wager')?.value) || 0;
   const chosenTopic = document.getElementById('duel-topic')?.value;
-  const topic = window.resolveDuelTopic(chosenTopic);
+  const topic = window.resolveDuelTopic(chosenTopic, READING_TOPIC_POOL);
   const questionCount = computeDuelQuestionCount(wager);
   const btn = document.getElementById('btn-send-duel');
   const userData = window.userData;
@@ -548,9 +568,9 @@ window.openDuelQuiz = async function openDuelQuiz(duelId) {
   duel.questions = questions;
 
   const cached = (window._duelsCache || []).find(d => d.id === duelId);
-  await window.GameArena.versus({ title: 'Desafío de Código 1v1', ...(await window.GameArena.fightersFor(cached || duel)) });
+  await window.GameArena.versus({ title: 'Comprensión Lectora 1v1', ...(await window.GameArena.fightersFor(cached || duel)) });
 
-  window._activeDuel = { duel, index: 0, selections: [] };
+  window._activeDuel = { duel, index: 0, selections: [], phase: questions[0]?.passage ? 'read' : 'ask' };
   window.renderDuelQuizQuestion();
 }
 
@@ -576,7 +596,7 @@ window.renderDuelQuizQuestion = function renderDuelQuizQuestion() {
     modal.innerHTML = `
       <div class="ga-panel"><div class="ga-card" id="duel-quiz-card">
         <div class="ga-topbar">
-          <span class="ga-chip"><i class="fas fa-code"></i> ${sanitizeInput(state.duel.topic)}</span>
+          <span class="ga-chip"><i class="fas fa-book-open"></i> ${sanitizeInput(state.duel.topic)}</span>
           <span class="ga-clock" id="duel-quiz-clock">0.0s</span>
         </div>
         <div id="duel-quiz-dots" style="display:flex;gap:.3rem;justify-content:center;margin-bottom:1rem"></div>
@@ -591,7 +611,25 @@ window.renderDuelQuizQuestion = function renderDuelQuizQuestion() {
   document.getElementById('duel-quiz-dots').innerHTML = duel.questions.map((_, i) =>
     `<span style="width:.55rem;height:.55rem;border-radius:9999px;background:${i < index ? '#818cf8' : i === index ? '#facc15' : 'rgba(255,255,255,.15)'}"></span>`).join('');
   const body = document.getElementById('duel-quiz-body');
+
+  // Fase de lectura: el texto completo y, cuando está listo, las preguntas.
+  // (Se puede volver a ver el texto mientras se responde.)
+  if (state.phase === 'read' && q.passage) {
+    body.innerHTML = `
+      <p style="font-size:.65rem;font-weight:900;letter-spacing:.2em;text-transform:uppercase;color:#a5b4fc;margin-bottom:.4rem">Leé con atención</p>
+      ${q.title ? `<h3 style="font-size:1.1rem;font-weight:900;margin-bottom:.6rem">${sanitizeInput(q.title)}</h3>` : ''}
+      <div style="text-align:left;max-height:48vh;overflow-y:auto;padding:.9rem 1rem;border-radius:1rem;background:rgba(255,255,255,.06);font-size:.92rem;line-height:1.6;white-space:pre-line">${sanitizeInput(q.passage)}</div>
+      <button class="ga-btn" id="duel-quiz-start" style="margin-top:1.1rem">Ya leí, ver preguntas <i class="fas fa-arrow-right"></i></button>`;
+    document.getElementById('duel-quiz-start').onclick = () => { state.phase = 'ask'; window.renderDuelQuizQuestion(); };
+    return;
+  }
+
+  const passageBar = q.passage ? `
+    <button type="button" id="duel-passage-toggle" style="display:inline-flex;align-items:center;gap:.4rem;margin-bottom:.8rem;padding:.35rem .8rem;border-radius:9999px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:#e2e8f0;font-size:.7rem;font-weight:800;cursor:pointer">
+      <i class="fas fa-book-open"></i> Ver el texto</button>
+    <div id="duel-passage-box" hidden style="text-align:left;max-height:34vh;overflow-y:auto;margin-bottom:.9rem;padding:.8rem .9rem;border-radius:1rem;background:rgba(255,255,255,.06);font-size:.85rem;line-height:1.55;white-space:pre-line">${q.title ? `<b>${sanitizeInput(q.title)}</b>\n\n` : ''}${sanitizeInput(q.passage)}</div>` : '';
   body.innerHTML = `
+    ${passageBar}
     <p style="font-size:.65rem;font-weight:900;letter-spacing:.2em;text-transform:uppercase;color:#a5b4fc;margin-bottom:.4rem">Pregunta ${index + 1} de ${duel.questions.length}</p>
     <h3 style="font-size:1.1rem;font-weight:800;line-height:1.4;margin-bottom:1.25rem">${sanitizeInput(q.question)}</h3>
     <div style="display:grid;gap:.6rem;text-align:left">
@@ -603,6 +641,8 @@ window.renderDuelQuizQuestion = function renderDuelQuizQuestion() {
           <span style="font-size:1.1rem;opacity:.85">${st.icon}</span><span>${sanitizeInput(opt)}</span></button>`;
       }).join('')}
     </div>`;
+  const toggle = document.getElementById('duel-passage-toggle');
+  if (toggle) toggle.onclick = () => { const box = document.getElementById('duel-passage-box'); box.hidden = !box.hidden; toggle.innerHTML = `<i class="fas fa-book-open"></i> ${box.hidden ? 'Ver el texto' : 'Ocultar el texto'}`; };
   body.style.animation = 'none';
   void body.offsetWidth;
   body.style.animation = 'ga-rise .3s cubic-bezier(.2,1.2,.4,1)';
@@ -646,8 +686,9 @@ window.selectDuelAnswer = function selectDuelAnswer(optionIndex, btn) {
 
 // Práctica solo (sin rival): las preguntas vienen con la respuesta correcta
 // porque no hay nada en juego (sin gemas, sin ranking). Ver js/practice.js.
-window.startPracticeQuiz = function startPracticeQuiz({ topic, questions, fact }) {
-  window._activeDuel = { duel: { id: null, topic, questions }, index: 0, selections: [], practice: { fact } };
+window.startPracticeQuiz = function startPracticeQuiz({ topic, questions, fact, title, passage }) {
+  const qs = passage ? questions.map(q => ({ ...q, title, passage })) : questions;
+  window._activeDuel = { duel: { id: null, topic, questions: qs }, index: 0, selections: [], phase: passage ? 'read' : 'ask', practice: { fact } };
   window.renderDuelQuizQuestion();
 };
 

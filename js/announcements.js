@@ -49,7 +49,7 @@ window.loadAnnouncementsUnreadCount = async function loadAnnouncementsUnreadCoun
 // 1v1 pendientes de los 5 juegos (antes cada uno vivía SOLO como punto
 // rojo en el botón Centro de Juego, sin entrada acá).
 const CHALLENGE_TABLES = [
-  { table: 'student_duels', game: 'quiz', label: 'Desafío de Código', hasTopic: true },
+  { table: 'student_duels', game: 'quiz', label: 'Comprensión Lectora', hasTopic: true },
   { table: 'student_hangman_duels', game: 'hangman', label: 'Ahorcado', hasTopic: true },
   { table: 'student_timed_math_duels', game: 'timed_math', label: 'Contrarreloj', hasTopic: false },
   { table: 'student_debug_duels', game: 'debug', label: 'Encontrá el Error', hasTopic: true },

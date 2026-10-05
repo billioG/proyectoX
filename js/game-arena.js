@@ -143,7 +143,7 @@ window.GameArena = {
 
   // Datos de cada juego 1v1 para crear retos genéricos (revancha, rápido).
   GAMES: {
-    quiz: { table: 'student_duels', label: 'Desafío de Código', icon: 'fa-code', cache: '_duelsCache', reload: 'loadDuelsSection', topic: true },
+    quiz: { table: 'student_duels', label: 'Comprensión Lectora', icon: 'fa-book-open', cache: '_duelsCache', reload: 'loadDuelsSection', topic: true },
     hangman: { table: 'student_hangman_duels', label: 'Ahorcado', icon: 'fa-spider', cache: '_hangmanDuelsCache', reload: 'loadHangmanSection', topic: true },
     timed_math: { table: 'student_timed_math_duels', label: 'Contrarreloj', icon: 'fa-stopwatch', cache: '_timedMathDuelsCache', reload: 'loadTimedMathSection', topic: false },
     debug: { table: 'student_debug_duels', label: 'Encontrá el Error', icon: 'fa-bug', cache: '_debugDuelsCache', reload: 'loadDebugSection', topic: true },
@@ -197,7 +197,7 @@ window.GameArena = {
     const row = { challenger_id: window.currentUser.id, opponent_id: opponentId, wager_gems: safeWager };
     // Sin tema elegido: el tema de la semana del docente; si no hay, un tema
     // de la clase; si tampoco, cultura general.
-    if (g.topic) row.topic = topic || window.resolveDuelTopic?.(window._weeklyTopic ? '__weekly__' : '__class__') || 'Cultura general';
+    if (g.topic) row.topic = topic || window.resolveDuelTopic?.(window._weeklyTopic ? '__weekly__' : '__class__', game === 'quiz' ? window.getReadingTopicPool?.() : null) || 'Cultura general';
     if (game === 'quiz') row.question_count = window.computeDuelQuestionCount ? window.computeDuelQuestionCount(safeWager) : 5;
 
     const { data, error } = await window._supabase.from(g.table).insert(row).select('id').single();

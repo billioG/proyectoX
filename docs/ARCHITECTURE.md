@@ -116,7 +116,7 @@ manda el navegador.
 | `admin-force-delete-school` | Borra un establecimiento completo | JWT (admin) |
 | `admin-set-class-password` | Contraseña compartida de una clase | JWT |
 | `ai-proxy` | Chat del asistente (modo tutor para alumnos) | JWT |
-| `ai-generate-quiz` / `-hangman-word` / `-spelling-word` / `-debug-steps` | Contenido de los duelos: 2 contenidos distintos por duelo (uno por jugador), sin repetir lo que ya jugaron; con `{practice:true}` devuelven contenido para el modo Práctica sin guardar nada | JWT |
+| `ai-generate-quiz` / `-hangman-word` / `-spelling-word` / `-debug-steps` | Contenido de los retos (`ai-generate-quiz` = Comprensión Lectora: texto + preguntas): 2 contenidos distintos por duelo (uno por jugador), sin repetir lo que ya jugaron; con `{practice:true}` devuelven contenido para el modo Práctica sin guardar nada | JWT |
 | `ai-evaluate-project`, `ai-evaluate-mblock`, `ai-generate-general-report` | IA para docentes y admin | JWT |
 | `generate-team-match-quiz`, `submit-team-match-answer` | Torneos | JWT |
 | `submit-event-answer` | Eventos sorpresa (puntaje en servidor) | JWT |

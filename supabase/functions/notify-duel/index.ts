@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
   // student_duels, así que Ahorcado/Contrarreloj/Encontrá el Error/Ortografía
   // nunca mandaban push.
   const GAME_CONFIG: Record<string, { table: string; label: string; hasTopic: boolean }> = {
-    quiz: { table: 'student_duels', label: 'Desafío de Código', hasTopic: true },
+    quiz: { table: 'student_duels', label: 'Comprensión Lectora', hasTopic: true },
     hangman: { table: 'student_hangman_duels', label: 'Ahorcado', hasTopic: true },
     timed_math: { table: 'student_timed_math_duels', label: 'Contrarreloj', hasTopic: false },
     debug: { table: 'student_debug_duels', label: 'Encontrá el Error', hasTopic: true },

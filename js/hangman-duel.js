@@ -1,5 +1,5 @@
 /**
- * AHORCADO 1V1 -- mismo espíritu que Desafíos de Código (duels.js) pero en
+ * AHORCADO 1V1 -- mismo espíritu que Comprensión Lectora (duels.js) pero en
  * vez de puntaje por preguntas, gana quien adivina la palabra más rápido.
  * Async: cada uno juega cuando puede, el servidor compara el tiempo que
  * tardó cada uno desde que arrancó su turno (start_hangman_duel).

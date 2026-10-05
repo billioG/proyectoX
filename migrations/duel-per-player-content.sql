@@ -40,7 +40,7 @@ alter table public.student_debug_duels      add column if not exists steps_b jso
 alter table public.student_timed_math_duels add column if not exists problems_b jsonb;
 
 -- ------------------------------------------------------------
--- 1. TRIVIA (quiz)
+-- 1. COMPRENSIÓN LECTORA (quiz: texto + preguntas; antes trivia)
 -- ------------------------------------------------------------
 create or replace function public.get_duel_questions(p_duel_id uuid)
 returns jsonb
@@ -67,7 +67,9 @@ begin
     return '[]'::jsonb;
   end if;
 
-  select jsonb_agg(jsonb_build_object('question', q->>'question', 'options', q->'options'))
+  -- passage/title: texto de Comprensión Lectora (null en los retos viejos de trivia).
+  select jsonb_agg(jsonb_build_object('question', q->>'question', 'options', q->'options',
+                                      'passage', q->>'passage', 'title', q->>'title'))
     into v_result
     from jsonb_array_elements(v_qs) q;
 

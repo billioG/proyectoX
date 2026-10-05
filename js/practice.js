@@ -1,5 +1,5 @@
 /**
- * MODO PRÁCTICA -- los 5 retos (Desafío de Código, Ahorcado, Contrarreloj,
+ * MODO PRÁCTICA -- los 5 retos (Comprensión Lectora, Ahorcado, Contrarreloj,
  * Encontrá el Error, Ortografía) también se pueden jugar SOLO: sin rival, sin
  * apuesta de gemas y sin esperar a nadie. Es para repasar las veces que se
  * quiera; no cuenta para el ranking, las rachas ni las ligas.
@@ -44,9 +44,9 @@ async function callGenerator(fn, body) {
 const LOADERS = {
   quiz: async (topic) => {
     const out = await callGenerator('ai-generate-quiz', { topic, count: 5, avoid: getSeen('quiz') });
-    if (!out.questions?.length) throw new Error('No se pudieron preparar las preguntas');
-    addSeen('quiz', out.questions.map(q => q.question));
-    return () => window.startPracticeQuiz({ topic, questions: out.questions, fact: out.fact });
+    if (!out.questions?.length) throw new Error('No se pudo preparar el texto');
+    addSeen('quiz', [out.title, out.passage?.slice(0, 80)]);
+    return () => window.startPracticeQuiz({ topic, questions: out.questions, fact: out.fact, title: out.title, passage: out.passage });
   },
   hangman: async (topic) => {
     const out = await callGenerator('ai-generate-hangman-word', { topic, avoid: getSeen('hangman') });
@@ -111,7 +111,7 @@ window.PracticeMode = {
         <h2 class="text-lg font-bold text-white uppercase tracking-tighter mb-1"><i class="fas ${g.icon} text-emerald-400 mr-2"></i> Práctica: ${g.label}</h2>
         <p class="text-xs text-slate-400 mb-5">Solo vos, sin rival y sin apostar gemas. Practicá las veces que quieras.</p>
         <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Tema</label>
-        <select id="practice-topic" class="input-field-tw h-11 text-sm">${window.topicOptionsHtml(pool)}</select>
+        <select id="practice-topic" class="input-field-tw h-11 text-sm">${window.topicOptionsHtml(game === 'quiz' ? (window.getReadingTopicPool?.() || pool) : pool)}</select>
         <div class="flex gap-3 mt-8">
           <button class="btn-secondary-tw flex-1 h-11 text-xs uppercase font-bold" data-close>Cancelar</button>
           <button class="btn-primary-tw flex-1 h-11 text-xs uppercase font-bold" data-go><i class="fas fa-play"></i> Empezar</button>
@@ -120,7 +120,7 @@ window.PracticeMode = {
     document.body.appendChild(modal);
     modal.querySelector('[data-close]').onclick = () => modal.remove();
     modal.querySelector('[data-go]').onclick = () => {
-      const topic = window.resolveDuelTopic(modal.querySelector('#practice-topic').value);
+      const topic = window.resolveDuelTopic(modal.querySelector('#practice-topic').value, game === 'quiz' ? window.getReadingTopicPool?.() : null);
       modal.remove();
       run(game, topic);
     };
