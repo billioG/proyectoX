@@ -103,7 +103,7 @@
         <div class="pills" id="pills"></div>
         <p class="muted" id="reviewNote"></p>
       </div>
-      <div style="max-height:360px; overflow:auto">
+      <div id="rowsWrap" style="max-height:360px; overflow:auto">
         <table><thead><tr><th>#</th><th>Leído</th><th>Clave</th><th></th></tr></thead><tbody id="rows"></tbody></table>
       </div>
     </div>
@@ -173,6 +173,7 @@ function renderResult() {
     `<span class="pill warn">○ ${g.blank} en blanco</span><span class="pill warn">⊗ ${g.multiple} doble marca</span>`;
   $('reviewNote').textContent = g.total ? (doubtN ? `${doubtN} pregunta(s) dudosa(s): revísalas abajo.` : 'Sin dudas en la lectura.') : 'Escribe la clave de respuestas para calificar.';
 
+  const keepScroll = $('rowsWrap').scrollTop;   // al corregir una respuesta la tabla se redibuja: que el scroll no salte
   $('rows').innerHTML = current.answers.map((a, i) => {
     const kk = key[i]; const st = !kk ? '' : a === kk ? 'ok' : (a === null || a === '*') ? 'warn' : 'bad';
     return `<tr class="${st} ${current.doubts[i] ? 'doubt' : ''}"><td>${i + 1}</td><td class="a" data-i="${i}">${a === null ? '·' : a === '*' ? '⊗' : a}</td><td>${kk || ''}</td><td>${st === 'ok' ? '✔' : st === 'bad' ? '✖' : ''}</td></tr>`;
@@ -182,6 +183,7 @@ function renderResult() {
     const cur = current.answers[i] === '*' ? null : current.answers[i];
     current.answers[i] = order[(order.indexOf(cur) + 1) % order.length]; current.doubts[i] = false; renderResult();
   });
+  $('rowsWrap').scrollTop = keepScroll;
   drawOverlay(key);
 }
 

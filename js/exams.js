@@ -476,13 +476,47 @@ function gradeCurrent() {
   return { correct, wrong, blank, score: Math.round((e.points * correct / e.question_count) * 100) / 100 };
 }
 
+const optBtn = (i, o, on) => `<button type="button" data-q="${i}" data-o="${o}" class="w-8 h-8 rounded-full text-[0.7rem] font-black border transition-colors ${on ? 'bg-primary text-white border-primary' : 'border-slate-300 dark:border-slate-600 text-slate-400'}">${o}</button>`;
+
+function reviewRowHtml(i) {
+  const e = S.exam, rv = S.review, a = rv.res.answers[i], key = e.answer_key[i];
+  return `<tr data-row="${i}" class="border-b border-slate-100 dark:border-slate-800 ${rv.res.doubts[i] ? 'bg-amber-500/10' : ''}">
+    <td class="py-1.5 pr-1 font-bold text-slate-500">${i + 1}${a === '*' ? ' <span class="text-amber-500" title="Doble marca">⊗</span>' : ''}</td>
+    <td><div class="flex gap-1 justify-center">${OPTIONS.map((o) => optBtn(i, o, a === o)).join('')}</div></td>
+    <td class="text-slate-400 font-bold">${key}</td>
+    <td class="w-6">${a === key ? '<span class="text-emerald-500">✔</span>' : ''}</td></tr>`;
+}
+
+// Resumen (nota, conteos, dudas): se actualiza en su lugar al corregir una
+// respuesta, sin volver a dibujar la tabla (si no, el scroll saltaba al inicio
+// y el siguiente toque caía en otra pregunta).
+function refreshReviewSummary() {
+  const e = S.exam, rv = S.review, g = gradeCurrent();
+  const doubts = rv.res.doubts.filter(Boolean).length;
+  document.getElementById('rv-score').innerHTML = `${fmt(g.score)} <span class="text-base text-slate-400">/ ${fmt(e.points)}</span>`;
+  document.getElementById('rv-pills').innerHTML = `
+    <span class="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-500">✔ ${g.correct} bien</span>
+    <span class="px-2.5 py-1 rounded-full bg-rose-500/10 text-rose-500">✖ ${g.wrong} mal</span>
+    <span class="px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-500">○ ${g.blank} en blanco</span>`;
+  const note = document.getElementById('rv-note');
+  note.className = `text-[0.7rem] mt-2 ${doubts ? 'text-amber-500 font-bold' : 'text-slate-400'}`;
+  note.textContent = `${doubts ? doubts + ' pregunta(s) dudosa(s): revísalas en amarillo.' : 'Sin dudas en la lectura.'} Toca la letra correcta de cada pregunta (tócala otra vez para dejarla en blanco).`;
+}
+
+function setReviewAnswer(i, o) {
+  const rv = S.review;
+  rv.res.answers[i] = rv.res.answers[i] === o ? null : o;   // tocar la elegida la quita; con doble marca, queda la elegida
+  rv.res.doubts[i] = false;
+  const row = document.querySelector(`#sc-review tr[data-row="${i}"]`);
+  if (row) row.outerHTML = reviewRowHtml(i);                  // solo ESA fila
+  refreshReviewSummary();
+}
+
 function renderReview() {
   const e = S.exam, rv = S.review, box = document.getElementById('sc-review');
   if (!box || !rv) return;
   document.getElementById('sc-capture').classList.add('hidden');
   box.classList.remove('hidden');
-  const g = gradeCurrent();
-  const doubts = rv.res.doubts.filter(Boolean).length;
   // Los que aún no tienen nota van primero: con fotocopias, al escanear la pila
   // hoja por hoja, lo más probable es que sea alguien pendiente.
   const ordered = [...S.students].sort((a, b) => (S.results.has(a.id) - S.results.has(b.id)) || a.full_name.localeCompare(b.full_name, 'es'));
@@ -492,35 +526,25 @@ function renderReview() {
       <div>
         <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Alumno</label>
         <select id="rv-student" class="input-field-tw h-11 text-sm"><option value="">— Elige al alumno —</option>${students}</select>
-        <div class="mt-4 text-3xl font-black text-slate-800 dark:text-white">${fmt(g.score)} <span class="text-base text-slate-400">/ ${fmt(e.points)}</span></div>
-        <div class="flex flex-wrap gap-2 mt-2 text-xs font-bold">
-          <span class="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-500">✔ ${g.correct} bien</span>
-          <span class="px-2.5 py-1 rounded-full bg-rose-500/10 text-rose-500">✖ ${g.wrong} mal</span>
-          <span class="px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-500">○ ${g.blank} en blanco</span>
-        </div>
-        <p class="text-[0.7rem] mt-2 ${doubts ? 'text-amber-500 font-bold' : 'text-slate-400'}">${doubts ? `${doubts} pregunta(s) dudosa(s): revísalas en amarillo.` : 'Sin dudas en la lectura.'} Toca una letra para corregirla.</p>
+        <div id="rv-score" class="mt-4 text-3xl font-black text-slate-800 dark:text-white"></div>
+        <div id="rv-pills" class="flex flex-wrap gap-2 mt-2 text-xs font-bold"></div>
+        <p id="rv-note"></p>
         <div class="flex gap-2 mt-4">
           <button id="rv-save" class="btn-primary-tw h-11 px-5 text-xs uppercase font-bold flex-1"><i class="fas fa-floppy-disk"></i> Guardar nota</button>
           <button class="btn-secondary-tw h-11 px-4 text-xs uppercase font-bold" onclick="window.discardExamScan()">Descartar</button>
         </div>
       </div>
       <div class="max-h-[46vh] overflow-y-auto">
-        <table class="w-full text-center text-xs"><thead><tr class="text-slate-400"><th>#</th><th>Leído</th><th>Clave</th><th></th></tr></thead><tbody>
-          ${rv.res.answers.map((a, i) => {
-            const key = e.answer_key[i], ok = a === key, st = ok ? 'text-emerald-500' : (a === null || a === '*') ? 'text-amber-500' : 'text-rose-500';
-            return `<tr class="border-b border-slate-100 dark:border-slate-800 ${rv.res.doubts[i] ? 'bg-amber-500/10' : ''}"><td class="py-1.5">${i + 1}</td><td class="font-black cursor-pointer ${st}" data-i="${i}">${a === null ? '·' : a === '*' ? '⊗' : a}</td><td>${key}</td><td>${ok ? '✔' : ''}</td></tr>`;
-          }).join('')}
-        </tbody></table>
+        <table class="w-full text-center text-xs"><thead><tr class="text-slate-400"><th>#</th><th>Respuesta</th><th>Clave</th><th></th></tr></thead>
+        <tbody id="rv-rows">${rv.res.answers.map((_, i) => reviewRowHtml(i)).join('')}</tbody></table>
       </div>
     </div>`;
+  refreshReviewSummary();
   document.getElementById('rv-student').onchange = (ev) => { rv.studentId = ev.target.value || null; };
-  box.querySelectorAll('td[data-i]').forEach((td) => td.onclick = () => {
-    const i = +td.dataset.i, order = [null, ...OPTIONS];
-    const cur = rv.res.answers[i] === '*' ? null : rv.res.answers[i];
-    rv.res.answers[i] = order[(order.indexOf(cur) + 1) % order.length];
-    rv.res.doubts[i] = false;
-    renderReview();
-  });
+  document.getElementById('rv-rows').onclick = (ev) => {
+    const btn = ev.target.closest('button[data-q]');
+    if (btn) setReviewAnswer(+btn.dataset.q, btn.dataset.o);
+  };
   document.getElementById('rv-save').onclick = saveCurrent;
 }
 
