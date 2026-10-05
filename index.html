@@ -60,7 +60,7 @@
          index.html pero el navegador puede seguir sirviendo desde caché HTTP
          una versión vieja de un módulo lazy-loaded (ej. pdf-processor.js),
          aunque el tag de versión visible ya muestre la última. -->
-    <script>window.APP_VERSION = 'v1.0.165';</script>
+    <script>window.APP_VERSION = 'v1.0.166';</script>
 
     <!-- Silenciar console.log/info/debug en producción (activar con localStorage.PX_DEBUG='true').
          Va antes de todo lo demás porque los console.log de cada módulo corren
@@ -505,7 +505,7 @@
                         Q</div>
                     Quetzal <span class="text-primary-dark dark:text-primary">LMS</span>
                 </div>
-                <span id="app-version-tag" class="text-[0.65rem] text-slate-500 dark:text-slate-400 font-medium mt-1">v1.0.165</span>
+                <span id="app-version-tag" class="text-[0.65rem] text-slate-500 dark:text-slate-400 font-medium mt-1">v1.0.166</span>
             </div>
 
             <div id="login-error"
@@ -568,7 +568,7 @@
                 <div class="text-2xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent transform hover:scale-105 transition-transform leading-none">
                     Quetzal LMS
                 </div>
-                <span class="text-[0.6rem] text-slate-400 font-medium mt-0.5">v1.0.165</span>
+                <span class="text-[0.6rem] text-slate-400 font-medium mt-0.5">v1.0.166</span>
             </div>
 
             <div class="flex items-center gap-4 sm:gap-6">
@@ -677,6 +677,10 @@
                         <i class="fas fa-file-circle-check"></i>
                         <span>Exámenes</span>
                     </div>
+                    <div id="nav-doc-progress" class="nav-item" onclick="nav('progress')">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Progreso</span>
+                    </div>
                     <div id="nav-doc-groups" class="nav-item" onclick="nav('groups')">
                         <i class="fas fa-users"></i>
                         <span>Gestionar Equipos</span>
@@ -716,6 +720,10 @@
                     <div class="nav-item" onclick="nav('admin-eval-report')">
                         <i class="fas fa-chart-line"></i>
                         <span>Reportes Académicos</span>
+                    </div>
+                    <div class="nav-item" onclick="nav('progress')">
+                        <i class="fas fa-seedling"></i>
+                        <span>Progreso Estudiantil</span>
                     </div>
                     <div class="nav-item" onclick="nav('admin-attendance-report')">
                         <i class="fas fa-calendar-check"></i>
@@ -788,6 +796,11 @@
             <!-- DASHBOARD COORDINADOR -->
             <section id="view-coordinator-dashboard" class="view-section" style="display: none;">
                 <div id="coordinator-dashboard-container"></div>
+            </section>
+
+            <!-- PROGRESO DE LOS ESTUDIANTES (PRÁCTICA + RETOS, POR COMPETENCIA) -->
+            <section id="view-progress" class="view-section" style="display: none;">
+                <div id="progress-container"></div>
             </section>
 
             <!-- REPORTES DEL COORDINADOR (SU ESTABLECIMIENTO) -->
@@ -1154,7 +1167,7 @@
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
 
     <!-- Punto de Entrada del Sistema -->
-    <script type="module" src="js/app.js?v=1.0.165"></script>
+    <script type="module" src="js/app.js?v=1.0.166"></script>
 
     <meta name="mobile-web-app-capable" content="yes">
 </body>

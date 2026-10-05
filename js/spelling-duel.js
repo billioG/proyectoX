@@ -362,6 +362,7 @@ window.submitSpellingAnswer = async function submitSpellingAnswer() {
     }));
   }
   window._activeSpelling = null;
+  if (state.practice) window.PracticeLog?.finish(result.correct ? 1 : 0, 1);
   if (error) {
     document.getElementById('spelling-game-modal')?.remove();
     return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');

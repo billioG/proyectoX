@@ -375,6 +375,13 @@ class SyncManager {
                     if (examResultError) throw examResultError;
                     return true;
 
+                // Práctica terminada sin internet (js/practice.js): se registra al reconectar.
+                // p_client_ref hace que un reintento no duplique el registro.
+                case 'log_practice':
+                    const { error: practiceError } = await _supabase.rpc('log_practice', data);
+                    if (practiceError) throw practiceError;
+                    return true;
+
                 case 'mark_lesson_complete':
                     const { error: completionError } = await _supabase.from('lesson_completions').upsert(data, { onConflict: 'lesson_id,student_id' });
                     if (completionError) throw completionError;

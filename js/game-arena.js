@@ -81,6 +81,9 @@ const GA_STYLES = `
 .ga-online-chip:hover{background:rgba(74,222,128,.2)}
 .ga-dot{width:.5rem;height:.5rem;border-radius:9999px;background:#4ade80;box-shadow:0 0 0 0 rgba(74,222,128,.7);animation:ga-pulse 1.6s infinite}
 @keyframes ga-pulse{70%{box-shadow:0 0 0 .4rem rgba(74,222,128,0)}100%{box-shadow:0 0 0 0 rgba(74,222,128,0)}}
+.ga-progress-btn{display:flex;align-items:center;gap:.6rem;width:100%;margin-top:.9rem;padding:.7rem 1rem;border-radius:1rem;border:1px solid rgba(52,211,153,.4);background:rgba(52,211,153,.1);color:#fff;font-weight:900;font-size:.85rem;cursor:pointer;text-align:left}
+.ga-progress-btn i{color:#34d399}
+.ga-progress-btn span{font-weight:600;font-size:.68rem;color:#94a3b8;margin-left:auto}
 .ga-record{margin-top:1rem;font-size:.8rem;font-weight:800;color:#cbd5e1}
 .ga-mascot{width:9rem;height:9rem;margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:4rem}
 @keyframes ga-fade{from{opacity:0}to{opacity:1}}
@@ -252,6 +255,7 @@ window.GameArena = {
       <div class="ga-quick-row">${Object.entries(this.GAMES).map(([key, g]) =>
         `<button class="ga-quick-btn" onclick="window.GameArena.quickChallenge('${key}')"><i class="fas ${g.icon}"></i><span>${g.label}</span></button>`).join('')}</div>
       <div class="ga-online" id="ga-online">${this.onlineHtml()}</div>
+      <button type="button" class="ga-progress-btn" onclick="window.openMyProgress && window.openMyProgress()"><i class="fas fa-chart-line"></i> Mi progreso <span>cómo vas en lectura, matemática, pensamiento y lenguaje</span></button>
       <div class="ga-quick-title" style="margin-top:1rem;color:#6ee7b7"><i class="fas fa-dumbbell"></i> Práctica <span>solo vos: sin rival, sin gemas, las veces que quieras</span></div>
       <div class="ga-quick-row">${Object.entries(this.GAMES).map(([key, g]) =>
         `<button class="ga-quick-btn" onclick="window.PracticeMode && window.PracticeMode.start('${key}')"><i class="fas ${g.icon}" style="color:#6ee7b7"></i><span>${g.label}</span></button>`).join('')}</div>

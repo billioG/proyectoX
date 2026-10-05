@@ -466,6 +466,7 @@ window.finishHangmanGame = async function finishHangmanGame() {
 
   if (state.practice) {
     const solved = state.wrong < MAX_WRONG_GUESSES;
+    window.PracticeLog?.finish(solved ? 1 : 0, 1);
     const timeMs = Math.round(performance.now() - state.clockStart);
     window._activeHangman = null;
     await new Promise(r => setTimeout(r, 600));

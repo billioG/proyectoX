@@ -44,12 +44,15 @@ async function callGenerator(fn, body) {
 // vez). Sin internet, o si la IA no responde, se usa el banco guardado en el
 // dispositivo (js/practice-bank.js), para poder practicar igual en un salón sin
 // señal. Se avisa con un mensaje cuando se usó el banco.
+let lastSource = 'ai';
 async function aiOrBank(game, ai, bank) {
+  lastSource = 'ai';
   if (navigator.onLine !== false) {
     try { return await ai(); } catch (err) { console.warn(`Práctica (${game}): la IA no respondió, se usa el banco`, err); }
   }
   const out = bank();
   if (!out) throw new Error('No hay conexión y no hay ejercicios guardados para este juego');
+  lastSource = 'bank';
   window.showToast('<i class="fas fa-cloud-slash"></i> Sin conexión con la IA: te toca un ejercicio guardado', 'info');
   return out;
 }
@@ -74,21 +77,24 @@ const LOADERS = {
         return { title: t.title, passage: t.passage, questions, fact: t.fact };
       });
     addSeen('quiz', [out.title, out.passage?.slice(0, 80)]);
-    return () => window.startPracticeQuiz({ topic, questions: out.questions, fact: out.fact, title: out.title, passage: out.passage });
+    const src = lastSource;
+    return () => { window.PracticeLog.begin('quiz', topic, src); window.startPracticeQuiz({ topic, questions: out.questions, fact: out.fact, title: out.title, passage: out.passage }); };
   },
   hangman: async (topic) => {
     const out = await aiOrBank('hangman',
       () => callGenerator('ai-generate-hangman-word', { topic, avoid: getSeen('hangman') }),
       () => window.practiceBankPick?.('hangman', getSeen('hangman')));
     addSeen('hangman', [out.word]);
-    return () => window.startPracticeHangman(out);
+    const src = lastSource;
+    return () => { window.PracticeLog.begin('hangman', topic, src); window.startPracticeHangman(out); };
   },
   spelling: async (topic) => {
     const out = await aiOrBank('spelling',
       () => callGenerator('ai-generate-spelling-word', { topic, avoid: getSeen('spelling') }),
       () => window.practiceBankPick?.('spelling', getSeen('spelling')));
     addSeen('spelling', [out.word]);
-    return () => window.startPracticeSpelling(out);
+    const src = lastSource;
+    return () => { window.PracticeLog.begin('spelling', topic, src); window.startPracticeSpelling(out); };
   },
   debug: async (topic) => {
     const out = await aiOrBank('debug',
@@ -99,13 +105,14 @@ const LOADERS = {
       },
       () => window.practiceBankPick?.('debug', getSeen('debug')));
     addSeen('debug', [out.steps.find(s => s.isBug)?.label]);
-    return () => window.startPracticeDebug({ steps: out.steps, topic, fact: out.fact });
+    const src = lastSource;
+    return () => { window.PracticeLog.begin('debug', topic, src); window.startPracticeDebug({ steps: out.steps, topic, fact: out.fact }); };
   },
   // Sin IA y sin servidor: los problemas se generan acá mismo, según el grado
   // (mismo criterio que la función SQL de los retos), así que funciona sin internet.
   timed_math: async () => {
     const data = window.practiceMathProblems(window.userData?.grade || '', 10);
-    return () => window.startPracticeTimedMath(data);
+    return () => { window.PracticeLog.begin('timed_math', null, 'bank'); window.startPracticeTimedMath(data); };
   },
 };
 
@@ -124,6 +131,38 @@ async function run(game, topic) {
     window.aiGenerationLock.release();
   }
 }
+
+// Registro de cada práctica terminada (para "Mi progreso" y los reportes del
+// docente). Con conexión se sube al momento; sin conexión (o si falla la red)
+// queda en la cola de sincronización y se sube sola al reconectar, igual que
+// las notas de los exámenes. Solo cuenta si el estudiante terminó la actividad.
+const newRef = () => (crypto.randomUUID ? crypto.randomUUID()
+  : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16); }));
+
+window.PracticeLog = {
+  cur: null,
+  begin(game, topic, source) { this.cur = { game, topic: topic || null, source: source || 'ai', t0: performance.now() }; },
+  async finish(correct, total) {
+    const c = this.cur; this.cur = null;
+    if (!c || window.userRole !== 'estudiante' || !window.currentUser || !total) return;
+    const row = {
+      p_game: c.game, p_topic: c.topic, p_correct: Math.max(0, Math.min(correct, total)), p_total: total,
+      p_duration_ms: Math.round(performance.now() - c.t0), p_source: c.source,
+      p_client_ref: newRef(), p_played_at: new Date().toISOString(),
+    };
+    const queue = async () => { try { await window._syncManager?.enqueue('log_practice', row); } catch (_) { /* sin cola: se pierde este registro */ } };
+    if (navigator.onLine === false) return queue();
+    try {
+      const { error } = await window._supabase.rpc('log_practice', row);
+      if (!error) return;
+      // Error de red -> se reintenta luego; error del servidor (ej. SQL sin correr) -> no se encola.
+      if (/fetch|network|offline|timeout/i.test(error.message || '')) return queue();
+      console.warn('No se pudo registrar la práctica:', error.message);
+    } catch (_) {
+      return queue();
+    }
+  },
+};
 
 window.PracticeMode = {
   async start(game) {

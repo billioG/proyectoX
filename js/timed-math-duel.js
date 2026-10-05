@@ -369,6 +369,7 @@ window.finishTimedMathGame = async function finishTimedMathGame() {
     const isRight = (i) => state.answers[i] !== undefined && state.answers[i] !== '' && Number(state.answers[i]) === Number(state.practice.solutions[i]);
     const total = state.practice.solutions.length;
     const score = state.practice.solutions.filter((_, i) => isRight(i)).length;
+    window.PracticeLog?.finish(score, total);
     document.getElementById('timed-math-modal')?.remove();
     const s = window.sanitizeInput || ((v) => v);
     const misses = state.practice.solutions.map((sol, i) => ({ q: state.questions[i], sol, given: state.answers[i], right: isRight(i) })).filter(m => !m.right);

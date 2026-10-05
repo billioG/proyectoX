@@ -704,6 +704,7 @@ window.submitDuelAnswers = async function submitDuelAnswers() {
     window._activeDuel = null;
     document.getElementById('duel-quiz-modal')?.remove();
     const good = score >= Math.ceil(total / 2);
+    window.PracticeLog?.finish(score, total);
     await window.GameArena.result({
       ok: good,
       title: score === total ? '¡Perfecto!' : good ? '¡Bien hecho!' : 'Seguí practicando',

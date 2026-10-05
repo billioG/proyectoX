@@ -330,6 +330,7 @@ window.selectDebugStatement = async function selectDebugStatement(index) {
     }));
   }
   window._activeDebug = null;
+  if (state.practice) window.PracticeLog?.finish(result.correct ? 1 : 0, 1);
   if (error) {
     document.getElementById('debug-game-modal')?.remove();
     return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');

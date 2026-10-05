@@ -17,13 +17,14 @@ const MODULE_MAP = {
     'teachers': ['js/teachers.js'],
     'groups': ['js/groups.js'],
     'exams': ['js/omr-core.js', 'js/exams.js'],
+    'progress': ['js/progress.js'],
     'attendance': ['js/attendance.js', 'js/data/challenges.js'],
     'admin-attendance-report': ['js/admin-attendance.js', 'js/attendance-summary-view.js'],
     'admin-eval-report': ['js/admin-evaluations.js'],
     'evaluate': ['js/evaluation.js', 'js/evaluation-modals.js', 'js/evaluation-notifications.js'],
     'ranking': ['js/ranking.js'],
-    'profile': ['js/profile.js', 'js/badges.js', 'js/kpi-engine.js', 'js/gamification.js', 'js/game-arena.js', 'js/duels.js', 'js/hangman-duel.js', 'js/timed-math-duel.js', 'js/debug-duel.js', 'js/spelling-duel.js', 'js/practice-bank.js', 'js/practice.js', 'js/season-pass.js', 'js/leagues.js', 'js/companion.js', 'js/tournaments.js', 'js/profile-modals.js', 'js/feed-ui.js', 'js/project-modals.js', 'js/reports.js', 'js/certificates.js'],
-    'feed': ['js/projects.js', 'js/gamification.js', 'js/game-arena.js', 'js/duels.js', 'js/hangman-duel.js', 'js/timed-math-duel.js', 'js/debug-duel.js', 'js/spelling-duel.js', 'js/practice-bank.js', 'js/practice.js', 'js/season-pass.js', 'js/leagues.js', 'js/companion.js', 'js/tournaments.js', 'js/kpi-engine.js', 'js/feed-ui.js', 'js/project-modals.js', 'js/profile-modals.js', 'js/reports.js', 'js/certificates.js'],
+    'profile': ['js/profile.js', 'js/badges.js', 'js/kpi-engine.js', 'js/gamification.js', 'js/game-arena.js', 'js/duels.js', 'js/hangman-duel.js', 'js/timed-math-duel.js', 'js/debug-duel.js', 'js/spelling-duel.js', 'js/practice-bank.js', 'js/practice.js', 'js/progress.js', 'js/season-pass.js', 'js/leagues.js', 'js/companion.js', 'js/tournaments.js', 'js/profile-modals.js', 'js/feed-ui.js', 'js/project-modals.js', 'js/reports.js', 'js/certificates.js'],
+    'feed': ['js/projects.js', 'js/gamification.js', 'js/game-arena.js', 'js/duels.js', 'js/hangman-duel.js', 'js/timed-math-duel.js', 'js/debug-duel.js', 'js/spelling-duel.js', 'js/practice-bank.js', 'js/practice.js', 'js/progress.js', 'js/season-pass.js', 'js/leagues.js', 'js/companion.js', 'js/tournaments.js', 'js/kpi-engine.js', 'js/feed-ui.js', 'js/project-modals.js', 'js/profile-modals.js', 'js/reports.js', 'js/certificates.js'],
     'upload': ['js/project-modals.js', 'js/groups.js'],
     'bonus-system': ['js/bonus-system.js', 'js/certificates.js'],
     'lessons': ['js/lessons.js', 'js/weekly-topic.js']
@@ -293,6 +294,9 @@ export function loadViewContent(view) {
         case 'exams':
             if (userRole === 'admin' || userRole === 'docente') callViewLoader(view, window.loadExams);
             break;
+        case 'progress':
+            if (userRole === 'admin' || userRole === 'docente') callViewLoader(view, window.loadProgress);
+            break;
         case 'lessons':
             callViewLoader(view, window.loadLessons);
             break;
@@ -340,7 +344,7 @@ const ADMIN_ONLY_VIEWS = new Set([
     'admin-dashboard', 'admin-teacher-performance', 'admin-success', 'admin-rocks',
     'schools', 'teachers', 'admin-attendance-report', 'admin-eval-report'
 ]);
-const STAFF_ONLY_VIEWS = new Set(['students', 'exams']);
+const STAFF_ONLY_VIEWS = new Set(['students', 'exams', 'progress']);
 const COORDINADOR_ONLY_VIEWS = new Set(['coordinator-dashboard', 'coordinator-reports']);
 
 function isViewAllowedForRole(view, role) {
