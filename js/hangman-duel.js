@@ -270,12 +270,10 @@ window.respondHangmanDuel = async function respondHangmanDuel(duelId, accept) {
   if (!window.aiGenerationLock.tryAcquire()) return;
   window.showToast('<i class="fas fa-circle-notch fa-spin"></i> Generando palabra...', 'info');
   try {
-    if (window.isBankTopic('hangman', duel?.topic)) {
-      // Categoría con banco fijo (fauna/ODS de Guatemala): elige palabra de
-      // la BD directo, sin llamar a la IA.
-      const { error: rpcErr } = await window._supabase.rpc('assign_hangman_bank_word', { p_duel_id: duelId });
-      if (rpcErr) throw new Error(rpcErr.message);
-    } else {
+    // La IA genera las palabras SIEMPRE (también en la categoría de fauna y
+    // ODS de Guatemala). El banco fijo del servidor (assign_hangman_bank_word)
+    // queda solo de respaldo para cuando la IA no responde.
+    try {
       const { data: { session } } = await window._supabase.auth.getSession();
       const res = await fetch(`${window.SUPABASE_URL}/functions/v1/ai-generate-hangman-word`, {
         method: 'POST',
@@ -284,6 +282,10 @@ window.respondHangmanDuel = async function respondHangmanDuel(duelId, accept) {
       });
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || 'Error generando la palabra');
+    } catch (aiErr) {
+      if (!window.isBankTopic('hangman', duel?.topic)) throw aiErr;
+      const { error: rpcErr } = await window._supabase.rpc('assign_hangman_bank_word', { p_duel_id: duelId });
+      if (rpcErr) throw new Error(rpcErr.message);
     }
     window.showToast('<i class="fas fa-circle-check"></i> ¡Reto aceptado! Ya podés jugar', 'success');
     window.loadHangmanSection();

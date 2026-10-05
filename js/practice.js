@@ -40,38 +40,71 @@ async function callGenerator(fn, body) {
   return out;
 }
 
+// Con conexión, la práctica SIEMPRE se genera con la IA (contenido nuevo cada
+// vez). Sin internet, o si la IA no responde, se usa el banco guardado en el
+// dispositivo (js/practice-bank.js), para poder practicar igual en un salón sin
+// señal. Se avisa con un mensaje cuando se usó el banco.
+async function aiOrBank(game, ai, bank) {
+  if (navigator.onLine !== false) {
+    try { return await ai(); } catch (err) { console.warn(`Práctica (${game}): la IA no respondió, se usa el banco`, err); }
+  }
+  const out = bank();
+  if (!out) throw new Error('No hay conexión y no hay ejercicios guardados para este juego');
+  window.showToast('<i class="fas fa-cloud-slash"></i> Sin conexión con la IA: te toca un ejercicio guardado', 'info');
+  return out;
+}
+
 // Qué pide y cómo arranca cada juego.
 const LOADERS = {
   quiz: async (topic) => {
-    const out = await callGenerator('ai-generate-quiz', { topic, count: 5, avoid: getSeen('quiz') });
-    if (!out.questions?.length) throw new Error('No se pudo preparar el texto');
+    const out = await aiOrBank('quiz',
+      async () => {
+        const r = await callGenerator('ai-generate-quiz', { topic, count: 5, avoid: getSeen('quiz') });
+        if (!r.questions?.length) throw new Error('sin preguntas');
+        return r;
+      },
+      () => {
+        const t = window.practiceBankPick?.('reading', getSeen('quiz'));
+        if (!t) return null;
+        // Las opciones se mezclan para que la correcta no esté siempre en el mismo lugar.
+        const questions = t.questions.map((q) => {
+          const order = [0, 1, 2, 3].sort(() => Math.random() - 0.5);
+          return { question: q.question, options: order.map(k => q.options[k]), correctIndex: order.indexOf(q.correctIndex) };
+        });
+        return { title: t.title, passage: t.passage, questions, fact: t.fact };
+      });
     addSeen('quiz', [out.title, out.passage?.slice(0, 80)]);
     return () => window.startPracticeQuiz({ topic, questions: out.questions, fact: out.fact, title: out.title, passage: out.passage });
   },
   hangman: async (topic) => {
-    const out = await callGenerator('ai-generate-hangman-word', { topic, avoid: getSeen('hangman') });
+    const out = await aiOrBank('hangman',
+      () => callGenerator('ai-generate-hangman-word', { topic, avoid: getSeen('hangman') }),
+      () => window.practiceBankPick?.('hangman', getSeen('hangman')));
     addSeen('hangman', [out.word]);
     return () => window.startPracticeHangman(out);
   },
   spelling: async (topic) => {
-    const out = await callGenerator('ai-generate-spelling-word', { topic, avoid: getSeen('spelling') });
+    const out = await aiOrBank('spelling',
+      () => callGenerator('ai-generate-spelling-word', { topic, avoid: getSeen('spelling') }),
+      () => window.practiceBankPick?.('spelling', getSeen('spelling')));
     addSeen('spelling', [out.word]);
     return () => window.startPracticeSpelling(out);
   },
   debug: async (topic) => {
-    const out = await callGenerator('ai-generate-debug-steps', {
-      topic, avoid: getSeen('debug'),
-    });
-    if (!out.steps?.length) throw new Error('No se pudo preparar la práctica');
+    const out = await aiOrBank('debug',
+      async () => {
+        const r = await callGenerator('ai-generate-debug-steps', { topic, avoid: getSeen('debug') });
+        if (!r.steps?.length) throw new Error('sin afirmaciones');
+        return r;
+      },
+      () => window.practiceBankPick?.('debug', getSeen('debug')));
     addSeen('debug', [out.steps.find(s => s.isBug)?.label]);
     return () => window.startPracticeDebug({ steps: out.steps, topic, fact: out.fact });
   },
-  // Sin IA: el generador SQL arma los problemas según el grado.
+  // Sin IA y sin servidor: los problemas se generan acá mismo, según el grado
+  // (mismo criterio que la función SQL de los retos), así que funciona sin internet.
   timed_math: async () => {
-    const { data, error } = await window._supabase.rpc('generate_math_problems', {
-      p_grade: window.userData?.grade || '', p_count: 10,
-    });
-    if (error || !data?.length) throw new Error(error?.message || 'No se pudieron preparar los problemas');
+    const data = window.practiceMathProblems(window.userData?.grade || '', 10);
     return () => window.startPracticeTimedMath(data);
   },
 };
