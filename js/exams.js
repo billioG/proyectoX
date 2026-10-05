@@ -32,10 +32,11 @@ function b64uToUuid(s) {
     return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
   } catch { return null; }
 }
-const qrPayload = (examId, studentId) => `Q1.${uuidToB64u(examId)}.${uuidToB64u(studentId)}`;
+const qrPayload = (examId, studentId) => `Q1.${uuidToB64u(examId)}${studentId ? '.' + uuidToB64u(studentId) : ''}`;
 function parseQr(text) {
-  const m = /^Q1\.([A-Za-z0-9_-]{22})\.([A-Za-z0-9_-]{22})$/.exec(String(text || '').trim());
-  return m ? { examId: b64uToUuid(m[1]), studentId: b64uToUuid(m[2]) } : null;
+  // Hoja por alumno: examen + alumno. Hoja genérica (fotocopias): solo examen.
+  const m = /^Q1\.([A-Za-z0-9_-]{22})(?:\.([A-Za-z0-9_-]{22}))?$/.exec(String(text || '').trim());
+  return m ? { examId: b64uToUuid(m[1]), studentId: m[2] ? b64uToUuid(m[2]) : null } : null;
 }
 
 function qrMatrix(text) {
@@ -268,11 +269,12 @@ function renderDetail() {
         </div>
       </div>
       <div class="flex flex-wrap gap-3 mt-5">
-        <button class="btn-primary-tw h-11 px-5 text-xs uppercase font-bold" onclick="window.printExamSheets()"><i class="fas fa-print"></i> Imprimir hojas (${S.students.length} alumnos)</button>
+        <button class="btn-primary-tw h-11 px-5 text-xs uppercase font-bold" onclick="window.printGenericExamSheet()"><i class="fas fa-copy"></i> Hoja para fotocopiar (1 hoja)</button>
+        <button class="btn-secondary-tw h-11 px-5 text-xs uppercase font-bold" onclick="window.printExamSheets()"><i class="fas fa-print"></i> Una por alumno (${S.students.length})</button>
         <button class="btn-primary-tw h-11 px-5 text-xs uppercase font-bold" onclick="window.openExamScanner()"><i class="fas fa-camera"></i> Escanear y calificar</button>
         <button class="btn-secondary-tw h-11 px-5 text-xs uppercase font-bold" onclick="window.exportExamCsv()"><i class="fas fa-download"></i> Exportar</button>
       </div>
-      <p class="text-[0.65rem] text-slate-400 mt-3">Imprime en Carta al 100 %, sin "ajustar a página". Cada hoja lleva el nombre del alumno y un QR: al escanearla, la nota se guarda sola en su nombre.</p>
+      <p class="text-[0.65rem] text-slate-400 mt-3"><b>Para fotocopiar:</b> imprime UNA hoja y saca las copias; cada alumno escribe su nombre y, al escanear, eliges de quién es. <b>Una por alumno:</b> sale con su nombre y QR, y la nota se guarda sola en su nombre (más cómodo, pero hay que imprimir todas). Imprime en Carta al 100 %, sin "ajustar a página", y que las copias salgan limpias (ni muy claras ni muy oscuras).</p>
     </div>
     <div class="glass-card p-6">
       <div class="flex items-center justify-between mb-3">
@@ -299,11 +301,27 @@ window.deleteExamResult = async function deleteExamResult(studentId) {
   renderDetail();
 };
 
-// ---------- Imprimir una hoja por alumno ----------
+// ---------- Imprimir ----------
 let printStyleAdded = false;
+
+// Una hoja por alumno (nombre + QR propio) o UNA hoja genérica para fotocopiar
+// (QR solo del examen: el alumno escribe su nombre y al escanear se elige).
 window.printExamSheets = function printExamSheets() {
   const e = S.exam;
   if (!S.students.length) return toast('<i class="fas fa-circle-xmark"></i> Esta clase no tiene alumnos', 'error');
+  printSheetList(S.students.map((s) => window.OMR.svgSheet({
+    n: e.question_count, title: e.title, group: `${e.grade} ${e.section}`, studentName: s.full_name, qr: qrMatrix(qrPayload(e.id, s.id)),
+  })));
+};
+
+window.printGenericExamSheet = function printGenericExamSheet() {
+  const e = S.exam;
+  printSheetList([window.OMR.svgSheet({
+    n: e.question_count, title: e.title, group: `${e.grade} ${e.section}`, qr: qrMatrix(qrPayload(e.id, null)),
+  })]);
+};
+
+function printSheetList(svgs) {
   if (!window.OMR || !window.QRCode) return toast('<i class="fas fa-circle-xmark"></i> Todavía se está cargando el generador de hojas. Intenta de nuevo.', 'error');
   if (!printStyleAdded) {
     const st = document.createElement('style');
@@ -321,14 +339,12 @@ window.printExamSheets = function printExamSheets() {
   }
   const area = document.createElement('div');
   area.id = 'exam-print-area';
-  area.innerHTML = S.students.map((s) => `<div class="exam-sheet">${window.OMR.svgSheet({
-    n: e.question_count, title: e.title, group: `${e.grade} ${e.section}`, studentName: s.full_name, qr: qrMatrix(qrPayload(e.id, s.id)),
-  })}</div>`).join('');
+  area.innerHTML = svgs.map((svg) => `<div class="exam-sheet">${svg}</div>`).join('');
   document.body.appendChild(area);
   const cleanup = () => { area.remove(); window.removeEventListener('afterprint', cleanup); };
   window.addEventListener('afterprint', cleanup);
   window.print();
-};
+}
 
 // ---------- Escanear y calificar ----------
 function stopCamera() {
@@ -433,8 +449,12 @@ function analyzeSheet(src) {
   let studentId = null;
   if (qr) {
     if (qr.examId !== e.id) return scMsg('Esta hoja es de OTRO examen. Verifica que sea la hoja de "' + e.title + '".');
-    if (S.students.some((s) => s.id === qr.studentId)) studentId = qr.studentId;
-    else scMsg('El alumno de esta hoja no está en la clase. Elígelo a mano abajo.', 'info');
+    // Hoja por alumno: el QR trae al alumno. Hoja genérica (fotocopia): solo
+    // trae el examen y el alumno se elige abajo, sin mensaje de error.
+    if (qr.studentId) {
+      if (S.students.some((s) => s.id === qr.studentId)) studentId = qr.studentId;
+      else scMsg('El alumno de esta hoja no está en la clase. Elígelo a mano abajo.', 'info');
+    }
   } else {
     scMsg('No se pudo leer el QR de la hoja. Elige al alumno a mano abajo.', 'info');
   }
@@ -463,7 +483,10 @@ function renderReview() {
   box.classList.remove('hidden');
   const g = gradeCurrent();
   const doubts = rv.res.doubts.filter(Boolean).length;
-  const students = S.students.map((s) => `<option value="${s.id}" ${s.id === rv.studentId ? 'selected' : ''}>${esc(s.full_name)}${S.results.has(s.id) ? ' (ya calificado)' : ''}</option>`).join('');
+  // Los que aún no tienen nota van primero: con fotocopias, al escanear la pila
+  // hoja por hoja, lo más probable es que sea alguien pendiente.
+  const ordered = [...S.students].sort((a, b) => (S.results.has(a.id) - S.results.has(b.id)) || a.full_name.localeCompare(b.full_name, 'es'));
+  const students = ordered.map((s) => `<option value="${s.id}" ${s.id === rv.studentId ? 'selected' : ''}>${esc(s.full_name)}${S.results.has(s.id) ? ' (ya calificado)' : ''}</option>`).join('');
   box.innerHTML = `
     <div class="grid md:grid-cols-2 gap-4">
       <div>
@@ -514,6 +537,8 @@ window.discardExamScan = function discardExamScan() {
 async function saveCurrent() {
   const e = S.exam, rv = S.review;
   if (!rv.studentId) return scMsg('Elige a qué alumno corresponde esta hoja.');
+  // Con la hoja genérica es fácil elegir al alumno equivocado: si ya tenía nota, se pregunta.
+  if (S.results.has(rv.studentId) && !confirm(`${S.students.find((s) => s.id === rv.studentId)?.full_name || 'Este alumno'} ya tiene nota en este examen. ¿Reemplazarla con esta hoja?`)) return;
   const g = gradeCurrent();
   const row = {
     exam_id: e.id, student_id: rv.studentId,

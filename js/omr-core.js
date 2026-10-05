@@ -86,8 +86,13 @@
           c = end;
         }
       });
-      p.push(`<text x="${ox + 11}" y="${oy + 20}" font-size="3.2" fill="#444">Alumno:</text>`);
-      p.push(fitText(studentName, ox + 11, oy + 26.5, 5, textW, 'font-weight="700"'));
+      if (studentName) {
+        p.push(`<text x="${ox + 11}" y="${oy + 20}" font-size="3.2" fill="#444">Alumno:</text>`);
+        p.push(fitText(studentName, ox + 11, oy + 26.5, 5, textW, 'font-weight="700"'));
+      } else {
+        // hoja para fotocopiar: el alumno escribe su nombre
+        p.push(`<text x="${ox + 11}" y="${oy + 23}" font-size="3.8">Nombre:</text><line x1="${ox + 28}" y1="${oy + 23}" x2="${ox + 142}" y2="${oy + 23}" stroke="#000" stroke-width=".3"/>`);
+      }
       p.push(`<text x="${ox + 11}" y="${oy + 32.5}" font-size="3.4">Fecha:</text><line x1="${ox + 23}" y1="${oy + 32.5}" x2="${ox + 70}" y2="${oy + 32.5}" stroke="#000" stroke-width=".3"/>`);
       p.push(`<text x="${ox + 78}" y="${oy + 32.5}" font-size="3.4">Nota:</text><line x1="${ox + 88}" y1="${oy + 32.5}" x2="${ox + 112}" y2="${oy + 32.5}" stroke="#000" stroke-width=".3"/>`);
     } else {
