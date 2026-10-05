@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Hojas de respuestas · Prototipo</title>
+<style>
+  :root { --bg:#0b1220; --card:#131c2e; --line:#26324a; --txt:#e8eefc; --mut:#93a1bd; --ok:#22c55e; --bad:#ef4444; --warn:#f59e0b; --pri:#00c853; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--txt); font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+  main { max-width: 960px; margin: 0 auto; padding: 16px; display:grid; gap:16px; }
+  h1 { font-size: 1.25rem; margin: 4px 0 0; } h2 { font-size: 1rem; margin: 0 0 10px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; }
+  .muted { color:var(--mut); font-size:.85rem; }
+  .row { display:flex; flex-wrap:wrap; gap:10px; align-items:end; }
+  label { display:flex; flex-direction:column; gap:4px; font-size:.78rem; color:var(--mut); font-weight:700; text-transform:uppercase; letter-spacing:.04em; }
+  input, select, textarea { background:#0d1527; color:var(--txt); border:1px solid var(--line); border-radius:10px; padding:10px 12px; font:inherit; }
+  textarea { width:100%; min-height:70px; font-family: ui-monospace, Consolas, monospace; letter-spacing:.12em; }
+  button { background:var(--pri); color:#04210f; border:0; border-radius:10px; padding:11px 16px; font:inherit; font-weight:800; cursor:pointer; }
+  button.sec { background:#1d2a45; color:var(--txt); border:1px solid var(--line); }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  #preview { background:#fff; border-radius:8px; overflow:auto; max-height:70vh; }
+  #preview svg { width:100%; height:auto; display:block; }
+  #video, #shot { width:100%; max-height:70vh; background:#000; border-radius:12px; display:block; }
+  .hidden { display:none !important; }
+  .msg { padding:10px 12px; border-radius:10px; font-weight:600; }
+  .msg.err { background:#3b1219; color:#fecaca; border:1px solid #7f1d1d; }
+  .msg.info { background:#10243d; color:#bfdbfe; border:1px solid #1e3a8a; }
+  .score { font-size:2.4rem; font-weight:900; line-height:1; }
+  .pills { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+  .pill { padding:4px 10px; border-radius:999px; font-size:.8rem; font-weight:800; background:#1d2a45; }
+  .pill.ok { color:var(--ok); } .pill.bad { color:var(--bad); } .pill.warn { color:var(--warn); }
+  table { width:100%; border-collapse:collapse; font-size:.85rem; }
+  th, td { padding:6px 8px; border-bottom:1px solid var(--line); text-align:center; }
+  td.a { cursor:pointer; font-weight:900; }
+  tr.ok td.a { color:var(--ok); } tr.bad td.a { color:var(--bad); } tr.warn td.a { color:var(--warn); }
+  tr.doubt { background:rgba(245,158,11,.08); }
+  .grid2 { display:grid; grid-template-columns: 1fr; gap:16px; }
+  @media (min-width: 800px) { .grid2 { grid-template-columns: 1fr 1fr; } }
+  /* Al imprimir solo sale la hoja, a tamaño real */
+  @page { size: Letter; margin: 0; }
+  @media print {
+    body { background:#fff; } main > *:not(#printArea) { display:none !important; }
+    main { padding:0; max-width:none; } #printArea { display:block !important; }
+    #printArea svg { width:215.9mm; height:279.4mm; display:block; }
+  }
+  #printArea { display:none; }
+</style>
+</head>
+<body>
+<main>
+  <div>
+    <h1>Hojas de respuestas (prototipo)</h1>
+    <p class="muted">1) Genera e imprime la hoja. 2) Escribe la clave de respuestas. 3) Escanea con la cámara. Todo ocurre en tu dispositivo: no se sube ninguna foto.</p>
+  </div>
+
+  <section class="card">
+    <h2>1 · Generar e imprimir</h2>
+    <div class="row">
+      <label>Preguntas
+        <select id="n">
+          <option>20</option><option>25</option><option>30</option><option selected>40</option><option>50</option><option>60</option><option>75</option><option>100</option>
+        </select>
+      </label>
+      <label>Título <input id="title" value="Evaluación de Tecnología" size="26"></label>
+      <label>Clase <input id="group" value="2do Básico A" size="14"></label>
+      <button id="btnPrint">Imprimir hoja</button>
+    </div>
+    <p class="muted">Imprímela en Carta, al <b>100 %</b> (sin "ajustar a página"), en negro. Las 4 marcas negras de las esquinas son lo que usa el lector.</p>
+    <div id="preview"></div>
+  </section>
+
+  <section class="card">
+    <h2>2 · Clave de respuestas</h2>
+    <textarea id="key" placeholder="Ej: ABCDEABCDE... (una letra A–E por pregunta, sin importar espacios)"></textarea>
+    <div class="row" style="margin-top:8px">
+      <button class="sec" id="btnRandomKey">Clave al azar (para probar)</button>
+      <span class="muted" id="keyInfo"></span>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>3 · Escanear</h2>
+    <div class="row">
+      <button id="btnCam">Abrir cámara</button>
+      <button id="btnSnap" class="hidden">Tomar foto</button>
+      <label style="font-size:.85rem;text-transform:none;letter-spacing:0">…o sube una foto
+        <input type="file" id="file" accept="image/*" capture="environment">
+      </label>
+    </div>
+    <p class="muted">Consejos: hoja plana, buena luz sin sombra encima, que entren las 4 marcas negras, y toma la foto de frente.</p>
+    <div id="err" class="msg err hidden"></div>
+    <video id="video" class="hidden" playsinline muted></video>
+    <canvas id="shot" class="hidden"></canvas>
+  </section>
+
+  <section class="card hidden" id="result">
+    <h2>Resultado</h2>
+    <div class="grid2">
+      <div>
+        <div class="score" id="score">–</div>
+        <div class="pills" id="pills"></div>
+        <p class="muted" id="reviewNote"></p>
+      </div>
+      <div style="max-height:360px; overflow:auto">
+        <table><thead><tr><th>#</th><th>Leído</th><th>Clave</th><th></th></tr></thead><tbody id="rows"></tbody></table>
+      </div>
+    </div>
+    <p class="muted">Toca una letra en "Leído" para corregirla a mano (A→B→…→vacío). Las filas marcadas en amarillo son las dudosas: revísalas contra la hoja.</p>
+  </section>
+</main>
+<div id="printArea"></div>
+
+<script src="omr-core.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+let stream = null, current = null; // current = {answers, doubts, centers, size, n}
+
+function nQ() { return parseInt($('n').value, 10); }
+function sheetSvg() { return OMR.svgSheet({ n: nQ(), title: $('title').value, group: $('group').value, examId: '' }); }
+function drawPreview() { $('preview').innerHTML = sheetSvg(); updateKeyInfo(); }
+function updateKeyInfo() {
+  const key = OMR.parseKey($('key').value, nQ());
+  const have = key.filter(Boolean).length;
+  $('keyInfo').textContent = `${have} de ${nQ()} respuestas en la clave` + (have && have < nQ() ? ' (faltan preguntas)' : '');
+}
+
+$('n').onchange = drawPreview; $('title').oninput = drawPreview; $('group').oninput = drawPreview;
+$('key').oninput = () => { updateKeyInfo(); if (current) renderResult(); };
+$('btnPrint').onclick = () => { $('printArea').innerHTML = sheetSvg(); window.print(); };
+$('btnRandomKey').onclick = () => { $('key').value = Array.from({ length: nQ() }, () => 'ABCDE'[Math.floor(Math.random() * 5)]).join(''); updateKeyInfo(); if (current) renderResult(); };
+
+function showErr(msg) { $('err').textContent = msg || ''; $('err').classList.toggle('hidden', !msg); }
+
+async function openCam() {
+  showErr('');
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
+  } catch (e) { return showErr('No se pudo abrir la cámara (' + (e.name || 'error') + '). Revisa el permiso o sube una foto.'); }
+  $('video').srcObject = stream; await $('video').play();
+  $('video').classList.remove('hidden'); $('shot').classList.add('hidden'); $('btnSnap').classList.remove('hidden');
+}
+function stopCam() { if (stream) stream.getTracks().forEach((t) => t.stop()); stream = null; $('video').classList.add('hidden'); $('btnSnap').classList.add('hidden'); }
+$('btnCam').onclick = openCam;
+$('btnSnap').onclick = () => { analyze($('video')); stopCam(); };
+$('file').onchange = (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  const img = new Image(); img.onload = () => { analyze(img); URL.revokeObjectURL(img.src); }; img.src = URL.createObjectURL(f);
+};
+
+function analyze(src) {
+  showErr('');
+  const res = OMR.scanSource(src, nQ());
+  // muestra la foto con el análisis dibujado encima
+  const sw = src.videoWidth || src.naturalWidth || src.width, sh = src.videoHeight || src.naturalHeight || src.height;
+  const shot = $('shot'); const k = Math.min(1, 1100 / Math.max(sw, sh));
+  shot.width = Math.round(sw * k); shot.height = Math.round(sh * k);
+  shot.getContext('2d').drawImage(src, 0, 0, shot.width, shot.height);
+  shot.classList.remove('hidden');
+  if (!res.ok) { showErr(res.error); $('result').classList.add('hidden'); current = null; return; }
+  current = res; renderResult();
+}
+
+function renderResult() {
+  const key = OMR.parseKey($('key').value, current.n);
+  const g = OMR.grade(current.answers, key);
+  $('result').classList.remove('hidden');
+  $('score').textContent = g.total ? `${g.correct} / ${g.total}  ·  ${g.percent}%` : `${current.answers.filter((a) => a && a !== '*').length} respondidas`;
+  const doubtN = current.doubts.filter(Boolean).length;
+  $('pills').innerHTML =
+    `<span class="pill ok">✔ ${g.correct} bien</span><span class="pill bad">✖ ${g.wrong} mal</span>` +
+    `<span class="pill warn">○ ${g.blank} en blanco</span><span class="pill warn">⊗ ${g.multiple} doble marca</span>`;
+  $('reviewNote').textContent = g.total ? (doubtN ? `${doubtN} pregunta(s) dudosa(s): revísalas abajo.` : 'Sin dudas en la lectura.') : 'Escribe la clave de respuestas para calificar.';
+
+  $('rows').innerHTML = current.answers.map((a, i) => {
+    const kk = key[i]; const st = !kk ? '' : a === kk ? 'ok' : (a === null || a === '*') ? 'warn' : 'bad';
+    return `<tr class="${st} ${current.doubts[i] ? 'doubt' : ''}"><td>${i + 1}</td><td class="a" data-i="${i}">${a === null ? '·' : a === '*' ? '⊗' : a}</td><td>${kk || ''}</td><td>${st === 'ok' ? '✔' : st === 'bad' ? '✖' : ''}</td></tr>`;
+  }).join('');
+  document.querySelectorAll('td.a').forEach((td) => td.onclick = () => {
+    const i = +td.dataset.i, order = [null, 'A', 'B', 'C', 'D', 'E'];
+    const cur = current.answers[i] === '*' ? null : current.answers[i];
+    current.answers[i] = order[(order.indexOf(cur) + 1) % order.length]; current.doubts[i] = false; renderResult();
+  });
+  drawOverlay(key);
+}
+
+function drawOverlay(key) {
+  const shot = $('shot'), ctx = shot.getContext('2d');
+  const sx = shot.width / current.size.w, sy = shot.height / current.size.h;
+  current.markers.forEach((m) => { ctx.strokeStyle = '#00c853'; ctx.lineWidth = 3; ctx.strokeRect(m.x * sx - 14, m.y * sy - 14, 28, 28); });
+  const byQ = {}; current.centers.forEach((c) => { (byQ[c.q] = byQ[c.q] || [])[c.o] = c; });
+  current.answers.forEach((a, q) => {
+    const row = byQ[q]; if (!row) return;
+    const kk = key[q];
+    if (a && a !== '*') {
+      const c = row['ABCDE'.indexOf(a)]; ctx.lineWidth = 3; ctx.strokeStyle = !kk ? '#38bdf8' : a === kk ? '#22c55e' : '#ef4444';
+      ctx.beginPath(); ctx.arc(c.x * sx, c.y * sy, c.r * sx * 1.35, 0, 7); ctx.stroke();
+    } else if (a === '*') { row.forEach((c) => { ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(c.x * sx, c.y * sy, c.r * sx * 1.2, 0, 7); ctx.stroke(); }); }
+    if (kk && a !== kk) { const c = row['ABCDE'.indexOf(kk)]; ctx.strokeStyle = '#22c55e'; ctx.setLineDash([4, 4]); ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(c.x * sx, c.y * sy, c.r * sx * 1.35, 0, 7); ctx.stroke(); ctx.setLineDash([]); }
+  });
+}
+
+drawPreview();
+</script>
+</body>
+</html>
