@@ -77,8 +77,7 @@ window.loadTeacherCourses = async function loadTeacherCourses(container) {
     <div class="flex flex-col md:flex-row md:flex-wrap gap-4 mb-6 items-center">
       <p class="text-xs text-slate-400 grow">Creá cursos con lecciones en orden (video, PDF, imágenes, SCORM/H5P). Los alumnos avanzan paso a paso.</p>
       <button class="btn-secondary-tw h-11 px-6 text-xs uppercase font-bold shrink-0" onclick="window.openSharedCoursesLibrary()"><i class="fas fa-book-bookmark"></i> Biblioteca Compartida</button>
-      <button class="btn-secondary-tw h-11 px-6 text-xs uppercase font-bold shrink-0" onclick="window.openExportSireModal()"><i class="fas fa-file-export"></i> Exportar Notas (SIRE)</button>
-      <button class="btn-secondary-tw h-11 px-6 text-xs uppercase font-bold shrink-0" onclick="window.openCuadroFinalModal()"><i class="fas fa-table-list"></i> Cuadro de Resultados</button>
+      <button class="btn-secondary-tw h-11 px-6 text-xs uppercase font-bold shrink-0" onclick="window.openExportSireModal()"><i class="fas fa-file-export"></i> Exportar Notas</button>
       ${window.userRole === 'docente' ? `<button class="btn-secondary-tw h-11 px-6 text-xs uppercase font-bold shrink-0" onclick="window.openWeeklyTopicModal()"><i class="fas fa-bullseye"></i> Tema de la semana</button>
       <button class="btn-secondary-tw h-11 px-6 text-xs uppercase font-bold shrink-0" onclick="window.openDuelReportModal()"><i class="fas fa-chart-simple"></i> Reporte de duelos</button>` : ''}
       <button class="btn-primary-tw h-11 px-6 text-xs uppercase font-bold shrink-0" onclick="window.openCreateCourseModal()"><i class="fas fa-plus"></i> Nuevo Curso</button>
@@ -232,7 +231,7 @@ window.openCreateCourseModal = async function openCreateCourseModal(editCourseId
         <div>
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Área CNB *</label>
           <select id="course-cnb-area" class="input-field-tw h-11 text-sm"></select>
-          <p class="text-[0.65rem] text-slate-400 mt-1">Área curricular oficial (CNB) a la que pertenece este curso -- la exige el Cuadro de Resultados Finales del MINEDUC.</p>
+          <p class="text-[0.65rem] text-slate-400 mt-1">Área curricular oficial (CNB) a la que pertenece este curso -- se usa para agrupar las notas.</p>
         </div>
         <div>
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Descripción</label>
@@ -314,7 +313,7 @@ window.saveCourse = async function saveCourse(editingId) {
     .eq('section', classOption.section).eq('bimestre', bimestre);
   const otherWeight = (siblingCourses || []).filter(c => c.id !== editingId).reduce((sum, c) => sum + (c.weight || 0), 0);
   if (otherWeight + weight > 100) {
-    const proceed = confirm(`Los cursos de este bimestre ya suman ${otherWeight + weight} puntos (máximo 100 para el SIRE). ¿Guardar igual?`);
+    const proceed = confirm(`Los cursos de este bimestre ya suman ${otherWeight + weight} puntos (máximo 100). ¿Guardar igual?`);
     if (!proceed) return;
   }
 
@@ -2799,8 +2798,8 @@ window.openExportSireModal = async function openExportSireModal() {
   modal.className = 'fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-sm animate-fadeIn';
   modal.innerHTML = `
     <div class="glass-card w-full max-w-md p-8 shadow-2xl animate-slideUp">
-      <h2 class="text-lg font-bold text-slate-800 dark:text-white uppercase tracking-tighter mb-2"><i class="fas fa-file-export text-primary mr-2"></i> Exportar Notas (SIRE)</h2>
-      <p class="text-xs text-slate-400 mb-6">Genera una hoja con Código Personal, nombre y notas por unidad (bimestre) de todos los cursos de la clase, lista para copiar mientras cargás las notas en el SIRE -- el sistema del MINEDUC no acepta subir archivos.</p>
+      <h2 class="text-lg font-bold text-slate-800 dark:text-white uppercase tracking-tighter mb-2"><i class="fas fa-file-export text-primary mr-2"></i> Exportar Notas</h2>
+      <p class="text-xs text-slate-400 mb-6">Genera una hoja con Código Personal, nombre y notas por unidad (bimestre) de todos los cursos de la clase, lista para copiar o archivar.</p>
       <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Clase</label>
       <select id="sire-export-class" class="input-field-tw h-11 text-sm mb-6">
         ${classOptions.map((c, i) => `<option value="${i}">${window.sanitizeInput(c.schoolName)} · ${window.sanitizeInput(c.grade)} ${window.sanitizeInput(c.section)}</option>`).join('')}

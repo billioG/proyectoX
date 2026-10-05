@@ -534,7 +534,7 @@ window.openAddStudentModal = async function openAddStudentModal(student = null) 
             <label class="block text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Código Personal MINEDUC</label>
             <input type="text" id="student-codigo-personal" placeholder="Ej: A123BCD" value="${window.sanitizeAttr(student?.codigo_personal || '')}"
                    class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white focus:ring-2 focus:ring-primary/20 transition-all">
-            <p class="text-[0.6rem] text-slate-400 mt-1">Lo exige el SIRE/Cuadro de Resultados Finales -- distinto del CUI.</p>
+            <p class="text-[0.6rem] text-slate-400 mt-1">Dato de identificación del estudiante -- distinto del CUI.</p>
           </div>
           <div>
             <label class="block text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Sexo *</label>
