@@ -108,6 +108,7 @@ const KolibriSync = {
         qrDiv.innerHTML = '';
         container.classList.remove('hidden');
 
+        await window.loadLib('qrcode');
         if (typeof QRCode === 'undefined') return window.showToast('<i class="fas fa-circle-xmark"></i> Error: Librería QR no cargada', 'error');
 
         try {

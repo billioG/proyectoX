@@ -312,6 +312,7 @@ function buildDriverSteps(rawSteps, getDriverObj) {
 }
 
 async function runGuidedTour(rawSteps) {
+  await window.loadLib('driver');
   if (typeof window.driver === 'undefined') {
     console.warn('driver.js todavía no cargó -- no se pudo mostrar el tour');
     return;

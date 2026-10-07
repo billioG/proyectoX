@@ -4,6 +4,10 @@ Cambios publicados en Quetzal LMS, del más reciente al más antiguo. Cada líne
 
 Al publicar una versión nueva, agregá una línea arriba de todo (ver CONTRIBUTING.md).
 
+## 2026-10-07
+
+- Carga más rápida (primera visita, sobre todo en celular con internet lenta): el login ya no espera a 8 librerías para pintarse. JSZip, driver.js (tour), PDF.js, jsQR, generador de QR y confeti se cargan solo cuando se usan (o en segundo plano cuando el navegador está libre); supabase-js carga con `defer`; Font Awesome y Google Fonts ya no bloquean el primer pintado; se quitaron las cargas duplicadas de jsQR y QR y se agregaron `preconnect` a los CDN. Nada cambia en pantalla ni en la base de datos; las librerías siguen guardadas para uso sin conexión (v1.0.168)
+
 ## 2026-10-04
 
 - Cursos: se quitó el botón "Cuadro de Resultados" y se quitó el nombre SIRE de los textos visibles (el botón ahora es "Exportar Notas"). La exportación de notas sigue igual (v1.0.167)

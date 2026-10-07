@@ -38,12 +38,25 @@
     <!-- Estilos -->
     <link rel="stylesheet" href="css/styles.css">
 
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Conexiones tempranas a los CDN -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
-        rel="stylesheet">
+    <!-- Font Awesome y Google Fonts: hojas de estilo que NO bloquean el primer
+         pintado (media="print" + onload). Los iconos y la tipografía entran en
+         cuanto llegan; la pantalla ya se ve antes. -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+        media="print" onload="this.media='all'">
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+        media="print" onload="this.media='all'">
+    <noscript>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        <link rel="stylesheet"
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap">
+    </noscript>
 
     <!-- PWA Manifest -->
     <link rel="manifest" href="manifest.json">
@@ -60,7 +73,7 @@
          index.html pero el navegador puede seguir sirviendo desde caché HTTP
          una versión vieja de un módulo lazy-loaded (ej. pdf-processor.js),
          aunque el tag de versión visible ya muestre la última. -->
-    <script>window.APP_VERSION = 'v1.0.167';</script>
+    <script>window.APP_VERSION = 'v1.0.168';</script>
 
     <!-- Silenciar console.log/info/debug en producción (activar con localStorage.PX_DEBUG='true').
          Va antes de todo lo demás porque los console.log de cada módulo corren
@@ -71,15 +84,63 @@
         }
     </script>
 
-    <!-- Supabase -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+    <!-- Supabase: es lo único que hace falta para mostrar el login. defer = no
+         bloquea el pintado y corre antes que el módulo js/app.js. -->
+    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- Cargador de librerías pesadas bajo demanda: JSZip, driver.js (tour),
+         PDF.js, jsQR, QRCode y confetti ya no bloquean el primer pintado.
+         window.loadLib('jszip', ...) devuelve una promesa (true si quedaron
+         disponibles). Los módulos que las usan hacen `await loadLib(...)`.
+         Las livianas (confetti, QR) se precargan cuando el navegador está libre. -->
+    <script>
+        (function () {
+            var J = 'https://cdn.jsdelivr.net/npm/', C = 'https://cdnjs.cloudflare.com/ajax/libs/';
+            var LIBS = {
+                jszip: { js: J + 'jszip@3.10.1/dist/jszip.min.js', t: 'JSZip' },
+                driver: { js: J + 'driver.js@1/dist/driver.js.iife.js', css: J + 'driver.js@1/dist/driver.css', t: 'driver' },
+                pdfjs: {
+                    js: C + 'pdf.js/3.11.174/pdf.min.js', t: 'pdfjsLib',
+                    done: function () { window.pdfjsLib.GlobalWorkerOptions.workerSrc = C + 'pdf.js/3.11.174/pdf.worker.min.js'; }
+                },
+                jsqr: { js: J + 'jsqr@1.4.0/dist/jsQR.min.js', t: 'jsQR' },
+                qrcode: { js: 'js/qrcode.min.js', t: 'QRCode' },
+                confetti: { js: J + 'canvas-confetti@1.9.2/dist/confetti.browser.min.js', t: 'confetti' }
+            };
+            var jobs = {};
+            function one(name) {
+                var L = LIBS[name];
+                if (!L) return Promise.resolve(false);
+                if (window[L.t]) return Promise.resolve(true);
+                if (jobs[name]) return jobs[name];
+                if (L.css) {
+                    var l = document.createElement('link');
+                    l.rel = 'stylesheet'; l.href = L.css;
+                    document.head.appendChild(l);
+                }
+                jobs[name] = new Promise(function (ok) {
+                    var sc = document.createElement('script');
+                    sc.src = L.js; sc.async = true;
+                    sc.onload = function () { try { if (L.done) L.done(); } catch (e) { } ok(true); };
+                    sc.onerror = function () { delete jobs[name]; sc.remove(); ok(false); };
+                    document.head.appendChild(sc);
+                });
+                return jobs[name];
+            }
+            window.loadLib = function () {
+                return Promise.all([].slice.call(arguments).map(one)).then(function (r) { return r.every(Boolean); });
+            };
+            window.addEventListener('load', function () {
+                var go = function () { window.loadLib('confetti', 'qrcode', 'jsqr'); };
+                if (window.requestIdleCallback) window.requestIdleCallback(go, { timeout: 4000 });
+                else setTimeout(go, 2000);
+            });
+        })();
+    </script>
     <!-- El reproductor H5P (autoalojado en vendor/h5p-standalone) ya no se
     carga acá: cada contenido corre aislado en vendor/h5p-standalone/player.html. -->
 
-    <!-- Driver.js -- tour guiado de onboarding (señala elementos reales de la UI) -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1/dist/driver.css">
-    <script src="https://cdn.jsdelivr.net/npm/driver.js@1/dist/driver.js.iife.js"></script>
+    <!-- Driver.js (tour guiado): se carga bajo demanda con loadLib('driver'). -->
 
 
 
@@ -379,19 +440,7 @@
         }
     </style>
 
-    <!-- PDF.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script>
-        if (typeof pdfjsLib !== 'undefined') {
-            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-        }
-    </script>
-
-    <!-- jsQR para escanear códigos QR -->
-    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
-
-    <!-- QRCode.js para generar códigos QR -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- PDF.js, jsQR y QRCode: bajo demanda con loadLib('pdfjs' | 'jsqr' | 'qrcode'). -->
 
     <style>
         @media print {
@@ -485,10 +534,6 @@
             }
         }
     </style>
-
-    <!-- QR Code Libraries (Offline Support) -->
-    <script src="js/qrcode.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 </head>
 
 <body>
@@ -505,7 +550,7 @@
                         Q</div>
                     Quetzal <span class="text-primary-dark dark:text-primary">LMS</span>
                 </div>
-                <span id="app-version-tag" class="text-[0.65rem] text-slate-500 dark:text-slate-400 font-medium mt-1">v1.0.167</span>
+                <span id="app-version-tag" class="text-[0.65rem] text-slate-500 dark:text-slate-400 font-medium mt-1">v1.0.168</span>
             </div>
 
             <div id="login-error"
@@ -568,7 +613,7 @@
                 <div class="text-2xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent transform hover:scale-105 transition-transform leading-none">
                     Quetzal LMS
                 </div>
-                <span class="text-[0.6rem] text-slate-400 font-medium mt-0.5">v1.0.167</span>
+                <span class="text-[0.6rem] text-slate-400 font-medium mt-0.5">v1.0.168</span>
             </div>
 
             <div class="flex items-center gap-4 sm:gap-6">
@@ -1163,11 +1208,10 @@
     <!-- SCRIPTS (Controlados por ES Modules) -->
     <!-- ============================================ -->
 
-    <!-- Librerías Externas (Globales) -->
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+    <!-- Librerías externas: confetti, QR, PDF, JSZip y driver.js se cargan con loadLib() (ver <head>). -->
 
     <!-- Punto de Entrada del Sistema -->
-    <script type="module" src="js/app.js?v=1.0.167"></script>
+    <script type="module" src="js/app.js?v=1.0.168"></script>
 
     <meta name="mobile-web-app-capable" content="yes">
 </body>

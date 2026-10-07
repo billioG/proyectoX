@@ -1161,6 +1161,7 @@ window.getFileMimeType = function getFileMimeType(filename) {
 // base y, si existe un imsmanifest.xml (SCORM), la URL del archivo de
 // entrada que ese manifiesto declara.
 window.extractAndUploadPackage = async function extractAndUploadPackage(file, basePath, onProgress) {
+  await window.loadLib('jszip');
   const zip = await JSZip.loadAsync(file);
   const entries = Object.values(zip.files).filter(f => !f.dir);
   const _supabase = window._supabase;
@@ -1800,6 +1801,7 @@ window.downloadCoursePackage = async function downloadCoursePackage(lessonId, bt
     const files = await listAllFilesRecursive(LESSON_STORAGE_BUCKET, lesson.content_path);
     if (!files.length) throw new Error('El paquete no tiene archivos en Storage');
 
+    await window.loadLib('jszip');
     const zip = new JSZip();
     for (const path of files) {
       const { data: { publicUrl } } = window._supabase.storage.from(LESSON_STORAGE_BUCKET).getPublicUrl(path);

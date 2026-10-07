@@ -14,6 +14,9 @@ const S = { exams: [], exam: null, students: [], results: new Map(), stream: nul
 const esc = (v) => (window.sanitizeInput ? window.sanitizeInput(v) : String(v ?? ''));
 const escA = (v) => (window.sanitizeAttr ? window.sanitizeAttr(v) : String(v ?? ''));
 const toast = (m, t) => window.showToast?.(m, t);
+
+// QR (generar hoja) y jsQR (leerla) ya no vienen en el index: se piden al abrir Exámenes.
+window.loadLib?.('qrcode', 'jsqr');
 const sb = () => window._supabase;
 const fmt = (n) => (Math.round(Number(n) * 100) / 100).toString().replace('.', ',');
 

@@ -180,6 +180,7 @@ window.startQRScanner = async function startQRScanner() {
     const btnStop = document.getElementById('btn-stop-scanner');
 
     if (!video || !container) return;
+    window.loadLib('jsqr');
 
     try {
         qrScanning = true;
@@ -470,6 +471,7 @@ window.printSectionQRs = async function printSectionQRs() {
     hiddenContainer.innerHTML = '';
 
     // 2. Generar QRs y capturar como Base64
+    await window.loadLib('qrcode');
     const qrImages = {};
     for (const s of students) {
         const tempDiv = document.createElement('div');

@@ -35,6 +35,7 @@ window.processPDFFile = async function processPDFFile() {
 
     window.isProcessingCanceled = false;
 
+    await window.loadLib('pdfjs');
     if (typeof pdfjsLib === 'undefined') {
         return window.showToast('<i class="fas fa-circle-xmark"></i> Error: Librería PDF.js no cargada', 'error');
     }
