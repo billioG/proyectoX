@@ -157,6 +157,7 @@ Detalle en el dossier: https://claude.ai/artifact/BoLjSgRTYwfesywaZaxvEq
 
 ## 🔵 Mejoras pendientes de la app
 
+- [ ] Revisar el tema claro en cada sección con sesión iniciada (v1.0.169 oscureció `text-slate-400` con CSS en `index.html`, bloque `#light-contrast`). Si algún panel oscuro hecho con CSS propio quedó con el texto muy oscuro, agregar su clase a la lista de superficies oscuras de ese bloque.
 - [ ] Medir otra vez en PageSpeed Insights (móvil) después de v1.0.168: antes 64 (FCP 5,4 s, LCP 6,0 s). Si sigue bajo, siguiente paso: minificar `js/*.js` con un paso de build y quitar CSS no usado de `css/tailwind.css`.
 - [x] PIN personal también en el modo sin conexión de la nube (v1.0.131). Requiere correr `migrations/student-pin-cloud.sql`.
 - [ ] Avisos automáticos a padres (por ejemplo: no asistió, subió su proyecto, logro semanal). Definir cuáles.

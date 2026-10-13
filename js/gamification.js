@@ -288,7 +288,7 @@ window.renderGamificationSidebar = function renderGamificationSidebar(level, tot
             <div class="w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center text-[0.6rem] shadow-sm"><i class="fas fa-star"></i></div>
             <span class="text-[0.65rem] font-bold text-slate-500 uppercase tracking-widest">${totalXP} XP ToTal</span>
         </div>
-        <button onclick="window.showXPInfoModal && window.showXPInfoModal()" class="text-slate-300 hover:text-primary transition-colors">
+        <button onclick="window.showXPInfoModal && window.showXPInfoModal()" class="text-slate-400 hover:text-primary transition-colors">
             <i class="fas fa-info-circle text-sm"></i>
         </button>
       </div>

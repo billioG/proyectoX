@@ -4,6 +4,10 @@ Cambios publicados en Quetzal LMS, del más reciente al más antiguo. Cada líne
 
 Al publicar una versión nueva, agregá una línea arriba de todo (ver CONTRIBUTING.md).
 
+## 2026-10-13
+
+- Tema claro: contraste de los textos. Los textos secundarios (etiquetas, subtítulos, fechas, ayudas) usaban un gris que sobre fondo blanco daba 2,5:1 (lo mínimo legible es 4,5:1) y se veían casi invisibles; ahora son más oscuros (5:1) solo en el tema claro. Las tarjetas y paneles oscuros y el tema oscuro quedan igual. Además se oscurecieron los textos que eran aún más pálidos (mensaje de lista vacía de asistencia, "/100" de la evaluación, notas vacías de Exámenes, botones de borrar y editar en avisos, retos y tareas) y los textos de ejemplo de los campos (v1.0.169)
+
 ## 2026-10-07
 
 - Carga más rápida (primera visita, sobre todo en celular con internet lenta): el login ya no espera a 8 librerías para pintarse. JSZip, driver.js (tour), PDF.js, jsQR, generador de QR y confeti se cargan solo cuando se usan (o en segundo plano cuando el navegador está libre); supabase-js carga con `defer`; Font Awesome y Google Fonts ya no bloquean el primer pintado; se quitaron las cargas duplicadas de jsQR y QR y se agregaron `preconnect` a los CDN. Nada cambia en pantalla ni en la base de datos; las librerías siguen guardadas para uso sin conexión (v1.0.168)

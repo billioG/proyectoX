@@ -73,7 +73,7 @@
          index.html pero el navegador puede seguir sirviendo desde caché HTTP
          una versión vieja de un módulo lazy-loaded (ej. pdf-processor.js),
          aunque el tag de versión visible ya muestre la última. -->
-    <script>window.APP_VERSION = 'v1.0.168';</script>
+    <script>window.APP_VERSION = 'v1.0.169';</script>
 
     <!-- Silenciar console.log/info/debug en producción (activar con localStorage.PX_DEBUG='true').
          Va antes de todo lo demás porque los console.log de cada módulo corren
@@ -146,6 +146,17 @@
 
     <!-- Tailwind CSS 3.4 compilado (config en tailwind.config.js) -->
     <link rel="stylesheet" href="css/tailwind.css">
+    <!-- Contraste en el tema claro: text-slate-400 (#94a3b8) sobre blanco da 2,5:1 (WCAG pide 4,5:1).
+         Se oscurece SOLO en tema claro. Especificidad pensada: html + 1 clase le gana a la utilidad
+         de Tailwind y pierde contra hover:/group-hover:/dark:, que siguen funcionando. Si el texto
+         está dentro de una superficie oscura (bg-slate-900, gradientes, etc.) conserva su color. -->
+    <style id="light-contrast">
+        html:where(:not(.dark)) .text-slate-400 { color: #5b6b80; }
+        html:where(:not(.dark)) :where([class~="bg-black"],[class^="bg-black/"],[class*=" bg-black/"],[class~="bg-slate-700"],[class^="bg-slate-700/"],[class*=" bg-slate-700/"],[class~="bg-slate-800"],[class^="bg-slate-800/"],[class*=" bg-slate-800/"],[class~="bg-slate-900"],[class^="bg-slate-900/"],[class*=" bg-slate-900/"],[class~="bg-slate-950"],[class^="bg-slate-950/"],[class*=" bg-slate-950/"],[class~="bg-gray-700"],[class^="bg-gray-700/"],[class*=" bg-gray-700/"],[class~="bg-gray-800"],[class^="bg-gray-800/"],[class*=" bg-gray-800/"],[class~="bg-gray-900"],[class^="bg-gray-900/"],[class*=" bg-gray-900/"],[class~="bg-gray-950"],[class^="bg-gray-950/"],[class*=" bg-gray-950/"],[class~="bg-zinc-700"],[class^="bg-zinc-700/"],[class*=" bg-zinc-700/"],[class~="bg-zinc-800"],[class^="bg-zinc-800/"],[class*=" bg-zinc-800/"],[class~="bg-zinc-900"],[class^="bg-zinc-900/"],[class*=" bg-zinc-900/"],[class~="bg-zinc-950"],[class^="bg-zinc-950/"],[class*=" bg-zinc-950/"],[class~="bg-indigo-700"],[class^="bg-indigo-700/"],[class*=" bg-indigo-700/"],[class~="bg-indigo-800"],[class^="bg-indigo-800/"],[class*=" bg-indigo-800/"],[class~="bg-indigo-900"],[class^="bg-indigo-900/"],[class*=" bg-indigo-900/"],[class~="bg-violet-700"],[class^="bg-violet-700/"],[class*=" bg-violet-700/"],[class~="bg-violet-800"],[class^="bg-violet-800/"],[class*=" bg-violet-800/"],[class~="bg-violet-900"],[class^="bg-violet-900/"],[class*=" bg-violet-900/"],[class~="bg-purple-700"],[class^="bg-purple-700/"],[class*=" bg-purple-700/"],[class~="bg-purple-800"],[class^="bg-purple-800/"],[class*=" bg-purple-800/"],[class~="bg-purple-900"],[class^="bg-purple-900/"],[class*=" bg-purple-900/"],[class~="bg-blue-700"],[class^="bg-blue-700/"],[class*=" bg-blue-700/"],[class~="bg-blue-800"],[class^="bg-blue-800/"],[class*=" bg-blue-800/"],[class~="bg-blue-900"],[class^="bg-blue-900/"],[class*=" bg-blue-900/"],[class~="bg-emerald-700"],[class^="bg-emerald-700/"],[class*=" bg-emerald-700/"],[class~="bg-emerald-800"],[class^="bg-emerald-800/"],[class*=" bg-emerald-800/"],[class~="bg-emerald-900"],[class^="bg-emerald-900/"],[class*=" bg-emerald-900/"],[class~="bg-green-700"],[class^="bg-green-700/"],[class*=" bg-green-700/"],[class~="bg-green-800"],[class^="bg-green-800/"],[class*=" bg-green-800/"],[class~="bg-green-900"],[class^="bg-green-900/"],[class*=" bg-green-900/"],[class~="bg-rose-700"],[class^="bg-rose-700/"],[class*=" bg-rose-700/"],[class~="bg-rose-800"],[class^="bg-rose-800/"],[class*=" bg-rose-800/"],[class~="bg-rose-900"],[class^="bg-rose-900/"],[class*=" bg-rose-900/"],[class~="bg-red-700"],[class^="bg-red-700/"],[class*=" bg-red-700/"],[class~="bg-red-800"],[class^="bg-red-800/"],[class*=" bg-red-800/"],[class~="bg-red-900"],[class^="bg-red-900/"],[class*=" bg-red-900/"],[class~="bg-amber-700"],[class^="bg-amber-700/"],[class*=" bg-amber-700/"],[class~="bg-amber-800"],[class^="bg-amber-800/"],[class*=" bg-amber-800/"],[class~="bg-amber-900"],[class^="bg-amber-900/"],[class*=" bg-amber-900/"],[class~="bg-orange-700"],[class^="bg-orange-700/"],[class*=" bg-orange-700/"],[class~="bg-orange-800"],[class^="bg-orange-800/"],[class*=" bg-orange-800/"],[class~="bg-orange-900"],[class^="bg-orange-900/"],[class*=" bg-orange-900/"],[class~="bg-fuchsia-700"],[class^="bg-fuchsia-700/"],[class*=" bg-fuchsia-700/"],[class~="bg-fuchsia-800"],[class^="bg-fuchsia-800/"],[class*=" bg-fuchsia-800/"],[class~="bg-fuchsia-900"],[class^="bg-fuchsia-900/"],[class*=" bg-fuchsia-900/"],[class~="bg-pink-700"],[class^="bg-pink-700/"],[class*=" bg-pink-700/"],[class~="bg-pink-800"],[class^="bg-pink-800/"],[class*=" bg-pink-800/"],[class~="bg-pink-900"],[class^="bg-pink-900/"],[class*=" bg-pink-900/"],[class~="bg-sky-700"],[class^="bg-sky-700/"],[class*=" bg-sky-700/"],[class~="bg-sky-800"],[class^="bg-sky-800/"],[class*=" bg-sky-800/"],[class~="bg-sky-900"],[class^="bg-sky-900/"],[class*=" bg-sky-900/"],[class~="bg-cyan-700"],[class^="bg-cyan-700/"],[class*=" bg-cyan-700/"],[class~="bg-cyan-800"],[class^="bg-cyan-800/"],[class*=" bg-cyan-800/"],[class~="bg-cyan-900"],[class^="bg-cyan-900/"],[class*=" bg-cyan-900/"],[class~="bg-teal-700"],[class^="bg-teal-700/"],[class*=" bg-teal-700/"],[class~="bg-teal-800"],[class^="bg-teal-800/"],[class*=" bg-teal-800/"],[class~="bg-teal-900"],[class^="bg-teal-900/"],[class*=" bg-teal-900/"],[class~="from-slate-800"],[class~="from-slate-900"],[class~="from-slate-950"],[class~="from-gray-800"],[class~="from-gray-900"],[class~="from-gray-950"],[class~="bg-primary"],[class^="bg-primary/"],[class*=" bg-primary/"],[class~="bg-primary-dark"],[class^="bg-primary-dark/"],[class*=" bg-primary-dark/"],[class*=" bg-[#0"],[class^="bg-[#0"],[class*=" bg-[#1"],[class^="bg-[#1"]) .text-slate-400 { color: #94a3b8; }
+        html:where(:not(.dark)) .placeholder-slate-400::placeholder,
+        html:where(:not(.dark)) .placeholder\:text-slate-400::placeholder { color: #66758b; }
+    </style>
+
     <style>
         :root {
             --primary: #00C853;
@@ -550,7 +561,7 @@
                         Q</div>
                     Quetzal <span class="text-primary-dark dark:text-primary">LMS</span>
                 </div>
-                <span id="app-version-tag" class="text-[0.65rem] text-slate-500 dark:text-slate-400 font-medium mt-1">v1.0.168</span>
+                <span id="app-version-tag" class="text-[0.65rem] text-slate-500 dark:text-slate-400 font-medium mt-1">v1.0.169</span>
             </div>
 
             <div id="login-error"
@@ -613,7 +624,7 @@
                 <div class="text-2xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent transform hover:scale-105 transition-transform leading-none">
                     Quetzal LMS
                 </div>
-                <span class="text-[0.6rem] text-slate-400 font-medium mt-0.5">v1.0.168</span>
+                <span class="text-[0.6rem] text-slate-400 font-medium mt-0.5">v1.0.169</span>
             </div>
 
             <div class="flex items-center gap-4 sm:gap-6">
@@ -1211,7 +1222,7 @@
     <!-- Librerías externas: confetti, QR, PDF, JSZip y driver.js se cargan con loadLib() (ver <head>). -->
 
     <!-- Punto de Entrada del Sistema -->
-    <script type="module" src="js/app.js?v=1.0.168"></script>
+    <script type="module" src="js/app.js?v=1.0.169"></script>
 
     <meta name="mobile-web-app-capable" content="yes">
 </body>

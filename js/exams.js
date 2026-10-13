@@ -289,9 +289,9 @@ function renderDetail() {
     const r = S.results.get(s.id);
     return `<tr class="border-b border-slate-100 dark:border-slate-800">
       <td class="py-2 pr-3 text-left text-xs font-bold text-slate-700 dark:text-slate-200">${esc(s.full_name)}</td>
-      <td class="py-2 px-2 text-center text-xs font-black ${r ? 'text-primary' : 'text-slate-300'}">${r ? fmt(r.score) + ' / ' + fmt(e.points) : '—'}</td>
+      <td class="py-2 px-2 text-center text-xs font-black ${r ? 'text-primary' : 'text-slate-400'}">${r ? fmt(r.score) + ' / ' + fmt(e.points) : '—'}</td>
       <td class="py-2 px-2 text-center text-[0.7rem] text-slate-400">${r ? `${r.correct}✔ ${r.wrong}✖ ${r.blank}○` : 'sin escanear'}</td>
-      <td class="py-2 pl-2 text-right">${r ? `<button class="text-slate-300 hover:text-rose-500" title="Quitar nota" onclick="window.deleteExamResult('${s.id}')"><i class="fas fa-trash-alt text-xs"></i></button>` : ''}</td>
+      <td class="py-2 pl-2 text-right">${r ? `<button class="text-slate-400 hover:text-rose-500" title="Quitar nota" onclick="window.deleteExamResult('${s.id}')"><i class="fas fa-trash-alt text-xs"></i></button>` : ''}</td>
     </tr>`;
   }).join('');
 

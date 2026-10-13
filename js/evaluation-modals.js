@@ -345,7 +345,7 @@ window.viewEvaluationDetails = async function viewEvaluationDetails(projectId) {
           <div class="flex items-center justify-center gap-4 mb-10 bg-slate-50 dark:bg-slate-800 p-8 rounded-3xl border border-slate-100 dark:border-slate-800">
               <div class="text-center">
                   <div class="text-[0.6rem] font-black text-slate-400 tracking-widest mb-1 uppercase">Puntuación Total</div>
-                  <div class="text-6xl font-black text-primary">${e.total_score}<span class="text-xl text-slate-300">/100</span></div>
+                  <div class="text-6xl font-black text-primary">${e.total_score}<span class="text-xl text-slate-400">/100</span></div>
               </div>
           </div>
           <div class="grid grid-cols-2 gap-4 mb-8">

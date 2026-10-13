@@ -118,7 +118,7 @@ window.renderAttendanceUI = window.renderAttendanceUI = function renderAttendanc
                     
                     <div class="lg:col-span-8">
                         <div id="attendance-students-list" class="bg-slate-50 dark:bg-slate-800/40 rounded-[2rem] p-6 max-h-[500px] overflow-y-auto custom-scroll border border-slate-100 dark:border-slate-800">
-                            <div class="flex flex-col items-center justify-center py-20 text-slate-300">
+                            <div class="flex flex-col items-center justify-center py-20 text-slate-400">
                                 <i class="fas fa-users text-4xl mb-4 opacity-10"></i>
                                 <p class="font-black uppercase tracking-widest text-[0.6rem] text-center">La lista aparecerá al seleccionar un equipo</p>
                             </div>

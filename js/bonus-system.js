@@ -1257,7 +1257,7 @@ window.renderGlobalKpiManager = async function renderGlobalKpiManager() {
                                  <button class="btn-secondary-tw px-4 h-9 text-[0.5rem] font-black" onclick="showAddTaskModal('${k.id}')">
                                     <i class="fas fa-plus mr-1"></i> AGREGAR TAREA
                                  </button>
-                                 <button class="w-9 h-9 rounded-xl hover:bg-rose-500/10 text-slate-300 hover:text-rose-500 transition-all flex items-center justify-center" onclick="deleteDynamicKpi('${k.id}')">
+                                 <button class="w-9 h-9 rounded-xl hover:bg-rose-500/10 text-slate-400 hover:text-rose-500 transition-all flex items-center justify-center" onclick="deleteDynamicKpi('${k.id}')">
                                     <i class="fas fa-trash-alt"></i>
                                  </button>
                             </div>
@@ -1284,7 +1284,7 @@ window.loadKpiTasksForAdmin = async function loadKpiTasksForAdmin(kpiId, teacher
     if (!container) return;
 
     if (!tasks || tasks.length === 0) {
-        container.innerHTML = '<div class="text-center py-4 text-slate-300 text-[0.5rem] font-black uppercase uppercase tracking-widest">Sin tareas específicas</div>';
+        container.innerHTML = '<div class="text-center py-4 text-slate-400 text-[0.5rem] font-black uppercase uppercase tracking-widest">Sin tareas específicas</div>';
         return;
     }
 
@@ -1296,7 +1296,7 @@ window.loadKpiTasksForAdmin = async function loadKpiTasksForAdmin(kpiId, teacher
                          <div class="w-1.5 h-1.5 rounded-full bg-primary/30"></div>
                          <div class="text-[0.7rem] font-bold text-slate-600 dark:text-slate-400 uppercase">${t.title}</div>
                     </div>
-                    <button class="w-8 h-8 rounded-lg text-slate-300 hover:text-rose-500 opacity-0 group-hover/item:opacity-100 transition-all" onclick="deleteKpiTask('${t.id}', '${kpiId}')">
+                    <button class="w-8 h-8 rounded-lg text-slate-400 hover:text-rose-500 opacity-0 group-hover/item:opacity-100 transition-all" onclick="deleteKpiTask('${t.id}', '${kpiId}')">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>

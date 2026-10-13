@@ -187,7 +187,7 @@ window.openAnnouncementsInbox = async function openAnnouncementsInbox() {
       <span class="text-xs font-bold text-slate-600 dark:text-slate-300 truncate">${sanitizeInput(s.title)}</span>
       <div class="flex items-center gap-3 shrink-0">
         <button class="text-primary hover:underline text-[0.6rem] font-bold uppercase" onclick="window.openSurveyResultsModal('${s.id}')">Ver Resultados</button>
-        <button class="text-slate-300 hover:text-rose-500 transition-colors" onclick="window.deleteSurvey('${s.id}')" title="Eliminar encuesta"><i class="fas fa-trash-alt text-xs"></i></button>
+        <button class="text-slate-400 hover:text-rose-500 transition-colors" onclick="window.deleteSurvey('${s.id}')" title="Eliminar encuesta"><i class="fas fa-trash-alt text-xs"></i></button>
       </div>
     </div>
   `).join('') : '';
@@ -201,8 +201,8 @@ window.openAnnouncementsInbox = async function openAnnouncementsInbox() {
         <h4 class="text-sm font-bold text-slate-800 dark:text-white">${sanitizeInput(a.title)}</h4>
         <div class="flex items-center gap-2 shrink-0">
           ${!readIds.has(a.id) ? '<span class="w-2 h-2 rounded-full bg-primary"></span>' : ''}
-          ${canDelete ? `<button class="text-slate-300 hover:text-primary transition-colors" onclick="window.openAnnouncementReadersModal('${a.id}')" title="Ver quién lo leyó"><i class="fas fa-eye text-xs"></i></button>` : ''}
-          ${canDelete ? `<button class="text-slate-300 hover:text-rose-500 transition-colors" onclick="window.deleteAnnouncement('${a.id}')" title="Eliminar aviso"><i class="fas fa-trash-alt text-xs"></i></button>` : ''}
+          ${canDelete ? `<button class="text-slate-400 hover:text-primary transition-colors" onclick="window.openAnnouncementReadersModal('${a.id}')" title="Ver quién lo leyó"><i class="fas fa-eye text-xs"></i></button>` : ''}
+          ${canDelete ? `<button class="text-slate-400 hover:text-rose-500 transition-colors" onclick="window.deleteAnnouncement('${a.id}')" title="Eliminar aviso"><i class="fas fa-trash-alt text-xs"></i></button>` : ''}
         </div>
       </div>
       <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">${sanitizeInput(a.message)}</p>
