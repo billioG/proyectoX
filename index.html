@@ -73,7 +73,7 @@
          index.html pero el navegador puede seguir sirviendo desde caché HTTP
          una versión vieja de un módulo lazy-loaded (ej. pdf-processor.js),
          aunque el tag de versión visible ya muestre la última. -->
-    <script>window.APP_VERSION = 'v1.0.169';</script>
+    <script>window.APP_VERSION = 'v1.0.170';</script>
 
     <!-- Silenciar console.log/info/debug en producción (activar con localStorage.PX_DEBUG='true').
          Va antes de todo lo demás porque los console.log de cada módulo corren
@@ -146,13 +146,90 @@
 
     <!-- Tailwind CSS 3.4 compilado (config en tailwind.config.js) -->
     <link rel="stylesheet" href="css/tailwind.css">
-    <!-- Contraste en el tema claro: text-slate-400 (#94a3b8) sobre blanco da 2,5:1 (WCAG pide 4,5:1).
-         Se oscurece SOLO en tema claro. Especificidad pensada: html + 1 clase le gana a la utilidad
-         de Tailwind y pierde contra hover:/group-hover:/dark:, que siguen funcionando. Si el texto
-         está dentro de una superficie oscura (bg-slate-900, gradientes, etc.) conserva su color. -->
     <style id="light-contrast">
-        html:where(:not(.dark)) .text-slate-400 { color: #5b6b80; }
-        html:where(:not(.dark)) :where([class~="bg-black"],[class^="bg-black/"],[class*=" bg-black/"],[class~="bg-slate-700"],[class^="bg-slate-700/"],[class*=" bg-slate-700/"],[class~="bg-slate-800"],[class^="bg-slate-800/"],[class*=" bg-slate-800/"],[class~="bg-slate-900"],[class^="bg-slate-900/"],[class*=" bg-slate-900/"],[class~="bg-slate-950"],[class^="bg-slate-950/"],[class*=" bg-slate-950/"],[class~="bg-gray-700"],[class^="bg-gray-700/"],[class*=" bg-gray-700/"],[class~="bg-gray-800"],[class^="bg-gray-800/"],[class*=" bg-gray-800/"],[class~="bg-gray-900"],[class^="bg-gray-900/"],[class*=" bg-gray-900/"],[class~="bg-gray-950"],[class^="bg-gray-950/"],[class*=" bg-gray-950/"],[class~="bg-zinc-700"],[class^="bg-zinc-700/"],[class*=" bg-zinc-700/"],[class~="bg-zinc-800"],[class^="bg-zinc-800/"],[class*=" bg-zinc-800/"],[class~="bg-zinc-900"],[class^="bg-zinc-900/"],[class*=" bg-zinc-900/"],[class~="bg-zinc-950"],[class^="bg-zinc-950/"],[class*=" bg-zinc-950/"],[class~="bg-indigo-700"],[class^="bg-indigo-700/"],[class*=" bg-indigo-700/"],[class~="bg-indigo-800"],[class^="bg-indigo-800/"],[class*=" bg-indigo-800/"],[class~="bg-indigo-900"],[class^="bg-indigo-900/"],[class*=" bg-indigo-900/"],[class~="bg-violet-700"],[class^="bg-violet-700/"],[class*=" bg-violet-700/"],[class~="bg-violet-800"],[class^="bg-violet-800/"],[class*=" bg-violet-800/"],[class~="bg-violet-900"],[class^="bg-violet-900/"],[class*=" bg-violet-900/"],[class~="bg-purple-700"],[class^="bg-purple-700/"],[class*=" bg-purple-700/"],[class~="bg-purple-800"],[class^="bg-purple-800/"],[class*=" bg-purple-800/"],[class~="bg-purple-900"],[class^="bg-purple-900/"],[class*=" bg-purple-900/"],[class~="bg-blue-700"],[class^="bg-blue-700/"],[class*=" bg-blue-700/"],[class~="bg-blue-800"],[class^="bg-blue-800/"],[class*=" bg-blue-800/"],[class~="bg-blue-900"],[class^="bg-blue-900/"],[class*=" bg-blue-900/"],[class~="bg-emerald-700"],[class^="bg-emerald-700/"],[class*=" bg-emerald-700/"],[class~="bg-emerald-800"],[class^="bg-emerald-800/"],[class*=" bg-emerald-800/"],[class~="bg-emerald-900"],[class^="bg-emerald-900/"],[class*=" bg-emerald-900/"],[class~="bg-green-700"],[class^="bg-green-700/"],[class*=" bg-green-700/"],[class~="bg-green-800"],[class^="bg-green-800/"],[class*=" bg-green-800/"],[class~="bg-green-900"],[class^="bg-green-900/"],[class*=" bg-green-900/"],[class~="bg-rose-700"],[class^="bg-rose-700/"],[class*=" bg-rose-700/"],[class~="bg-rose-800"],[class^="bg-rose-800/"],[class*=" bg-rose-800/"],[class~="bg-rose-900"],[class^="bg-rose-900/"],[class*=" bg-rose-900/"],[class~="bg-red-700"],[class^="bg-red-700/"],[class*=" bg-red-700/"],[class~="bg-red-800"],[class^="bg-red-800/"],[class*=" bg-red-800/"],[class~="bg-red-900"],[class^="bg-red-900/"],[class*=" bg-red-900/"],[class~="bg-amber-700"],[class^="bg-amber-700/"],[class*=" bg-amber-700/"],[class~="bg-amber-800"],[class^="bg-amber-800/"],[class*=" bg-amber-800/"],[class~="bg-amber-900"],[class^="bg-amber-900/"],[class*=" bg-amber-900/"],[class~="bg-orange-700"],[class^="bg-orange-700/"],[class*=" bg-orange-700/"],[class~="bg-orange-800"],[class^="bg-orange-800/"],[class*=" bg-orange-800/"],[class~="bg-orange-900"],[class^="bg-orange-900/"],[class*=" bg-orange-900/"],[class~="bg-fuchsia-700"],[class^="bg-fuchsia-700/"],[class*=" bg-fuchsia-700/"],[class~="bg-fuchsia-800"],[class^="bg-fuchsia-800/"],[class*=" bg-fuchsia-800/"],[class~="bg-fuchsia-900"],[class^="bg-fuchsia-900/"],[class*=" bg-fuchsia-900/"],[class~="bg-pink-700"],[class^="bg-pink-700/"],[class*=" bg-pink-700/"],[class~="bg-pink-800"],[class^="bg-pink-800/"],[class*=" bg-pink-800/"],[class~="bg-pink-900"],[class^="bg-pink-900/"],[class*=" bg-pink-900/"],[class~="bg-sky-700"],[class^="bg-sky-700/"],[class*=" bg-sky-700/"],[class~="bg-sky-800"],[class^="bg-sky-800/"],[class*=" bg-sky-800/"],[class~="bg-sky-900"],[class^="bg-sky-900/"],[class*=" bg-sky-900/"],[class~="bg-cyan-700"],[class^="bg-cyan-700/"],[class*=" bg-cyan-700/"],[class~="bg-cyan-800"],[class^="bg-cyan-800/"],[class*=" bg-cyan-800/"],[class~="bg-cyan-900"],[class^="bg-cyan-900/"],[class*=" bg-cyan-900/"],[class~="bg-teal-700"],[class^="bg-teal-700/"],[class*=" bg-teal-700/"],[class~="bg-teal-800"],[class^="bg-teal-800/"],[class*=" bg-teal-800/"],[class~="bg-teal-900"],[class^="bg-teal-900/"],[class*=" bg-teal-900/"],[class~="from-slate-800"],[class~="from-slate-900"],[class~="from-slate-950"],[class~="from-gray-800"],[class~="from-gray-900"],[class~="from-gray-950"],[class~="bg-primary"],[class^="bg-primary/"],[class*=" bg-primary/"],[class~="bg-primary-dark"],[class^="bg-primary-dark/"],[class*=" bg-primary-dark/"],[class*=" bg-[#0"],[class^="bg-[#0"],[class*=" bg-[#1"],[class^="bg-[#1"]) .text-slate-400 { color: #94a3b8; }
+        /* Contraste en el tema claro (WCAG AA = 4,5:1). Los grises y los colores de acento
+           claros (text-slate-400 = 2,5:1, text-primary = 2,2:1, amber/emerald-500...) se
+           oscurecen SOLO en tema claro y SOLO como texto. Especificidad: html + 1 clase le gana
+           a la utilidad de Tailwind y pierde contra hover:/group-hover:/dark:, que siguen
+           funcionando. Dentro de superficies oscuras (bg-slate-900, gradientes, etc.) el texto
+           conserva su color original. */
+        html:where(:not(.dark)) .text-slate-400 { color: var(--lc0, #5b6b80); }
+        html:where(:not(.dark)) .text-primary { color: var(--lc1, #007a28); }
+        html:where(:not(.dark)) .text-emerald-400 { color: var(--lc2, #047857); }
+        html:where(:not(.dark)) .text-emerald-500 { color: var(--lc3, #047857); }
+        html:where(:not(.dark)) .text-green-400 { color: var(--lc4, #15803d); }
+        html:where(:not(.dark)) .text-green-500 { color: var(--lc5, #15803d); }
+        html:where(:not(.dark)) .text-amber-400 { color: var(--lc6, #b45309); }
+        html:where(:not(.dark)) .text-amber-500 { color: var(--lc7, #b45309); }
+        html:where(:not(.dark)) .text-yellow-400 { color: var(--lc8, #a16207); }
+        html:where(:not(.dark)) .text-yellow-500 { color: var(--lc9, #a16207); }
+        html:where(:not(.dark)) .text-orange-400 { color: var(--lc10, #c2410c); }
+        html:where(:not(.dark)) .text-orange-500 { color: var(--lc11, #c2410c); }
+        html:where(:not(.dark)) .text-cyan-400 { color: var(--lc12, #0e7490); }
+        html:where(:not(.dark)) .text-cyan-500 { color: var(--lc13, #0e7490); }
+        html:where(:not(.dark)) .text-sky-400 { color: var(--lc14, #0369a1); }
+        html:where(:not(.dark)) .text-sky-500 { color: var(--lc15, #0369a1); }
+        html:where(:not(.dark)) .text-teal-400 { color: var(--lc16, #0f766e); }
+        html:where(:not(.dark)) .text-teal-500 { color: var(--lc17, #0f766e); }
+        html:where(:not(.dark)) .text-lime-500 { color: var(--lc18, #4d7c0f); }
+        html:where(:not(.dark)) .text-indigo-400 { color: var(--lc19, #4f46e5); }
+        html:where(:not(.dark)) .text-violet-400 { color: var(--lc20, #6d28d9); }
+        html:where(:not(.dark)) .text-rose-400 { color: var(--lc21, #be123c); }
+        html:where(:not(.dark)) .text-emerald-600\/50 { color: var(--la0, #047857); }
+        html:where(:not(.dark)) .text-emerald-600\/60 { color: var(--la1, #047857); }
+        html:where(:not(.dark)) .text-emerald-600\/70 { color: var(--la2, #047857); }
+        html:where(:not(.dark)) .text-emerald-600\/80 { color: var(--la3, #047857); }
+        html:where(:not(.dark)) .text-amber-600\/50 { color: var(--la4, #b45309); }
+        html:where(:not(.dark)) .text-amber-600\/60 { color: var(--la5, #b45309); }
+        html:where(:not(.dark)) .text-amber-600\/70 { color: var(--la6, #b45309); }
+        html:where(:not(.dark)) .text-amber-600\/80 { color: var(--la7, #b45309); }
+        html:where(:not(.dark)) .text-blue-600\/50 { color: var(--la8, #1d4ed8); }
+        html:where(:not(.dark)) .text-blue-600\/60 { color: var(--la9, #1d4ed8); }
+        html:where(:not(.dark)) .text-blue-600\/70 { color: var(--la10, #1d4ed8); }
+        html:where(:not(.dark)) .text-blue-600\/80 { color: var(--la11, #1d4ed8); }
+        html:where(:not(.dark)) .text-indigo-600\/50 { color: var(--la12, #4338ca); }
+        html:where(:not(.dark)) .text-indigo-600\/60 { color: var(--la13, #4338ca); }
+        html:where(:not(.dark)) .text-indigo-600\/70 { color: var(--la14, #4338ca); }
+        html:where(:not(.dark)) .text-indigo-600\/80 { color: var(--la15, #4338ca); }
+        html:where(:not(.dark)) .text-rose-600\/50 { color: var(--la16, #be123c); }
+        html:where(:not(.dark)) .text-rose-600\/60 { color: var(--la17, #be123c); }
+        html:where(:not(.dark)) .text-rose-600\/70 { color: var(--la18, #be123c); }
+        html:where(:not(.dark)) .text-rose-600\/80 { color: var(--la19, #be123c); }
+        html:where(:not(.dark)) .text-red-600\/50 { color: var(--la20, #b91c1c); }
+        html:where(:not(.dark)) .text-red-600\/60 { color: var(--la21, #b91c1c); }
+        html:where(:not(.dark)) .text-red-600\/70 { color: var(--la22, #b91c1c); }
+        html:where(:not(.dark)) .text-red-600\/80 { color: var(--la23, #b91c1c); }
+        html:where(:not(.dark)) .text-orange-600\/50 { color: var(--la24, #c2410c); }
+        html:where(:not(.dark)) .text-orange-600\/60 { color: var(--la25, #c2410c); }
+        html:where(:not(.dark)) .text-orange-600\/70 { color: var(--la26, #c2410c); }
+        html:where(:not(.dark)) .text-orange-600\/80 { color: var(--la27, #c2410c); }
+        html:where(:not(.dark)) .text-green-600\/50 { color: var(--la28, #15803d); }
+        html:where(:not(.dark)) .text-green-600\/60 { color: var(--la29, #15803d); }
+        html:where(:not(.dark)) .text-green-600\/70 { color: var(--la30, #15803d); }
+        html:where(:not(.dark)) .text-green-600\/80 { color: var(--la31, #15803d); }
+        html:where(:not(.dark)) .text-teal-600\/50 { color: var(--la32, #0f766e); }
+        html:where(:not(.dark)) .text-teal-600\/60 { color: var(--la33, #0f766e); }
+        html:where(:not(.dark)) .text-teal-600\/70 { color: var(--la34, #0f766e); }
+        html:where(:not(.dark)) .text-teal-600\/80 { color: var(--la35, #0f766e); }
+        html:where(:not(.dark)) .text-cyan-600\/50 { color: var(--la36, #0e7490); }
+        html:where(:not(.dark)) .text-cyan-600\/60 { color: var(--la37, #0e7490); }
+        html:where(:not(.dark)) .text-cyan-600\/70 { color: var(--la38, #0e7490); }
+        html:where(:not(.dark)) .text-cyan-600\/80 { color: var(--la39, #0e7490); }
+        html:where(:not(.dark)) .text-sky-600\/50 { color: var(--la40, #0369a1); }
+        html:where(:not(.dark)) .text-sky-600\/60 { color: var(--la41, #0369a1); }
+        html:where(:not(.dark)) .text-sky-600\/70 { color: var(--la42, #0369a1); }
+        html:where(:not(.dark)) .text-sky-600\/80 { color: var(--la43, #0369a1); }
+        html:where(:not(.dark)) .text-violet-600\/50 { color: var(--la44, #6d28d9); }
+        html:where(:not(.dark)) .text-violet-600\/60 { color: var(--la45, #6d28d9); }
+        html:where(:not(.dark)) .text-violet-600\/70 { color: var(--la46, #6d28d9); }
+        html:where(:not(.dark)) .text-violet-600\/80 { color: var(--la47, #6d28d9); }
+        html:where(:not(.dark)) .text-purple-600\/50 { color: var(--la48, #7e22ce); }
+        html:where(:not(.dark)) .text-purple-600\/60 { color: var(--la49, #7e22ce); }
+        html:where(:not(.dark)) .text-purple-600\/70 { color: var(--la50, #7e22ce); }
+        html:where(:not(.dark)) .text-purple-600\/80 { color: var(--la51, #7e22ce); }
+        html:where(:not(.dark)) :where([class~="bg-black"],[class~="bg-slate-700"],[class~="bg-slate-800"],[class~="bg-slate-900"],[class~="bg-slate-950"],[class~="bg-gray-700"],[class~="bg-gray-800"],[class~="bg-gray-900"],[class~="bg-gray-950"],[class~="bg-zinc-700"],[class~="bg-zinc-800"],[class~="bg-zinc-900"],[class~="bg-zinc-950"],[class~="bg-indigo-600"],[class~="bg-indigo-700"],[class~="bg-indigo-800"],[class~="bg-indigo-900"],[class~="bg-violet-600"],[class~="bg-violet-700"],[class~="bg-violet-800"],[class~="bg-violet-900"],[class~="bg-purple-600"],[class~="bg-purple-700"],[class~="bg-purple-800"],[class~="bg-purple-900"],[class~="bg-blue-600"],[class~="bg-blue-700"],[class~="bg-blue-800"],[class~="bg-blue-900"],[class~="bg-emerald-600"],[class~="bg-emerald-700"],[class~="bg-emerald-800"],[class~="bg-emerald-900"],[class~="bg-green-600"],[class~="bg-green-700"],[class~="bg-green-800"],[class~="bg-green-900"],[class~="bg-rose-600"],[class~="bg-rose-700"],[class~="bg-rose-800"],[class~="bg-rose-900"],[class~="bg-red-600"],[class~="bg-red-700"],[class~="bg-red-800"],[class~="bg-red-900"],[class~="bg-amber-600"],[class~="bg-amber-700"],[class~="bg-amber-800"],[class~="bg-amber-900"],[class~="bg-orange-600"],[class~="bg-orange-700"],[class~="bg-orange-800"],[class~="bg-orange-900"],[class~="bg-fuchsia-600"],[class~="bg-fuchsia-700"],[class~="bg-fuchsia-800"],[class~="bg-fuchsia-900"],[class~="bg-pink-600"],[class~="bg-pink-700"],[class~="bg-pink-800"],[class~="bg-pink-900"],[class~="bg-sky-600"],[class~="bg-sky-700"],[class~="bg-sky-800"],[class~="bg-sky-900"],[class~="bg-cyan-600"],[class~="bg-cyan-700"],[class~="bg-cyan-800"],[class~="bg-cyan-900"],[class~="bg-teal-600"],[class~="bg-teal-700"],[class~="bg-teal-800"],[class~="bg-teal-900"],[class~="from-slate-800"],[class~="from-slate-900"],[class~="from-slate-950"],[class~="from-gray-800"],[class~="from-gray-900"],[class~="from-gray-950"],[class~="bg-primary"],[class~="bg-primary-dark"],[class~="bg-gradient-to-r"],[class~="bg-gradient-to-br"],[class~="bg-gradient-to-b"],[class~="bg-gradient-to-t"],[class~="bg-gradient-to-bl"],[class~="bg-gradient-to-l"],[class*=" bg-[#0"],[class^="bg-[#0"],[class*=" bg-[#1"],[class^="bg-[#1"]) { --lc0: #94a3b8; --lc1: #00C853; --lc2: #34d399; --lc3: #10b981; --lc4: #4ade80; --lc5: #22c55e; --lc6: #fbbf24; --lc7: #f59e0b; --lc8: #facc15; --lc9: #eab308; --lc10: #fb923c; --lc11: #f97316; --lc12: #22d3ee; --lc13: #06b6d4; --lc14: #38bdf8; --lc15: #0ea5e9; --lc16: #2dd4bf; --lc17: #14b8a6; --lc18: #84cc16; --lc19: #818cf8; --lc20: #a78bfa; --lc21: #fb7185; --la0: rgb(5 150 105 / .50); --la1: rgb(5 150 105 / .60); --la2: rgb(5 150 105 / .70); --la3: rgb(5 150 105 / .80); --la4: rgb(217 119 6 / .50); --la5: rgb(217 119 6 / .60); --la6: rgb(217 119 6 / .70); --la7: rgb(217 119 6 / .80); --la8: rgb(37 99 235 / .50); --la9: rgb(37 99 235 / .60); --la10: rgb(37 99 235 / .70); --la11: rgb(37 99 235 / .80); --la12: rgb(79 70 229 / .50); --la13: rgb(79 70 229 / .60); --la14: rgb(79 70 229 / .70); --la15: rgb(79 70 229 / .80); --la16: rgb(225 29 72 / .50); --la17: rgb(225 29 72 / .60); --la18: rgb(225 29 72 / .70); --la19: rgb(225 29 72 / .80); --la20: rgb(220 38 38 / .50); --la21: rgb(220 38 38 / .60); --la22: rgb(220 38 38 / .70); --la23: rgb(220 38 38 / .80); --la24: rgb(234 88 12 / .50); --la25: rgb(234 88 12 / .60); --la26: rgb(234 88 12 / .70); --la27: rgb(234 88 12 / .80); --la28: rgb(22 163 74 / .50); --la29: rgb(22 163 74 / .60); --la30: rgb(22 163 74 / .70); --la31: rgb(22 163 74 / .80); --la32: rgb(13 148 136 / .50); --la33: rgb(13 148 136 / .60); --la34: rgb(13 148 136 / .70); --la35: rgb(13 148 136 / .80); --la36: rgb(8 145 178 / .50); --la37: rgb(8 145 178 / .60); --la38: rgb(8 145 178 / .70); --la39: rgb(8 145 178 / .80); --la40: rgb(2 132 199 / .50); --la41: rgb(2 132 199 / .60); --la42: rgb(2 132 199 / .70); --la43: rgb(2 132 199 / .80); --la44: rgb(124 58 237 / .50); --la45: rgb(124 58 237 / .60); --la46: rgb(124 58 237 / .70); --la47: rgb(124 58 237 / .80); --la48: rgb(147 51 234 / .50); --la49: rgb(147 51 234 / .60); --la50: rgb(147 51 234 / .70); --la51: rgb(147 51 234 / .80); }
+        html:where(:not(.dark)) :where([class~="bg-black"],[class~="bg-slate-700"],[class~="bg-slate-800"],[class~="bg-slate-900"],[class~="bg-slate-950"],[class~="bg-gray-700"],[class~="bg-gray-800"],[class~="bg-gray-900"],[class~="bg-gray-950"],[class~="bg-zinc-700"],[class~="bg-zinc-800"],[class~="bg-zinc-900"],[class~="bg-zinc-950"]) { color: #e2e8f0; }
+        html:where(:not(.dark)) :where([class~="bg-primary"],[class~="bg-primary-dark"],[class~="bg-indigo-700"],[class~="bg-indigo-800"],[class~="bg-indigo-900"],[class~="bg-violet-700"],[class~="bg-violet-800"],[class~="bg-violet-900"],[class~="bg-purple-700"],[class~="bg-purple-800"],[class~="bg-purple-900"],[class~="bg-blue-700"],[class~="bg-blue-800"],[class~="bg-blue-900"],[class~="bg-emerald-700"],[class~="bg-emerald-800"],[class~="bg-emerald-900"],[class~="bg-green-700"],[class~="bg-green-800"],[class~="bg-green-900"],[class~="bg-rose-700"],[class~="bg-rose-800"],[class~="bg-rose-900"],[class~="bg-red-700"],[class~="bg-red-800"],[class~="bg-red-900"],[class~="bg-amber-700"],[class~="bg-amber-800"],[class~="bg-amber-900"],[class~="bg-orange-700"],[class~="bg-orange-800"],[class~="bg-orange-900"],[class~="bg-fuchsia-700"],[class~="bg-fuchsia-800"],[class~="bg-fuchsia-900"],[class~="bg-pink-700"],[class~="bg-pink-800"],[class~="bg-pink-900"],[class~="bg-sky-700"],[class~="bg-sky-800"],[class~="bg-sky-900"],[class~="bg-cyan-700"],[class~="bg-cyan-800"],[class~="bg-cyan-900"],[class~="bg-teal-700"],[class~="bg-teal-800"],[class~="bg-teal-900"]) { color: #ffffff; }
         html:where(:not(.dark)) .placeholder-slate-400::placeholder,
         html:where(:not(.dark)) .placeholder\:text-slate-400::placeholder { color: #66758b; }
     </style>
@@ -206,8 +283,13 @@
             font-size: 1.125rem;
         }
 
-        .glass-card {
+        /* El fondo base solo aplica si la tarjeta NO trae su propio bg-* (antes pisaba a
+           bg-slate-900 y el texto blanco quedaba invisible en el tema claro). */
+        .glass-card:not([class^="bg-"]):not([class*=" bg-"]) {
             background-color: rgba(255, 255, 255, 0.8);
+        }
+
+        .glass-card {
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.2);
@@ -561,7 +643,7 @@
                         Q</div>
                     Quetzal <span class="text-primary-dark dark:text-primary">LMS</span>
                 </div>
-                <span id="app-version-tag" class="text-[0.65rem] text-slate-500 dark:text-slate-400 font-medium mt-1">v1.0.169</span>
+                <span id="app-version-tag" class="text-[0.65rem] text-slate-500 dark:text-slate-400 font-medium mt-1">v1.0.170</span>
             </div>
 
             <div id="login-error"
@@ -624,7 +706,7 @@
                 <div class="text-2xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent transform hover:scale-105 transition-transform leading-none">
                     Quetzal LMS
                 </div>
-                <span class="text-[0.6rem] text-slate-400 font-medium mt-0.5">v1.0.169</span>
+                <span class="text-[0.6rem] text-slate-400 font-medium mt-0.5">v1.0.170</span>
             </div>
 
             <div class="flex items-center gap-4 sm:gap-6">
@@ -1222,7 +1304,7 @@
     <!-- Librerías externas: confetti, QR, PDF, JSZip y driver.js se cargan con loadLib() (ver <head>). -->
 
     <!-- Punto de Entrada del Sistema -->
-    <script type="module" src="js/app.js?v=1.0.169"></script>
+    <script type="module" src="js/app.js?v=1.0.170"></script>
 
     <meta name="mobile-web-app-capable" content="yes">
 </body>

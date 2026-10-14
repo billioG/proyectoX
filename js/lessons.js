@@ -524,7 +524,7 @@ window.renderCourseResourcesList = function renderCourseResourcesList() {
   const hasGraded = lessons.some(l => LESSON_TYPES_WITH_GRADE.has(l.content_type));
   const warnMissingGraded = !hasGraded && course?.created_at >= GRADED_REQUIREMENT_SINCE;
   const warningHtml = warnMissingGraded ? `
-    <div class="glass-card p-4 mb-3 border border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs flex items-start gap-2">
+    <div class="glass-card p-4 mb-3 border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs flex items-start gap-2">
       <i class="fas fa-triangle-exclamation mt-0.5"></i>
       <span>Este curso todavía no tiene ninguna actividad con nota (Quiz, H5P o SCORM) -- vale <strong>0 puntos</strong> hasta que agregues una. Agregá al menos un cuestionario final.</span>
     </div>` : '';
@@ -1660,7 +1660,7 @@ window.loadStudentCourses = async function loadStudentCourses(container) {
   setTimeout(() => window.renderStorageStatus?.(), 0);
 
   container.innerHTML = `
-    ${fromCache ? `<div class="glass-card p-3 mb-4 border border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs flex flex-col sm:flex-row sm:items-center gap-2">
+    ${fromCache ? `<div class="glass-card p-3 mb-4 border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs flex flex-col sm:flex-row sm:items-center gap-2">
       <div class="flex items-center gap-2 grow"><i class="fas fa-cloud-slash"></i> Sin conexión -- viendo la última versión guardada. El progreso que ya viste offline vuelve a estar disponible; nuevos cursos/recursos aparecen al reconectar.</div>
       ${pendingQueueCount > 0 ? `<button onclick="KolibriSync.openSyncCenter()" class="shrink-0 h-8 px-3 rounded-lg bg-amber-500 text-white text-[0.65rem] font-bold uppercase whitespace-nowrap"><i class="fas fa-qrcode"></i> Generar código de entrega (${pendingQueueCount})</button>` : ''}
     </div>` : ''}

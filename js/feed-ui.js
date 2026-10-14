@@ -42,7 +42,7 @@ window.renderAdminPanel = function renderAdminPanel() {
         <div class="w-7 h-7 rounded-lg bg-white/20 text-white flex items-center justify-center text-xs shrink-0"><i class="fas fa-shield-alt"></i></div>
         <div>
           <h3 class="text-[0.65rem] font-semibold tracking-tight leading-none mb-1">PANEL MAESTRO</h3>
-          <p class="text-indigo-100/50 text-[0.55rem] font-medium uppercase tracking-widest leading-none">Gestión Técnica Global</p>
+          <p class="text-indigo-100 text-[0.55rem] font-medium uppercase tracking-widest leading-none">Gestión Técnica Global</p>
         </div>
       </div>
       <button class="bg-white text-indigo-600 font-semibold py-1.5 px-3 rounded-lg transition-all text-[0.55rem] uppercase tracking-widest" onclick="window.nav && window.nav('admin-dashboard')">ADMIN</button>
