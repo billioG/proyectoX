@@ -4,6 +4,10 @@ Cambios publicados en Quetzal LMS, del más reciente al más antiguo. Cada líne
 
 Al publicar una versión nueva, agregá una línea arriba de todo (ver CONTRIBUTING.md).
 
+## 2026-10-17
+
+- Fix urgente del tema oscuro (error de la v1.0.170): las tarjetas normales se veían en gris claro sobre el fondo oscuro, porque el arreglo del tema claro les devolvía el fondo blanco translúcido también de noche. Ahora cada tema usa su propio fondo (claro: blanco translúcido; oscuro: azul noche translúcido, como antes), y las tarjetas con fondo propio (`bg-slate-900`) siguen oscuras en el tema claro. También: el login se pinta antes de que terminen de cargar los módulos, así que tocar muy rápido el ojo de la contraseña o salir del campo de usuario daba el error "is not a function"; se agregaron versiones mínimas de esas dos funciones que `auth.js` reemplaza al cargar (v1.0.171)
+
 ## 2026-10-13
 
 - Tema claro, segunda pasada (Hall de la Fama y modales): las tarjetas con fondo oscuro (`bg-slate-900`: Hall de la Fama, retos, torneos, eventos, tarjetas de bonos y de gamificación, unos 30 modales) se veían con fondo blanco en el tema claro y el texto blanco quedaba invisible, porque el estilo base de `glass-card` pisaba el fondo; ahora respeta el fondo que traiga la tarjeta. El texto sin clase de color dentro de esas tarjetas se muestra claro. Además los colores de acento que daban 2:1 sobre blanco (verde `text-primary`, esmeralda, ámbar, amarillo, naranja, cian, celeste, turquesa) se oscurecen como texto en el tema claro, con excepción dentro de superficies oscuras. Revisado con una auditoría automática de contraste sobre 235 tarjetas y modales (v1.0.170)

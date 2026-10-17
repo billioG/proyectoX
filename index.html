@@ -73,7 +73,7 @@
          index.html pero el navegador puede seguir sirviendo desde caché HTTP
          una versión vieja de un módulo lazy-loaded (ej. pdf-processor.js),
          aunque el tag de versión visible ya muestre la última. -->
-    <script>window.APP_VERSION = 'v1.0.170';</script>
+    <script>window.APP_VERSION = 'v1.0.171';</script>
 
     <!-- Silenciar console.log/info/debug en producción (activar con localStorage.PX_DEBUG='true').
          Va antes de todo lo demás porque los console.log de cada módulo corren
@@ -87,6 +87,18 @@
     <!-- Supabase: es lo único que hace falta para mostrar el login. defer = no
          bloquea el pintado y corre antes que el módulo js/app.js. -->
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- La pantalla de login ahora se pinta antes de que terminen de cargar los módulos. Hasta que
+         auth.js defina las funciones reales, estas versiones mínimas evitan el error al tocar el ojo
+         de la contraseña o salir del campo de usuario muy rápido. auth.js las reemplaza. -->
+    <script>
+        window.checkLoginPasswordMode = function () { };
+        window.toggleLoginPasswordVisibility = function () {
+            var i = document.getElementById('login-password'), e = document.getElementById('login-password-eye');
+            if (!i || !e) return;
+            var h = i.type === 'password'; i.type = h ? 'text' : 'password'; e.className = h ? 'fas fa-eye-slash' : 'fas fa-eye';
+        };
+    </script>
 
     <!-- Cargador de librerías pesadas bajo demanda: JSZip, driver.js (tour),
          PDF.js, jsQR, QRCode y confetti ya no bloquean el primer pintado.
@@ -298,6 +310,7 @@
             transition: all 0.3s ease;
         }
 
+        .dark .glass-card:not([class^="bg-"]):not([class*=" bg-"]),
         .dark .glass-card {
             background-color: rgba(15, 23, 42, 0.6);
             border: 1px solid rgba(30, 41, 59, 0.5);
@@ -643,7 +656,7 @@
                         Q</div>
                     Quetzal <span class="text-primary-dark dark:text-primary">LMS</span>
                 </div>
-                <span id="app-version-tag" class="text-[0.65rem] text-slate-500 dark:text-slate-400 font-medium mt-1">v1.0.170</span>
+                <span id="app-version-tag" class="text-[0.65rem] text-slate-500 dark:text-slate-400 font-medium mt-1">v1.0.171</span>
             </div>
 
             <div id="login-error"
@@ -706,7 +719,7 @@
                 <div class="text-2xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent transform hover:scale-105 transition-transform leading-none">
                     Quetzal LMS
                 </div>
-                <span class="text-[0.6rem] text-slate-400 font-medium mt-0.5">v1.0.170</span>
+                <span class="text-[0.6rem] text-slate-400 font-medium mt-0.5">v1.0.171</span>
             </div>
 
             <div class="flex items-center gap-4 sm:gap-6">
@@ -1304,7 +1317,7 @@
     <!-- Librerías externas: confetti, QR, PDF, JSZip y driver.js se cargan con loadLib() (ver <head>). -->
 
     <!-- Punto de Entrada del Sistema -->
-    <script type="module" src="js/app.js?v=1.0.170"></script>
+    <script type="module" src="js/app.js?v=1.0.171"></script>
 
     <meta name="mobile-web-app-capable" content="yes">
 </body>
