@@ -253,7 +253,7 @@ window.loadStudents = async function loadStudents() {
       // habían "perdido" alumnos y establecimientos enteros, pero nunca se
       // tocó la base de datos.
       const allStudents = await window.fetchAllRows(() => {
-        let query = _supabase.from('students').select('*, schools(name, code, address)');
+        let query = _supabase.from('students').select(`${window.STUDENT_COLS}, schools(name, code, address)`);
         if (userRole === 'docente' && assignments.length > 0) {
           const schoolCodes = [...new Set(assignments.map(a => a.school_code))];
           query = query.in('school_code', schoolCodes);
@@ -270,6 +270,8 @@ window.loadStudents = async function loadStudents() {
           String(a.section) === String(s.section)
         ));
       }
+      // CUI de cada tarjeta: solo de los alumnos que este usuario administra.
+      await window.mergeStudentSecrets(students);
 
       // Establecimientos sin ningún alumno importado todavía -- solo para
       // admin (el docente ya está acotado a sus asignaciones). Sin esto, un
@@ -673,7 +675,8 @@ window.submitStudent = async function submitStudent(e) {
 
 window.editStudent = async function editStudent(id) {
   const _supabase = window._supabase;
-  const { data, error } = await _supabase.from('students').select('*').eq('id', id).single();
+  const { data, error } = await _supabase.from('students').select(window.STUDENT_COLS).eq('id', id).single();
+  if (data) await window.mergeStudentSecrets([data]);
   if (data) window.openAddStudentModal(data);
 }
 

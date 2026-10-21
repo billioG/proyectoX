@@ -44,6 +44,17 @@ del proyecto (necesitan contraseñas o acceso al panel de Supabase).
 - [x] Nombre legal ante la SAT: Billy Abraham Gómez Sac. Falta inscripción FEL/facturas.
 - [ ] No prometer en demos el nodo escolar ni la importación SIRE hasta probarlos en vivo
 
+## 🔴 Seguridad -- auditoría 21/10/2026
+
+- [ ] Publicar v1.0.172 y DESPUÉS correr `migrations/security-hardening-2026-10.sql` (al final muestra una fila: debe dar `false, false, true, true`). Si se corre antes de publicar, las versiones viejas de la app dan error al iniciar sesión.
+- [ ] Correr `migrations/practice-progress.sql` (v1.0.166): en producción la tabla `practice_results` todavía no existe (verificado el 21/10), así que los reportes de progreso por competencia no funcionan.
+- [ ] Correr `migrations/fix-is-staff-coordinador.sql` y compañía (siguen sin marcar abajo).
+- [ ] Límite diario de uso de IA por usuario en `ai-proxy` (hoy no tiene tope: un usuario con sesión podría gastar la cuota de Groq).
+- [ ] Pasar a mediano plazo `students.password_generated` a contraseña con hash (hoy se guarda legible para poder imprimir credenciales).
+- [ ] Confirmar el plan de Supabase antes de sumar colegios: el gratuito admite 200 conexiones en tiempo real a la vez (≈ 200 alumnos conectados), 500 MB de base, 5 GB de transferencia al mes y se pausa tras 7 días sin uso. Para clientes pagando: plan Pro.
+- [ ] Envolver `auth.uid()` en `(select auth.uid())` dentro de las políticas RLS (recomendación de rendimiento de Supabase; hacerlo por tabla y probando).
+- [ ] Fijar también `@supabase/supabase-js@2` en las Edge Functions (`esm.sh/...@2`) a una versión exacta.
+
 ## 🟠 Migraciones y funciones de las últimas versiones
 
 Verificá en el SQL Editor que estén corridas, en este orden (todas son

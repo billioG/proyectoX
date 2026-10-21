@@ -833,15 +833,15 @@ window.showDigitalTalentMap = async function showDigitalTalentMap(schoolCode) {
                                     <i class="fas fa-cube" style="font-size: 2.5rem; color: #4ade80; opacity: 0.8;"></i>
                                 ` : p.video_url ? `
                                     <video style="width: 100%; height: 100%; object-fit: cover; opacity: 0.5;">
-                                        <source src="${p.video_url}" type="video/mp4">
+                                        <source src="${window.sanitizeAttr(p.video_url)}" type="video/mp4">
                                     </video>
                                     <i class="fas fa-play-circle" style="position: absolute; font-size: 2.5rem; color: white;"></i>
                                 ` : '<i class="fas fa-video-slash" style="font-size: 2.5rem; opacity:0.1;"></i>'}
                                 <div style="position: absolute; top: 10px; right: 10px; background: #f59e0b; color: #000; padding: 2px 8px; border-radius: 10px; font-weight: 800; font-size: 0.7rem;">⭐ ${p.score || '---'}</div>
                             </div>
                             <div style="padding: 15px;">
-                                <h3 style="margin:0 0 5px 0; color: #818cf8;">${p.title}</h3>
-                                <p style="font-size: 0.8rem; opacity: 0.6; margin-bottom: 15px;">Autor: ${Array.isArray(p.students) ? p.students[0]?.full_name : p.students?.full_name || 'N/A'}</p>
+                                <h3 style="margin:0 0 5px 0; color: #818cf8;">${window.sanitizeInput(p.title)}</h3>
+                                <p style="font-size: 0.8rem; opacity: 0.6; margin-bottom: 15px;">Autor: ${window.sanitizeInput(Array.isArray(p.students) ? p.students[0]?.full_name : p.students?.full_name || 'N/A')}</p>
                                 <button class="btn-primary btn-sm" onclick="viewProjectDetails(${p.id})">Ver Detalles</button>
                             </div>
                         </div>

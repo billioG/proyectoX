@@ -4,6 +4,10 @@ Cambios publicados en Quetzal LMS, del más reciente al más antiguo. Cada líne
 
 Al publicar una versión nueva, agregá una línea arriba de todo (ver CONTRIBUTING.md).
 
+## 2026-10-21
+
+- Seguridad y escalabilidad (auditoría de octubre). (1) La contraseña real de cada alumno (`students.password_generated`), su CUI y su código personal ya no se leen con consultas directas: solo el admin y el docente asignado a esa clase, mediante la función `staff_student_secrets`; antes un compañero de la misma clase podía leer la contraseña de otro y entrar con su cuenta. (2) Un alumno ya no puede cambiar desde la app su propio nombre, estado o total de gemas ganadas. (3) Dos funciones de reportes de docentes ya no se pueden llamar sin sesión. (4) Se escapan como texto 26 lugares donde nombres, títulos, notas y descripciones escritas por usuarios se insertaban como HTML (riesgo de que un alumno inyectara código en la pantalla de un docente o del admin), y el botón del diploma ya no se rompe con un apóstrofo en el nombre. (5) Índices en 72 columnas que la app usa para filtrar (retos, resultados, avisos, lecciones, torneos). (6) La librería de Supabase queda fijada en la versión 2.118.0 (antes tomaba la última 2.x que saliera). (7) El respaldo del saldo de gemas consulta cada 2 minutos en vez de cada 30 s (el canal en tiempo real ya avisa al instante). Requiere correr `migrations/security-hardening-2026-10.sql` DESPUÉS de publicar esta versión (v1.0.172)
+
 ## 2026-10-17
 
 - Fix urgente del tema oscuro (error de la v1.0.170): las tarjetas normales se veían en gris claro sobre el fondo oscuro, porque el arreglo del tema claro les devolvía el fondo blanco translúcido también de noche. Ahora cada tema usa su propio fondo (claro: blanco translúcido; oscuro: azul noche translúcido, como antes), y las tarjetas con fondo propio (`bg-slate-900`) siguen oscuras en el tema claro. También: el login se pinta antes de que terminen de cargar los módulos, así que tocar muy rápido el ojo de la contraseña o salir del campo de usuario daba el error "is not a function"; se agregaron versiones mínimas de esas dos funciones que `auth.js` reemplaza al cargar (v1.0.171)

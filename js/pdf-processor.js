@@ -656,12 +656,13 @@ window.createUsersFromExtractedData = async function createUsersFromExtractedDat
         // estudiantes en la DB esto se quedaba corto silenciosamente y
         // dejaba pasar duplicados reales hacia el servidor, que los
         // rechazaba con error en vez de omitirlos acá.
-        const allExisting = await window.fetchAllRows(() => window._supabase.from('students').select('username, email, cui'));
+        const allExisting = await window.fetchAllRows(() => window._supabase.from('students').select('username, email'));
         allExisting.forEach(s => {
             if (s.username) existingUsernames.add(s.username);
             if (s.email) existingEmails.add(s.email);
-            if (s.cui) existingCUIs.add(s.cui);
         });
+        // El CUI ya no se puede leer de otros alumnos: se pregunta solo por los de esta importación.
+        (await window.fetchExistingCuis(students.map(s => s.cui))).forEach(c => existingCUIs.add(c));
     } catch (e) {
         console.error('Error lookup:', e);
     }

@@ -113,9 +113,9 @@ function renderPendingCompletion(completion) {
                     ${(completion.teachers?.full_name || 'D')[0]}
                 </div>
                 <div class="min-w-0">
-                    <h3 class="text-xs font-black text-slate-800 dark:text-white truncate">${completion.teachers?.full_name || 'Docente'}</h3>
-                    <p class="text-[0.65rem] text-slate-500 dark:text-slate-400 truncate">${completion.teacher_rocks?.name || 'Tarea'}</p>
-                    ${completion.notes ? `<p class="text-[0.65rem] text-slate-600 dark:text-slate-400 mt-1 italic truncate">"${completion.notes}"</p>` : ''}
+                    <h3 class="text-xs font-black text-slate-800 dark:text-white truncate">${window.sanitizeInput(completion.teachers?.full_name || 'Docente')}</h3>
+                    <p class="text-[0.65rem] text-slate-500 dark:text-slate-400 truncate">${window.sanitizeInput(completion.teacher_rocks?.name || 'Tarea')}</p>
+                    ${completion.notes ? `<p class="text-[0.65rem] text-slate-600 dark:text-slate-400 mt-1 italic truncate">"${window.sanitizeInput(completion.notes)}"</p>` : ''}
                     
                     ${completion.evidence_url ? `
                         <a href="${completion.evidence_url}" target="_blank" class="text-[0.65rem] font-bold text-primary hover:text-indigo-700 flex items-center gap-1 mt-1">
@@ -227,7 +227,7 @@ window.openCreateRockModal = function (preselectedMonth = null, rockToEdit = nul
                     <div class="md:col-span-2">
                         <label class="text-[0.65rem] font-black uppercase text-slate-400 tracking-widest block mb-2">Descripción *</label>
                         <textarea id="rock-description" rows="3" required
-                                  class="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white focus:border-primary transition-all resize-none">${rockToEdit?.description || ''}</textarea>
+                                  class="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white focus:border-primary transition-all resize-none">${window.sanitizeInput(rockToEdit?.description || '')}</textarea>
                     </div>
                     <div>
                         <label class="text-[0.65rem] font-black uppercase text-slate-400 tracking-widest block mb-2">Mes *</label>

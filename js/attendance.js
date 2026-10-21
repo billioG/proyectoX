@@ -503,7 +503,7 @@ window.printSectionQRs = async function printSectionQRs() {
     printWindow.document.write(`
     <html>
       <head>
-        <title>Credenciales - ${opt.text}</title>
+        <title>Credenciales - ${window.sanitizeInput(opt.text)}</title>
         <style>
             @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap');
             

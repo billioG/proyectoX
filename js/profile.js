@@ -37,7 +37,7 @@ window.loadStudentProfile = async function loadStudentProfile() {
     const cacheKey = `student_profile_${currentUser.id}`;
 
     await fetchWithCache(cacheKey, async () => {
-        const { data: student } = await _supabase.from('students').select('*, schools(*)').eq('id', currentUser.id).single();
+        const { data: student } = await _supabase.from('students').select(`${window.STUDENT_COLS}, schools(*)`).eq('id', currentUser.id).single();
         if (!student) return null;
 
         const [projectsRes, badgesRes, assignmentRes, xpData] = await Promise.all([
@@ -287,7 +287,7 @@ window.renderTeacherProfileUI = function renderTeacherProfileUI(container, teach
             ${teacher.profile_photo_url ? `<img src="${teacher.profile_photo_url}" class="w-full h-full object-cover">` : '<i class="fas fa-chalkboard-user"></i>‍<i class="fas fa-school"></i>'}
         </div>
         <div class="grow">
-            <h2 class="text-4xl font-bold text-slate-800 dark:text-white tracking-tight">${teacher.full_name}</h2>
+            <h2 class="text-4xl font-bold text-slate-800 dark:text-white tracking-tight">${window.sanitizeInput(teacher.full_name)}</h2>
             <p class="text-lg font-semibold text-indigo-500 mb-2">Docente Autorizado</p>
             <div class="flex justify-center md:justify-start gap-4 text-xs font-semibold text-slate-400 uppercase tracking-widest">
                 <span>${schoolsLabel}</span>

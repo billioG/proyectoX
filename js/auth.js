@@ -413,7 +413,7 @@ export async function handleSuccessfulLogin(user) {
       window.isCoordinator = teacherRow.role === 'coordinador';
     } else {
       window.isCoordinator = false;
-      const { data: studentRow } = await _supabase.from('students').select('*').eq('id', user.id).maybeSingle();
+      const { data: studentRow } = await _supabase.from('students').select(window.STUDENT_COLS).eq('id', user.id).maybeSingle();
       if (studentRow) {
         data = studentRow;
         role = 'estudiante';

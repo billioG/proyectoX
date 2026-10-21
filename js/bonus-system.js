@@ -623,7 +623,7 @@ window.renderKpiProgressTile = function renderKpiProgressTile(kpi) {
         <div class="relative p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-50 dark:border-slate-800 shadow-sm">
             <div class="flex justify-between items-end mb-4">
                 <div class="max-w-[70%]">
-                    <div class="text-sm font-black uppercase text-slate-800 dark:text-white tracking-tight mb-1">${kpi.title}</div>
+                    <div class="text-sm font-black uppercase text-slate-800 dark:text-white tracking-tight mb-1">${window.sanitizeInput(kpi.title)}</div>
                     <div class="text-xs font-bold text-slate-400 uppercase">${kpi.detail}</div>
                 </div>
                 <div class="text-right">
@@ -651,7 +651,7 @@ window.renderKpiProgressTile = function renderKpiProgressTile(kpi) {
                                             ${isCompleted ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-200 dark:border-slate-700 hover:border-primary'}">
                                         ${isCompleted ? '<i class="fas fa-check text-xs"></i>' : ''}
                                     </button>
-                                    <div class="text-sm font-bold ${isCompleted ? 'text-slate-400 line-through' : 'text-slate-600 dark:text-slate-300'}">${task.title}</div>
+                                    <div class="text-sm font-bold ${isCompleted ? 'text-slate-400 line-through' : 'text-slate-600 dark:text-slate-300'}">${window.sanitizeInput(task.title)}</div>
                                 </div>
                                 ${isVerified ? `
                                     <span class="px-3 py-1 rounded-lg bg-blue-500/10 text-blue-500 text-[0.65rem] font-black uppercase">Validado Admin</span>
@@ -943,7 +943,7 @@ window.selectTeacherForManager = async function selectTeacherForManager(teacherI
         <div class="animate-fadeIn p-16 space-y-16">
             <div class="flex justify-between items-end border-b-4 border-slate-50 dark:border-slate-800 pb-10">
                 <div>
-                    <h2 class="text-5xl font-black uppercase tracking-tighter text-slate-900 dark:text-white">${teacher.full_name}</h2>
+                    <h2 class="text-5xl font-black uppercase tracking-tighter text-slate-900 dark:text-white">${window.sanitizeInput(teacher.full_name)}</h2>
                     <p class="text-sm font-black text-primary uppercase tracking-[0.3em] mt-3">ID FISCAL: <span class="bg-primary/10 px-2 py-1 rounded-lg">${teacherId.substring(0, 8)}</span></p>
                 </div>
             </div>
@@ -998,8 +998,8 @@ window.selectTeacherForManager = async function selectTeacherForManager(teacherI
                             <div class="p-10 rounded-[3rem] bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 space-y-10 shadow-sm">
                                 <div class="flex items-center justify-between gap-10">
                                     <div class="grow">
-                                        <div class="font-black text-2xl uppercase tracking-tighter text-slate-800 dark:text-white">${k.title}</div>
-                                        <div class="text-xs font-bold text-slate-400 mt-2 uppercase tracking-tight">${k.description || 'Cumplimiento estratégico por objetivos'}</div>
+                                        <div class="font-black text-2xl uppercase tracking-tighter text-slate-800 dark:text-white">${window.sanitizeInput(k.title)}</div>
+                                        <div class="text-xs font-bold text-slate-400 mt-2 uppercase tracking-tight">${window.sanitizeInput(k.description || 'Cumplimiento estratégico por objetivos')}</div>
                                     </div>
                                     <div class="px-8 py-5 rounded-[2rem] bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-xl text-center">
                                          <div class="text-[0.65rem] font-black text-slate-400 uppercase mb-2 tracking-widest">Impacto en Bono</div>
@@ -1010,7 +1010,7 @@ window.selectTeacherForManager = async function selectTeacherForManager(teacherI
                                 ${k.tasks && k.tasks.length > 0 ? `
                                     <div class="pt-10 border-t-2 border-slate-100 dark:border-slate-800">
                                         <div class="text-xs font-black text-slate-500 uppercase tracking-[0.2em] mb-6 flex items-center gap-3">
-                                            <i class="fas fa-tasks text-primary"></i> VERIFICACIÓN DE TAREAS (${teacher.full_name})
+                                            <i class="fas fa-tasks text-primary"></i> VERIFICACIÓN DE TAREAS (${window.sanitizeInput(teacher.full_name)})
                                         </div>
                                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             ${k.tasks.map(task => {
@@ -1022,7 +1022,7 @@ window.selectTeacherForManager = async function selectTeacherForManager(teacherI
                                                         <div class="flex items-center gap-4">
                                                             <div class="w-3 h-3 rounded-full ${isDone ? 'bg-emerald-500 shadow-lg shadow-emerald-500/50' : 'bg-slate-300'}"></div>
                                                             <div>
-                                                                <div class="text-sm font-black uppercase ${isDone ? 'text-slate-800 dark:text-white' : 'text-slate-400'}">${task.title}</div>
+                                                                <div class="text-sm font-black uppercase ${isDone ? 'text-slate-800 dark:text-white' : 'text-slate-400'}">${window.sanitizeInput(task.title)}</div>
                                                                 <div class="text-[0.6rem] font-black uppercase tracking-tighter ${task.teacher_id ? 'text-indigo-500' : 'text-slate-400'} mt-1">
                                                                     ${task.teacher_id ? 'Personalizada' : 'Global (Para todos)'}
                                                                 </div>
@@ -1249,7 +1249,7 @@ window.renderGlobalKpiManager = async function renderGlobalKpiManager() {
                                     <i class="fas fa-${k.category === 'administrative' ? 'clipboard-list' : 'bolt'}"></i>
                                 </div>
                                 <div>
-                                    <div class="text-sm font-black uppercase tracking-tighter">${k.title}</div>
+                                    <div class="text-sm font-black uppercase tracking-tighter">${window.sanitizeInput(k.title)}</div>
                                     <div class="text-[0.6rem] font-bold text-slate-400 uppercase">${k.category} • Fuente: ${k.metric_source}</div>
                                 </div>
                             </div>
@@ -1294,7 +1294,7 @@ window.loadKpiTasksForAdmin = async function loadKpiTasksForAdmin(kpiId, teacher
                 <div class="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-900 group/item transition-all">
                     <div class="flex items-center gap-3">
                          <div class="w-1.5 h-1.5 rounded-full bg-primary/30"></div>
-                         <div class="text-[0.7rem] font-bold text-slate-600 dark:text-slate-400 uppercase">${t.title}</div>
+                         <div class="text-[0.7rem] font-bold text-slate-600 dark:text-slate-400 uppercase">${window.sanitizeInput(t.title)}</div>
                     </div>
                     <button class="w-8 h-8 rounded-lg text-slate-400 hover:text-rose-500 opacity-0 group-hover/item:opacity-100 transition-all" onclick="deleteKpiTask('${t.id}', '${kpiId}')">
                         <i class="fas fa-times"></i>
@@ -1384,11 +1384,11 @@ window.renderValidationInbox = async function renderValidationInbox() {
                                      <span class="text-[0.4rem] font-black uppercase">Espera</span>
                                 </div>
                                 <div>
-                                    <div class="text-[0.55rem] font-black text-primary uppercase tracking-widest mb-1">${p.kpi_tasks?.dynamic_kpis?.title || 'Roca Global'}</div>
-                                    <div class="text-lg font-black uppercase tracking-tighter text-slate-800 dark:text-white leading-none">${p.kpi_tasks?.title}</div>
+                                    <div class="text-[0.55rem] font-black text-primary uppercase tracking-widest mb-1">${window.sanitizeInput(p.kpi_tasks?.dynamic_kpis?.title || 'Roca Global')}</div>
+                                    <div class="text-lg font-black uppercase tracking-tighter text-slate-800 dark:text-white leading-none">${window.sanitizeInput(p.kpi_tasks?.title)}</div>
                                     <div class="flex items-center gap-3 mt-3">
                                          <div class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-[0.6rem] font-bold text-slate-500 uppercase flex items-center gap-2">
-                                            <i class="fas fa-user-circle"></i> ${p.teachers?.full_name}
+                                            <i class="fas fa-user-circle"></i> ${window.sanitizeInput(p.teachers?.full_name)}
                                          </div>
                                          <div class="text-[0.55rem] font-medium text-slate-400 uppercase">
                                             Enviado: ${new Date(p.completed_at).toLocaleString()}
@@ -1458,7 +1458,7 @@ window.renderTeacherListItems = function renderTeacherListItems(teachers, pendin
         const count = pendingData.filter(p => p.teacher_id === t.id).length;
         return `
                 <button class="w-full text-left p-6 rounded-[1.5rem] hover:bg-white dark:hover:bg-slate-900 transition-all group border-2 border-transparent hover:border-primary/20 relative mb-4 shadow-sm hover:shadow-xl" onclick="selectTeacherForManager('${t.id}')">
-                    <div class="font-black text-sm uppercase text-slate-700 dark:text-white group-hover:text-primary transition-colors mb-1">${t.full_name}</div>
+                    <div class="font-black text-sm uppercase text-slate-700 dark:text-white group-hover:text-primary transition-colors mb-1">${window.sanitizeInput(t.full_name)}</div>
                     <div class="text-xs font-bold text-slate-400 uppercase">Salario Base: Q${t.base_salary.toLocaleString()}</div>
                     ${count > 0 ? `
                         <div class="absolute -right-2 -top-2 w-8 h-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center text-[0.7rem] font-black shadow-lg shadow-emerald-500/40 border-2 border-white dark:border-slate-950 animate-bounce">

@@ -501,7 +501,10 @@ window.subscribeGemEvents = function subscribeGemEvents() {
     })
     .subscribe();
   if (!window._gemPoll) {
-    window._gemPoll = setInterval(() => { if (!document.hidden) window.refreshMyWallet(); }, 30000);
+    // Respaldo por si el canal en tiempo real se corta: con el canal de arriba ya llega
+    // cada cambio al instante, así que basta con revisar cada 2 minutos (antes 30 s:
+    // con mil alumnos conectados eran ~33 consultas por segundo solo de esto).
+    window._gemPoll = setInterval(() => { if (!document.hidden) window.refreshMyWallet(); }, 120000);
   }
 };
 
@@ -823,7 +826,7 @@ window.renderGamificationHubContent = function renderGamificationHubContent(moda
                                             <div class="w-8 h-8 rounded-full bg-slate-700 overflow-hidden ${s.has_gold_frame ? 'border-2 border-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.6)]' : 'border border-white/10'}">
                                                 ${s.profile_photo_url ? `<img src="${s.profile_photo_url}" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center bg-slate-600 text-[0.6rem]">${s.full_name.charAt(0)}</div>`}
                                             </div>
-                                            <span class="truncate max-w-[150px]">${s.full_name}</span>
+                                            <span class="truncate max-w-[150px]">${window.sanitizeInput(s.full_name)}</span>
                                             ${s.full_name === userData?.full_name ? '<span class="px-2 py-0.5 rounded-full bg-primary text-[0.5rem] uppercase">Tú</span>' : ''}
                                         </td>
                                         <td class="p-4 text-right font-mono text-amber-400">${s.xp || 0}</td>

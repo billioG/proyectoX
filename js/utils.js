@@ -469,6 +469,61 @@ window.fetchWithCache = fetchWithCache;
 // clase (la RLS de students solo deja ver a uno mismo/compañeros/personal).
 // Esto completa nombre/curso/escuela con una función que devuelve solo esos
 // campos de autores de proyectos visibles (migrations/fix-cross-school-public-projects.sql).
+// Columnas de students que la app puede leer directo. password_generated (la
+// contraseña real del alumno), cui, codigo_personal, pin_* y qr_* NO se leen
+// con select: solo el admin o el docente asignado a esa clase, con
+// fetchStudentSecrets() (migrations/security-hardening-2026-10.sql).
+export const STUDENT_COLS = 'id, full_name, username, email, school_code, grade, section, profile_photo_url, role, created_at, birth_date, gender, xp, gems, streak, last_login, streak_freeze, daily_chest_last_claimed, gems_earned_total, has_gold_frame, has_mascot_glasses, status, companion_equipped, companion_species, season_id, season_xp, league_tier, league_week, league_last_result, duel_win_streak, best_duel_win_streak, created_by, pin_updated_at';
+window.STUDENT_COLS = STUDENT_COLS;
+
+// La función del servidor todavía no existe si no se corrió el SQL: en ese
+// caso se leen las columnas como antes, para no romper nada en la transición.
+const _rpcMissing = (error) => error && (error.code === 'PGRST202' || error.code === '42883' || /could not find the function/i.test(error.message || ''));
+
+// Map id -> { password_generated, cui, codigo_personal } de los alumnos que el
+// usuario puede administrar. Los demás no vienen en el mapa.
+window.fetchStudentSecrets = async function fetchStudentSecrets(ids) {
+    const map = new Map();
+    const list = [...new Set((ids || []).filter(Boolean))];
+    for (let i = 0; i < list.length; i += 400) {
+        const chunk = list.slice(i, i + 400);
+        let { data, error } = await window._supabase.rpc('staff_student_secrets', { p_ids: chunk });
+        if (_rpcMissing(error)) {
+            ({ data, error } = await window._supabase.from('students').select('id, password_generated, cui, codigo_personal').in('id', chunk));
+        }
+        if (error) { console.warn('No se pudieron leer los datos privados de los alumnos:', error.message); continue; }
+        (data || []).forEach(r => map.set(r.id, { password_generated: r.password_generated, cui: r.cui, codigo_personal: r.codigo_personal }));
+    }
+    return map;
+};
+
+// Completa en cada fila password_generated/cui/codigo_personal (si el usuario
+// tiene permiso) y marca _secretsOk para saber si esos datos son reales.
+window.mergeStudentSecrets = async function mergeStudentSecrets(rows) {
+    if (!rows || !rows.length) return rows;
+    const map = await window.fetchStudentSecrets(rows.map(r => r.id));
+    rows.forEach(r => { const sec = map.get(r.id); if (sec) Object.assign(r, sec, { _secretsOk: true }); });
+    return rows;
+};
+
+// Cuáles de estos CUI ya están registrados (para no importar dos veces al
+// mismo alumno), sin poder leer el CUI de nadie.
+window.fetchExistingCuis = async function fetchExistingCuis(cuis) {
+    const found = new Set();
+    const list = [...new Set((cuis || []).filter(Boolean).map(String))];
+    for (let i = 0; i < list.length; i += 400) {
+        const chunk = list.slice(i, i + 400);
+        let { data, error } = await window._supabase.rpc('staff_existing_cuis', { p_cuis: chunk });
+        if (_rpcMissing(error)) {
+            ({ data, error } = await window._supabase.from('students').select('cui').in('cui', chunk));
+            data = (data || []).map(r => r.cui);
+        }
+        if (error) { console.warn('No se pudo verificar CUI duplicados:', error.message); continue; }
+        (data || []).forEach(c => found.add(typeof c === 'string' ? c : (c?.staff_existing_cuis ?? c?.cui)));
+    }
+    return found;
+};
+
 window.attachProjectAuthors = async function attachProjectAuthors(projects) {
     const missing = (projects || []).filter(p => !p.students && p.user_id);
     if (!missing.length) return projects;

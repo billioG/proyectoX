@@ -59,7 +59,7 @@ window.renderTeacherReportModal = function renderTeacherReportModal(data) {
         <div class="glass-card w-full max-w-2xl p-0 overflow-hidden shadow-2xl animate-slideUp bg-white dark:bg-slate-900">
             <div class="p-6 bg-gradient-to-r from-primary to-blue-600 flex justify-between items-center text-white">
                 <h2 class="text-xl font-black uppercase tracking-tight m-0 flex items-center gap-3">
-                    <i class="fas fa-chart-pie"></i> Reporte: ${teacher.full_name}
+                    <i class="fas fa-chart-pie"></i> Reporte: ${window.sanitizeInput(teacher.full_name)}
                 </h2>
                 <button class="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors text-white font-bold" onclick="this.closest('.fixed').remove()">
                     <i class="fas fa-times"></i>

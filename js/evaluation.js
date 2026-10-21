@@ -36,7 +36,7 @@ window.loadEvaluationProjects = async function loadEvaluationProjects() {
 
     await fetchWithCache('evaluation_projects_list', async () => {
       const { data: allProjects, error } = await _supabase.from('projects')
-        .select(`*, students(*, schools(*)), groups(name), evaluations(id, total_score)`)
+        .select(`*, students(${window.STUDENT_COLS}, schools(*)), groups(name), evaluations(id, total_score)`)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -234,7 +234,7 @@ window.renderProjectEvalCard = function renderProjectEvalCard(p) {
         <div class="min-w-0 pr-4">
             <h4 class="text-lg font-black text-slate-800 dark:text-white leading-tight mb-1 truncate">${sanitizeInput(p.title)}</h4>
             <div class="text-xs font-bold text-slate-400 dark:text-slate-500 flex items-center gap-2">
-                <i class="fas fa-user-graduate"></i> <span class="truncate">${p.students?.full_name}</span>
+                <i class="fas fa-user-graduate"></i> <span class="truncate">${window.sanitizeInput(p.students?.full_name)}</span>
                 ${p.students?.grade ? `<span class="shrink-0 px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[0.55rem] uppercase tracking-widest">${sanitizeInput(p.students.grade)} ${sanitizeInput(p.students.section || '')}</span>` : ''}
             </div>
         </div>

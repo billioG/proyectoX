@@ -39,7 +39,7 @@ function showCertificateClaim(type, data) {
                     <br><span class="text-xl font-black text-amber-600 uppercase block mt-2">${type === 'teacher_senior' ? '<i class="fas fa-graduation-cap"></i> Tutor Senior de Impacto' : '<i class="fas fa-star"></i> Estudiante STEEAM Certificado'}</span>
                 </p>
                 <div class="flex flex-col gap-4">
-                    <button class="btn-primary-tw h-14 text-xs font-black uppercase tracking-widest bg-amber-500 hover:bg-amber-600 border-none shadow-xl shadow-amber-500/20" onclick="generateVisualCertificate('${type}', '${data.full_name}')">
+                    <button class="btn-primary-tw h-14 text-xs font-black uppercase tracking-widest bg-amber-500 hover:bg-amber-600 border-none shadow-xl shadow-amber-500/20" data-name="${window.sanitizeAttr(data.full_name)}" onclick="generateVisualCertificate('${type}', this.dataset.name)">
                         <i class="fas fa-download mr-2"></i> Generar y Descargar Diploma
                     </button>
                     <button class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-[0.6rem] font-black uppercase tracking-widest" onclick="this.closest('.fixed').remove()">Cerrar</button>

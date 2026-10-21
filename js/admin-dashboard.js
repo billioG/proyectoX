@@ -588,7 +588,7 @@ function renderWaiverQuickAccess(waivers) {
                             ${(w.teachers?.full_name || 'D')[0]}
                         </div>
                         <div>
-                            <div class="text-sm font-black text-slate-800 dark:text-white">${w.teachers?.full_name || 'Docente'}</div>
+                            <div class="text-sm font-black text-slate-800 dark:text-white">${window.sanitizeInput(w.teachers?.full_name || 'Docente')}</div>
                             <div class="text-[0.65rem] text-slate-500 dark:text-slate-500 font-bold"><i class="far fa-calendar-alt mr-1"></i> ${new Date(w.date).toLocaleDateString()}</div>
                         </div>
                     </div>
@@ -745,7 +745,7 @@ window.renderTeacherRow = function renderTeacherRow(t, stats) {
                         ${t.profile_photo_url ? `<img src="${t.profile_photo_url}" class="w-full h-full object-cover">` : '<i class="fas fa-user-tie text-xl"></i>'}
                     </div>
                     <div>
-                        <div class="text-base font-black text-slate-800 dark:text-white">${t.full_name}</div>
+                        <div class="text-base font-black text-slate-800 dark:text-white">${window.sanitizeInput(t.full_name)}</div>
                         <div class="text-xs font-bold text-slate-400 tracking-tight">${t.email}</div>
                     </div>
                 </div>

@@ -2830,11 +2830,13 @@ window.confirmExportSire = async function confirmExportSire() {
     const _supabase = window._supabase;
 
     const [{ data: students }, { data: courses }] = await Promise.all([
-      _supabase.from('students').select('id, full_name, cui, codigo_personal').eq('school_code', school_code).eq('grade', grade).eq('section', section).order('full_name'),
+      _supabase.from('students').select('id, full_name').eq('school_code', school_code).eq('grade', grade).eq('section', section).order('full_name'),
       _supabase.from('courses').select('*').eq('school_code', school_code).eq('grade', grade).eq('section', section),
     ]);
 
     if (!students?.length) throw new Error('No hay alumnos en esa clase');
+    // CUI y código personal (boleta CNB): solo admin/docente de la clase, vía función del servidor.
+    await window.mergeStudentSecrets(students);
 
     const courseIds = (courses || []).map(c => c.id);
     const { data: allLessons } = courseIds.length
@@ -2962,11 +2964,13 @@ window.confirmCuadroFinal = async function confirmCuadroFinal() {
 
     const [{ data: school }, { data: students }, { data: courses }] = await Promise.all([
       _supabase.from('schools').select('*').eq('code', school_code).maybeSingle(),
-      _supabase.from('students').select('id, full_name, cui, codigo_personal, gender').eq('school_code', school_code).eq('grade', grade).eq('section', section).order('full_name'),
+      _supabase.from('students').select('id, full_name, gender').eq('school_code', school_code).eq('grade', grade).eq('section', section).order('full_name'),
       _supabase.from('courses').select('*').eq('school_code', school_code).eq('grade', grade).eq('section', section),
     ]);
 
     if (!students?.length) throw new Error('No hay alumnos en esa clase');
+    // CUI y código personal (boleta CNB): solo admin/docente de la clase, vía función del servidor.
+    await window.mergeStudentSecrets(students);
     const coursesWithArea = (courses || []).filter(c => c.cnb_area);
     if (!coursesWithArea.length) throw new Error('Ningún curso de esta clase tiene Área CNB asignada -- editá los cursos y elegí su área');
 
