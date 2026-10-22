@@ -35,17 +35,17 @@ const STUDENT_TOUR_STEPS = [
   {
     before: () => window.nav('feed'),
     title: '¡Bienvenido a Quetzal LMS! <i class="fas fa-hand-sparkles"></i>',
-    description: 'Te muestro rápido cada parte de la plataforma. Podés salir cuando quieras con la X.',
+    description: 'Te muestro rápido cada parte de la plataforma. Puedes salir cuando quieras con la X.',
   },
   {
     element: '#nav-est-home',
     title: 'Inicio',
-    description: 'Acá volvés siempre a ver los proyectos que suben tus compañeros.',
+    description: 'Acá vuelves siempre a ver los proyectos que suben tus compañeros.',
   },
   {
     element: '#feed-container',
     title: 'Proyectos de la comunidad',
-    description: 'Mirá lo que hicieron otros estudiantes y dale like a los que más te gusten.',
+    description: 'Mira lo que hicieron otros estudiantes y dale like a los que más te gusten.',
   },
   {
     element: '#nav-est-lessons',
@@ -56,48 +56,48 @@ const STUDENT_TOUR_STEPS = [
     before: () => window.nav('lessons'),
     element: '#lessons-container',
     title: 'Tus cursos',
-    description: 'Elegí un curso para ver sus recursos en orden -- cada uno se desbloquea al completar el anterior. En cada recurso podés dejar una nota personal (privada) y comentar con tu equipo.',
+    description: 'Elige un curso para ver sus recursos en orden -- cada uno se desbloquea al completar el anterior. En cada recurso puedes dejar una nota personal (privada) y comentar con tu equipo.',
   },
   {
     element: '#nav-est-upload',
     title: 'Subir Proyecto',
-    description: 'Subí el video de tu proyecto para que tu docente lo evalúe.',
+    description: 'Sube el video de tu proyecto para que tu docente lo evalúe.',
   },
   {
     before: () => window.nav('upload'),
     element: '#project-title',
     title: 'Título de tu proyecto',
-    description: 'Poné un nombre claro y llamativo -- es lo primero que va a ver la comunidad.',
+    description: 'Pon un nombre claro y llamativo -- es lo primero que va a ver la comunidad.',
   },
   {
     element: '#project-description',
     title: 'Inspiración y Retos',
-    description: 'Contá qué problema resuelve tu proyecto y qué materiales usaste. Mientras más detalle, mejor lo va a poder evaluar tu docente.',
+    description: 'Cuenta qué problema resuelve tu proyecto y qué materiales usaste. Mientras más detalle, mejor lo va a poder evaluar tu docente.',
   },
   {
     element: '#project-bimestre',
     title: 'Bimestre',
-    description: 'Elegí el bimestre al que corresponde esta entrega.',
+    description: 'Elige el bimestre al que corresponde esta entrega.',
   },
   {
     element: '#project-group',
     title: 'Individual o en equipo',
-    description: 'Si trabajaste con tu equipo, seleccionalo acá -- el proyecto va a quedar publicado a nombre de todos.',
+    description: 'Si trabajaste con tu equipo, selecciónalo acá -- el proyecto va a quedar publicado a nombre de todos.',
   },
   {
     element: '#project-video',
     title: 'Demostración en Video',
-    description: 'Subí un video mostrando tu proyecto funcionando (máx 150MB). Es obligatorio para poder publicar.',
+    description: 'Sube un video mostrando tu proyecto funcionando (máx 150MB). Es obligatorio para poder publicar.',
   },
   {
     element: '#btn-upload-project',
     title: 'Publicar',
-    description: 'Cuando todo esté listo, tocá acá para publicar tu proyecto y que lo vea toda la comunidad.',
+    description: 'Cuando todo esté listo, toca acá para publicar tu proyecto y que lo vea toda la comunidad.',
   },
   {
     element: '#nav-est-ranking',
     title: 'Ranking',
-    description: 'Compará tu score y tus likes con el resto de tu grado y sección.',
+    description: 'Compara tu score y tus likes con el resto de tu grado y sección.',
   },
   {
     before: () => window.nav('ranking'),
@@ -108,7 +108,7 @@ const STUDENT_TOUR_STEPS = [
   {
     element: '#nav-est-suggestions',
     title: 'Buzón de Sugerencias',
-    description: 'Si tenés una idea para mejorar la plataforma, contanosla acá.',
+    description: 'Si tienes una idea para mejorar la plataforma, contanosla acá.',
   },
   {
     element: '#announcements-bell',
@@ -118,7 +118,7 @@ const STUDENT_TOUR_STEPS = [
   {
     element: '#open-game-center-btn',
     title: 'Centro de Juego',
-    description: 'Retá a un compañero a un Duelo 1v1 apostando gemas y mirá cómo evoluciona tu mascota con las que ganás.',
+    description: 'Reta a un compañero a un Duelo 1v1 apostando gemas y mira cómo evoluciona tu mascota con las que ganas.',
   },
   {
     element: '#mascot-widget-container',
@@ -130,7 +130,7 @@ const STUDENT_TOUR_STEPS = [
     // cerrar el tour, y solo la X (arriba del popover) funcionaba.
     side: 'left',
     title: 'Tu mascota',
-    description: 'Te acompaña, te motiva y podés hablarle -- es tu coach educativo y emocional. Tocala cuando quieras.',
+    description: 'Te acompaña, te motiva y puedes hablarle -- es tu coach educativo y emocional. Tócala cuando quieras.',
   },
 ];
 
@@ -148,23 +148,23 @@ const TEACHER_TOUR_STEPS = [
   {
     element: '#challenge-indicator-slot',
     title: 'Reto del Mes',
-    description: 'Cada mes hay un reto de crecimiento profesional -- respondelo con una reflexión concreta para ganar XP extra.',
+    description: 'Cada mes hay un reto de crecimiento profesional -- respóndelo con una reflexión concreta para ganar XP extra.',
   },
   {
     element: '#nav-doc-lessons',
     title: 'Cursos',
-    description: 'Armá cursos con videos, PDFs, actividades interactivas (H5P), SCORM y quizzes para tus clases.',
+    description: 'Arma cursos con videos, PDFs, actividades interactivas (H5P), SCORM y quizzes para tus clases.',
   },
   {
     before: () => window.nav('lessons'),
     element: '#lessons-container',
-    title: 'Gestioná tus cursos',
-    description: 'Creá recursos, ordenalos, y previsualizalos como los ve el alumno. También podés compartir un curso con otros docentes desde la Biblioteca Compartida.',
+    title: 'Gestiona tus cursos',
+    description: 'Crea recursos, ordenalos, y previsualizalos como los ve el alumno. También puedes compartir un curso con otros docentes desde la Biblioteca Compartida.',
   },
   {
     element: '#nav-doc-evaluate',
     title: 'Evaluar Proyectos',
-    description: 'Calificá los proyectos que suben tus estudiantes con una rúbrica.',
+    description: 'Califica los proyectos que suben tus estudiantes con una rúbrica.',
   },
   {
     before: () => window.nav('evaluate'),
@@ -175,7 +175,7 @@ const TEACHER_TOUR_STEPS = [
   {
     element: '#nav-doc-groups',
     title: 'Gestionar Equipos',
-    description: 'Armá los equipos de proyecto de tu clase, a mano o automático.',
+    description: 'Arma los equipos de proyecto de tu clase, a mano o automático.',
   },
   {
     before: () => window.nav('groups'),
@@ -186,24 +186,24 @@ const TEACHER_TOUR_STEPS = [
   {
     element: '#nav-doc-attendance',
     title: 'Tomar Asistencia',
-    description: 'Pasá lista por código QR en cada sesión de clase.',
+    description: 'Pasa lista por código QR en cada sesión de clase.',
   },
   {
     before: () => window.nav('attendance'),
     element: '#attendance-container',
     title: 'Asistencia',
-    description: 'Generá el QR de la sesión y mirá el historial de tus clases.',
+    description: 'Genera el QR de la sesión y mira el historial de tus clases.',
   },
   {
     element: '#nav-doc-students',
     title: 'Gestionar Estudiantes',
-    description: 'Consultá y editá los datos de tus alumnos.',
+    description: 'Consulta y edita los datos de tus alumnos.',
   },
   {
     before: () => window.nav('students'),
     element: '#students-container',
     title: 'Tus alumnos',
-    description: 'Buscá por nombre, usuario o CUI, y filtrá por clase.',
+    description: 'Busca por nombre, usuario o CUI, y filtra por clase.',
   },
   {
     element: '#nav-doc-ranking',
@@ -219,7 +219,7 @@ const TEACHER_TOUR_STEPS = [
   {
     element: '#nav-doc-bonus',
     title: 'Bonos y Desempeño',
-    description: 'Seguí tu XP mensual, tus insignias y el estado de tu bono comodín.',
+    description: 'Sigue tu XP mensual, tus insignias y el estado de tu bono comodín.',
   },
   {
     before: () => window.nav('bonus-system'),
@@ -242,7 +242,7 @@ const TEACHER_TOUR_STEPS = [
     // cerrar el tour, y solo la X (arriba del popover) funcionaba.
     side: 'left',
     title: 'Tu mascota',
-    description: 'Te acompaña y te da apoyo -- tocala cuando quieras hablar con ella.',
+    description: 'Te acompaña y te da apoyo -- tócala cuando quieras hablar con ella.',
   },
 ];
 

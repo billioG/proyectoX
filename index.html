@@ -73,7 +73,7 @@
          index.html pero el navegador puede seguir sirviendo desde caché HTTP
          una versión vieja de un módulo lazy-loaded (ej. pdf-processor.js),
          aunque el tag de versión visible ya muestre la última. -->
-    <script>window.APP_VERSION = 'v1.0.174';</script>
+    <script>window.APP_VERSION = 'v1.0.175';</script>
 
     <!-- Silenciar console.log/info/debug en producción (activar con localStorage.PX_DEBUG='true').
          Va antes de todo lo demás porque los console.log de cada módulo corren
@@ -656,7 +656,7 @@
                         Q</div>
                     Quetzal <span class="text-primary-dark dark:text-primary">LMS</span>
                 </div>
-                <span id="app-version-tag" class="text-[0.65rem] text-slate-500 dark:text-slate-400 font-medium mt-1">v1.0.174</span>
+                <span id="app-version-tag" class="text-[0.65rem] text-slate-500 dark:text-slate-400 font-medium mt-1">v1.0.175</span>
             </div>
 
             <div id="login-error"
@@ -673,7 +673,7 @@
                         onblur="window.checkLoginPasswordMode()"
                         class="w-full pl-12 pr-4 py-3.5 bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all">
                 </div>
-                <p id="login-passwordless-hint" class="hidden text-xs font-bold text-emerald-500 -mt-2"><i class="fas fa-circle-check mr-1"></i> Esta clase no necesita contraseña, solo tocá "Entrar"</p>
+                <p id="login-passwordless-hint" class="hidden text-xs font-bold text-emerald-500 -mt-2"><i class="fas fa-circle-check mr-1"></i> Esta clase no necesita contraseña, solo toca "Entrar"</p>
                 <div id="login-password-wrap" class="relative group">
                     <i
                         class="fas fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors"></i>
@@ -719,7 +719,7 @@
                 <div class="text-2xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent transform hover:scale-105 transition-transform leading-none">
                     Quetzal LMS
                 </div>
-                <span class="text-[0.6rem] text-slate-400 font-medium mt-0.5">v1.0.174</span>
+                <span class="text-[0.6rem] text-slate-400 font-medium mt-0.5">v1.0.175</span>
             </div>
 
             <div class="flex items-center gap-4 sm:gap-6">
@@ -862,7 +862,7 @@
                 <div id="nav-admin" style="display: none;">
                     <div class="nav-item active" onclick="nav('admin-dashboard')">
                         <i class="fas fa-home"></i>
-                        <span>Dashboard</span>
+                        <span>Panel general</span>
                     </div>
                     <div class="nav-item" onclick="nav('feed')">
                         <i class="fas fa-rocket"></i>
@@ -886,7 +886,7 @@
                     </div>
                     <div class="nav-item" onclick="nav('admin-success')">
                         <i class="fas fa-handshake"></i>
-                        <span>Fidelización y CS</span>
+                        <span>Fidelización (CS)</span>
                     </div>
                     <div class="nav-item" onclick="nav('schools')">
                         <i class="fas fa-school"></i>
@@ -1317,7 +1317,7 @@
     <!-- Librerías externas: confetti, QR, PDF, JSZip y driver.js se cargan con loadLib() (ver <head>). -->
 
     <!-- Punto de Entrada del Sistema -->
-    <script type="module" src="js/app.js?v=1.0.174"></script>
+    <script type="module" src="js/app.js?v=1.0.175"></script>
 
     <meta name="mobile-web-app-capable" content="yes">
 </body>

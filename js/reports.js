@@ -298,7 +298,7 @@ window.submitWeeklyEvidence = async function submitWeeklyEvidence(e) {
     if (recentCount > 0) {
       btn.disabled = false;
       btn.innerHTML = '<i class="fas fa-camera"></i> Subir Evidencia';
-      return showToast('<i class="fas fa-circle-xmark"></i> Ya subiste tu evidencia de esta semana. La próxima la podés subir en unos días.', 'error');
+      return showToast('<i class="fas fa-circle-xmark"></i> Ya subiste tu evidencia de esta semana. La próxima la puedes subir en unos días.', 'error');
     }
     // 1. Subir fotos (solo la primera como representativa para simplificar en esta tabla)
     // Opcionalmente se podrían subir todas y guardar URLs en un array.

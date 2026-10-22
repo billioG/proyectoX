@@ -34,7 +34,7 @@
   <main>
     <div class="card" id="consent-card" hidden>
       <p style="margin-top:0"><b>Antes de empezar</b></p>
-      <p class="muted">La escuela usa Quetzal LMS para que <b id="consent-student">tu hijo o hija</b> aprenda con cursos y juegos educativos. Guardamos su nombre, su clase y su avance para que el docente lo acompañe. No vendemos datos ni mostramos publicidad, y podés pedir ver, corregir o borrar sus datos cuando quieras.</p>
+      <p class="muted">La escuela usa Quetzal LMS para que <b id="consent-student">tu hijo o hija</b> aprenda con cursos y juegos educativos. Guardamos su nombre, su clase y su avance para que el docente lo acompañe. No vendemos datos ni mostramos publicidad, y puedes pedir ver, corregir o borrar sus datos cuando quieras.</p>
       <p class="muted"><a href="privacidad.html" target="_blank" rel="noopener">Leer la política de privacidad completa</a></p>
       <div style="display:grid;gap:.5rem">
         <button class="btn" id="btn-consent-yes">Acepto</button>
@@ -44,13 +44,13 @@
     </div>
     <div class="card" id="activate-card" hidden>
       <p style="margin-top:0"><b id="hello">Hola</b></p>
-      <p class="muted">Activá las notificaciones para recibir en este teléfono los avisos de la escuela. Si no las activás, te seguirán llegando por mensaje de texto (SMS) si el docente registró tu número.</p>
+      <p class="muted">Activa las notificaciones para recibir en este teléfono los avisos de la escuela. Si no las activas, te seguirán llegando por mensaje de texto (SMS) si el docente registró tu número.</p>
       <p id="status" class="muted"></p>
       <button class="btn" id="btn-toggle">🔔 Activar avisos en este teléfono</button>
       <ol class="steps" id="ios-help" hidden>
-        <li>En iPhone: tocá el botón Compartir de Safari.</li>
-        <li>Elegí "Agregar a pantalla de inicio".</li>
-        <li>Abrí el portal desde ese ícono y activá los avisos.</li>
+        <li>En iPhone: toca el botón Compartir de Safari.</li>
+        <li>Elige "Agregar a pantalla de inicio".</li>
+        <li>Abre el portal desde ese ícono y activa los avisos.</li>
       </ol>
     </div>
     <div class="card" id="inbox-card" hidden>
@@ -90,8 +90,8 @@
         // mensaje no asegura que sea "sin internet" cuando el celular
         // dice tener señal.
         throw new Error(navigator.onLine
-          ? 'No se pudo conectar. Si tenés un bloqueador de anuncios o "modo privado" activado en el navegador, probá desactivarlo para este sitio, o abrí el enlace en otro navegador.'
-          : 'Sin conexión a internet. Revisá tu señal e intentá de nuevo.');
+          ? 'No se pudo conectar. Si tienes un bloqueador de anuncios o "modo privado" activado en el navegador, prueba desactivarlo para este sitio, o abre el enlace en otro navegador.'
+          : 'Sin conexión a internet. Revisa tu señal e intenta de nuevo.');
       }
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'No se pudo conectar');
@@ -135,7 +135,7 @@
         btn.textContent = 'Desactivar avisos';
         btn.className = 'btn off';
       } else if (Notification.permission === 'denied') {
-        $('status').textContent = 'Las notificaciones están bloqueadas para esta página. Activalas en la configuración del navegador (ícono del candado) y volvé a intentar.';
+        $('status').textContent = 'Las notificaciones están bloqueadas para esta página. Activalas en la configuración del navegador (ícono del candado) y vuelve a intentar.';
         btn.textContent = '🔔 Activar avisos en este teléfono';
         btn.className = 'btn';
       } else {
@@ -170,7 +170,7 @@
     }
 
     async function init() {
-      if (!/^[0-9a-f]{32}$/.test(token)) return showError('Este enlace no es válido. Pedile al docente el enlace del Portal de padres.');
+      if (!/^[0-9a-f]{32}$/.test(token)) return showError('Este enlace no es válido. Pídele al docente el enlace del Portal de padres.');
       localStorage.setItem('PX_GUARDIAN_TOKEN', token);
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./service-worker.js', { updateViaCache: 'none' }).catch(() => {});
       $('error-card').hidden = true;
@@ -188,7 +188,7 @@
           try {
             await api({ action: 'consent', accepted });
             if (accepted) showMain();
-            else $('consent-note').textContent = 'Entendido. No vas a recibir avisos. Si cambiás de opinión, volvé a abrir este enlace.';
+            else $('consent-note').textContent = 'Entendido. No vas a recibir avisos. Si cambias de opinión, vuelve a abrir este enlace.';
           } catch (e) {
             $('consent-note').textContent = e.message;
           } finally {

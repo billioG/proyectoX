@@ -13,7 +13,7 @@ window.openClassPasswordsPanel = async function openClassPasswordsPanel() {
         <button class="text-slate-400 hover:text-rose-500 font-bold text-2xl transition-colors" onclick="this.closest('.fixed').remove()">×</button>
       </div>
       <div class="p-8 max-h-[75vh] overflow-y-auto custom-scrollbar">
-        <p class="text-xs text-slate-400 mb-6">Cada clase (establecimiento + grado + sección) tiene UNA contraseña compartida para todos sus alumnos. Podés desactivarla por completo para que entren solo con su usuario (modo Kolibri). Al cambiar una contraseña, se actualiza al instante la cuenta real de cada alumno matriculado ahí.</p>
+        <p class="text-xs text-slate-400 mb-6">Cada clase (establecimiento + grado + sección) tiene UNA contraseña compartida para todos sus alumnos. Puedes desactivarla por completo para que entren solo con su usuario (modo Kolibri). Al cambiar una contraseña, se actualiza al instante la cuenta real de cada alumno matriculado ahí.</p>
 
         ${isAdmin ? `
         <div class="p-6 rounded-2xl bg-rose-50 dark:bg-rose-900/10 border border-rose-200 dark:border-rose-900/30 mb-6">
@@ -30,7 +30,7 @@ window.openClassPasswordsPanel = async function openClassPasswordsPanel() {
         </div>
         ` : ''}
 
-        <p class="text-[0.65rem] font-black uppercase text-slate-400 tracking-widest mb-3">Clases ${isAdmin ? '(por establecimiento, grado y sección)' : 'asignadas a vos'}</p>
+        <p class="text-[0.65rem] font-black uppercase text-slate-400 tracking-widest mb-3">Clases ${isAdmin ? '(por establecimiento, grado y sección)' : 'asignadas a ti'}</p>
         <div id="class-passwords-list" class="space-y-4">
           <div class="text-center text-slate-400 text-xs py-6"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>
         </div>
@@ -66,7 +66,7 @@ window.loadClassPasswordsList = async function loadClassPasswordsList() {
   // ver TODOS los establecimientos/secciones era una fuga de datos de otras clases.
   let studentsQuery = window._supabase.from('students').select('school_code, grade, section');
   if (!isAdmin) {
-    if (!myAssignments.length) { listEl.innerHTML = '<p class="text-slate-400 text-xs">No tenés clases asignadas todavía.</p>'; return; }
+    if (!myAssignments.length) { listEl.innerHTML = '<p class="text-slate-400 text-xs">No tienes clases asignadas todavía.</p>'; return; }
     studentsQuery = studentsQuery.in('school_code', [...new Set(myAssignments.map(a => a.school_code))]);
   }
 
@@ -178,7 +178,7 @@ window.resetSchoolPasswords = async function resetSchoolPasswords() {
   const requires_password = document.getElementById('reset-requires-password')?.checked;
   const btn = document.getElementById('btn-reset-school');
 
-  if (!school_code) return window.showToast('<i class="fas fa-circle-xmark"></i> Elegí un establecimiento', 'error');
+  if (!school_code) return window.showToast('<i class="fas fa-circle-xmark"></i> Elige un establecimiento', 'error');
   if (!confirm('Esto va a cambiar la contraseña de TODAS las clases de este establecimiento y sincronizar a todos sus alumnos. ¿Continuar?')) return;
 
   btn.disabled = true;
@@ -621,8 +621,8 @@ window.submitStudent = async function submitStudent(e) {
   const cui = document.getElementById('student-cui').value.replace(/\D/g, '') || null;
   const gradeRaw = document.getElementById('student-grade').value;
   const grade = gradeRaw === '__otro__' ? document.getElementById('student-grade-custom').value.trim() : gradeRaw;
-  if (cui && cui.length !== 13) return showToast('<i class="fas fa-circle-xmark"></i> El CUI tiene 13 dígitos -- o dejalo vacío', 'error');
-  if (!grade) return showToast('<i class="fas fa-circle-xmark"></i> Escribí el nombre del grado o club', 'error');
+  if (cui && cui.length !== 13) return showToast('<i class="fas fa-circle-xmark"></i> El CUI tiene 13 dígitos -- o déjalo vacío', 'error');
+  if (!grade) return showToast('<i class="fas fa-circle-xmark"></i> Escribe el nombre del grado o club', 'error');
   const section = document.getElementById('student-section').value;
   const codigo_personal = document.getElementById('student-codigo-personal').value.trim() || null;
   const gender = document.getElementById('student-gender').value || null;
@@ -952,7 +952,7 @@ window.openTeacherAddStudentsModal = async function openTeacherAddStudentsModal(
     .select('school_code, grade, section, schools(name)').eq('teacher_id', window.currentUser.id)
     .order('school_code').order('grade').order('section');
   const classes = asg || [];
-  if (!classes.length) return window.showToast('<i class="fas fa-circle-info"></i> Todavía no tenés clases asignadas -- pedíselo al administrador', 'info');
+  if (!classes.length) return window.showToast('<i class="fas fa-circle-info"></i> Todavía no tienes clases asignadas -- pedíselo al administrador', 'info');
   window._teacherClasses = classes;
   const schools = [...new Map(classes.map(c => [c.school_code, c.schools?.name || c.school_code])).entries()];
   const clubSuggestions = (window.GRADES_BY_LEVEL?.Extraescolar || []);
@@ -976,7 +976,7 @@ window.openTeacherAddStudentsModal = async function openTeacherAddStudentsModal(
           </select>
         </div>
         <div id="tas-new-class" class="hidden p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 space-y-3">
-          <p class="text-[0.7rem] text-slate-500">Se crea en un establecimiento donde ya das clases y queda asignada a vos. Si la clase ya existe, pedile al administrador que te la asigne.</p>
+          <p class="text-[0.7rem] text-slate-500">Se crea en un establecimiento donde ya das clases y queda asignada a ti. Si la clase ya existe, pídele al administrador que te la asigne.</p>
           <select id="tas-new-school" class="input-field-tw h-11 text-sm">${schools.map(([code, name]) => `<option value="${window.sanitizeAttr(code)}">${s(name)}</option>`).join('')}</select>
           <div class="grid grid-cols-3 gap-3">
             <div class="col-span-2">
@@ -989,7 +989,7 @@ window.openTeacherAddStudentsModal = async function openTeacherAddStudentsModal(
         <div>
           <label class="text-[0.65rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Nombres completos -- uno por línea (nombres y después apellidos)</label>
           <textarea id="tas-names" rows="7" class="input-field-tw text-sm py-3" placeholder="Ana María López Pérez&#10;José Daniel Sic Coc"></textarea>
-          <p class="text-[0.65rem] text-slate-400 mt-1">Podés pegar la lista entera desde Excel o Word. El usuario de cada alumno se genera solo.</p>
+          <p class="text-[0.65rem] text-slate-400 mt-1">Puedes pegar la lista entera desde Excel o Word. El usuario de cada alumno se genera solo.</p>
         </div>
         <div id="tas-results" class="hidden space-y-1 max-h-60 overflow-y-auto custom-scrollbar"></div>
         <button id="tas-submit" class="btn-primary-tw w-full h-12 text-xs uppercase font-bold" onclick="window.submitTeacherAddStudents()"><i class="fas fa-check"></i> Crear cuentas</button>
@@ -1003,7 +1003,7 @@ window.submitTeacherAddStudents = async function submitTeacherAddStudents() {
   const btn = document.getElementById('tas-submit');
   const names = [...new Set((document.getElementById('tas-names')?.value || '').split(/\r?\n/)
     .map(n => n.replace(/\t/g, ' ').replace(/\s+/g, ' ').trim()).filter(n => n.length >= 3))];
-  if (!names.length) return window.showToast('<i class="fas fa-circle-xmark"></i> Escribí al menos un nombre completo', 'error');
+  if (!names.length) return window.showToast('<i class="fas fa-circle-xmark"></i> Escribe al menos un nombre completo', 'error');
   if (names.length > 100) return window.showToast('<i class="fas fa-circle-xmark"></i> Máximo 100 alumnos por vez', 'error');
 
   let cls;
@@ -1015,7 +1015,7 @@ window.submitTeacherAddStudents = async function submitTeacherAddStudents() {
       const school_code = document.getElementById('tas-new-school').value;
       const grade = document.getElementById('tas-new-grade').value.replace(/\s+/g, ' ').trim();
       const section = document.getElementById('tas-new-section').value.trim().toUpperCase();
-      if (!grade || !section) throw new Error('Escribí el nombre del club/grado y la sección');
+      if (!grade || !section) throw new Error('Escribe el nombre del club/grado y la sección');
       const { error } = await window._supabase.rpc('teacher_create_class', { p_school_code: school_code, p_grade: grade, p_section: section });
       if (error) throw error;
       cls = { school_code, grade, section };
@@ -1050,13 +1050,13 @@ window.submitTeacherAddStudents = async function submitTeacherAddStudents() {
     const box = document.getElementById('tas-results');
     box.classList.remove('hidden');
     box.innerHTML = `
-      <p class="text-[0.65rem] font-black uppercase text-slate-400 tracking-widest mb-2">Anotá el usuario de cada alumno</p>
+      <p class="text-[0.65rem] font-black uppercase text-slate-400 tracking-widest mb-2">Anota el usuario de cada alumno</p>
       ${rows.map(r => `<div class="text-xs px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800/50 flex items-center gap-2">
         <i class="fas ${r.status === 'created' ? 'fa-circle-check text-emerald-500' : 'fa-circle-xmark text-rose-500'}"></i>
         <span class="grow">${s(r.fullName || '')}</span>
         ${r.status === 'created' ? `<code class="font-bold text-primary">${s(r.username)}</code>` : `<span class="text-rose-400">${s(r.message || 'error')}</span>`}
       </div>`).join('')}
-      ${(result.classes_new_password || []).length ? `<p class="text-[0.7rem] text-amber-500 font-bold mt-2"><i class="fas fa-key"></i> Se generó la contraseña de esta clase nueva: la ves o la cambiás en "Contraseñas de clase".</p>` : ''}`;
+      ${(result.classes_new_password || []).length ? `<p class="text-[0.7rem] text-amber-500 font-bold mt-2"><i class="fas fa-key"></i> Se generó la contraseña de esta clase nueva: la ves o la cambias en "Contraseñas de clase".</p>` : ''}`;
     document.getElementById('tas-names').value = '';
     window.showToast(`<i class="fas fa-circle-check"></i> ${ok} alumno(s) creado(s)`, ok ? 'success' : 'error');
     if (ok) window.loadStudents?.();
@@ -1149,7 +1149,7 @@ window.openGuardiansModal = async function openGuardiansModal(studentId, student
       <div class="space-y-3 mb-5">
         ${(guardians || []).map(g => {
           const link = window.guardianPortalUrl(g.portal_token);
-          const wa = g.phone ? `https://wa.me/${g.phone.replace('+', '')}?text=${encodeURIComponent(`Hola ${g.name}, para recibir los avisos de ${first} de la escuela entrá a este enlace y tocá "Activar avisos": ${link}`)}` : '';
+          const wa = g.phone ? `https://wa.me/${g.phone.replace('+', '')}?text=${encodeURIComponent(`Hola ${g.name}, para recibir los avisos de ${first} de la escuela entra a este enlace y toca "Activar avisos": ${link}`)}` : '';
           return `
           <div class="rounded-2xl border border-slate-100 dark:border-slate-800 p-3">
             <div class="flex justify-between gap-2">
@@ -1228,7 +1228,7 @@ window.addGuardian = async function addGuardian(btn) {
   const name = document.getElementById('gd-name').value.trim();
   const relation = document.getElementById('gd-relation').value;
   const phone = normalizeGtPhone(document.getElementById('gd-phone').value);
-  if (name.length < 2) return window.showToast('<i class="fas fa-circle-xmark"></i> Escribí el nombre', 'error');
+  if (name.length < 2) return window.showToast('<i class="fas fa-circle-xmark"></i> Escribe el nombre', 'error');
   if (phone === undefined) return window.showToast('<i class="fas fa-circle-xmark"></i> Teléfono inválido: 8 dígitos (ej. 5555 1234)', 'error');
   btn.disabled = true;
   const { error } = await window._supabase.from('student_guardians').insert({
@@ -1256,7 +1256,7 @@ async function enqueueAndSend(guardianId, text, channel = null) {
   if (error) throw error;
   if (!ch) throw new Error('Este padre no tiene teléfono ni notificaciones activadas');
   const r = await window.flushGuardianNotifications();
-  if (r.failed) throw new Error('No se pudo enviar: revisá que el celular de SMS esté encendido y con la app abierta');
+  if (r.failed) throw new Error('No se pudo enviar: revisa que el celular de SMS esté encendido y con la app abierta');
   return ch;
 }
 

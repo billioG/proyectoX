@@ -30,16 +30,16 @@ window.openNodeUsbSync = function openNodeUsbSync() {
   const canPickFolder = typeof window.showDirectoryPicker === 'function';
   usbModal(`
     <ol class="text-sm text-slate-600 dark:text-slate-300 space-y-2 list-decimal pl-5">
-      <li>En la escuela, conectá la memoria USB a la Raspberry. Tiene que tener una carpeta llamada <b>QUETZAL</b>. Esperá a que aparezca el archivo <code>estado-….txt</code> que dice <i>"Ya podés sacar la USB"</i>.</li>
-      <li>En esta computadora (con internet), conectá la USB y tocá el botón de abajo. Elegí la carpeta <b>QUETZAL</b>.</li>
-      <li>Cuando termine, volvé a conectar la USB a la Raspberry: aplica todo sola en menos de un minuto.</li>
+      <li>En la escuela, conecta la memoria USB a la Raspberry. Tiene que tener una carpeta llamada <b>QUETZAL</b>. Espera a que aparezca el archivo <code>estado-….txt</code> que dice <i>"Ya puedes sacar la USB"</i>.</li>
+      <li>En esta computadora (con internet), conecta la USB y toca el botón de abajo. Elige la carpeta <b>QUETZAL</b>.</li>
+      <li>Cuando termine, vuelve a conectar la USB a la Raspberry: aplica todo sola en menos de un minuto.</li>
     </ol>
     ${canPickFolder ? `
       <button class="btn-primary-tw w-full h-12 mt-5 text-xs uppercase font-bold" onclick="window.runNodeUsbSync()"><i class="fas fa-folder-open"></i> Elegir la carpeta QUETZAL</button>
     ` : `
       <div class="mt-5 p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-xs text-amber-700 dark:text-amber-300">
-        Este navegador no puede escribir en la USB. Usá <b>Chrome o Edge en una computadora</b> para copiar también los archivos de los cursos.
-        Mientras tanto podés subir el avance de los alumnos: elegí el archivo <code>de-la-escuela-….json</code> de la USB.
+        Este navegador no puede escribir en la USB. Usa <b>Chrome o Edge en una computadora</b> para copiar también los archivos de los cursos.
+        Mientras tanto puedes subir el avance de los alumnos: elige el archivo <code>de-la-escuela-….json</code> de la USB.
       </div>
       <input type="file" accept=".json,application/json" class="mt-3 text-sm" onchange="window.runNodeUsbSyncFromFile(this.files[0])">
     `}
@@ -95,14 +95,14 @@ window.runNodeUsbSync = async function runNodeUsbSync() {
   } catch { return; }
   if (root.name !== USB_FOLDER) {
     try { root = await root.getDirectoryHandle(USB_FOLDER); }
-    catch { return logLine(`<i class="fas fa-circle-xmark"></i> Elegí la carpeta <b>${USB_FOLDER}</b> de la USB (o la USB que la contiene).`, 'bad'); }
+    catch { return logLine(`<i class="fas fa-circle-xmark"></i> Elige la carpeta <b>${USB_FOLDER}</b> de la USB (o la USB que la contiene).`, 'bad'); }
   }
 
   const outboxes = [];
   for await (const [name, handle] of root.entries()) {
     if (handle.kind === 'file' && /^de-la-escuela-[0-9a-f]{8}\.json$/.test(name)) outboxes.push({ name, handle });
   }
-  if (!outboxes.length) return logLine('<i class="fas fa-circle-xmark"></i> No hay paquetes de la escuela en esta USB. Conectala primero a la Raspberry.', 'bad');
+  if (!outboxes.length) return logLine('<i class="fas fa-circle-xmark"></i> No hay paquetes de la escuela en esta USB. Conéctala primero a la Raspberry.', 'bad');
 
   for (const { name, handle } of outboxes) {
     const id = name.match(/([0-9a-f]{8})\.json$/)[1];
@@ -127,13 +127,13 @@ window.runNodeUsbSync = async function runNodeUsbSync() {
         if (progress) progress.innerHTML = `<i class="fas fa-download"></i> Archivos de cursos: ${done} de ${files.length}${failed ? ` (${failed} con error)` : ''}`;
       }
       logLine(failed
-        ? `<i class="fas fa-triangle-exclamation"></i> ${failed} archivo(s) no se copiaron. Volvé a sincronizar para reintentar.`
+        ? `<i class="fas fa-triangle-exclamation"></i> ${failed} archivo(s) no se copiaron. Vuelve a sincronizar para reintentar.`
         : '<i class="fas fa-circle-check"></i> Archivos listos.', failed ? 'bad' : 'ok');
     } catch (e) {
       logLine(`<i class="fas fa-circle-xmark"></i> ${window.sanitizeInput(e.message)}`, 'bad');
     }
   }
-  logLine('<b>✅ Terminado.</b> Ahora conectá la USB a la Raspberry de la escuela.', 'ok');
+  logLine('<b>✅ Terminado.</b> Ahora conecta la USB a la Raspberry de la escuela.', 'ok');
 };
 
 // Sin acceso a carpetas: sube el avance y descarga la respuesta como archivo
@@ -150,7 +150,7 @@ window.runNodeUsbSyncFromFile = async function runNodeUsbSyncFromFile(file) {
     a.download = `para-la-escuela-${id}.json`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-    logLine(`<i class="fas fa-circle-check"></i> Avance subido. Copiá el archivo descargado <b>para-la-escuela-${id}.json</b> a la carpeta QUETZAL de la USB.`, 'ok');
+    logLine(`<i class="fas fa-circle-check"></i> Avance subido. Copia el archivo descargado <b>para-la-escuela-${id}.json</b> a la carpeta QUETZAL de la USB.`, 'ok');
   } catch (e) {
     logLine(`<i class="fas fa-circle-xmark"></i> ${window.sanitizeInput(e.message)}`, 'bad');
   }

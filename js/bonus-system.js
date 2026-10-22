@@ -78,7 +78,7 @@ window.openBonusOnboarding = function openBonusOnboarding() {
                         <div class="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center mb-4 text-xl group-hover:scale-110 transition-transform">
                             <i class="fas fa-tasks"></i>
                         </div>
-                        <h3 class="text-sm font-black uppercase text-slate-700 dark:text-white mb-2">1. Rocas Mensuales</h3>
+                        <h3 class="text-sm font-black uppercase text-slate-700 dark:text-white mb-2">1. Metas del mes (Rocas)</h3>
                         <p class="text-xs text-slate-500 leading-snug">
                             Tus objetivos clave del mes. Deben completarse para activar tus bonos.
                         </p>
@@ -282,7 +282,7 @@ window.processAndRenderBonus = function processAndRenderBonus(container, data) {
     if (activeRocks.length > 0) {
         adminProg = (adminProg * (1 - ROCKS_WEIGHT)) + (rocksProgress * ROCKS_WEIGHT);
         adminKpis.push({
-            title: 'Rocas del Mes',
+            title: 'Metas del mes (Rocas)',
             detail: `${rocksCompletedCount}/${activeRocks.length} metas cumplidas`,
             progress: rocksProgress,
             category: 'administrative',
@@ -536,7 +536,7 @@ window.renderTutorView = function renderTutorView(container, teacher, kpis, assi
                              </div>
                              <div class="text-sm font-black uppercase text-emerald-600 dark:text-emerald-400">Evidencia de esta semana lista</div>
                         </div>
-                        <div class="text-[0.6rem] font-bold text-slate-400 pl-14">Ya podés subir la próxima a partir de la semana que viene</div>
+                        <div class="text-[0.6rem] font-bold text-slate-400 pl-14">Ya puedes subir la próxima a partir de la semana que viene</div>
                     </div>
                     ` : `
                     <button class="glass-card p-6 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group border-2 border-slate-200 dark:border-slate-800 hover:border-primary/50" onclick="window.openEvidenceAuditModal()">
@@ -691,7 +691,7 @@ window.handleTutorCheckIn = async function handleTutorCheckIn(schoolId) {
                 sch = data;
             } catch (e) { /* sin red, sigue con la cache */ }
             if (!sch) sch = (window._tutorSchoolsCache || []).find(s => String(s.id) === String(schoolId));
-            if (!sch) throw new Error("Colegio no encontrado (y no hay cache offline -- abrí esta pantalla con internet al menos una vez).");
+            if (!sch) throw new Error("Colegio no encontrado (y no hay cache offline -- abre esta pantalla con internet al menos una vez).");
 
             const dist = calculateDist(latitude, longitude, sch.latitude, sch.longitude);
             if (dist > (sch.geofence_radius || 150)) throw new Error(`Fuera de rango (${Math.round(dist)}m)`);
@@ -790,7 +790,7 @@ window.handleDocPhotoSelect = function handleDocPhotoSelect(input) {
     const btn = document.getElementById('btn-save-doc');
 
     if (files.length !== 5) {
-        showToast('<i class="fas fa-triangle-exclamation"></i>️ Seleccioná exactamente 5 fotos', 'warning');
+        showToast('<i class="fas fa-triangle-exclamation"></i>️ Selecciona exactamente 5 fotos', 'warning');
         input.value = '';
         container.classList.add('hidden');
         container.innerHTML = '';
@@ -1108,7 +1108,7 @@ window.submitChallengeEvidence = async function submitChallengeEvidence(challeng
             const isGeneric = /^no$/i.test((verdict || '').trim());
             if (isGeneric) {
                 if (feedbackEl) {
-                    feedbackEl.innerHTML = '<i class="fas fa-triangle-exclamation"></i> Tu reflexión parece muy genérica. Contá algo concreto: qué hiciste, con qué grupo, qué notaste.';
+                    feedbackEl.innerHTML = '<i class="fas fa-triangle-exclamation"></i> Tu reflexión parece muy genérica. Cuenta algo concreto: qué hiciste, con qué grupo, qué notaste.';
                     feedbackEl.classList.remove('hidden');
                 }
                 btn.disabled = false;
@@ -1194,7 +1194,7 @@ window.saveNewKpi = async function saveNewKpi(e) {
     });
 
     if (!error) {
-        showToast('<i class="fas fa-rocket"></i> Nueva Roca configurada', 'success');
+        showToast('<i class="fas fa-rocket"></i> Nueva meta (Roca) configurada', 'success');
         e.target.closest('.fixed').remove();
         renderGlobalKpiManager();
         loadBonusSystem();
@@ -1384,7 +1384,7 @@ window.renderValidationInbox = async function renderValidationInbox() {
                                      <span class="text-[0.4rem] font-black uppercase">Espera</span>
                                 </div>
                                 <div>
-                                    <div class="text-[0.55rem] font-black text-primary uppercase tracking-widest mb-1">${window.sanitizeInput(p.kpi_tasks?.dynamic_kpis?.title || 'Roca Global')}</div>
+                                    <div class="text-[0.55rem] font-black text-primary uppercase tracking-widest mb-1">${window.sanitizeInput(p.kpi_tasks?.dynamic_kpis?.title || 'Meta global (Roca)')}</div>
                                     <div class="text-lg font-black uppercase tracking-tighter text-slate-800 dark:text-white leading-none">${window.sanitizeInput(p.kpi_tasks?.title)}</div>
                                     <div class="flex items-center gap-3 mt-3">
                                          <div class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-[0.6rem] font-bold text-slate-500 uppercase flex items-center gap-2">

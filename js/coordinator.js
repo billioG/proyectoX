@@ -60,7 +60,7 @@ window.loadCoordinatorReports = async function loadCoordinatorReports() {
     container.innerHTML = `
         <div class="glass-card p-6 mb-8">
             <h3 class="text-lg font-bold text-slate-800 dark:text-white mb-1 flex items-center gap-2"><i class="fas fa-trophy text-amber-500"></i> Hall de la Fama</h3>
-            <p class="text-xs text-slate-400 mb-4">Si lo apagás, los proyectos de ese establecimiento solo los ven sus propios docentes y alumnos.</p>
+            <p class="text-xs text-slate-400 mb-4">Si lo apagas, los proyectos de ese establecimiento solo los ven sus propios docentes y alumnos.</p>
             <div class="space-y-3">
                 ${(schools || []).map(s => `
                     <div class="flex items-center justify-between gap-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50">

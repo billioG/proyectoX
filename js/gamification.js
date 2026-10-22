@@ -26,7 +26,7 @@ window.submitStudentChallengeEvidence = async function submitStudentChallengeEvi
             const isGeneric = /^no$/i.test((verdict || '').trim());
             if (isGeneric) {
                 if (feedbackEl) {
-                    feedbackEl.innerHTML = '<i class="fas fa-triangle-exclamation"></i> Tu respuesta parece muy genérica. Contá algo concreto que hiciste.';
+                    feedbackEl.innerHTML = '<i class="fas fa-triangle-exclamation"></i> Tu respuesta parece muy genérica. Cuenta algo concreto que hiciste.';
                     feedbackEl.classList.remove('hidden');
                 }
                 btn.disabled = false;
@@ -496,7 +496,7 @@ window.subscribeGemEvents = function subscribeGemEvents() {
       const r = GEM_REASONS[ev.reason];
       if (r) {
         const sign = ev.amount > 0 ? `+${ev.amount}` : `${ev.amount}`;
-        window.showToast?.(`<i class="fas ${r.icon}"></i> ${r.text} ${sign} 💎 (tenés ${ev.balance})`, ev.amount >= 0 ? 'success' : 'info');
+        window.showToast?.(`<i class="fas ${r.icon}"></i> ${r.text} ${sign} 💎 (tienes ${ev.balance})`, ev.amount >= 0 ? 'success' : 'info');
       }
     })
     .subscribe();
@@ -533,17 +533,17 @@ window.openGemsGuide = async function openGemsGuide() {
         <h2 class="text-xl font-black text-white"><i class="fas fa-gem text-cyan-400 mr-2"></i>¿Cómo gano gemas?</h2>
         <button onclick="this.closest('.fixed').remove()" class="text-slate-400 hover:text-rose-400 text-2xl font-bold">×</button>
       </div>
-      <p class="text-xs text-slate-400 mb-4">Tenés <b class="text-cyan-300" data-my-gems>${window.userData?.gems ?? 0}</b> 💎. Con gemas evoluciona tu mascota y comprás accesorios.</p>
+      <p class="text-xs text-slate-400 mb-4">Tienes <b class="text-cyan-300" data-my-gems>${window.userData?.gems ?? 0}</b> 💎. Con gemas evoluciona tu mascota y compras accesorios.</p>
       <div class="space-y-2">
         ${row('fa-trophy', '#facc15', 'Ganar un duelo 1v1', '+5 💎', 'Premio de la arena, aunque el rival no tenga gemas. Con racha de 3 victorias o más: +2 extra.')}
-        ${row('fa-coins', '#fb923c', 'Apostar en el duelo', '+ la apuesta', 'Si ganás, te llevás también lo que apostó tu rival. Si perdés, perdés lo tuyo. Podés apostar 0.')}
+        ${row('fa-coins', '#fb923c', 'Apostar en el duelo', '+ la apuesta', 'Si ganas, te llevas también lo que apostó tu rival. Si pierdes, pierdes lo tuyo. Puedes apostar 0.')}
         ${row('fa-handshake', '#a78bfa', 'Empatar', '+2 💎', 'Cada uno recibe 2 gemas.')}
         ${row('fa-shield-halved', '#94a3b8', 'Jugar aunque pierdas', '+1 💎', 'Solo por jugar el duelo completo.')}
         <p class="text-[0.7rem] text-slate-500 px-1">${left === null ? 'Los primeros 8 duelos de cada día dan premio de la arena.' : `Te quedan <b class="text-white">${left}</b> de 8 duelos con premio hoy.`}</p>
-        ${row('fa-box-open', '#f59e0b', 'Cofre diario', '+5 a +50 💎', chestReady ? '¡Hoy todavía no lo abriste! Entrá mañana también.' : 'Ya lo abriste hoy. Volvé mañana por otro.')}
-        ${row('fa-flag-checkered', '#34d399', 'Reto del mes', '+10 💎', 'Completá el reto del mes y contá qué hiciste.')}
+        ${row('fa-box-open', '#f59e0b', 'Cofre diario', '+5 a +50 💎', chestReady ? '¡Hoy todavía no lo abriste! Entra mañana también.' : 'Ya lo abriste hoy. Vuelve mañana por otro.')}
+        ${row('fa-flag-checkered', '#34d399', 'Reto del mes', '+10 💎', 'Completa el reto del mes y cuenta qué hiciste.')}
         ${row('fa-camera', '#60a5fa', 'Tu primera foto de perfil', '+25 💎', 'Una sola vez, al subir tu foto.')}
-        ${row('fa-ticket', '#f472b6', 'Pase de temporada', 'premios', 'Algunos niveles del pase dan gemas: jugá y subí de nivel.')}
+        ${row('fa-ticket', '#f472b6', 'Pase de temporada', 'premios', 'Algunos niveles del pase dan gemas: juega y sube de nivel.')}
       </div>
       <button onclick="this.closest('.fixed').remove(); window.GameArena && window.GameArena.quickChallenge && window.GameArena.quickChallenge('quiz')" class="w-full mt-5 h-12 rounded-xl font-black uppercase text-sm text-slate-900" style="background:linear-gradient(135deg,#facc15,#f97316)"><i class="fas fa-bolt"></i> Retar a alguien ahora</button>
     </div>`;
@@ -671,11 +671,11 @@ window.showGameCenterOnboarding = function showGameCenterOnboarding() {
   localStorage.setItem(key, 'true');
 
   const items = [
-    { icon: 'fa-trophy', color: 'text-amber-400', title: 'Ranking', desc: 'Compará tu XP con el top 10 de toda la plataforma.' },
-    { icon: 'fa-medal', color: 'text-indigo-400', title: 'Insignias', desc: 'Se desbloquean solas al lograr hitos -- subí proyectos, sumá likes, mantené tu racha.' },
-    { icon: 'fa-swords', color: 'text-rose-400', title: 'Desafío 1v1', desc: 'Retá a un compañero de tu clase a un quiz relámpago, apostando gemas.' },
+    { icon: 'fa-trophy', color: 'text-amber-400', title: 'Ranking', desc: 'Compara tu XP con el top 10 de toda la plataforma.' },
+    { icon: 'fa-medal', color: 'text-indigo-400', title: 'Insignias', desc: 'Se desbloquean solas al lograr hitos -- sube proyectos, suma likes, mantén tu racha.' },
+    { icon: 'fa-swords', color: 'text-rose-400', title: 'Desafío 1v1', desc: 'Reta a un compañero de tu clase a un quiz relámpago, apostando gemas.' },
     { icon: 'fa-bolt', color: 'text-fuchsia-400', title: 'Eventos Sorpresa', desc: 'A veces, de noche, llega un quiz relámpago para todos -- los primeros lugares se reparten un pozo de gemas.' },
-    { icon: 'fa-gift', color: 'text-emerald-400', title: 'Cofre Diario', desc: 'Entrá todos los días para reclamar tu recompensa y no perder la racha.' },
+    { icon: 'fa-gift', color: 'text-emerald-400', title: 'Cofre Diario', desc: 'Entra todos los días para reclamar tu recompensa y no perder la racha.' },
   ];
 
   const modal = document.createElement('div');
@@ -789,7 +789,7 @@ window.renderGamificationHubContent = function renderGamificationHubContent(moda
                     }) : ''}
                     ${window.userRole === 'estudiante' && window.GameArena ? window.GameArena.heroHtml({
                       title: 'Quetzadex',
-                      subtitle: 'Fauna de Guatemala: conocé la ficha de cada mascota y sumá nuevas a tu colección con gemas.',
+                      subtitle: 'Fauna de Guatemala: conoce la ficha de cada mascota y suma nuevas a tu colección con gemas.',
                       icon: 'fa-book-open',
                       c1: '#10b981',
                       c2: '#f59e0b',
@@ -967,9 +967,9 @@ window.buyShopItem = async function buyShopItem(name, price) {
   if (name === 'Racha Congelada') {
     await permanentUnlock('streak_freeze', '<i class="fas fa-cube"></i> Ya tienes un hielo activo', '<i class="fas fa-cube"></i> ¡Hielo de Racha activado!');
   } else if (name === 'Marco Dorado') {
-    await permanentUnlock('has_gold_frame', '<i class="fas fa-image"></i> Ya tenés el Marco Dorado', '<i class="fas fa-image"></i> ¡Marco Dorado desbloqueado! Ya brilla en el ranking');
+    await permanentUnlock('has_gold_frame', '<i class="fas fa-image"></i> Ya tienes el Marco Dorado', '<i class="fas fa-image"></i> ¡Marco Dorado desbloqueado! Ya brilla en el ranking');
   } else if (name === 'Gafas de la Mascota') {
-    await permanentUnlock('has_mascot_glasses', '<i class="fas fa-glasses"></i> Tu mascota ya tiene sus gafas', '<i class="fas fa-glasses"></i> ¡Gafas desbloqueadas! Recargá para verlas en tu mascota');
+    await permanentUnlock('has_mascot_glasses', '<i class="fas fa-glasses"></i> Tu mascota ya tiene sus gafas', '<i class="fas fa-glasses"></i> ¡Gafas desbloqueadas! Recarga para verlas en tu mascota');
   } else {
     if (typeof showToast === 'function') showToast('<i class="fas fa-rocket"></i> ¡Próximamente más artículos en la tienda!', 'info');
   }

@@ -152,10 +152,10 @@ async function renderStudentPick(box, cls) {
     ${teacherBtn}
     <div style="max-width:40rem;margin:0 auto">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-bottom:.25rem">
-        <h2 style="font-size:1.5rem;font-weight:900;margin:0;color:#fff">¿Quién sos?</h2>
+        <h2 style="font-size:1.5rem;font-weight:900;margin:0;color:#fff">¿Quién eres?</h2>
         <button id="node-change-class" style="padding:.5rem .9rem;border-radius:9999px;border:1px solid rgba(255,255,255,.2);background:transparent;color:#cbd5e1;font-weight:800;font-size:.75rem;cursor:pointer">${esc(cls.grade)} ${esc(cls.section)} · cambiar</button>
       </div>
-      <p style="color:#94a3b8;font-size:.85rem;margin:0 0 1.25rem">Tocá tu nombre y escribí tu PIN.</p>
+      <p style="color:#94a3b8;font-size:.85rem;margin:0 0 1.25rem">Toca tu nombre y escribe tu PIN.</p>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(7.5rem,1fr));gap:.75rem">
         ${students.map((s, i) => `
           <button data-i="${i}" style="${cardBtn}">
@@ -176,8 +176,8 @@ function renderPinPad(box, student, cls) {
   let step = creating ? 'create' : 'enter';
   let pin = '', firstPin = '';
 
-  const title = () => step === 'create' ? 'Creá tu PIN secreto' : step === 'confirm' ? 'Repetí tu PIN' : 'Escribí tu PIN';
-  const help = () => step === 'enter' ? '' : 'Son 4 números que solo vos sabés. No se lo digas a nadie.';
+  const title = () => step === 'create' ? 'Crea tu PIN secreto' : step === 'confirm' ? 'Repite tu PIN' : 'Escribe tu PIN';
+  const help = () => step === 'enter' ? '' : 'Son 4 números que solo tú sabes. No se lo digas a nadie.';
 
   function draw(error = '') {
     box.innerHTML = `
@@ -208,7 +208,7 @@ function renderPinPad(box, student, cls) {
     if (pin.length < 4) return;
 
     if (step === 'create') { firstPin = pin; pin = ''; step = 'confirm'; return draw(); }
-    if (step === 'confirm' && pin !== firstPin) { pin = ''; firstPin = ''; step = 'create'; return draw('No coincidían. Probá de nuevo.'); }
+    if (step === 'confirm' && pin !== firstPin) { pin = ''; firstPin = ''; step = 'create'; return draw('No coincidían. Prueba de nuevo.'); }
 
     try {
       const res = await window.nodeApi('/api/login', { method: 'POST', body: { student_id: student.id, pin, device: navigator.userAgent } });
@@ -217,7 +217,7 @@ function renderPinPad(box, student, cls) {
       enterNode(res.student);
       if (res.last_entry?.entered_at) {
         const when = new Date(res.last_entry.entered_at).toLocaleString('es-GT', { weekday: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-        window.showToast?.(`<i class="fas fa-clock-rotate-left"></i> Última vez que se usó tu cuenta: ${esc(when)}. ¿No fuiste vos? Avisale a tu docente.`, 'info');
+        window.showToast?.(`<i class="fas fa-clock-rotate-left"></i> Última vez que se usó tu cuenta: ${esc(when)}. ¿No fuiste tú? Avísale a tu docente.`, 'info');
       }
     } catch (e) {
       pin = '';
@@ -252,7 +252,7 @@ function renderTeacherLogin(box, error = '') {
     <div style="max-width:22rem;margin:0 auto;text-align:center">
       <button id="t-back" style="background:none;border:0;color:#94a3b8;font-weight:800;cursor:pointer;margin-bottom:1rem"><i class="fas fa-arrow-left"></i> Volver</button>
       <div style="font-size:1.2rem;font-weight:900"><i class="fas fa-chalkboard-user"></i> Panel del docente</div>
-      <p style="color:#94a3b8;font-size:.8rem">Escribí el código de docente de este nodo.</p>
+      <p style="color:#94a3b8;font-size:.8rem">Escribe el código de docente de este nodo.</p>
       <input id="t-code" type="password" inputmode="numeric" autocomplete="off" maxlength="12"
         style="width:100%;height:3.2rem;border-radius:1rem;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:#fff;font-size:1.4rem;text-align:center;letter-spacing:.3em">
       <p style="color:#fb7185;font-size:.85rem;min-height:1.2rem">${esc(error)}</p>
@@ -274,7 +274,7 @@ function renderTeacherLogin(box, error = '') {
 async function renderTeacherPanel(box) {
   let data;
   try { data = await teacherApi('/api/teacher/overview'); }
-  catch (e) { return renderTeacherLogin(box, e.status === 401 ? 'La sesión venció, volvé a entrar.' : e.message); }
+  catch (e) { return renderTeacherLogin(box, e.status === 401 ? 'La sesión venció, vuelve a entrar.' : e.message); }
 
   const when = (iso) => iso ? new Date(iso).toLocaleString('es-GT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'nunca';
   const byClass = {};
@@ -309,7 +309,7 @@ async function renderTeacherPanel(box) {
               ${s.locked ? `<button data-unlock="${esc(s.id)}" style="border:0;border-radius:.6rem;padding:.4rem .6rem;background:rgba(255,255,255,.1);color:#fff;font-size:.7rem;font-weight:800;cursor:pointer">Desbloquear</button>` : ''}
               ${s.has_pin ? `<button data-reset="${esc(s.id)}" data-name="${esc(s.full_name)}" style="border:0;border-radius:.6rem;padding:.4rem .6rem;background:rgba(255,255,255,.1);color:#fff;font-size:.7rem;font-weight:800;cursor:pointer">Restablecer PIN</button>` : ''}
             </div>`).join('')}
-        </div>`).join('') || '<p style="color:#94a3b8">El nodo todavía no tiene alumnos: sincronizalo por internet o por USB.</p>'}
+        </div>`).join('') || '<p style="color:#94a3b8">El nodo todavía no tiene alumnos: sincronízalo por internet o por USB.</p>'}
 
       <h3 style="font-size:.85rem;font-weight:900;color:#a5b4fc;margin:1.5rem 0 .5rem">Ingresos recientes</h3>
       <div style="display:grid;gap:.3rem;font-size:.75rem">
@@ -328,7 +328,7 @@ async function renderTeacherPanel(box) {
   });
   box.querySelectorAll('[data-reset]').forEach(b => b.onclick = async () => {
     // Confirmación en el mismo botón (dos toques), sin ventanas emergentes.
-    if (b.dataset.confirm !== '1') { b.dataset.confirm = '1'; b.textContent = '¿Seguro? Tocá otra vez'; b.style.background = '#f59e0b'; return; }
+    if (b.dataset.confirm !== '1') { b.dataset.confirm = '1'; b.textContent = '¿Seguro? Toca otra vez'; b.style.background = '#f59e0b'; return; }
     try {
       await teacherApi('/api/teacher/reset-pin', { student_id: b.dataset.reset });
       window.showToast?.(`<i class="fas fa-key"></i> ${esc(b.dataset.name)} va a crear un PIN nuevo la próxima vez que entre.`, 'success');

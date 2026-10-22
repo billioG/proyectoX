@@ -41,7 +41,7 @@ window.renderSpellingSection = function renderSpellingSection() {
 
   const createBtnHtml = window.GameArena.heroHtml({
     title: 'Ortografía 1v1',
-    subtitle: 'Te damos una pista, escribís la palabra con sus tildes. Gana quien acierta más rápido.',
+    subtitle: 'Te damos una pista, escribes la palabra con sus tildes. Gana quien acierta más rápido.',
     icon: 'fa-spell-check',
     c1: '#7c3aed',
     c2: '#db2777',
@@ -159,7 +159,7 @@ window.openCreateSpellingModal = async function openCreateSpellingModal() {
         <div>
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Gemas a apostar</label>
           <input type="number" id="spelling-wager" min="0" value="10" class="input-field-tw h-11 text-sm">
-          <p class="text-[0.6rem] text-slate-500 mt-1">Tenés ${userData?.gems ?? 0} gemas.</p>
+          <p class="text-[0.6rem] text-slate-500 mt-1">Tienes ${userData?.gems ?? 0} gemas.</p>
         </div>
         <div>
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Categoría</label>
@@ -186,7 +186,7 @@ window.sendSpellingChallenge = async function sendSpellingChallenge() {
   const userData = window.userData;
 
   if (wager < 0) return window.showToast('<i class="fas fa-circle-xmark"></i> La apuesta no puede ser negativa', 'error');
-  if (wager > (userData?.gems ?? 0)) return window.showToast('<i class="fas fa-circle-xmark"></i> No tenés suficientes gemas', 'error');
+  if (wager > (userData?.gems ?? 0)) return window.showToast('<i class="fas fa-circle-xmark"></i> No tienes suficientes gemas', 'error');
 
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
@@ -228,7 +228,7 @@ window.respondSpellingDuel = async function respondSpellingDuel(duelId, accept) 
   const duel = (window._spellingDuelsCache || []).find(d => d.id === duelId);
   const userData = window.userData;
   if (duel && duel.wager_gems > (userData?.gems ?? 0)) {
-    return window.showToast('<i class="fas fa-circle-xmark"></i> No tenés suficientes gemas para aceptar esta apuesta', 'error');
+    return window.showToast('<i class="fas fa-circle-xmark"></i> No tienes suficientes gemas para aceptar esta apuesta', 'error');
   }
 
   if (!window.aiGenerationLock.tryAcquire()) return;
@@ -242,7 +242,7 @@ window.respondSpellingDuel = async function respondSpellingDuel(duelId, accept) 
     });
     const result = await res.json();
     if (!res.ok) throw new Error(result.error || 'Error generando la palabra');
-    window.showToast('<i class="fas fa-circle-check"></i> ¡Reto aceptado! Ya podés jugar', 'success');
+    window.showToast('<i class="fas fa-circle-check"></i> ¡Reto aceptado! Ya puedes jugar', 'success');
     window.loadSpellingSection();
     if (typeof window.sendDuelPushNotification === 'function') window.sendDuelPushNotification(duelId, 'accepted', 'spelling');
   } catch (err) {
@@ -294,11 +294,11 @@ window.renderSpellingGame = function renderSpellingGame() {
       <p style="font-size:.65rem;font-weight:900;letter-spacing:.2em;text-transform:uppercase;color:#a5b4fc;margin-bottom:.5rem">Pista</p>
       <p style="font-size:1.15rem;font-weight:700;line-height:1.45;margin-bottom:1.5rem">"${sanitizeInput(state.hint)}"</p>
       <input type="text" id="spelling-answer-input" class="ga-input" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
-        placeholder="Escribí la palabra" onkeydown="if(event.key==='Enter') window.submitSpellingAnswer()">
+        placeholder="Escribe la palabra" onkeydown="if(event.key==='Enter') window.submitSpellingAnswer()">
       <div class="ga-keys">
         ${SPELLING_ACCENT_KEYS.map(k => `<button type="button" class="ga-key" onmousedown="event.preventDefault()" onclick="window.insertSpellingChar('${k}')">${k}</button>`).join('')}
       </div>
-      <p style="font-size:.7rem;color:#94a3b8;margin:1rem 0 1.25rem"><i class="fas fa-circle-info"></i> Una sola oportunidad -- ¡cuidá las tildes!</p>
+      <p style="font-size:.7rem;color:#94a3b8;margin:1rem 0 1.25rem"><i class="fas fa-circle-info"></i> Una sola oportunidad -- ¡cuida las tildes!</p>
       <button class="ga-btn" id="spelling-submit" onclick="window.submitSpellingAnswer()"><i class="fas fa-check"></i> ¡Listo!</button>
     </div></div>
   `;
@@ -421,7 +421,7 @@ window.showSpellingReview = async function showSpellingReview(duelId) {
           const isMe = r.student_id === window.currentUser.id;
           return `
           <div class="p-3 rounded-xl bg-white/5 border ${r.student_id === duel?.winner_id ? 'border-emerald-500/30' : 'border-white/5'} text-left text-xs text-slate-300">
-            <span class="font-bold text-white">${isMe ? 'Vos' : 'Rival'}</span> --
+            <span class="font-bold text-white">${isMe ? 'Tú' : 'Rival'}</span> --
             ${r.correct ? `<span class="text-emerald-400">Acertó</span>` : `<span class="text-rose-400">No acertó</span>`}
             en ${(r.time_ms / 1000).toFixed(1)}s
             ${r.student_id === duel?.winner_id ? ' <i class="fas fa-trophy text-amber-400"></i>' : ''}

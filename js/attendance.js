@@ -147,7 +147,7 @@ window.renderAttendanceUI = window.renderAttendanceUI = function renderAttendanc
                 <div class="w-10 h-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center text-lg"><i class="fas fa-file-csv"></i></div>
                 <div>
                     <h4 class="text-sm font-black text-slate-800 dark:text-white leading-none">Auditoría</h4>
-                    <p class="text-[0.5rem] font-bold text-slate-400 uppercase tracking-widest mt-1">Exportar CSV/PDF</p>
+                    <p class="text-[0.5rem] font-bold text-slate-400 uppercase tracking-widest mt-1">Exportar para Excel (CSV) o PDF</p>
                 </div>
             </div>
             <button onclick="exportAttendanceCSV()" ${!hasWaivers ? 'disabled' : ''} class="w-9 h-9 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-primary transition-all flex items-center justify-center border border-slate-100 dark:border-slate-800 ${!hasWaivers ? 'opacity-30 cursor-not-allowed' : ''}"><i class="fas fa-download text-xs"></i></button>

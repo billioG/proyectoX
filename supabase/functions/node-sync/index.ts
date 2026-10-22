@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
     usb = body?.usb;
     const authHeader = req.headers.get('Authorization') || '';
     const { data: { user } } = await admin.auth.getUser(authHeader.replace(/^Bearer\s+/i, ''));
-    if (!user) return reply({ error: 'Iniciá sesión como docente o administrador' }, 401);
+    if (!user) return reply({ error: 'Inicia sesión como docente o administrador' }, 401);
     if (!/^[0-9a-f]{64}$/.test(usb?.node?.token_hash || '') || typeof usb?.public_key !== 'string') {
       return reply({ error: 'El archivo de la USB no es válido' }, 400);
     }

@@ -170,7 +170,7 @@ window.openForgotPasswordModal = function openForgotPasswordModal() {
   modal.innerHTML = `
     <div class="glass-card w-full max-w-sm p-8 shadow-2xl animate-slideUp">
       <h2 class="text-lg font-bold text-slate-800 dark:text-white uppercase tracking-tighter mb-2"><i class="fas fa-key text-primary mr-2"></i> Recuperar Contraseña</h2>
-      <p class="text-xs text-slate-400 mb-6">Ingresá tu correo y te enviamos un enlace para restablecer tu contraseña.</p>
+      <p class="text-xs text-slate-400 mb-6">Ingresa tu correo y te enviamos un enlace para restablecer tu contraseña.</p>
       <input type="email" id="forgot-password-email" placeholder="tu@correo.com"
         class="w-full px-4 py-3 bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 mb-4">
       <div class="flex gap-3">
@@ -186,7 +186,7 @@ window.openForgotPasswordModal = function openForgotPasswordModal() {
 window.sendPasswordResetEmail = async function sendPasswordResetEmail() {
   const email = document.getElementById('forgot-password-email')?.value.trim();
   const btn = document.getElementById('btn-send-reset');
-  if (!email) return showToast('<i class="fas fa-circle-xmark"></i> Ingresá tu correo', 'error');
+  if (!email) return showToast('<i class="fas fa-circle-xmark"></i> Ingresa tu correo', 'error');
 
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
 
@@ -196,7 +196,7 @@ window.sendPasswordResetEmail = async function sendPasswordResetEmail() {
     });
     if (error) throw error;
     document.querySelector('.fixed.z-\\[200\\]')?.remove();
-    showToast('<i class="fas fa-circle-check"></i> Revisá tu correo para restablecer tu contraseña', 'success');
+    showToast('<i class="fas fa-circle-check"></i> Revisa tu correo para restablecer tu contraseña', 'success');
   } catch (err) {
     showToast('<i class="fas fa-circle-xmark"></i> ' + err.message, 'error');
     if (btn) { btn.disabled = false; btn.innerHTML = 'Enviar'; }
@@ -214,7 +214,7 @@ function openSetNewPasswordModal(allowCancel) {
     <div class="glass-card w-full max-w-sm p-8 shadow-2xl animate-slideUp relative">
       ${allowCancel ? `<button onclick="document.getElementById('set-new-password-modal')?.remove()" class="absolute top-4 right-4 w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500 transition-colors flex items-center justify-center"><i class="fas fa-times"></i></button>` : ''}
       <h2 class="text-lg font-bold text-slate-800 dark:text-white uppercase tracking-tighter mb-2"><i class="fas fa-lock text-primary mr-2"></i> Nueva Contraseña</h2>
-      <p class="text-xs text-slate-400 mb-6">Ingresá tu nueva contraseña para continuar.</p>
+      <p class="text-xs text-slate-400 mb-6">Ingresa tu nueva contraseña para continuar.</p>
       <input type="password" id="new-password-input" placeholder="Nueva contraseña (mín. 6 caracteres)"
         class="w-full px-4 py-3 bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 mb-4">
       <div class="flex gap-3">
@@ -329,7 +329,7 @@ export async function handleLogin() {
   // usuario de alumno (siempre se genera en minúscula).
   const username = rawUsername?.includes('@') ? rawUsername : rawUsername?.toLowerCase();
   const password = passEl?.value.trim();
-  if (!username) return showToast('<i class="fas fa-circle-xmark"></i> Ingresá tu usuario o correo', 'error');
+  if (!username) return showToast('<i class="fas fa-circle-xmark"></i> Ingresa tu usuario o correo', 'error');
 
   btn.disabled = true;
   btn.classList.add('opacity-50', 'cursor-not-allowed');
@@ -338,7 +338,7 @@ export async function handleLogin() {
   try {
     if (username.includes('@')) {
       // Docentes/admin siempre entran con email + contraseña real.
-      if (!password) throw new Error('Ingresá tu contraseña');
+      if (!password) throw new Error('Ingresa tu contraseña');
       const { data, error } = await _supabase.auth.signInWithPassword({ email: username, password });
       if (error) throw error;
       await handleSuccessfulLogin(data.user);
@@ -379,7 +379,7 @@ export async function handleLogin() {
     // guardada en vez de un error de red que el alumno no entiende.
     const isNetwork = !navigator.onLine || err instanceof TypeError || /fetch|network/i.test(err.message || '');
     if (isNetwork && window.listOfflineAccounts?.().length) {
-      showToast('<i class="fas fa-wifi"></i> No hay internet -- elegí tu cuenta para entrar sin conexión', 'info');
+      showToast('<i class="fas fa-wifi"></i> No hay internet -- elige tu cuenta para entrar sin conexión', 'info');
       window.openOfflineAccountPicker();
       return;
     }
@@ -427,8 +427,8 @@ export async function handleSuccessfulLogin(user) {
       window.removeOfflineAccount?.(user.id);
       await _supabase.auth.signOut();
       const msg = data.status === 'egresado'
-        ? 'Esta cuenta ya egresó y no tiene acceso. Contactá a tu establecimiento si creés que es un error.'
-        : 'Esta cuenta fue dada de baja. Contactá a tu establecimiento si creés que es un error.';
+        ? 'Esta cuenta ya egresó y no tiene acceso. Contacta a tu establecimiento si crees que es un error.'
+        : 'Esta cuenta fue dada de baja. Contacta a tu establecimiento si crees que es un error.';
       showToast('<i class="fas fa-graduation-cap"></i> ' + msg, 'error');
       return;
     }

@@ -179,10 +179,10 @@ window.claimSeasonReward = async function claimSeasonReward(level) {
     const data = await spClaim(level);
     if (typeof window.confetti === 'function') window.confetti({ particleCount: 90, spread: 70, origin: { y: 0.6 }, zIndex: 260 });
     if (data.type === 'cosmetic' && !data.gems_granted) {
-      window.showToast('<i class="fas fa-shirt"></i> ¡Accesorio exclusivo desbloqueado! Ponelo en el Vestidor', 'success');
+      window.showToast('<i class="fas fa-shirt"></i> ¡Accesorio exclusivo desbloqueado! Ponlo en el Vestidor', 'success');
     } else if (data.type === 'companion' && !data.gems_granted) {
       const label = window.COMPANION_SPECIES?.[data.species]?.label || 'mascota nueva';
-      window.showToast(`<i class="fas fa-egg"></i> ¡${label} desbloqueada! Andá a la Quetzadex a elegirla`, 'success');
+      window.showToast(`<i class="fas fa-egg"></i> ¡${label} desbloqueada! Ve a la Quetzadex a elegirla`, 'success');
     } else {
       window.showToast(`<i class="fas fa-gem"></i> +${data.gems_granted} gemas`, 'success');
     }

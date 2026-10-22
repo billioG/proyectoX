@@ -181,7 +181,7 @@ window.PracticeMode = {
     modal.innerHTML = `
       <div class="glass-card w-full max-w-md p-8 shadow-2xl animate-slideUp bg-slate-900 border border-white/10">
         <h2 class="text-lg font-bold text-white uppercase tracking-tighter mb-1"><i class="fas ${g.icon} text-emerald-400 mr-2"></i> Práctica: ${g.label}</h2>
-        <p class="text-xs text-slate-400 mb-5">Solo vos, sin rival y sin apostar gemas. Practicá las veces que quieras.</p>
+        <p class="text-xs text-slate-400 mb-5">Solo tú, sin rival y sin apostar gemas. Practica las veces que quieras.</p>
         <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Tema</label>
         <select id="practice-topic" class="input-field-tw h-11 text-sm">${window.topicOptionsHtml(game === 'quiz' ? (window.getReadingTopicPool?.() || pool) : pool)}</select>
         <div class="flex gap-3 mt-8">

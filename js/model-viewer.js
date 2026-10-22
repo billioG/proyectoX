@@ -195,7 +195,7 @@ async function mountModelViewer(el) {
     const dl = downloadHref(url);
     el.insertAdjacentHTML('beforeend', `
       <div class="absolute bottom-2 left-2 right-2 flex items-center justify-between pointer-events-none">
-        <span class="text-[0.6rem] font-bold uppercase tracking-widest text-white/60 bg-black/40 px-2 py-1 rounded-md"><i class="fas fa-hand-pointer"></i> Arrastrá para girar</span>
+        <span class="text-[0.6rem] font-bold uppercase tracking-widest text-white/60 bg-black/40 px-2 py-1 rounded-md"><i class="fas fa-hand-pointer"></i> Arrastra para girar</span>
         ${dl ? `<a href="${dl}" class="pointer-events-auto text-[0.6rem] font-black uppercase tracking-widest text-white bg-black/50 hover:bg-primary px-2 py-1 rounded-md transition-colors"><i class="fas fa-download"></i> Descargar</a>` : ''}
       </div>`);
 

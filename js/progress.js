@@ -15,7 +15,7 @@
 const COMPETENCIES = {
   lectura: { label: 'Comprensión lectora', short: 'Lectura', icon: 'fa-book-open', color: '#3b82f6', game: 'quiz', gameLabel: 'Comprensión Lectora' },
   matematica: { label: 'Matemática aplicada', short: 'Matemática', icon: 'fa-calculator', color: '#f97316', game: 'timed_math', gameLabel: 'Contrarreloj' },
-  pensamiento: { label: 'Pensamiento crítico', short: 'Pensamiento', icon: 'fa-magnifying-glass', color: '#10b981', game: 'debug', gameLabel: 'Encontrá el Error' },
+  pensamiento: { label: 'Pensamiento crítico', short: 'Pensamiento', icon: 'fa-magnifying-glass', color: '#10b981', game: 'debug', gameLabel: 'Encuentra el Error' },
   lenguaje: { label: 'Lenguaje y vocabulario', short: 'Lenguaje', icon: 'fa-spell-check', color: '#a855f7', game: 'spelling', gameLabel: 'Ortografía y Ahorcado' },
 };
 const COMP_KEYS = Object.keys(COMPETENCIES);

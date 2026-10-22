@@ -567,7 +567,7 @@ const DEX_FACTS = {
   jaguar: [
     'Su mordida es tan fuerte que puede romper el caparazón de una tortuga.',
     'Cada jaguar tiene un patrón de manchas único, como una huella digital.',
-    'Algunos jaguares son casi negros, pero si los mirás de cerca igual tienen sus manchas.',
+    'Algunos jaguares son casi negros, pero si los miras de cerca igual tienen sus manchas.',
     'Es el felino más grande de América y el tercero del mundo, después del tigre y el león.',
     'Caza sobre todo al atardecer y de noche.',
   ],
@@ -1166,18 +1166,18 @@ window.testPetSound = async function testPetSound(species = window._myCompanionS
     document.querySelectorAll('[data-pet-sound]').forEach(b => { b.innerHTML = petSoundIcon(); });
   }
   const ctx = audioCtx();
-  if (!ctx) return window.showToast?.('<i class="fas fa-volume-xmark"></i> Este navegador no permite sonidos. Probá con Chrome.', 'error');
+  if (!ctx) return window.showToast?.('<i class="fas fa-volume-xmark"></i> Este navegador no permite sonidos. Prueba con Chrome.', 'error');
   try { await ctx.resume(); } catch { /* se informa abajo */ }
   let vibrated = false;
   try { vibrated = !!navigator.vibrate?.([80, 60, 120]); } catch { /* sin vibración */ }
   if (ctx.state !== 'running') {
-    return window.showToast?.('<i class="fas fa-volume-xmark"></i> El teléfono bloqueó el sonido. Tocá de nuevo "Probar sonido".', 'error');
+    return window.showToast?.('<i class="fas fa-volume-xmark"></i> El teléfono bloqueó el sonido. Toca de nuevo "Probar sonido".', 'error');
   }
   speakForEmote(ctx, species, 4);
   const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
   window.showToast?.(
-    `<i class="fas fa-volume-high"></i> ¿Se escuchó? Si no: subí el <b>volumen multimedia</b>${isIos ? ' y revisá el interruptor de silencio' : ''}.`
-    + (vibrated ? '' : (isIos ? ' (El iPhone no vibra desde páginas web.)' : ' Tu teléfono no permitió vibrar: revisá que la vibración esté activada.')),
+    `<i class="fas fa-volume-high"></i> ¿Se escuchó? Si no: sube el <b>volumen multimedia</b>${isIos ? ' y revisa el interruptor de silencio' : ''}.`
+    + (vibrated ? '' : (isIos ? ' (El iPhone no vibra desde páginas web.)' : ' Tu teléfono no permitió vibrar: revisa que la vibración esté activada.')),
     'info');
 };
 
@@ -1502,8 +1502,8 @@ window.openStarterPicker = function openStarterPicker() {
 
   const overlay = companionOverlay(`
     <div class="ga-card">
-      <div class="ga-title" style="margin-bottom:.5rem">Elegí tu compañero</div>
-      <p style="color:#cbd5e1;font-size:.85rem;margin-bottom:1.25rem">Va a crecer con vos: cada gema que ganes lo hace evolucionar. Tocá uno para ver su ficha. Después podés sumar más a tu colección con gemas.</p>
+      <div class="ga-title" style="margin-bottom:.5rem">Elige tu compañero</div>
+      <p style="color:#cbd5e1;font-size:.85rem;margin-bottom:1.25rem">Va a crecer contigo: cada gema que ganes lo hace evolucionar. Toca uno para ver su ficha. Después puedes sumar más a tu colección con gemas.</p>
       <div class="cp-grid">${cards}</div>
     </div>`);
   overlay.id = 'starter-picker';
@@ -1551,7 +1551,7 @@ window.chooseStarter = async function chooseStarter(species) {
     <div class="ga-card">
       <div style="width:12rem;height:12rem;margin:0 auto">${window.renderCompanionSvg(shownStage, 'companion-victory', species)}</div>
       <div class="ga-result-title win">¡${sp.names[shownStage]}!</div>
-      <p style="color:#cbd5e1;font-size:.9rem;margin-bottom:1.25rem">Se unió a tu equipo. Ganá gemas en duelos, cursos y retos para que evolucione.</p>
+      <p style="color:#cbd5e1;font-size:.9rem;margin-bottom:1.25rem">Se unió a tu equipo. Gana gemas en duelos, cursos y retos para que evolucione.</p>
       <button class="ga-btn" onclick="document.getElementById('starter-picker').remove()">¡Vamos! <i class="fas fa-arrow-right"></i></button>
     </div>`;
   if (shownStage !== stageIndex) window._myCompanionStageIndex = shownStage;
@@ -1618,7 +1618,7 @@ window.openQuetzadex = async function openQuetzadex() {
         <span class="ga-chip"><i class="fas fa-book-open"></i> Quetzadex</span>${window.petSoundButtonHtml()}
         <span class="ga-chip" style="color:#67e8f9"><i class="fas fa-gem"></i> <span data-my-gems>${window.userData?.gems ?? 0}</span></span>
       </div>
-      <p style="color:#cbd5e1;font-size:.8rem;margin:0 0 .6rem">Fauna de Guatemala: ${owned.size} de ${Object.keys(COMPANION_SPECIES).length} en tu colección. Tocá una para ver su ficha.</p>
+      <p style="color:#cbd5e1;font-size:.8rem;margin:0 0 .6rem">Fauna de Guatemala: ${owned.size} de ${Object.keys(COMPANION_SPECIES).length} en tu colección. Toca una para ver su ficha.</p>
       <button type="button" onclick="window.testPetSound()" style="margin:0 0 1rem;border:1px solid rgba(255,255,255,.2);background:transparent;color:#cbd5e1;border-radius:9999px;padding:.35rem .9rem;font-size:.72rem;font-weight:800;cursor:pointer"><i class="fas fa-volume-high"></i> Probar sonido</button>
       <div class="dex-grid">${cards}</div>
       <button class="ga-btn" style="margin-top:1rem" onclick="document.getElementById('quetzadex-overlay').remove()">Cerrar</button>
@@ -1657,7 +1657,7 @@ window.openDexCard = function openDexCard(species, mode = 'collection') {
       <button class="dex-btn ghost" onclick="window.shareCompanionCard('${species}', this)"><i class="fas fa-share-nodes"></i> Compartir en redes</button>`;
   } else {
     actions = `<button class="dex-btn" onclick="window.buyCompanionEgg('${species}', this)"><i class="fas fa-egg"></i> Comprar huevo · ${EGG_PRICE} 💎</button>
-      <p style="font-size:.7rem;color:#64748b;margin:0;text-align:center">Nace a tu mismo nivel de entrenador. Tenés ${window.userData?.gems ?? 0} 💎.</p>`;
+      <p style="font-size:.7rem;color:#64748b;margin:0;text-align:center">Nace a tu mismo nivel de entrenador. Tienes ${window.userData?.gems ?? 0} 💎.</p>`;
   }
 
   const overlay = companionOverlay(`
@@ -1795,7 +1795,7 @@ async function hatchAnimation(species) {
     <div class="ga-card">
       <div style="width:12rem;height:12rem;margin:0 auto">${window.renderCompanionSvg(stageIndex, 'companion-victory', species)}</div>
       <div class="ga-result-title win">¡${sp.names[stageIndex]}!</div>
-      <p style="color:#cbd5e1;font-size:.9rem;margin-bottom:1.25rem">Se sumó a tu Quetzadex y ahora te acompaña. Podés cambiar de compañero cuando quieras.</p>
+      <p style="color:#cbd5e1;font-size:.9rem;margin-bottom:1.25rem">Se sumó a tu Quetzadex y ahora te acompaña. Puedes cambiar de compañero cuando quieras.</p>
       <button class="ga-btn" onclick="this.closest('.ga-overlay').remove(); window.openDexCard('${species}')">Ver su ficha <i class="fas fa-book-open"></i></button>
     </div>`;
   celebrate();
@@ -1876,7 +1876,7 @@ window.shareCompanionCard = async function shareCompanionCard(species = window._
     ctx.drawImage(img, 0, 0);
     const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
     const file = new File([blob], `quetzadex-${species}.png`, { type: 'image/png' });
-    const text = `¡Mirá mi ${sp.names[stageIndex]}! 🐾 ${fact} #QuetzalLMS #FaunaDeGuatemala`;
+    const text = `¡Mira mi ${sp.names[stageIndex]}! 🐾 ${fact} #QuetzalLMS #FaunaDeGuatemala`;
     if (navigator.canShare?.({ files: [file] })) {
       await navigator.share({ files: [file], title: 'Mi mascota en Quetzal LMS', text });
     } else {
@@ -1911,7 +1911,7 @@ window.openQuetzadexAdmin = async function openQuetzadexAdmin() {
       <div class="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center sticky top-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur z-10">
         <div>
           <h2 class="text-lg font-black uppercase tracking-tight text-slate-800 dark:text-white"><i class="fas fa-film text-primary mr-2"></i> Videos de la Quetzadex</h2>
-          <p class="text-xs text-slate-400 mt-1">Un video por mascota. Pegá un enlace de YouTube o subí un .mp4 (recomendado para escuelas sin internet: se puede copiar al nodo escolar).</p>
+          <p class="text-xs text-slate-400 mt-1">Un video por mascota. Pega un enlace de YouTube o sube un .mp4 (recomendado para escuelas sin internet: se puede copiar al nodo escolar).</p>
         </div>
         <button onclick="this.closest('.fixed').remove()" class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500"><i class="fas fa-times"></i></button>
       </div>
@@ -1955,7 +1955,7 @@ window.saveCompanionVideo = async function saveCompanionVideo(species, btn) {
   const url = row.querySelector('.qa-url').value.trim();
   const title = row.querySelector('.qa-title').value.trim() || null;
   const credit = row.querySelector('.qa-credit').value.trim() || null;
-  if (!/^https:\/\/\S+$/i.test(url)) return window.showToast('<i class="fas fa-circle-xmark"></i> Pegá un enlace que empiece con https://', 'error');
+  if (!/^https:\/\/\S+$/i.test(url)) return window.showToast('<i class="fas fa-circle-xmark"></i> Pega un enlace que empiece con https://', 'error');
   if (!youtubeId(url) && !/\.(mp4|webm)(\?|$)/i.test(url)) {
     return window.showToast('<i class="fas fa-circle-xmark"></i> Tiene que ser un enlace de YouTube o un archivo .mp4/.webm', 'error');
   }
@@ -1972,7 +1972,7 @@ window.saveCompanionVideo = async function saveCompanionVideo(species, btn) {
 window.uploadCompanionVideo = async function uploadCompanionVideo(species, input) {
   const file = input.files?.[0];
   if (!file) return;
-  if (file.size > 80 * 1024 * 1024) return window.showToast('<i class="fas fa-circle-xmark"></i> El video pesa más de 80 MB: comprimilo antes de subirlo', 'error');
+  if (file.size > 80 * 1024 * 1024) return window.showToast('<i class="fas fa-circle-xmark"></i> El video pesa más de 80 MB: comprímelo antes de subirlo', 'error');
   const row = adminRow(species);
   const status = row.querySelector('.qa-status');
   status.textContent = 'Subiendo...';
@@ -1985,8 +1985,8 @@ window.uploadCompanionVideo = async function uploadCompanionVideo(species, input
   }
   const { data } = window._supabase.storage.from('course-content').getPublicUrl(path);
   row.querySelector('.qa-url').value = data.publicUrl;
-  status.textContent = 'Subido -- tocá Guardar';
-  window.showToast('<i class="fas fa-circle-check"></i> Video subido. Tocá Guardar para publicarlo.', 'success');
+  status.textContent = 'Subido -- toca Guardar';
+  window.showToast('<i class="fas fa-circle-check"></i> Video subido. Toca Guardar para publicarlo.', 'success');
 };
 
 window.previewCompanionVideoAdmin = function previewCompanionVideoAdmin(species) {
@@ -2144,7 +2144,7 @@ window.renderCompanionCard = async function renderCompanionCard(containerId, stu
           <p class="text-xs text-amber-500 font-bold uppercase tracking-widest"><i class="fas fa-crown"></i> ¡Evolución máxima alcanzada! (${total} gemas ganadas en total)</p>
         `}
         <div class="mt-4">
-          <div class="text-[0.6rem] font-black uppercase tracking-widest text-slate-400 mb-2">Trucos ${isMe ? '-- tocá tu mascota' : ''}</div>
+          <div class="text-[0.6rem] font-black uppercase tracking-widest text-slate-400 mb-2">Trucos ${isMe ? '-- toca tu mascota' : ''}</div>
           <div class="flex flex-wrap gap-1.5">${emoteChips}</div>
         </div>
         <div class="flex flex-wrap gap-2 mt-4 justify-center sm:justify-start">

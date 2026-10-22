@@ -427,7 +427,7 @@ window.runImportTeachers = async function runImportTeachers() {
   const btn = document.getElementById('btn-run-import-teachers');
   const sanitizeInput = window.sanitizeInput || ((v) => v);
 
-  if (!rows.length) return window.showToast('<i class="fas fa-circle-xmark"></i> Subí un CSV válido primero', 'error');
+  if (!rows.length) return window.showToast('<i class="fas fa-circle-xmark"></i> Sube un CSV válido primero', 'error');
   if (!password || password.length < 6) return window.showToast('<i class="fas fa-circle-xmark"></i> La contraseña debe tener al menos 6 caracteres', 'error');
 
   btn.disabled = true;
@@ -730,7 +730,7 @@ window.assignTeacher = async function assignTeacher(teacherId) {
 
         if (conflicts.length > 0) {
           const names = [...new Set(conflicts.map(c => ownerByGroup.get(`${c.grade}-${c.section}`)))].join(', ');
-          const proceed = confirm(`${conflicts.length} de estos grupos ya están a cargo de: ${names}. ¿Seguro que querés asignarlos también a este docente?`);
+          const proceed = confirm(`${conflicts.length} de estos grupos ya están a cargo de: ${names}. ¿Seguro que quieres asignarlos también a este docente?`);
           if (!proceed) {
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-check"></i> Finalizar Asignación';
@@ -770,7 +770,7 @@ window.assignTeacher = async function assignTeacher(teacherId) {
 
         if (conflict) {
           const otherName = conflict.teachers?.full_name || 'otro docente';
-          const proceed = confirm(`Este grupo (${grade} "${section}") ya está a cargo de ${otherName}. ¿Seguro que querés asignarlo también a este docente?`);
+          const proceed = confirm(`Este grupo (${grade} "${section}") ya está a cargo de ${otherName}. ¿Seguro que quieres asignarlo también a este docente?`);
           if (!proceed) {
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-check"></i> Finalizar Asignación';
@@ -1098,7 +1098,7 @@ window.openCoordinatorAssignModal = async function openCoordinatorAssignModal(co
             <i class="fas fa-times"></i>
         </button>
       </div>
-      <p class="text-xs text-slate-400 mb-4">Seleccioná qué docentes puede ver <strong>${sanitizeInput(coordinatorName)}</strong> desde su panel de coordinador.</p>
+      <p class="text-xs text-slate-400 mb-4">Selecciona qué docentes puede ver <strong>${sanitizeInput(coordinatorName)}</strong> desde su panel de coordinador.</p>
       <div class="flex-1 overflow-y-auto custom-scrollbar space-y-1.5 mb-4" id="coordinator-teacher-list">
         ${(allTeachers || []).map(t => `
           <label class="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors">

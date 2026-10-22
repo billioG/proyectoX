@@ -426,7 +426,7 @@ window.generateAICustomerSuccessNote = async function generateAICustomerSuccessN
     const metrics = `Cumplimiento de meta: ${health}%. Calidad promedio de proyectos: ${avgScore}/100. Docentes: ${teachers.length} (${activeTeachers} activos). Proyectos entregados: ${projects.length}/${target}. Satisfacción docente: ${avgRating}/5 (${ratings.length} calificaciones).`;
 
     try {
-        const note = await AIService.ask('Redactá la nota de Customer Success para este establecimiento.', metrics.slice(0, 500), false, [], 'cs_leader');
+        const note = await AIService.ask('Redacta la nota de Customer Success para este establecimiento.', metrics.slice(0, 500), false, [], 'cs_leader');
         if (note && document.getElementById('cs-ai-note')) {
             document.getElementById('cs-ai-note').textContent = `"${note}"`;
         }

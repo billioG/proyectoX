@@ -266,7 +266,7 @@ window.submitAiCodeEval = async function submitAiCodeEval(projectId) {
     const file = document.getElementById('ai-code-file')?.files?.[0];
     const rubricRaw = document.getElementById('ai-code-rubric')?.value.trim() || '';
     const rubric = rubricRaw.split('\n').map(l => l.trim()).filter(Boolean);
-    if (!file) return window.showToast('<i class="fas fa-circle-xmark"></i> Elegí una captura o archivo .mblock', 'error');
+    if (!file) return window.showToast('<i class="fas fa-circle-xmark"></i> Elige una captura o archivo .mblock', 'error');
 
     const btn = document.getElementById('btn-ai-code-eval');
     btn.disabled = true;

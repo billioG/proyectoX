@@ -17,17 +17,17 @@ const MascotWidget = {
         estudiante: {
             normal: [
                 '¿Qué construimos hoy? <i class="fas fa-robot"></i>',
-                '¡Subí tus avances! <i class="fas fa-rocket"></i>',
+                '¡Sube tus avances! <i class="fas fa-rocket"></i>',
                 'El código es tu superpoder <i class="fas fa-bolt"></i>',
                 '¿Viste el ranking hoy? <i class="fas fa-trophy"></i>',
-                '¡Seguí aprendiendo! <i class="fas fa-heart"></i>',
-                '¿Cómo te sentís hoy? <i class="fas fa-heart"></i>',
+                '¡Sigue aprendiendo! <i class="fas fa-heart"></i>',
+                '¿Cómo te sientes hoy? <i class="fas fa-heart"></i>',
                 'Equivocarse también es aprender <i class="fas fa-seedling"></i>',
                 'Un paso a la vez, vas bien <i class="fas fa-shoe-prints"></i>'
             ],
             happy: [
                 '¡Increíble progreso! <i class="fas fa-champagne-glasses"></i>',
-                '¡Sos una estrella! ⭐',
+                '¡Eres una estrella! ⭐',
                 '¡Esa racha se ve genial! <i class="fas fa-fire"></i>',
                 '¡Nada te detiene! <i class="fas fa-rocket"></i>'
             ],
@@ -46,20 +46,20 @@ const MascotWidget = {
                 '¿Todo bien? Te extrañé ayer <i class="fas fa-heart-crack"></i>'
             ],
             sad: [
-                'Hace días que no venís... ¿me extrañaste? <i class="fas fa-face-sad-tear"></i>',
+                'Hace días que no vienes... ¿me extrañaste? <i class="fas fa-face-sad-tear"></i>',
                 'Tu racha te espera hace días <i class="fas fa-face-sad-tear"></i>'
             ]
         },
         docente: {
             normal: [
                 '¡Hola, Profe! <i class="fas fa-apple-whole"></i>',
-                'Tenés proyectos por evaluar <i class="fas fa-chart-bar"></i>',
+                'Tienes proyectos por evaluar <i class="fas fa-chart-bar"></i>',
                 '¡Tus alumnos la rompen! <i class="fas fa-star"></i>',
                 '¿Pasaste asistencia hoy? <i class="fas fa-clipboard-list"></i>'
             ],
             happy: [
                 '¡Excelente gestión! <i class="fas fa-wand-magic-sparkles"></i>',
-                'Tus KPIs van genial <i class="fas fa-chart-line"></i>',
+                'Tus indicadores (KPIs) van genial <i class="fas fa-chart-line"></i>',
                 '¡Gracias por guiarlos! <i class="fas fa-robot"></i>'
             ],
             work: [

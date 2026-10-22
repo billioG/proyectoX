@@ -169,7 +169,7 @@ window.renderDuelsSection = function renderDuelsSection() {
 
   const createBtnHtml = window.GameArena.heroHtml({
     title: 'Comprensión Lectora 1v1',
-    subtitle: 'Leé un texto y respondé preguntas sobre lo que dice. Gana quien comprende mejor.',
+    subtitle: 'Lee un texto y responde preguntas sobre lo que dice. Gana quien comprende mejor.',
     icon: 'fa-book-open',
     c1: '#2563eb',
     c2: '#9333ea',
@@ -429,7 +429,7 @@ window.openCreateDuelModal = async function openCreateDuelModal() {
         <div>
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Gemas a apostar</label>
           <input type="number" id="duel-wager" min="0" value="10" class="input-field-tw h-11 text-sm" oninput="window.updateDuelWagerPreview()">
-          <p class="text-[0.6rem] text-slate-500 mt-1">Tenés ${userData?.gems ?? 0} gemas.</p>
+          <p class="text-[0.6rem] text-slate-500 mt-1">Tienes ${userData?.gems ?? 0} gemas.</p>
         </div>
         <div>
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Tema del texto</label>
@@ -462,7 +462,7 @@ window.sendDuelChallenge = async function sendDuelChallenge() {
   const userData = window.userData;
 
   if (wager < 0) return window.showToast('<i class="fas fa-circle-xmark"></i> La apuesta no puede ser negativa', 'error');
-  if (wager > (userData?.gems ?? 0)) return window.showToast('<i class="fas fa-circle-xmark"></i> No tenés suficientes gemas', 'error');
+  if (wager > (userData?.gems ?? 0)) return window.showToast('<i class="fas fa-circle-xmark"></i> No tienes suficientes gemas', 'error');
 
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
@@ -523,7 +523,7 @@ window.respondDuel = async function respondDuel(duelId, accept) {
   const duel = (window._duelsCache || []).find(d => d.id === duelId);
   const userData = window.userData;
   if (duel && duel.wager_gems > (userData?.gems ?? 0)) {
-    return window.showToast('<i class="fas fa-circle-xmark"></i> No tenés suficientes gemas para aceptar esta apuesta', 'error');
+    return window.showToast('<i class="fas fa-circle-xmark"></i> No tienes suficientes gemas para aceptar esta apuesta', 'error');
   }
 
   if (!window.aiGenerationLock.tryAcquire()) return;
@@ -537,7 +537,7 @@ window.respondDuel = async function respondDuel(duelId, accept) {
     });
     const result = await res.json();
     if (!res.ok) throw new Error(result.error || 'Error generando el quiz');
-    window.showToast('<i class="fas fa-circle-check"></i> ¡Reto aceptado! Ya podés jugar', 'success');
+    window.showToast('<i class="fas fa-circle-check"></i> ¡Reto aceptado! Ya puedes jugar', 'success');
     window.loadDuelsSection();
     window.sendDuelPushNotification(duelId, 'accepted');
   } catch (err) {
@@ -557,7 +557,7 @@ window.openDuelQuiz = async function openDuelQuiz(duelId) {
     window._myDuelPlayed = window._myDuelPlayed || new Set();
     window._myDuelPlayed.add(duelId);
     window.renderDuelsSection();
-    return window.showToast('<i class="fas fa-circle-info"></i> Ya respondiste este duelo -- esperá a tu rival', 'info');
+    return window.showToast('<i class="fas fa-circle-info"></i> Ya respondiste este duelo -- espera a tu rival', 'info');
   }
 
   // Las preguntas se piden vía RPC porque el correctIndex nunca viaja al
@@ -616,7 +616,7 @@ window.renderDuelQuizQuestion = function renderDuelQuizQuestion() {
   // (Se puede volver a ver el texto mientras se responde.)
   if (state.phase === 'read' && q.passage) {
     body.innerHTML = `
-      <p style="font-size:.65rem;font-weight:900;letter-spacing:.2em;text-transform:uppercase;color:#a5b4fc;margin-bottom:.4rem">Leé con atención</p>
+      <p style="font-size:.65rem;font-weight:900;letter-spacing:.2em;text-transform:uppercase;color:#a5b4fc;margin-bottom:.4rem">Lee con atención</p>
       ${q.title ? `<h3 style="font-size:1.1rem;font-weight:900;margin-bottom:.6rem">${sanitizeInput(q.title)}</h3>` : ''}
       <div style="text-align:left;max-height:48vh;overflow-y:auto;padding:.9rem 1rem;border-radius:1rem;background:rgba(255,255,255,.06);font-size:.92rem;line-height:1.6;white-space:pre-line">${sanitizeInput(q.passage)}</div>
       <button class="ga-btn" id="duel-quiz-start" style="margin-top:1.1rem">Ya leí, ver preguntas <i class="fas fa-arrow-right"></i></button>`;
@@ -707,8 +707,8 @@ window.submitDuelAnswers = async function submitDuelAnswers() {
     window.PracticeLog?.finish(score, total);
     await window.GameArena.result({
       ok: good,
-      title: score === total ? '¡Perfecto!' : good ? '¡Bien hecho!' : 'Seguí practicando',
-      subtitle: 'Práctica: no cuenta para el ranking ni gasta gemas. ¡Practicá las veces que quieras!',
+      title: score === total ? '¡Perfecto!' : good ? '¡Bien hecho!' : 'Sigue practicando',
+      subtitle: 'Práctica: no cuenta para el ranking ni gasta gemas. ¡Practica las veces que quieras!',
       detailHtml: `<div style="font-size:2.4rem;font-weight:900;margin:.25rem 0">${score}<span style="font-size:1.2rem;color:#94a3b8"> / ${total}</span></div>`,
       fact: state.practice.fact,
     });
@@ -734,8 +734,8 @@ window.submitDuelAnswers = async function submitDuelAnswers() {
   const good = score >= Math.ceil(total / 2);
   await window.GameArena.resultWithFact('quiz', duel.id, {
     ok: good,
-    title: score === total ? '¡Perfecto!' : good ? '¡Bien hecho!' : 'Seguí practicando',
-    subtitle: 'Cuando tu rival juegue, se define quién ganó. Después podés revisar tus respuestas.',
+    title: score === total ? '¡Perfecto!' : good ? '¡Bien hecho!' : 'Sigue practicando',
+    subtitle: 'Cuando tu rival juegue, se define quién ganó. Después puedes revisar tus respuestas.',
     detailHtml: `<div style="font-size:2.4rem;font-weight:900;margin:.25rem 0">${score}<span style="font-size:1.2rem;color:#94a3b8"> / ${total}</span></div>`,
   });
   window.loadDuelsSection();

@@ -149,7 +149,7 @@ window.GameArena = {
     quiz: { table: 'student_duels', label: 'Comprensión Lectora', icon: 'fa-book-open', cache: '_duelsCache', reload: 'loadDuelsSection', topic: true },
     hangman: { table: 'student_hangman_duels', label: 'Ahorcado', icon: 'fa-spider', cache: '_hangmanDuelsCache', reload: 'loadHangmanSection', topic: true },
     timed_math: { table: 'student_timed_math_duels', label: 'Contrarreloj', icon: 'fa-stopwatch', cache: '_timedMathDuelsCache', reload: 'loadTimedMathSection', topic: false },
-    debug: { table: 'student_debug_duels', label: 'Encontrá el Error', icon: 'fa-bug', cache: '_debugDuelsCache', reload: 'loadDebugSection', topic: true },
+    debug: { table: 'student_debug_duels', label: 'Encuentra el Error', icon: 'fa-bug', cache: '_debugDuelsCache', reload: 'loadDebugSection', topic: true },
     spelling: { table: 'student_spelling_duels', label: 'Ortografía', icon: 'fa-spell-check', cache: '_spellingDuelsCache', reload: 'loadSpellingSection', topic: true },
   },
 
@@ -178,10 +178,10 @@ window.GameArena = {
     modal.innerHTML = `
       <div class="glass-card w-full max-w-md p-6 shadow-2xl animate-slideUp bg-slate-900 border border-white/10">
         <h2 class="text-lg font-bold text-white mb-1"><i class="fas ${g.icon} text-primary mr-2"></i> ${g.label}</h2>
-        <p class="text-xs text-slate-400 mb-4">¿Cómo querés jugar?</p>
+        <p class="text-xs text-slate-400 mb-4">¿Cómo quieres jugar?</p>
         <div style="display:grid;gap:.7rem">
-          ${card('practice', 'fa-dumbbell', '#10b981', 'Práctica', 'Solo vos. Sin rival, sin gemas en juego y sin esperar a nadie. Para repasar las veces que quieras.')}
-          ${card('duel', 'fa-swords', '#e11d48', 'Reto', 'Contra un compañero. Apostás gemas y el rival juega cuando pueda; gana quien lo haga mejor.')}
+          ${card('practice', 'fa-dumbbell', '#10b981', 'Práctica', 'Solo tú. Sin rival, sin gemas en juego y sin esperar a nadie. Para repasar las veces que quieras.')}
+          ${card('duel', 'fa-swords', '#e11d48', 'Reto', 'Contra un compañero. Apuestas gemas y el rival juega cuando pueda; gana quien lo haga mejor.')}
         </div>
         <button class="w-full mt-4 py-2 text-xs font-bold text-slate-400" data-close>Cancelar</button>
       </div>`;
@@ -256,7 +256,7 @@ window.GameArena = {
         `<button class="ga-quick-btn" onclick="window.GameArena.quickChallenge('${key}')"><i class="fas ${g.icon}"></i><span>${g.label}</span></button>`).join('')}</div>
       <div class="ga-online" id="ga-online">${this.onlineHtml()}</div>
       <button type="button" class="ga-progress-btn" onclick="window.openMyProgress && window.openMyProgress()"><i class="fas fa-chart-line"></i> Mi progreso <span>cómo vas en lectura, matemática, pensamiento y lenguaje</span></button>
-      <div class="ga-quick-title" style="margin-top:1rem;color:#6ee7b7"><i class="fas fa-dumbbell"></i> Práctica <span>solo vos: sin rival, sin gemas, las veces que quieras</span></div>
+      <div class="ga-quick-title" style="margin-top:1rem;color:#6ee7b7"><i class="fas fa-dumbbell"></i> Práctica <span>solo tú: sin rival, sin gemas, las veces que quieras</span></div>
       <div class="ga-quick-row">${Object.entries(this.GAMES).map(([key, g]) =>
         `<button class="ga-quick-btn" onclick="window.PracticeMode && window.PracticeMode.start('${key}')"><i class="fas ${g.icon}" style="color:#6ee7b7"></i><span>${g.label}</span></button>`).join('')}</div>
     </div>`;
@@ -304,8 +304,8 @@ window.GameArena = {
   onlineHtml() {
     const s = window.sanitizeInput || ((v) => v);
     const ids = [...(window._onlineIds || [])].filter(id => this._classmateNames[id]);
-    if (!ids.length) return '<span class="ga-online-empty"><i class="fas fa-user-clock"></i> Ningún compañero conectado ahora -- igual podés retar: le llega cuando entre.</span>';
-    return `<span class="ga-online-label"><span class="ga-dot"></span> ${ids.length} conectado${ids.length > 1 ? 's' : ''} · tocá para retar</span>`
+    if (!ids.length) return '<span class="ga-online-empty"><i class="fas fa-user-clock"></i> Ningún compañero conectado ahora -- igual puedes retar: le llega cuando entre.</span>';
+    return `<span class="ga-online-label"><span class="ga-dot"></span> ${ids.length} conectado${ids.length > 1 ? 's' : ''} · toca para retar</span>`
       + ids.map(id => `<button class="ga-online-chip" onclick="window.GameArena.openChallengeFor('${id}')"><span class="ga-dot"></span>${s(this._classmateNames[id])}</button>`).join('');
   },
 
@@ -446,13 +446,13 @@ window.GameArena = {
       <div class="ga-panel">
         <div class="ga-title">${s(title)}</div>
         <div class="ga-vs">
-          <div class="ga-player left">${this.fighterHtml(me)}<div class="ga-name">${s(me.name || 'Vos')}</div>${this.streakHtml(me.streak)}</div>
+          <div class="ga-player left">${this.fighterHtml(me)}<div class="ga-name">${s(me.name || 'Tú')}</div>${this.streakHtml(me.streak)}</div>
           <div class="ga-vs-badge">VS</div>
           <div class="ga-player right">${this.fighterHtml(rival)}<div class="ga-name">${s(rival.name || 'Rival')}</div>${this.streakHtml(rival.streak)}</div>
         </div>
         ${wager > 0 ? `<div class="ga-wager"><i class="fas fa-gem"></i> ${wager} gemas en juego</div>` : ''}
         ${record && (record.w + record.l + record.t) > 0
-          ? `<div class="ga-record">Historial: Vos <b style="color:#4ade80">${record.w}</b> - <b style="color:#fb7185">${record.l}</b> ${s(rival.name?.split(' ')[0] || 'Rival')}${record.t ? ` · ${record.t} empate(s)` : ''}</div>`
+          ? `<div class="ga-record">Historial: Tú <b style="color:#4ade80">${record.w}</b> - <b style="color:#fb7185">${record.l}</b> ${s(rival.name?.split(' ')[0] || 'Rival')}${record.t ? ` · ${record.t} empate(s)` : ''}</div>`
           : `<div class="ga-record">Primer duelo entre ustedes</div>`}
       </div>`;
     document.body.appendChild(overlay);
@@ -499,12 +499,12 @@ window.GameArena = {
   // servidor solo lo entrega si ya jugaste. Contrarreloj no usa IA: trucos
   // de cálculo mental fijos.
   MATH_TIPS: [
-    'Para multiplicar por 5, multiplicá por 10 y dividí entre 2: 5 × 48 = 480 ÷ 2 = 240.',
-    'Para multiplicar por 9, multiplicá por 10 y restá el número: 9 × 7 = 70 − 7 = 63.',
-    'Para multiplicar por 11 un número de dos cifras, sumá sus cifras y ponelas en el medio: 11 × 36 = 3(3+6)6 = 396.',
+    'Para multiplicar por 5, multiplica por 10 y divide entre 2: 5 × 48 = 480 ÷ 2 = 240.',
+    'Para multiplicar por 9, multiplica por 10 y resta el número: 9 × 7 = 70 − 7 = 63.',
+    'Para multiplicar por 11 un número de dos cifras, suma sus cifras y ponelas en el medio: 11 × 36 = 3(3+6)6 = 396.',
     'Un número es divisible entre 3 si la suma de sus cifras lo es: 471 → 4+7+1 = 12 → sí.',
-    'Para sumar 99, sumá 100 y restá 1: 245 + 99 = 345 − 1 = 344.',
-    'El cuadrado de un número que termina en 5: multiplicá la decena por la siguiente y agregá 25. 35² = 3×4 = 12 → 1225.',
+    'Para sumar 99, suma 100 y resta 1: 245 + 99 = 345 − 1 = 344.',
+    'El cuadrado de un número que termina en 5: multiplica la decena por la siguiente y agrega 25. 35² = 3×4 = 12 → 1225.',
     'Restar es sumar hacia arriba: 1000 − 387 → de 387 a 400 son 13, de 400 a 1000 son 600 → 613.',
     'Multiplicar por 4 es duplicar dos veces: 4 × 23 = 46 → 92.',
     'Los mayas usaban base 20 y fueron de los primeros en usar el cero.',

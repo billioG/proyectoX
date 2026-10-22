@@ -48,7 +48,7 @@ window.renderDebugSection = function renderDebugSection() {
   const sanitizeInput = window.sanitizeInput || ((v) => v);
 
   const createBtnHtml = window.GameArena.heroHtml({
-    title: 'Encontrá el Error 1v1',
+    title: 'Encuentra el Error 1v1',
     subtitle: 'Una de estas afirmaciones es falsa. Gana quien la encuentra primero.',
     icon: 'fa-magnifying-glass',
     c1: '#059669',
@@ -155,7 +155,7 @@ window.openCreateDebugModal = async function openCreateDebugModal() {
   modal.className = 'fixed inset-0 z-[210] flex items-center justify-center p-6 bg-slate-950/90 backdrop-blur-sm animate-fadeIn';
   modal.innerHTML = `
     <div class="glass-card w-full max-w-md p-8 shadow-2xl animate-slideUp bg-slate-900 border border-white/10">
-      <h2 class="text-lg font-bold text-white uppercase tracking-tighter mb-6"><i class="fas fa-magnifying-glass text-rose-500 mr-2"></i> Crear "Encontrá el Error" 1v1</h2>
+      <h2 class="text-lg font-bold text-white uppercase tracking-tighter mb-6"><i class="fas fa-magnifying-glass text-rose-500 mr-2"></i> Crear "Encuentra el Error" 1v1</h2>
       <div class="space-y-4">
         <div>
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Rival</label>
@@ -166,7 +166,7 @@ window.openCreateDebugModal = async function openCreateDebugModal() {
         <div>
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Gemas a apostar</label>
           <input type="number" id="debug-wager" min="0" value="10" class="input-field-tw h-11 text-sm">
-          <p class="text-[0.6rem] text-slate-500 mt-1">Tenés ${userData?.gems ?? 0} gemas.</p>
+          <p class="text-[0.6rem] text-slate-500 mt-1">Tienes ${userData?.gems ?? 0} gemas.</p>
         </div>
         <div>
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Categoría</label>
@@ -193,7 +193,7 @@ window.sendDebugChallenge = async function sendDebugChallenge() {
   const userData = window.userData;
 
   if (wager < 0) return window.showToast('<i class="fas fa-circle-xmark"></i> La apuesta no puede ser negativa', 'error');
-  if (wager > (userData?.gems ?? 0)) return window.showToast('<i class="fas fa-circle-xmark"></i> No tenés suficientes gemas', 'error');
+  if (wager > (userData?.gems ?? 0)) return window.showToast('<i class="fas fa-circle-xmark"></i> No tienes suficientes gemas', 'error');
 
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
@@ -233,7 +233,7 @@ window.respondDebugDuel = async function respondDebugDuel(duelId, accept) {
   const duel = (window._debugDuelsCache || []).find(d => d.id === duelId);
   const userData = window.userData;
   if (duel && duel.wager_gems > (userData?.gems ?? 0)) {
-    return window.showToast('<i class="fas fa-circle-xmark"></i> No tenés suficientes gemas para aceptar esta apuesta', 'error');
+    return window.showToast('<i class="fas fa-circle-xmark"></i> No tienes suficientes gemas para aceptar esta apuesta', 'error');
   }
 
   if (!window.aiGenerationLock.tryAcquire()) return;
@@ -247,7 +247,7 @@ window.respondDebugDuel = async function respondDebugDuel(duelId, accept) {
     });
     const result = await res.json();
     if (!res.ok) throw new Error(result.error || 'Error generando las afirmaciones');
-    window.showToast('<i class="fas fa-circle-check"></i> ¡Reto aceptado! Ya podés jugar', 'success');
+    window.showToast('<i class="fas fa-circle-check"></i> ¡Reto aceptado! Ya puedes jugar', 'success');
     window.loadDebugSection();
     if (typeof window.sendDuelPushNotification === 'function') window.sendDuelPushNotification(duelId, 'accepted', 'debug');
   } catch (err) {
@@ -260,7 +260,7 @@ window.respondDebugDuel = async function respondDebugDuel(duelId, accept) {
 window.openDebugGame = async function openDebugGame(duelId) {
   const duel = (window._debugDuelsCache || []).find(d => d.id === duelId);
   // VS antes de start_debug_duel -- el reloj del servidor arranca después.
-  await window.GameArena.versus({ title: 'Encontrá el Error 1v1', ...(await window.GameArena.fightersFor(duel)) });
+  await window.GameArena.versus({ title: 'Encuentra el Error 1v1', ...(await window.GameArena.fightersFor(duel)) });
 
   const { data, error } = await window._supabase.rpc('start_debug_duel', { p_duel_id: duelId });
   if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
@@ -288,7 +288,7 @@ window.renderDebugGame = function renderDebugGame() {
   modal.innerHTML = `
     <div class="ga-panel"><div class="ga-card" id="debug-card">
       <div class="ga-topbar">
-        <span class="ga-chip"><i class="fas fa-magnifying-glass"></i> Encontrá el Error</span>
+        <span class="ga-chip"><i class="fas fa-magnifying-glass"></i> Encuentra el Error</span>
         <span class="ga-clock" id="debug-clock">0.0s</span>
       </div>
       <p style="font-size:.95rem;font-weight:800;margin-bottom:.25rem">¿Cuál afirmación es falsa?</p>
@@ -388,7 +388,7 @@ window.showDebugReview = async function showDebugReview(duelId) {
           const isMe = r.student_id === window.currentUser.id;
           return `
           <div class="p-3 rounded-xl bg-white/5 border ${r.student_id === duel?.winner_id ? 'border-emerald-500/30' : 'border-white/5'} text-left text-xs text-slate-300">
-            <span class="font-bold text-white">${isMe ? 'Vos' : 'Rival'}</span> --
+            <span class="font-bold text-white">${isMe ? 'Tú' : 'Rival'}</span> --
             ${r.correct ? `<span class="text-emerald-400">Encontró el error</span>` : `<span class="text-rose-400">No lo encontró</span>`}
             en ${(r.time_ms / 1000).toFixed(1)}s
             ${r.student_id === duel?.winner_id ? ' <i class="fas fa-trophy text-amber-400"></i>' : ''}

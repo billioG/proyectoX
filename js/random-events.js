@@ -153,7 +153,7 @@ window.renderEventNotificationToggle = async function renderEventNotificationTog
   slot.innerHTML = subscription
     ? `<div class="flex items-center gap-3">
          <div class="flex items-center gap-2 text-emerald-500 text-[0.65rem] font-black uppercase tracking-widest"><i class="fas fa-bell"></i> ${label} activas</div>
-         <button onclick="window.resetPushNotifications()" title="Si dejaste de recibir notificaciones, probá reiniciar" class="text-[0.6rem] font-bold text-slate-400 hover:text-primary underline"><i class="fas fa-rotate"></i> Reiniciar</button>
+         <button onclick="window.resetPushNotifications()" title="Si dejaste de recibir notificaciones, prueba reiniciar" class="text-[0.6rem] font-bold text-slate-400 hover:text-primary underline"><i class="fas fa-rotate"></i> Reiniciar</button>
        </div>`
     : `<button onclick="window.enableEventNotifications()" class="btn-secondary-tw h-10 px-4 text-[0.65rem] uppercase font-bold"><i class="fas fa-bell"></i> Activar ${label.toLowerCase()}</button>`;
 }

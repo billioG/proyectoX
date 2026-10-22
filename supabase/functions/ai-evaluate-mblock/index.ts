@@ -92,11 +92,11 @@ Deno.serve(async (req) => {
       ? criteriaList.map((c, i) => `${i + 1}. ${c}`).join('\n')
       : 'Criterio general: calidad y correctitud de la lógica del programa.';
 
-    const system = `Sos un docente de programación por bloques (mBlock/Scratch) evaluando el código
+    const system = `Eres un docente de programación por bloques (mBlock/Scratch) evaluando el código
 de un estudiante y responde de una manera objetiva y socrática contra esta rúbrica:
 ${rubricText}
 
-Evaluá qué tan bien cumple el código cada criterio. ${RESULT_FORMAT}`;
+Evalúa qué tan bien cumple el código cada criterio. ${RESULT_FORMAT}`;
 
     let summary = '';
     if (input_type === 'mblock_file') {

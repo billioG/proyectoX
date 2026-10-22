@@ -578,7 +578,7 @@ window.showSchoolDeleteBlockedModal = function showSchoolDeleteBlockedModal(scho
       <ul class="text-sm text-slate-600 dark:text-slate-300 space-y-1 mb-6 list-disc list-inside">
         ${blockers.map(b => `<li><strong>${b.count}</strong> ${window.sanitizeInput(b.label)}</li>`).join('')}
       </ul>
-      <p class="text-xs text-slate-400 mb-6">Para alumnos y docentes podés limpiarlos manualmente desde Estudiantes/Docentes. O usá la opción de abajo para borrar el establecimiento y TODO lo relacionado de una sola vez (irreversible).</p>
+      <p class="text-xs text-slate-400 mb-6">Para alumnos y docentes puedes limpiarlos manualmente desde Estudiantes/Docentes. O usa la opción de abajo para borrar el establecimiento y TODO lo relacionado de una sola vez (irreversible).</p>
       <div class="flex flex-col gap-2">
         <button class="btn-secondary-tw w-full h-11 text-xs uppercase font-bold" onclick="this.closest('.fixed').remove()">Cancelar</button>
         <button class="w-full h-11 text-xs uppercase font-bold rounded-xl bg-rose-500 text-white hover:bg-rose-600 transition-colors" onclick="this.closest('.fixed').remove(); window.openForceDeleteSchoolModal('${schoolId}', '${window.sanitizeAttr(schoolName)}')">
@@ -600,7 +600,7 @@ window.openForceDeleteSchoolModal = function openForceDeleteSchoolModal(schoolId
       </div>
       <h3 class="text-lg font-bold text-rose-500 mb-2">Esto borra TODO permanentemente</h3>
       <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">Alumnos (con sus cuentas de acceso), docentes asignados, asistencias, permisos, grupos, y cualquier otro dato de "${window.sanitizeInput(schoolName)}". No se puede deshacer.</p>
-      <label class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 block">Escribí el nombre exacto del establecimiento para confirmar:</label>
+      <label class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 block">Escribe el nombre exacto del establecimiento para confirmar:</label>
       <input type="text" id="force-delete-confirm-name" placeholder="${window.sanitizeAttr(schoolName)}" class="input-field-tw h-11 text-sm w-full mb-5">
       <div class="flex gap-3">
         <button class="btn-secondary-tw flex-1 h-11 text-xs uppercase font-bold" onclick="this.closest('.fixed').remove()">Cancelar</button>

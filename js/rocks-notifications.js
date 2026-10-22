@@ -44,7 +44,7 @@ async function notifyNewMonthRocks(rocks, month) {
     const monthNames = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
     window.showRocksNotificationModal({
-        title: `<i class="fas fa-bullseye"></i> Nuevas Rocas de ${monthNames[month]}`,
+        title: `<i class="fas fa-bullseye"></i> Nuevas metas del mes (Rocas) de ${monthNames[month]}`,
         message: `Tienes ${rocks.length} roca(s) asignada(s) este mes. ¡Completa todas para ganar XP adicional!`,
         rocks: rocks,
         type: 'new-month'

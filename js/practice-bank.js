@@ -74,7 +74,7 @@ window.PRACTICE_BANK = {
     { word: 'volcán', hint: 'El _____ de Fuego se ve desde Antigua Guatemala.', fact: 'Volcán es aguda terminada en n: lleva tilde.' },
     { word: 'ratón', hint: 'El _____ se escondió en su cueva.', fact: 'Ratón es aguda terminada en n: lleva tilde.' },
     { word: 'país', hint: 'Guatemala es un _____ de Centroamérica.', fact: 'País lleva tilde para separar la i de la a (pa-ís).' },
-    { word: 'lápiz', hint: 'Escribí mi tarea con un _____.', fact: 'Lápiz es llana y termina en z, por eso lleva tilde.' },
+    { word: 'lápiz', hint: 'Escribe mi tarea con un _____.', fact: 'Lápiz es llana y termina en z, por eso lleva tilde.' },
     { word: 'fácil', hint: 'Sumar 2 + 2 es muy _____.', fact: 'Fácil es llana y termina en l, por eso lleva tilde.' },
     { word: 'difícil', hint: 'El problema era _____ y tardé en resolverlo.', fact: 'Difícil es llana y termina en l, por eso lleva tilde.' },
     { word: 'médico', hint: 'El _____ revisó al paciente.', fact: 'Médico es esdrújula y lleva tilde.' },

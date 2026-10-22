@@ -243,8 +243,8 @@ function showViewLoadError(view) {
             <i class="fas ${offline ? 'fa-cloud-slash' : 'fa-triangle-exclamation'} text-4xl text-amber-400 mb-4"></i>
             <p class="text-sm font-bold text-white mb-2">${offline ? 'Sin conexión' : 'No se pudo cargar esta pantalla'}</p>
             <p class="text-xs text-slate-400 mb-4">${offline
-              ? 'Esta pantalla todavía no se había abierto con internet en este dispositivo, así que no hay nada guardado para mostrar sin conexión. Conectate una vez y volvé a entrar.'
-              : 'Revisá tu conexión e intentá de nuevo.'}</p>
+              ? 'Esta pantalla todavía no se había abierto con internet en este dispositivo, así que no hay nada guardado para mostrar sin conexión. Conéctate una vez y vuelve a entrar.'
+              : 'Revisa tu conexión e intenta de nuevo.'}</p>
             <button class="btn-primary-tw h-10 px-6 text-xs uppercase font-bold" onclick="window.nav('${view}')"><i class="fas fa-rotate-right"></i> Reintentar</button>
           </div>`;
     }

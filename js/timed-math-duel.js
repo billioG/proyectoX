@@ -160,7 +160,7 @@ window.openCreateTimedMathModal = async function openCreateTimedMathModal() {
         <div>
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Gemas a apostar</label>
           <input type="number" id="timed-math-wager" min="0" value="10" class="input-field-tw h-11 text-sm">
-          <p class="text-[0.6rem] text-slate-500 mt-1">Tenés ${userData?.gems ?? 0} gemas.</p>
+          <p class="text-[0.6rem] text-slate-500 mt-1">Tienes ${userData?.gems ?? 0} gemas.</p>
         </div>
         <p class="text-[0.65rem] text-slate-500"><i class="fas fa-info-circle text-primary"></i> 10 operaciones adaptadas a tu grado, ${MATH_TIME_LIMIT_SECONDS} segundos de reloj. Gana quien saca más correctas.</p>
       </div>
@@ -180,7 +180,7 @@ window.sendTimedMathChallenge = async function sendTimedMathChallenge() {
   const userData = window.userData;
 
   if (wager < 0) return window.showToast('<i class="fas fa-circle-xmark"></i> La apuesta no puede ser negativa', 'error');
-  if (wager > (userData?.gems ?? 0)) return window.showToast('<i class="fas fa-circle-xmark"></i> No tenés suficientes gemas', 'error');
+  if (wager > (userData?.gems ?? 0)) return window.showToast('<i class="fas fa-circle-xmark"></i> No tienes suficientes gemas', 'error');
 
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
@@ -219,7 +219,7 @@ window.respondTimedMathDuel = async function respondTimedMathDuel(duelId, accept
   const duel = (window._timedMathDuelsCache || []).find(d => d.id === duelId);
   const userData = window.userData;
   if (duel && duel.wager_gems > (userData?.gems ?? 0)) {
-    return window.showToast('<i class="fas fa-circle-xmark"></i> No tenés suficientes gemas para aceptar esta apuesta', 'error');
+    return window.showToast('<i class="fas fa-circle-xmark"></i> No tienes suficientes gemas para aceptar esta apuesta', 'error');
   }
 
   // Sin IA -- los problemas se generan con una función SQL determinística,
@@ -227,7 +227,7 @@ window.respondTimedMathDuel = async function respondTimedMathDuel(duelId, accept
   const { error } = await window._supabase.rpc('accept_timed_math_duel', { p_duel_id: duelId });
   if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
 
-  window.showToast('<i class="fas fa-circle-check"></i> ¡Reto aceptado! Ya podés jugar', 'success');
+  window.showToast('<i class="fas fa-circle-check"></i> ¡Reto aceptado! Ya puedes jugar', 'success');
   window.loadTimedMathSection();
   if (typeof window.sendDuelPushNotification === 'function') window.sendDuelPushNotification(duelId, 'accepted', 'timed_math');
 };
@@ -376,7 +376,7 @@ window.finishTimedMathGame = async function finishTimedMathGame() {
     const good = score >= Math.ceil(total / 2);
     await window.GameArena.result({
       ok: good,
-      title: score === total ? '¡Perfecto!' : good ? '¡Bien hecho!' : 'Seguí practicando',
+      title: score === total ? '¡Perfecto!' : good ? '¡Bien hecho!' : 'Sigue practicando',
       subtitle: 'Práctica: no cuenta para el ranking ni gasta gemas.',
       detailHtml: `<div style="font-size:2.4rem;font-weight:900;margin:.25rem 0">${score}<span style="font-size:1.2rem;color:#94a3b8"> / ${total}</span></div>
         ${misses.length ? `<div style="text-align:left;margin-top:.75rem;max-height:11rem;overflow:auto;font-size:.78rem;color:#cbd5e1">
@@ -405,7 +405,7 @@ window.finishTimedMathGame = async function finishTimedMathGame() {
   const good = result.score >= Math.ceil(result.total / 2);
   await window.GameArena.resultWithFact('timed_math', state.duelId, {
     ok: good,
-    title: result.score === result.total ? '¡Perfecto!' : good ? '¡Bien hecho!' : 'Seguí practicando',
+    title: result.score === result.total ? '¡Perfecto!' : good ? '¡Bien hecho!' : 'Sigue practicando',
     subtitle: 'Cuando tu rival juegue, se define quién ganó.',
     detailHtml: `<div style="font-size:2.4rem;font-weight:900;margin:.25rem 0">${result.score}<span style="font-size:1.2rem;color:#94a3b8"> / ${result.total}</span></div>
       <div style="font-size:.8rem;color:#facc15;font-weight:800"><i class="fas fa-stopwatch"></i> ${(result.time_ms / 1000).toFixed(1)}s</div>`,
@@ -433,7 +433,7 @@ window.showTimedMathReview = async function showTimedMathReview(duelId) {
           const isMe = r.student_id === window.currentUser.id;
           return `
           <div class="p-3 rounded-xl bg-white/5 border ${r.student_id === duel?.winner_id ? 'border-emerald-500/30' : 'border-white/5'} text-left text-xs text-slate-300">
-            <span class="font-bold text-white">${isMe ? 'Vos' : 'Rival'}</span> --
+            <span class="font-bold text-white">${isMe ? 'Tú' : 'Rival'}</span> --
             ${r.score}/${duel?.problem_count ?? '?'} correctas en ${(r.time_ms / 1000).toFixed(1)}s
             ${r.student_id === duel?.winner_id ? ' <i class="fas fa-trophy text-amber-400"></i>' : ''}
           </div>

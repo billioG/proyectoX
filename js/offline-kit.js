@@ -92,7 +92,7 @@ window.setOfflinePersonalPin = async function setOfflinePersonalPin(userId, pin)
     // alumno un error de Postgres en crudo: se marca para no insistir en
     // esta tablet hasta que el mensaje de error cambie (deploy nuevo).
     if (/Could not find the function|PGRST202/i.test(error.message || '')) {
-      const e = new Error('Esta función todavía no está lista, probá más tarde');
+      const e = new Error('Esta función todavía no está lista, prueba más tarde');
       e.pinFeatureUnavailable = true;
       throw e;
     }
@@ -182,10 +182,10 @@ window.openOfflineAccountPicker = function openOfflineAccountPicker() {
   modal.innerHTML = `
     <div style="max-width:40rem;margin:0 auto">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
-        <h2 style="font-size:1.5rem;font-weight:900;margin:0;color:#fff">¿Quién sos?</h2>
+        <h2 style="font-size:1.5rem;font-weight:900;margin:0;color:#fff">¿Quién eres?</h2>
         <button onclick="document.getElementById('offline-picker').remove()" style="width:2.5rem;height:2.5rem;border-radius:.75rem;border:0;background:rgba(255,255,255,.08);color:#cbd5e1;cursor:pointer"><i class="fas fa-times"></i></button>
       </div>
-      <p style="color:#94a3b8;font-size:.85rem;margin:0 0 1.25rem"><i class="fas fa-wifi" style="opacity:.5"></i> Sin internet: tocá tu nombre. Solo aparecen quienes ya entraron alguna vez en esta tablet con internet.</p>
+      <p style="color:#94a3b8;font-size:.85rem;margin:0 0 1.25rem"><i class="fas fa-wifi" style="opacity:.5"></i> Sin internet: toca tu nombre. Solo aparecen quienes ya entraron alguna vez en esta tablet con internet.</p>
       ${accounts.length ? `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(7.5rem,1fr));gap:.75rem">
         ${accounts.map(a => `
           <button onclick="window.pickOfflineAccount('${a.user.id}')" style="display:flex;flex-direction:column;align-items:center;gap:.5rem;padding:1rem .5rem;border-radius:1.25rem;border:2px solid rgba(255,255,255,.08);background:rgba(255,255,255,.05);color:#fff;cursor:pointer">
@@ -256,8 +256,8 @@ window.openPinSetupPrompt = function openPinSetupPrompt(userId, fullName) {
   function showOffer() {
     body.innerHTML = `
       <i class="fas fa-shield-halved" style="font-size:1.6rem;color:#facc15;margin-bottom:.5rem"></i>
-      <div style="font-weight:900;font-size:1.05rem;margin-bottom:.4rem">Protegé tu cuenta en esta tablet</div>
-      <p style="color:#94a3b8;font-size:.82rem;margin:0 0 1.1rem">Tu clase no usa contraseña -- sin un PIN, cualquiera que use esta tablet sin internet podría entrar como ${s(fullName)}. Creá uno de 4 números que solo vos sepas.</p>
+      <div style="font-weight:900;font-size:1.05rem;margin-bottom:.4rem">Protege tu cuenta en esta tablet</div>
+      <p style="color:#94a3b8;font-size:.82rem;margin:0 0 1.1rem">Tu clase no usa contraseña -- sin un PIN, cualquiera que use esta tablet sin internet podría entrar como ${s(fullName)}. Crea uno de 4 números que solo tú sepas.</p>
       <div style="display:flex;gap:.5rem">
         <button id="pin-setup-skip" style="flex:1;height:2.75rem;border-radius:.9rem;border:0;background:rgba(255,255,255,.08);color:#cbd5e1;font-weight:800;cursor:pointer">Ahora no</button>
         <button id="pin-setup-start" style="flex:1;height:2.75rem;border-radius:.9rem;border:0;background:#facc15;color:#1e293b;font-weight:900;cursor:pointer">Crear PIN</button>
@@ -275,14 +275,14 @@ window.openPinSetupPrompt = function openPinSetupPrompt(userId, fullName) {
       title, help,
       onDigits: (pin, fail) => onOk(pin, fail),
     });
-    step('Creá tu PIN secreto', 'Son 4 números que solo vos sabés.', (pin) => {
+    step('Crea tu PIN secreto', 'Son 4 números que solo tú sabes.', (pin) => {
       firstPin = pin;
-      const confirmPad = step('Repetí tu PIN', 'Para confirmar que lo escribiste bien.', async (pin2, fail) => {
-        if (pin2 !== firstPin) return fail('No coincidían. Probá de nuevo.');
+      const confirmPad = step('Repite tu PIN', 'Para confirmar que lo escribiste bien.', async (pin2, fail) => {
+        if (pin2 !== firstPin) return fail('No coincidían. Prueba de nuevo.');
         try {
           await window.setOfflinePersonalPin(userId, pin2);
           modal.remove();
-          window.showToast?.('<i class="fas fa-circle-check"></i> PIN creado -- ya podés entrar sin internet con él', 'success');
+          window.showToast?.('<i class="fas fa-circle-check"></i> PIN creado -- ya puedes entrar sin internet con él', 'success');
         } catch (e) {
           if (e.pinFeatureUnavailable) {
             // No insistir con un teclado atascado -- se cierra solo, sin
@@ -318,7 +318,7 @@ function openOfflinePasswordPrompt(userId) {
   box.innerHTML = `
     <div style="width:100%;max-width:22rem;background:#1e293b;border-radius:1.5rem;padding:1.5rem;color:#fff;text-align:center">
       <div style="font-weight:900;font-size:1.1rem;margin-bottom:.25rem">${s(acc.userData?.full_name || '')}</div>
-      <p style="color:#94a3b8;font-size:.8rem;margin:0 0 1rem">Escribí tu contraseña</p>
+      <p style="color:#94a3b8;font-size:.8rem;margin:0 0 1rem">Escribe tu contraseña</p>
       <input id="offline-pass-input" type="password" autocomplete="current-password"
         style="width:100%;height:3rem;border-radius:.9rem;border:2px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#fff;text-align:center;font-size:1.1rem;box-sizing:border-box"
         onkeydown="if(event.key==='Enter') window.verifyOfflinePassword('${userId}')">
@@ -370,7 +370,7 @@ function openOfflinePinPrompt(userId) {
   document.body.appendChild(box);
 
   renderPinKeypad(pad, {
-    title: 'Escribí tu PIN',
+    title: 'Escribe tu PIN',
     onDigits: async (pin, fail) => {
       const ok = await window.verifyOfflinePersonalPin(userId, pin);
       if (!ok) return fail('PIN incorrecto');

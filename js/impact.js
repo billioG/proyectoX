@@ -122,7 +122,7 @@ window.loadImpactData = async function loadImpactData() {
     </div>
 
     <div class="flex flex-wrap gap-2 mt-6">
-      <button class="btn-secondary-tw h-10 px-4 text-xs uppercase font-bold" onclick="window.exportImpactCsv()"><i class="fas fa-file-csv"></i> Exportar CSV</button>
+      <button class="btn-secondary-tw h-10 px-4 text-xs uppercase font-bold" onclick="window.exportImpactCsv()"><i class="fas fa-file-csv"></i> Exportar para Excel (CSV)</button>
       <button class="btn-secondary-tw h-10 px-4 text-xs uppercase font-bold" onclick="window.copyImpactSummary(this)"><i class="fas fa-copy"></i> Copiar resumen para postulaciones</button>
     </div>
     <p class="text-[0.7rem] text-slate-400 mt-3">"Activo" = entró a la plataforma al menos una vez en el período. La asistencia sale de los registros con QR. Para medir aprendizaje, complementar con la prueba de entrada y salida (docs/MEDICION_IMPACTO.md).</p>`;
@@ -156,6 +156,6 @@ window.copyImpactSummary = async function copyImpactSummary(btn) {
     await navigator.clipboard.writeText(text);
     window.showToast('<i class="fas fa-copy"></i> Resumen copiado', 'success');
   } catch {
-    prompt('Copiá el resumen:', text);
+    prompt('Copia el resumen:', text);
   }
 };

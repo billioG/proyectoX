@@ -125,11 +125,11 @@ Deno.serve(async (req) => {
       (recent || []).forEach((r: any) => seen.add(key(String(r.word))));
     }
 
-    const system = `Elegí ${need} palabra${need > 1 ? 's' : ''} en español relacionada${need > 1 ? 's' : ''} con el tema indicado, apropiada${need > 1 ? 's' : ''}
+    const system = `Elige ${need} palabra${need > 1 ? 's' : ''} en español relacionada${need > 1 ? 's' : ''} con el tema indicado, apropiada${need > 1 ? 's' : ''}
 para un estudiante de ${grade} en Guatemala, que sea${need > 1 ? 'n' : ''} un buen desafío de ORTOGRAFÍA
 (con tilde, ñ, b/v, s/c/z, h muda, o alguna dificultad ortográfica típica), entre 4
 y 14 letras, una sola palabra cada una (sin espacios ni guiones).${need > 1 ? ' Las palabras tienen que ser DISTINTAS entre sí, y de dificultades ortográficas distintas.' : ''}
-Para cada palabra escribí una pista en formato de TEXTO CON ESPACIO EN BLANCO
+Para cada palabra escribe una pista en formato de TEXTO CON ESPACIO EN BLANCO
 (cloze): una oración corta, real y específica sobre el tema (no una definición
 genérica ni un acertijo tipo "animal grande y gris"), donde la palabra falta y se
 marca con "_____". Ejemplo de formato (no copiar el contenido): "La caza ilegal
@@ -140,11 +140,11 @@ adicional, con esta forma exacta:
 El campo "fact" es UN dato curioso y educativo sobre la palabra (su origen, una regla
 ortográfica que la explica, o un dato del tema), en 1 o 2 oraciones, máximo 220
 caracteres. Tiene que ser verdadero y verificable; si no estás seguro de un dato,
-escribí en su lugar la regla ortográfica que ayuda a escribirla bien.`;
+escribe en su lugar la regla ortográfica que ayuda a escribirla bien.`;
 
     const used = [...seen].slice(0, 80);
     const userMsg = `Tema: ${topic.slice(0, 200)}`
-      + (used.length ? `\nEstas palabras YA salieron, elegí otras distintas: ${used.join(', ')}` : '');
+      + (used.length ? `\nEstas palabras YA salieron, elige otras distintas: ${used.join(', ')}` : '');
 
     // Groq a veces rechaza su propia salida en modo JSON estricto ("Failed
     // to validate JSON") o el content viene truncado/mal formado --

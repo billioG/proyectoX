@@ -96,7 +96,7 @@ adicional, con esta forma exacta:
   const { data: subs } = await admin.from('push_subscriptions').select('*').eq('role', event.target_role);
   const payload = JSON.stringify({
     title: '⚡ Evento Sorpresa Activo',
-    body: `¡${event.gem_pool} gemas en juego! Entrá ahora al quiz relámpago de "${event.topic}".`,
+    body: `¡${event.gem_pool} gemas en juego! Entra ahora al quiz relámpago de "${event.topic}".`,
     url: '/',
     eventId: event.id,
     target: 'random-event',

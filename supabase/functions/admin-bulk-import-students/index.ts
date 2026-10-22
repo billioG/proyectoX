@@ -142,7 +142,7 @@ Deno.serve(async (req) => {
       const fullName = String(s.fullName || '').trim().replace(/\s+/g, ' ').slice(0, 120);
       if (!isAdmin) {
         if (!myClasses.has(`${s.school_code}|${s.grade}|${s.section}`)) {
-          results.push({ username: '', fullName, status: 'error', message: 'Solo podés agregar alumnos en tus clases asignadas' });
+          results.push({ username: '', fullName, status: 'error', message: 'Solo puedes agregar alumnos en tus clases asignadas' });
           continue;
         }
       }

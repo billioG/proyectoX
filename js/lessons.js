@@ -4,7 +4,7 @@
  */
 
 const LESSON_TYPE_ICON = { video: 'fa-video', pdf: 'fa-file-pdf', image: 'fa-image', scorm: 'fa-cube', h5p: 'fa-puzzle-piece', html5: 'fa-window-maximize', tinkercad: 'fa-microchip' };
-const LESSON_TYPE_LABEL = { video: 'Video', pdf: 'PDF', image: 'Imagen', scorm: 'SCORM', h5p: 'H5P', html5: 'Aplicación HTML5', quiz: 'Quiz', tinkercad: 'Tinkercad' };
+const LESSON_TYPE_LABEL = { video: 'Video', pdf: 'PDF', image: 'Imagen', scorm: 'Actividad interactiva (SCORM)', h5p: 'Actividad interactiva (H5P)', html5: 'Aplicación web (HTML5)', quiz: 'Cuestionario (Quiz)', tinkercad: 'Diseño en Tinkercad' };
 const LESSON_TYPES_WITH_GRADE = new Set(['scorm', 'h5p', 'quiz']);
 // Subconjunto que sube un .zip (H5P/SCORM/HTML5 genérico) -- el quiz también
 // tiene nota automática pero su UI de carga es un formulario de preguntas,
@@ -75,7 +75,7 @@ window.loadTeacherCourses = async function loadTeacherCourses(container) {
 
   container.innerHTML = `
     <div class="flex flex-col md:flex-row md:flex-wrap gap-4 mb-6 items-center">
-      <p class="text-xs text-slate-400 grow">Creá cursos con lecciones en orden (video, PDF, imágenes, SCORM/H5P). Los alumnos avanzan paso a paso.</p>
+      <p class="text-xs text-slate-400 grow">Crea cursos con lecciones en orden (video, PDF, imágenes y actividades interactivas: SCORM/H5P). Los alumnos avanzan paso a paso.</p>
       <button class="btn-secondary-tw h-11 px-6 text-xs uppercase font-bold shrink-0" onclick="window.openSharedCoursesLibrary()"><i class="fas fa-book-bookmark"></i> Biblioteca Compartida</button>
       <button class="btn-secondary-tw h-11 px-6 text-xs uppercase font-bold shrink-0" onclick="window.openExportSireModal()"><i class="fas fa-file-export"></i> Exportar Notas</button>
       ${window.userRole === 'docente' ? `<button class="btn-secondary-tw h-11 px-6 text-xs uppercase font-bold shrink-0" onclick="window.openWeeklyTopicModal()"><i class="fas fa-bullseye"></i> Tema de la semana</button>
@@ -207,7 +207,7 @@ window.openCreateCourseModal = async function openCreateCourseModal(editCourseId
   const classOptions = await getClassOptionsForCurrentUser();
 
   if (!classOptions.length) {
-    return window.showToast('<i class="fas fa-circle-xmark"></i> No tenés clases asignadas todavía', 'error');
+    return window.showToast('<i class="fas fa-circle-xmark"></i> No tienes clases asignadas todavía', 'error');
   }
 
   const selectedIndex = editing ? classOptions.findIndex(c => c.school_code === editing.school_code && c.grade === editing.grade && c.section === editing.section) : -1;
@@ -258,7 +258,7 @@ window.openCreateCourseModal = async function openCreateCourseModal(editCourseId
         <div>
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Link de Clase Tinkercad (opcional)</label>
           <input type="text" id="course-tinkercad-class-url" placeholder="https://www.tinkercad.com/joinclass/..." class="input-field-tw h-11 text-sm" value="${editing ? window.sanitizeAttr(editing.tinkercad_class_url || '') : ''}">
-          <p class="text-[0.65rem] text-slate-400 mt-1">Si lo llenás, los estudiantes de este curso ven un botón para entrar a tu clase de Tinkercad.</p>
+          <p class="text-[0.65rem] text-slate-400 mt-1">Si lo llenas, los estudiantes de este curso ven un botón para entrar a tu clase de Tinkercad.</p>
         </div>
       </div>
       <div class="flex gap-3 mt-8 shrink-0">
@@ -300,9 +300,9 @@ window.saveCourse = async function saveCourse(editingId) {
   const classOption = window._courseClassOptions?.[classIndex];
   const btn = document.getElementById('btn-save-course');
 
-  if (!title) return window.showToast('<i class="fas fa-circle-xmark"></i> Ponele un título', 'error');
-  if (!cnb_area) return window.showToast('<i class="fas fa-circle-xmark"></i> Elegí el área CNB del curso', 'error');
-  if (!classOption) return window.showToast('<i class="fas fa-circle-xmark"></i> Elegí una clase', 'error');
+  if (!title) return window.showToast('<i class="fas fa-circle-xmark"></i> Ponle un título', 'error');
+  if (!cnb_area) return window.showToast('<i class="fas fa-circle-xmark"></i> Elige el área CNB del curso', 'error');
+  if (!classOption) return window.showToast('<i class="fas fa-circle-xmark"></i> Elige una clase', 'error');
 
   // El SIRE no acepta más de 100 puntos por bimestre -- si ya hay otros
   // cursos en el mismo bimestre/clase, sus ponderaciones se SUMAN (así
@@ -351,7 +351,7 @@ window.saveCourse = async function saveCourse(editingId) {
   }
 
   clearFormDraft('px_draft_course');
-  window.showToast('<i class="fas fa-circle-check"></i> Curso creado -- agregale recursos', 'success');
+  window.showToast('<i class="fas fa-circle-check"></i> Curso creado -- agrégale recursos', 'success');
   document.querySelector('.fixed.z-\\[200\\]')?.remove();
   window._myCoursesCache = [...(window._myCoursesCache || []), data];
   window.openCourseManager(data.id);
@@ -556,7 +556,7 @@ window.openCourseGradesModal = async function openCourseGradesModal(courseId) {
         <summary class="text-[0.65rem] font-bold text-primary uppercase tracking-widest cursor-pointer select-none"><i class="fas fa-circle-info mr-1"></i> ¿Cómo se calcula?</summary>
         <div class="mt-2 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 text-xs text-slate-600 dark:text-slate-300 space-y-1">
           <p>Cada recurso que cuenta para la nota tiene sus puntos (la suma es lo que vale el curso). El estudiante gana <strong>puntos del recurso × su nota en ese recurso</strong>.</p>
-          <p>Ejemplo: un SCORM de 6 pts y un quiz de 4 pts. Con 100 % en el SCORM y 50 % en el quiz: 6 + 2 = <strong>8 puntos</strong>.</p>
+          <p>Ejemplo: una actividad interactiva (SCORM) de 6 pts y un cuestionario de 4 pts. Con 100 % en la actividad y 50 % en el cuestionario: 6 + 2 = <strong>8 puntos</strong>.</p>
           <p>Video, PDF e imagen cuentan como "visto" para el avance, pero no suman puntos salvo que lo decidas en la ponderación.</p>
         </div>
       </details>
@@ -769,7 +769,7 @@ window.renderCourseResourcesList = function renderCourseResourcesList() {
   const warningHtml = warnMissingGraded ? `
     <div class="glass-card p-4 mb-3 border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs flex items-start gap-2">
       <i class="fas fa-triangle-exclamation mt-0.5"></i>
-      <span>Este curso todavía no tiene ninguna actividad con nota (Quiz, H5P o SCORM) -- vale <strong>0 puntos</strong> hasta que agregues una. Agregá al menos un cuestionario final.</span>
+      <span>Este curso todavía no tiene ninguna actividad con nota (Quiz, H5P o SCORM) -- vale <strong>0 puntos</strong> hasta que agregues una. Agrega al menos un cuestionario final.</span>
     </div>` : '';
 
   if (!lessons.length) {
@@ -890,7 +890,7 @@ window.previewCourseResource = function previewCourseResource(lessonId) {
     if (!container) return;
     const frame = document.createElement('iframe');
     frame.src = `${h5pVendorUrl('player.html')}?json=${encodeURIComponent(lesson.content_url.replace(/\/$/, ''))}`;
-    frame.title = lesson.title || 'Contenido H5P';
+    frame.title = lesson.title || 'Actividad interactiva (H5P)';
     frame.setAttribute('allow', 'fullscreen; autoplay');
     frame.allowFullscreen = true;
     frame.style.cssText = 'width:100%;border:0;display:block;min-height:320px;';
@@ -929,7 +929,7 @@ window.loadTeacherResourceComments = async function loadTeacherResourceComments(
       </select>
       <div id="teacher-comments-list" class="space-y-2 max-h-52 overflow-y-auto custom-scrollbar mb-2 pr-1"></div>
       <div class="flex gap-2">
-        <input id="teacher-comment-input" class="input-field-tw h-9 text-sm flex-1" placeholder="Escribí un comentario...">
+        <input id="teacher-comment-input" class="input-field-tw h-9 text-sm flex-1" placeholder="Escribe un comentario...">
         <button class="btn-primary-tw h-9 px-4 text-xs uppercase font-bold shrink-0" onclick="window.postTeacherResourceComment('${lessonId}')"><i class="fas fa-paper-plane"></i></button>
       </div>
     `}
@@ -1060,11 +1060,11 @@ window.openAddResourceModal = function openAddResourceModal(courseId, editLesson
             <option value="video">Video</option>
             <option value="pdf">PDF</option>
             <option value="image">Imagen</option>
-            <option value="scorm">SCORM (.zip -- con nota automática)</option>
-            <option value="h5p">H5P (.zip -- con nota automática)</option>
-            <option value="html5">Aplicación HTML5 (.zip -- sin nota automática)</option>
-            <option value="quiz">Quiz (preguntas -- con nota automática)</option>
-            <option value="tinkercad">Tinkercad (abre el diseño en pestaña nueva)</option>
+            <option value="scorm">Actividad interactiva con nota (SCORM, archivo .zip)</option>
+            <option value="h5p">Actividad interactiva con nota (H5P, archivo .zip)</option>
+            <option value="html5">Aplicación web sin nota (HTML5, archivo .zip)</option>
+            <option value="quiz">Cuestionario con nota (Quiz)</option>
+            <option value="tinkercad">Diseño en Tinkercad (se abre en pestaña nueva)</option>
           </select>
         </div>
         <div id="resource-source-mode-wrap">
@@ -1078,7 +1078,7 @@ window.openAddResourceModal = function openAddResourceModal(courseId, editLesson
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">URL *</label>
           <input type="text" id="resource-url" placeholder="https://..." class="input-field-tw h-11 text-sm" value="${editing && !isFileType && !isQuiz ? window.sanitizeAttr(editing.content_url || '') : ''}">
         </div>
-        ${editing && isZip ? '<p class="text-[0.65rem] text-slate-400"><i class="fas fa-circle-info"></i> El archivo del paquete no se puede reemplazar acá -- borrá el recurso y creá uno nuevo si necesitás subir otro paquete.</p>' : !isQuiz ? `
+        ${editing && isZip ? '<p class="text-[0.65rem] text-slate-400"><i class="fas fa-circle-info"></i> El archivo del paquete no se puede reemplazar acá -- borra el recurso y crea uno nuevo si necesitas subir otro paquete.</p>' : !isQuiz ? `
         <div id="resource-source-singlefile-wrap" class="hidden">
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Archivo *</label>
           <input type="file" id="resource-single-file" class="input-field-tw text-sm py-2.5">
@@ -1205,7 +1205,7 @@ window.renderQuizBuilder = function renderQuizBuilder() {
             <input type="number" class="input-field-tw h-9 text-xs" value="${q.tolerance}" onchange="window.updateQuizQuestionField('${q._id}', 'tolerance', parseFloat(this.value) || 0)">
           </div>
         </div>
-        <p class="text-[0.6rem] text-slate-400 mt-1"><i class="fas fa-circle-info"></i> Dejá tolerancia en 0 si solo aceptás la respuesta exacta.</p>
+        <p class="text-[0.6rem] text-slate-400 mt-1"><i class="fas fa-circle-info"></i> Deja tolerancia en 0 si solo aceptas la respuesta exacta.</p>
       ` : ''}
       ${q.type === 'range' ? `
         <div class="grid grid-cols-2 gap-2">
@@ -1221,7 +1221,7 @@ window.renderQuizBuilder = function renderQuizBuilder() {
       ` : ''}
       ${q.type === 'text' ? `<p class="text-[0.6rem] text-slate-400"><i class="fas fa-circle-info"></i> Se califica manualmente -- no suma a la nota automática.</p>` : ''}
     </div>
-  `).join('') || '<p class="text-[0.65rem] text-slate-400 text-center py-4">Agregá al menos una pregunta.</p>';
+  `).join('') || '<p class="text-[0.65rem] text-slate-400 text-center py-4">Agrega al menos una pregunta.</p>';
 }
 
 // Supabase Storage rechaza ciertos caracteres en la key (dos puntos,
@@ -1245,7 +1245,7 @@ async function uploadSingleLessonFile(file, lessonId) {
 }
 
 function validateQuizQuestions(questions) {
-  if (!questions?.length) return 'Agregá al menos una pregunta';
+  if (!questions?.length) return 'Agrega al menos una pregunta';
   for (const q of questions) {
     if (!q.question?.trim()) return 'Todas las preguntas necesitan un enunciado';
     if (q.type === 'mc' && (!q.options || q.options.filter(o => o.trim()).length < 2)) return 'Las preguntas de opción múltiple necesitan al menos 2 opciones';
@@ -1267,7 +1267,7 @@ window.saveResource = async function saveResource(courseId, editingId) {
   const btn = document.getElementById('btn-save-resource');
   const progressEl = document.getElementById('resource-upload-progress');
 
-  if (!title) return window.showToast('<i class="fas fa-circle-xmark"></i> Ponele un título', 'error');
+  if (!title) return window.showToast('<i class="fas fa-circle-xmark"></i> Ponle un título', 'error');
   if (!isFileType && !isSingleFileUpload && !content_url) return window.showToast('<i class="fas fa-circle-xmark"></i> Completa la URL', 'error');
   // Un link de curso se abre embebido (iframe) o directo en la pestaña del
   // alumno -- sin esto, una cuenta docente comprometida (o un error de
@@ -1276,7 +1276,7 @@ window.saveResource = async function saveResource(courseId, editingId) {
   if (!isFileType && !isSingleFileUpload && content_url && !window.isAllowedContentHost(content_url)) {
     return window.showToast('<i class="fas fa-circle-xmark"></i> Ese link no es de un sitio permitido (YouTube, Drive, Tinkercad o archivos subidos a la plataforma)', 'error');
   }
-  if (isSingleFileUpload && !singleFile) return window.showToast('<i class="fas fa-circle-xmark"></i> Elegí un archivo', 'error');
+  if (isSingleFileUpload && !singleFile) return window.showToast('<i class="fas fa-circle-xmark"></i> Elige un archivo', 'error');
   if (isQuiz) {
     const quizErr = validateQuizQuestions(window._quizBuilderQuestions);
     if (quizErr) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + quizErr, 'error');
@@ -1311,7 +1311,7 @@ window.saveResource = async function saveResource(courseId, editingId) {
     return;
   }
 
-  if (isZip && !file) return window.showToast('<i class="fas fa-circle-xmark"></i> Elegí un archivo .zip', 'error');
+  if (isZip && !file) return window.showToast('<i class="fas fa-circle-xmark"></i> Elige un archivo .zip', 'error');
 
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publicando...';
 
@@ -1441,7 +1441,7 @@ window.extractAndUploadPackage = async function extractAndUploadPackage(file, ba
       for (const dep of (h5pJson.preloadedDependencies || [])) await visitLib(dep);
 
       if (missing.size) {
-        throw new Error(`El archivo .h5p no trae las librerías que necesita (${[...missing].join(', ')}). Volvé a exportarlo asegurándote de incluir "todas las librerías" / "standalone" -- si no, el contenido no va a reproducirse.`);
+        throw new Error(`El archivo .h5p no trae las librerías que necesita (${[...missing].join(', ')}). Vuelve a exportarlo asegurándote de incluir "todas las librerías" / "standalone" -- si no, el contenido no va a reproducirse.`);
       }
     } catch (e) {
       if (e.message.includes('librerías')) throw e;
@@ -1466,7 +1466,7 @@ window.extractAndUploadPackage = async function extractAndUploadPackage(file, ba
     if (error) {
       if (/maximum allowed size/i.test(error.message)) {
         const sizeMb = (blob.size / (1024 * 1024)).toFixed(1);
-        throw new Error(`"${entry.name}" pesa ${sizeMb}MB y supera el límite de tamaño de archivo del proyecto. Comprimí ese archivo (usualmente un video) antes de volver a exportar el paquete, o pedile al admin que suba el límite en el panel de Supabase (Project Settings > Storage).`);
+        throw new Error(`"${entry.name}" pesa ${sizeMb}MB y supera el límite de tamaño de archivo del proyecto. Comprime ese archivo (usualmente un video) antes de volver a exportar el paquete, o pídele al admin que suba el límite en el panel de Supabase (Project Settings > Storage).`);
       }
       throw new Error(`Error subiendo ${entry.name}: ${error.message}`);
     }
@@ -1740,14 +1740,14 @@ window.openCopyCourseModal = async function openCopyCourseModal(courseId) {
   if (!source) return;
 
   const classOptions = await getClassOptionsForCurrentUser();
-  if (!classOptions.length) return window.showToast('<i class="fas fa-circle-xmark"></i> No tenés clases asignadas todavía', 'error');
+  if (!classOptions.length) return window.showToast('<i class="fas fa-circle-xmark"></i> No tienes clases asignadas todavía', 'error');
 
   const modal = document.createElement('div');
   modal.className = 'fixed inset-0 z-[210] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-sm animate-fadeIn';
   modal.innerHTML = `
     <div class="glass-card w-full max-w-md p-8 shadow-2xl animate-slideUp">
       <h2 class="text-lg font-bold text-slate-800 dark:text-white uppercase tracking-tighter mb-2"><i class="fas fa-copy text-primary mr-2"></i> Copiar Curso</h2>
-      <p class="text-xs text-slate-400 mb-6">"${window.sanitizeInput(source.title)}" (${source.lessons?.length || 0} recursos) se copiará a la clase que elijas. Podés editarlo después sin afectar el original.</p>
+      <p class="text-xs text-slate-400 mb-6">"${window.sanitizeInput(source.title)}" (${source.lessons?.length || 0} recursos) se copiará a la clase que elijas. Puedes editarlo después sin afectar el original.</p>
       <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Clase destino</label>
       <select id="copy-course-class" class="input-field-tw h-11 text-sm mb-6">
         ${classOptions.map((c, i) => `<option value="${i}">${window.sanitizeInput(c.schoolName)} · ${window.sanitizeInput(c.grade)} ${window.sanitizeInput(c.section)}</option>`).join('')}
@@ -2172,8 +2172,8 @@ window.downloadCourseOffline = async function downloadCourseOffline(courseId) {
   // failedCritical bloquea "listo offline" sin importar el % general.
   if (successPct < DOWNLOAD_OK_THRESHOLD || failedCritical.size > 0) {
     const msg = failedCritical.size > 0
-      ? `No se pudieron descargar ${failedCritical.size} recurso(s) clave -- esas lecciones no van a funcionar offline. Probá de nuevo con mejor señal.`
-      : `Solo se descargaron ${ok}/${allUrls.length} archivos -- probá de nuevo con mejor señal antes de confiar en que funcione offline.`;
+      ? `No se pudieron descargar ${failedCritical.size} recurso(s) clave -- esas lecciones no van a funcionar offline. Prueba de nuevo con mejor señal.`
+      : `Solo se descargaron ${ok}/${allUrls.length} archivos -- prueba de nuevo con mejor señal antes de confiar en que funcione offline.`;
     window.showToast(`<i class="fas fa-triangle-exclamation"></i> ${msg}`, 'error');
     if (btn) btn.innerHTML = '<i class="fas fa-download"></i> Reintentar descarga';
     return;
@@ -2313,7 +2313,7 @@ window.renderCourseSidebar = function renderCourseSidebar() {
     const ptsLabel = approvedWeighting?.counted.has(l.id) ? ` · vale ${approvedWeighting.points.get(l.id)} pts` : '';
     return `
       <div class="p-3 rounded-xl flex items-center gap-3 transition-all ${unlocked ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'} ${isActive ? 'bg-primary/10 border border-primary/30' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}"
-           onclick="${unlocked ? `window.selectCourseResource(${i})` : `window.showToast('<i class=\\'fas fa-lock\\'></i> Completá el recurso anterior primero', 'info')`}">
+           onclick="${unlocked ? `window.selectCourseResource(${i})` : `window.showToast('<i class=\\'fas fa-lock\\'></i> Completa el recurso anterior primero', 'info')`}">
         <div class="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black shrink-0 ${done ? 'bg-emerald-500 text-white' : unlocked ? 'bg-primary/10 text-primary' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}">
           ${done ? '<i class="fas fa-check"></i>' : unlocked ? (i + 1) : '<i class="fas fa-lock text-[0.65rem]"></i>'}
         </div>
@@ -2330,7 +2330,7 @@ window.selectCourseResource = function selectCourseResource(index) {
   const { items } = window._activeCourse || {};
   if (!items || !items[index]) return;
   if (!isCourseResourceUnlocked(items, index)) {
-    return window.showToast('<i class="fas fa-lock"></i> Completá el recurso anterior primero', 'info');
+    return window.showToast('<i class="fas fa-lock"></i> Completa el recurso anterior primero', 'info');
   }
 
   window.teardownScormSession?.();
@@ -2407,7 +2407,7 @@ window.selectCourseResource = function selectCourseResource(index) {
     footerEl.innerHTML = lesson.content_type === 'quiz'
       ? ''
       : hasAutoGrade
-        ? `<p id="lesson-live-score" class="text-center text-sm font-bold text-slate-500">La nota se guarda automáticamente mientras completás la actividad.</p>`
+        ? `<p id="lesson-live-score" class="text-center text-sm font-bold text-slate-500">La nota se guarda automáticamente mientras completas la actividad.</p>`
         : window._completionsCache.has(lesson.id)
           ? `<div class="text-center text-sm font-bold text-emerald-500"><i class="fas fa-circle-check"></i> Ya completaste este recurso</div>`
           : `<button class="btn-primary-tw w-full h-12 text-xs uppercase font-bold" id="btn-mark-lesson-seen" onclick="window.markLessonSeen('${lesson.id}')"><i class="fas fa-circle-check"></i> Marcar como visto</button>`;
@@ -2529,20 +2529,20 @@ window.renderResourceSocialPanel = function renderResourceSocialPanel(lessonId, 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
       <div>
         <h4 class="text-xs font-black uppercase text-slate-400 tracking-widest mb-2"><i class="fas fa-note-sticky"></i> Mis notas personales</h4>
-        <p class="text-[0.6rem] text-slate-400 mb-2"><i class="fas fa-lock"></i> Privadas -- solo vos las ves, nadie puede responderlas ni darles like.</p>
+        <p class="text-[0.6rem] text-slate-400 mb-2"><i class="fas fa-lock"></i> Privadas -- solo tú las ves, nadie puede responderlas ni darles like.</p>
         <div id="resource-notes-list" class="space-y-2 max-h-52 overflow-y-auto custom-scrollbar mb-2 pr-1">${notesHtml}</div>
         <div class="flex gap-2">
-          <input id="resource-note-input" class="input-field-tw h-9 text-sm flex-1" placeholder="Escribí una nota nueva...">
+          <input id="resource-note-input" class="input-field-tw h-9 text-sm flex-1" placeholder="Escribe una nota nueva...">
           <button class="btn-primary-tw h-9 px-4 text-xs uppercase font-bold shrink-0" onclick="window.postResourceNote('${lessonId}')"><i class="fas fa-paper-plane"></i></button>
         </div>
       </div>
       <div>
         <h4 class="text-xs font-black uppercase text-slate-400 tracking-widest mb-2"><i class="fas fa-comments"></i> Comentarios del equipo</h4>
-        ${!groupId ? `<p class="text-xs text-slate-400">Formá parte de un equipo para comentar acá.</p>` : `
+        ${!groupId ? `<p class="text-xs text-slate-400">Forma parte de un equipo para comentar acá.</p>` : `
           <div id="resource-comments-list" class="space-y-2 max-h-52 overflow-y-auto custom-scrollbar mb-2 pr-1">${commentsHtml}</div>
           <div id="resource-comment-attachment-preview" class="hidden mb-2"></div>
           <div class="flex gap-2">
-            <input id="resource-comment-input" class="input-field-tw h-9 text-sm flex-1" placeholder="Escribí un comentario...">
+            <input id="resource-comment-input" class="input-field-tw h-9 text-sm flex-1" placeholder="Escribe un comentario...">
             <label class="w-9 h-9 shrink-0 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-primary flex items-center justify-center cursor-pointer" title="Adjuntar captura o archivo (evidencia)">
               <i class="fas fa-paperclip"></i>
               <input type="file" id="resource-comment-file" class="hidden" accept="image/*,.pdf" onchange="window.previewResourceCommentAttachment(this)">
@@ -2982,7 +2982,7 @@ window.initH5PSession = async function initH5PSession(lesson) {
 
   const frame = document.createElement('iframe');
   frame.src = `${h5pVendorUrl('player.html')}?json=${encodeURIComponent(lesson.content_url.replace(/\/$/, ''))}`;
-  frame.title = lesson.title || 'Contenido H5P';
+  frame.title = lesson.title || 'Actividad interactiva (H5P)';
   frame.setAttribute('allow', 'fullscreen; autoplay');
   frame.allowFullscreen = true;
   frame.style.cssText = 'width:100%;border:0;display:block;min-height:320px;';
@@ -3064,7 +3064,7 @@ window.initH5PSession = async function initH5PSession(lesson) {
 // tener que calcular todo de memoria.
 window.openExportSireModal = async function openExportSireModal() {
   const classOptions = await getClassOptionsForCurrentUser();
-  if (!classOptions.length) return window.showToast('<i class="fas fa-circle-xmark"></i> No tenés clases asignadas todavía', 'error');
+  if (!classOptions.length) return window.showToast('<i class="fas fa-circle-xmark"></i> No tienes clases asignadas todavía', 'error');
 
   const modal = document.createElement('div');
   modal.className = 'fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-sm animate-fadeIn';
@@ -3078,7 +3078,7 @@ window.openExportSireModal = async function openExportSireModal() {
       </select>
       <div class="flex gap-3">
         <button class="btn-secondary-tw flex-1 h-11 text-xs uppercase font-bold" onclick="this.closest('.fixed').remove()">Cancelar</button>
-        <button class="btn-primary-tw flex-1 h-11 text-xs uppercase font-bold" id="btn-confirm-sire-export" onclick="window.confirmExportSire()"><i class="fas fa-download"></i> Descargar CSV</button>
+        <button class="btn-primary-tw flex-1 h-11 text-xs uppercase font-bold" id="btn-confirm-sire-export" onclick="window.confirmExportSire()"><i class="fas fa-download"></i> Descargar para Excel (CSV)</button>
       </div>
     </div>
   `;
@@ -3196,7 +3196,7 @@ window.confirmExportSire = async function confirmExportSire() {
 // documento real que el sistema oficial emite.
 window.openCuadroFinalModal = async function openCuadroFinalModal() {
   const classOptions = await getClassOptionsForCurrentUser();
-  if (!classOptions.length) return window.showToast('<i class="fas fa-circle-xmark"></i> No tenés clases asignadas todavía', 'error');
+  if (!classOptions.length) return window.showToast('<i class="fas fa-circle-xmark"></i> No tienes clases asignadas todavía', 'error');
 
   const modal = document.createElement('div');
   modal.className = 'fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-sm animate-fadeIn';
@@ -3241,7 +3241,7 @@ window.confirmCuadroFinal = async function confirmCuadroFinal() {
     // CUI y código personal (boleta CNB): solo admin/docente de la clase, vía función del servidor.
     await window.mergeStudentSecrets(students);
     const coursesWithArea = (courses || []).filter(c => c.cnb_area);
-    if (!coursesWithArea.length) throw new Error('Ningún curso de esta clase tiene Área CNB asignada -- editá los cursos y elegí su área');
+    if (!coursesWithArea.length) throw new Error('Ningún curso de esta clase tiene Área CNB asignada -- edita los cursos y elige su área');
 
     const courseIds = coursesWithArea.map(c => c.id);
     const { data: allLessons } = courseIds.length
@@ -3335,7 +3335,7 @@ window.confirmCuadroFinal = async function confirmCuadroFinal() {
         <button class="no-print" onclick="window.print()" style="margin-bottom:16px;padding:8px 16px;">Imprimir</button>
         <h1>BORRADOR -- Cuadro de Resultados Finales</h1>
         <h2>Uso interno para transcribir al SIRE -- NO es el documento oficial del MINEDUC</h2>
-        <div class="disclaimer">Esta hoja se generó automáticamente a partir de las notas cargadas en el sistema. Verificá los datos antes de cargarlos al SIRE -- la responsabilidad del contenido final es del establecimiento.</div>
+        <div class="disclaimer">Esta hoja se generó automáticamente a partir de las notas cargadas en el sistema. Verifica los datos antes de cargarlos al SIRE -- la responsabilidad del contenido final es del establecimiento.</div>
         <div class="meta">
           <div><b>Centro Educativo</b>${sanitizeInput(school?.name || school_code)}</div>
           <div><b>Código</b>${sanitizeInput(school_code)}</div>

@@ -238,7 +238,7 @@ window.openCreateTournamentTeamModal = function openCreateTournamentTeamModal() 
 window.createTournamentTeam = async function createTournamentTeam() {
   const name = document.getElementById('team-name')?.value.trim();
   const btn = document.getElementById('btn-create-team');
-  if (!name) return window.showToast('<i class="fas fa-circle-xmark"></i> Ponele un nombre al equipo', 'error');
+  if (!name) return window.showToast('<i class="fas fa-circle-xmark"></i> Ponle un nombre al equipo', 'error');
 
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
@@ -257,7 +257,7 @@ window.createTournamentTeam = async function createTournamentTeam() {
 
   await window._supabase.from('tournament_team_members').insert({ season_id: season.id, team_id: team.id, student_id: window.currentUser.id });
 
-  window.showToast('<i class="fas fa-circle-check"></i> ¡Equipo creado! Ya sos el capitán', 'success');
+  window.showToast('<i class="fas fa-circle-check"></i> ¡Equipo creado! Ya eres el capitán', 'success');
   document.querySelector('.fixed.z-\\[210\\]')?.remove();
   window.loadTournamentsSection();
 }
@@ -291,7 +291,7 @@ window.openManageTeamModal = async function openManageTeamModal() {
             <span>${window.sanitizeInput(m.students?.full_name || '')} ${m.student_id === team.captain_id ? '<i class="fas fa-star text-amber-400 text-xs ml-1"></i>' : ''}</span>
             ${m.student_id !== team.captain_id ? `<button class="text-rose-400 hover:text-rose-300" onclick="window.removeTeamMember('${m.student_id}')"><i class="fas fa-times"></i></button>` : ''}
           </div>
-        `).join('') || '<p class="text-xs text-slate-500">Solo vos, por ahora.</p>'}
+        `).join('') || '<p class="text-xs text-slate-500">Solo tú, por ahora.</p>'}
       </div>
       ${available.length ? `
         <p class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-2">Agregar compañero</p>
@@ -362,7 +362,7 @@ window.sendTournamentChallenge = async function sendTournamentChallenge() {
   const opponentTeamId = document.getElementById('challenge-team-select')?.value;
   const topic = document.getElementById('challenge-topic')?.value.trim();
   const btn = document.getElementById('btn-send-challenge');
-  if (!topic) return window.showToast('<i class="fas fa-circle-xmark"></i> Ponele un tema', 'error');
+  if (!topic) return window.showToast('<i class="fas fa-circle-xmark"></i> Ponle un tema', 'error');
 
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
@@ -425,7 +425,7 @@ window.respondTournamentMatch = async function respondTournamentMatch(matchId, a
 window.openTournamentMatchQuiz = async function openTournamentMatchQuiz(matchId) {
   const { data: myAnswer } = await window._supabase.from('tournament_match_answers')
     .select('id').eq('match_id', matchId).eq('team_id', window._tournamentMyTeam.id).maybeSingle();
-  if (myAnswer) return window.showToast('<i class="fas fa-circle-info"></i> Tu equipo ya respondió -- esperá al rival', 'info');
+  if (myAnswer) return window.showToast('<i class="fas fa-circle-info"></i> Tu equipo ya respondió -- espera al rival', 'info');
 
   const { data: questions, error } = await window._supabase.rpc('get_tournament_match_questions', { p_match_id: matchId });
   if (error || !questions?.length) return window.showToast('<i class="fas fa-circle-xmark"></i> No se pudo cargar el quiz', 'error');
@@ -449,7 +449,7 @@ window.renderTournamentQuizQuestion = function renderTournamentQuizQuestion() {
     <div class="glass-card w-full max-w-lg p-8 shadow-2xl animate-slideUp bg-slate-900 border border-white/10">
       <div class="flex justify-between items-center mb-4">
         <span class="text-[0.6rem] font-black uppercase text-slate-400 tracking-widest">Pregunta ${index + 1} / ${questions.length}</span>
-        <span class="text-[0.6rem] font-black uppercase text-emerald-400"><i class="fas fa-users"></i> Respondés por tu equipo</span>
+        <span class="text-[0.6rem] font-black uppercase text-emerald-400"><i class="fas fa-users"></i> Respondes por tu equipo</span>
       </div>
       <h3 class="text-lg font-bold text-white mb-6">${sanitizeInput(q.question)}</h3>
       <div class="space-y-3">
@@ -549,7 +549,7 @@ window.createTournamentSeason = async function createTournamentSeason() {
   const endDate = document.getElementById('season-end')?.value;
   const btn = document.getElementById('btn-create-season');
 
-  if (!name || !startDate || !endDate) return window.showToast('<i class="fas fa-circle-xmark"></i> Completá nombre, inicio y fin', 'error');
+  if (!name || !startDate || !endDate) return window.showToast('<i class="fas fa-circle-xmark"></i> Completa nombre, inicio y fin', 'error');
 
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';

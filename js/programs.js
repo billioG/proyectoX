@@ -52,7 +52,7 @@ window.renderProgramsList = async function renderProgramsList() {
 window.addProgram = async function addProgram() {
   const input = document.getElementById('new-program-name');
   const name = input?.value.trim();
-  if (!name) return window.showToast('<i class="fas fa-circle-xmark"></i> Escribí un nombre', 'error');
+  if (!name) return window.showToast('<i class="fas fa-circle-xmark"></i> Escribe un nombre', 'error');
 
   const { error } = await window._supabase.from('programs').insert({ name });
   if (error) {

@@ -77,7 +77,7 @@ window.renderHangmanSection = function renderHangmanSection() {
 
   const createBtnHtml = window.GameArena.heroHtml({
     title: 'Ahorcado 1v1',
-    subtitle: 'Adiviná la palabra letra por letra antes de quedarte sin vidas. Gana el más rápido.',
+    subtitle: 'Adivina la palabra letra por letra antes de quedarte sin vidas. Gana el más rápido.',
     icon: 'fa-spider',
     c1: '#e11d48',
     c2: '#7c3aed',
@@ -194,7 +194,7 @@ window.openCreateHangmanModal = async function openCreateHangmanModal() {
         <div>
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Gemas a apostar</label>
           <input type="number" id="hangman-wager" min="0" value="10" class="input-field-tw h-11 text-sm">
-          <p class="text-[0.6rem] text-slate-500 mt-1">Tenés ${userData?.gems ?? 0} gemas.</p>
+          <p class="text-[0.6rem] text-slate-500 mt-1">Tienes ${userData?.gems ?? 0} gemas.</p>
         </div>
         <div>
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Categoría</label>
@@ -222,7 +222,7 @@ window.sendHangmanChallenge = async function sendHangmanChallenge() {
   const userData = window.userData;
 
   if (wager < 0) return window.showToast('<i class="fas fa-circle-xmark"></i> La apuesta no puede ser negativa', 'error');
-  if (wager > (userData?.gems ?? 0)) return window.showToast('<i class="fas fa-circle-xmark"></i> No tenés suficientes gemas', 'error');
+  if (wager > (userData?.gems ?? 0)) return window.showToast('<i class="fas fa-circle-xmark"></i> No tienes suficientes gemas', 'error');
 
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
@@ -264,7 +264,7 @@ window.respondHangmanDuel = async function respondHangmanDuel(duelId, accept) {
   const duel = (window._hangmanDuelsCache || []).find(d => d.id === duelId);
   const userData = window.userData;
   if (duel && duel.wager_gems > (userData?.gems ?? 0)) {
-    return window.showToast('<i class="fas fa-circle-xmark"></i> No tenés suficientes gemas para aceptar esta apuesta', 'error');
+    return window.showToast('<i class="fas fa-circle-xmark"></i> No tienes suficientes gemas para aceptar esta apuesta', 'error');
   }
 
   if (!window.aiGenerationLock.tryAcquire()) return;
@@ -287,7 +287,7 @@ window.respondHangmanDuel = async function respondHangmanDuel(duelId, accept) {
       const { error: rpcErr } = await window._supabase.rpc('assign_hangman_bank_word', { p_duel_id: duelId });
       if (rpcErr) throw new Error(rpcErr.message);
     }
-    window.showToast('<i class="fas fa-circle-check"></i> ¡Reto aceptado! Ya podés jugar', 'success');
+    window.showToast('<i class="fas fa-circle-check"></i> ¡Reto aceptado! Ya puedes jugar', 'success');
     window.loadHangmanSection();
     if (typeof window.sendDuelPushNotification === 'function') window.sendDuelPushNotification(duelId, 'accepted', 'hangman');
   } catch (err) {
@@ -346,7 +346,7 @@ window.renderHangmanIntro = function renderHangmanIntro() {
         <span class="ga-chip"><i class="fas fa-spider"></i> Ahorcado</span>
         <span class="ga-clock" id="hangman-clock">0.0s</span>
       </div>
-      <p style="font-size:.65rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;font-weight:800;margin-bottom:.6rem">Leé antes de adivinar</p>
+      <p style="font-size:.65rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;font-weight:800;margin-bottom:.6rem">Lee antes de adivinar</p>
       <p style="font-size:1.05rem;font-weight:800;line-height:1.5;margin-bottom:1.5rem">"${sanitizeInput(state.hint)}"</p>
       <button class="ga-btn" id="hangman-start-guessing">Listo, a adivinar <i class="fas fa-arrow-right"></i></button>
     </div></div>
@@ -530,7 +530,7 @@ window.showHangmanReview = async function showHangmanReview(duelId) {
           const isMe = r.student_id === window.currentUser.id;
           return `
           <div class="p-3 rounded-xl bg-white/5 border ${r.student_id === duel?.winner_id ? 'border-emerald-500/30' : 'border-white/5'} text-left text-xs text-slate-300">
-            <span class="font-bold text-white">${isMe ? 'Vos' : 'Rival'}</span> --
+            <span class="font-bold text-white">${isMe ? 'Tú' : 'Rival'}</span> --
             ${r.solved ? `<span class="text-emerald-400">Adivinó</span>` : `<span class="text-rose-400">No adivinó</span>`}
             en ${(r.time_ms / 1000).toFixed(1)}s, ${r.wrong_guesses} error(es)
             ${r.student_id === duel?.winner_id ? ' <i class="fas fa-trophy text-amber-400"></i>' : ''}

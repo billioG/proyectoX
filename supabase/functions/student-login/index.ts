@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
   const withinWindow = rl && (now.getTime() - new Date(rl.window_start).getTime()) / 60000 < RATE_LIMIT_WINDOW_MIN;
 
   if (withinWindow && rl!.attempts >= RATE_LIMIT_MAX_ATTEMPTS) {
-    return json({ error: 'Demasiados intentos -- esperá unos minutos y volvé a intentar' }, 429);
+    return json({ error: 'Demasiados intentos -- espera unos minutos y vuelve a intentar' }, 429);
   }
 
   async function recordFailure() {

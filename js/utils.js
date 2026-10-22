@@ -131,7 +131,18 @@ export function friendlyErrorText(raw) {
     return hit ? hit[1] : null;
 }
 
+// Algunos mensajes vienen de funciones de la base de datos escritas con voseo
+// ("No tenés suficientes gemas"); la app habla de tú. Se convierten al mostrarlos
+// para no tener que volver a correr esas migraciones.
+const VOSEO_SERVER = { 'tenés': 'tienes', 'Tenés': 'Tienes', 'podés': 'puedes', 'Podés': 'Puedes', 'querés': 'quieres', 'necesitás': 'necesitas', 'sos': 'eres' };
+const VOSEO_RE = /(^|[^\p{L}])(tenés|Tenés|podés|Podés|querés|necesitás|sos)(?![\p{L}])/gu;
+export function deVoseo(text) {
+    return String(text ?? '').replace(VOSEO_RE, (m, pre, w) => pre + VOSEO_SERVER[w]);
+}
+window.deVoseo = deVoseo;
+
 export function showToast(message, type = 'default') {
+    message = deVoseo(message);
     let container = document.getElementById('toast-container');
     if (!container) {
         container = document.createElement('div');
@@ -441,7 +452,7 @@ window.aiGenerationLock = {
   tryAcquire() {
     if (this.active) {
       if (typeof window.showToast === 'function') {
-        window.showToast('<i class="fas fa-hourglass-half"></i> Ya hay una generación en curso -- esperá un momento', 'info');
+        window.showToast('<i class="fas fa-hourglass-half"></i> Ya hay una generación en curso -- espera un momento', 'info');
       }
       return false;
     }

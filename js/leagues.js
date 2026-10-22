@@ -81,7 +81,7 @@ window.renderLeagueSection = async function renderLeagueSection(containerId = 'l
     return `${zone}<div class="lg-row ${r.id === me ? 'me' : ''}">
       <span class="lg-rank">${rank <= 3 ? ['🥇', '🥈', '🥉'][rank - 1] : rank}</span>
       ${lgPet(r)}
-      <span class="lg-name">${s(r.full_name)}${r.id === me ? ' (vos)' : ''}${window.GameArena ? window.GameArena.streakHtml(r.duel_win_streak || 0, '.65rem') : ''}</span>
+      <span class="lg-name">${s(r.full_name)}${r.id === me ? ' (tú)' : ''}${window.GameArena ? window.GameArena.streakHtml(r.duel_win_streak || 0, '.65rem') : ''}</span>
       <span class="lg-xp">${r.xp} XP</span>
     </div>`;
   }).join('');
@@ -96,9 +96,9 @@ window.renderLeagueSection = async function renderLeagueSection(containerId = 'l
         <div style="font-size:.75rem;font-weight:700;opacity:.85"><i class="fas fa-hourglass-half"></i> Termina en ${lgTimeLeft(lg.ends_at)} · Tu XP: ${lg.my_xp}</div>
       </div>
     </div>
-    ${notInBoard ? `<p style="color:#94a3b8;font-size:.8rem;margin-bottom:.75rem"><i class="fas fa-circle-info"></i> Ganá XP esta semana (cursos, retos, duelos) para entrar a la tabla.</p>` : ''}
+    ${notInBoard ? `<p style="color:#94a3b8;font-size:.8rem;margin-bottom:.75rem"><i class="fas fa-circle-info"></i> Gana XP esta semana (cursos, retos, duelos) para entrar a la tabla.</p>` : ''}
     <div>${rows || '<p style="color:#64748b;font-size:.8rem">Nadie sumó XP esta semana todavía. ¡Sé el primero!</p>'}</div>
-    <p style="color:#64748b;font-size:.7rem;margin-top:.75rem">Competís contra tu escuela en tu misma división. Los 3 primeros suben; los 3 últimos bajan (si hay 6 o más).</p>`;
+    <p style="color:#64748b;font-size:.7rem;margin-top:.75rem">Compites contra tu escuela en tu misma división. Los 3 primeros suben; los 3 últimos bajan (si hay 6 o más).</p>`;
 
   if (lg.result === 'up' || lg.result === 'down') window.showLeagueResult(lg.result, lg.tier);
 };
@@ -110,7 +110,7 @@ window.showLeagueResult = function showLeagueResult(result, tierIndex) {
   window.GameArena.result({
     ok: up,
     title: up ? '¡Ascendiste!' : 'Bajaste de división',
-    subtitle: up ? `Terminaste en el top 3 la semana pasada.` : 'Esta semana podés recuperarte.',
+    subtitle: up ? `Terminaste en el top 3 la semana pasada.` : 'Esta semana puedes recuperarte.',
     detailHtml: `<div style="font-size:3.5rem;margin:.25rem 0">${tier.icon}</div>
       <div style="font-size:1.3rem;font-weight:900;font-style:italic;text-transform:uppercase;color:${tier.color}">División ${tier.name}</div>`,
   });

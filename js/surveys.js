@@ -85,7 +85,7 @@ window.submitSurveyAnswers = async function submitSurveyAnswers(surveyId, questi
   for (const q of questions) {
     if (q.type === 'text') continue; // texto libre es opcional
     const answered = document.querySelector(`input[name="survey-q-${q.id}"]:checked`);
-    if (!answered) return window.showToast('<i class="fas fa-circle-xmark"></i> Respondé todas las preguntas de opción/escala', 'error');
+    if (!answered) return window.showToast('<i class="fas fa-circle-xmark"></i> Responde todas las preguntas de opción/escala', 'error');
   }
 
   btn.disabled = true;
@@ -222,7 +222,7 @@ window.renderSurveyBuilder = function renderSurveyBuilder() {
       ${q.type === 'scale' ? `<p class="text-[0.6rem] text-slate-400"><i class="fas fa-circle-info"></i> Escala fija de 1 a 5.</p>` : ''}
       ${q.type === 'text' ? `<p class="text-[0.6rem] text-slate-400"><i class="fas fa-circle-info"></i> Respuesta abierta, opcional para quien responde.</p>` : ''}
     </div>
-  `).join('') || '<p class="text-[0.65rem] text-slate-400 text-center py-4">Agregá al menos una pregunta.</p>';
+  `).join('') || '<p class="text-[0.65rem] text-slate-400 text-center py-4">Agrega al menos una pregunta.</p>';
 }
 
 window.publishSurvey = async function publishSurvey() {
@@ -232,8 +232,8 @@ window.publishSurvey = async function publishSurvey() {
   const questions = window._surveyBuilderQuestions || [];
   const btn = document.getElementById('btn-publish-survey');
 
-  if (!title) return window.showToast('<i class="fas fa-circle-xmark"></i> Ponele un título', 'error');
-  if (!questions.length) return window.showToast('<i class="fas fa-circle-xmark"></i> Agregá al menos una pregunta', 'error');
+  if (!title) return window.showToast('<i class="fas fa-circle-xmark"></i> Ponle un título', 'error');
+  if (!questions.length) return window.showToast('<i class="fas fa-circle-xmark"></i> Agrega al menos una pregunta', 'error');
   for (const q of questions) {
     if (!q.question?.trim()) return window.showToast('<i class="fas fa-circle-xmark"></i> Todas las preguntas necesitan un enunciado', 'error');
     if (q.type === 'multiple_choice' && q.options.filter(o => o.trim()).length < 2) return window.showToast('<i class="fas fa-circle-xmark"></i> Las preguntas de opción múltiple necesitan al menos 2 opciones', 'error');

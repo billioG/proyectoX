@@ -129,22 +129,22 @@ Deno.serve(async (req) => {
       (recent || []).forEach((r: any) => seen.add(normalizeWord(String(r.word))));
     }
 
-    const system = `Elegí ${need} palabra${need > 1 ? 's' : ''} en español relacionada${need > 1 ? 's' : ''} con el tema indicado,
+    const system = `Elige ${need} palabra${need > 1 ? 's' : ''} en español relacionada${need > 1 ? 's' : ''} con el tema indicado,
 apropiada${need > 1 ? 's' : ''} para un estudiante de ${grade} en Guatemala -- sin tildes ni ñ, entre 4 y 12
 letras, una sola palabra cada una (sin espacios ni guiones).${need > 1 ? ' Las palabras tienen que ser DISTINTAS entre sí y de largo parecido (diferencia máxima de 2 letras).' : ''}
-Para cada palabra escribí una pista corta (una oración) que ayude a adivinarla
+Para cada palabra escribe una pista corta (una oración) que ayude a adivinarla
 sin decirla directamente. Responde ÚNICAMENTE con JSON válido, sin texto
 adicional, con esta forma exacta:
 {"items":[{"word":"...","hint":"...","fact":"..."}]}
 
 El campo "fact" es UN dato curioso y educativo sobre la palabra o el tema (1 o 2
 oraciones, máximo 220 caracteres) que le deje un aprendizaje al estudiante. Tiene que
-ser verdadero y verificable; si no estás seguro de un dato, escribí en su lugar un
+ser verdadero y verificable; si no estás seguro de un dato, escribe en su lugar un
 consejo práctico para aprender o recordar este tema.`;
 
     const used = [...seen].slice(0, 80);
     const userMsg = `Tema: ${topic.slice(0, 200)}`
-      + (used.length ? `\nEstas palabras YA salieron, elegí otras distintas: ${used.join(', ')}` : '');
+      + (used.length ? `\nEstas palabras YA salieron, elige otras distintas: ${used.join(', ')}` : '');
 
     // Groq a veces rechaza su propia salida en modo JSON estricto ("Failed
     // to validate JSON") o el content viene truncado/mal formado --

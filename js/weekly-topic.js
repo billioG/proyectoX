@@ -15,7 +15,7 @@ window.openWeeklyTopicModal = async function openWeeklyTopicModal() {
     _supabase.rpc('current_week_id'),
     _supabase.from('courses').select('title, school_code, grade, section, lessons(title)').eq('created_by', me),
   ]);
-  if (!asg?.length) return window.showToast('<i class="fas fa-circle-info"></i> No tenés clases asignadas', 'info');
+  if (!asg?.length) return window.showToast('<i class="fas fa-circle-info"></i> No tienes clases asignadas', 'info');
 
   const { data: current } = await _supabase.from('class_weekly_topics')
     .select('school_code, grade, section, topic')
@@ -58,7 +58,7 @@ window.openWeeklyTopicModal = async function openWeeklyTopicModal() {
         <h2 class="text-lg font-black text-slate-800 dark:text-white uppercase tracking-tight">🎯 Tema de la semana</h2>
         <button class="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center" onclick="this.closest('.fixed').remove()"><i class="fas fa-times"></i></button>
       </div>
-      <p class="text-sm text-slate-500 mb-4">Tus alumnos lo van a ver primero al crear un reto 1v1 esta semana, y el reto rápido lo usa. Es una forma de que jueguen repasando lo que están viendo en clase. Dejalo vacío para quitarlo.</p>
+      <p class="text-sm text-slate-500 mb-4">Tus alumnos lo van a ver primero al crear un reto 1v1 esta semana, y el reto rápido lo usa. Es una forma de que jueguen repasando lo que están viendo en clase. Déjalo vacío para quitarlo.</p>
       <div class="space-y-3">${rows}</div>
     </div>`;
   document.body.appendChild(modal);
@@ -76,7 +76,7 @@ function pctColor(pct) {
 window.openDuelReportModal = async function openDuelReportModal() {
   const { data: asg } = await window._supabase.from('teacher_assignments')
     .select('school_code, grade, section, schools(name)').eq('teacher_id', window.currentUser?.id);
-  if (!asg?.length) return window.showToast('<i class="fas fa-circle-info"></i> No tenés clases asignadas', 'info');
+  if (!asg?.length) return window.showToast('<i class="fas fa-circle-info"></i> No tienes clases asignadas', 'info');
   window._reportClasses = asg;
   const s = window.sanitizeInput || ((v) => v);
 
@@ -126,7 +126,7 @@ window.renderDuelReport = async function renderDuelReport() {
 
   if (!r.total_plays) {
     body.innerHTML = `<div class="text-center py-8 text-slate-500 text-sm"><div class="text-4xl mb-2">🎮</div>Todavía no hay duelos jugados en este período.<br>
-      <span class="text-xs">Tip: marcá un <b>Tema de la semana</b> para darles un motivo para retarse.</span></div>`;
+      <span class="text-xs">Tip: marca un <b>Tema de la semana</b> para darles un motivo para retarse.</span></div>`;
     return;
   }
 

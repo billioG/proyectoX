@@ -52,7 +52,7 @@ const CHALLENGE_TABLES = [
   { table: 'student_duels', game: 'quiz', label: 'Comprensión Lectora', hasTopic: true },
   { table: 'student_hangman_duels', game: 'hangman', label: 'Ahorcado', hasTopic: true },
   { table: 'student_timed_math_duels', game: 'timed_math', label: 'Contrarreloj', hasTopic: false },
-  { table: 'student_debug_duels', game: 'debug', label: 'Encontrá el Error', hasTopic: true },
+  { table: 'student_debug_duels', game: 'debug', label: 'Encuentra el Error', hasTopic: true },
   { table: 'student_spelling_duels', game: 'spelling', label: 'Ortografía', hasTopic: true },
 ];
 
@@ -216,7 +216,7 @@ window.openAnnouncementsInbox = async function openAnnouncementsInbox() {
     : '';
 
   listEl.innerHTML = challengeCards + reactionCards + commentNotifCards + surveyCards + announcementCards + adminSurveysBlock
-    || '<p class="text-slate-400 text-sm text-center py-10">Todavía no tenés avisos.</p>';
+    || '<p class="text-slate-400 text-sm text-center py-10">Todavía no tienes avisos.</p>';
 
   // Marcar todos como leídos al abrir la bandeja.
   const unreadIds = announcements.filter(a => !readIds.has(a.id)).map(a => a.id);
@@ -367,7 +367,7 @@ window.openSendAnnouncementModal = async function openSendAnnouncementModal() {
     const { data } = await _supabase.from('teacher_assignments')
       .select('school_code, grade, section, schools(name)').eq('teacher_id', window.currentUser.id);
     groups = (data || []).map(a => ({ school_code: a.school_code, grade: a.grade, section: a.section, schoolName: a.schools?.name || a.school_code }));
-    if (!groups.length) return window.showToast('<i class="fas fa-circle-xmark"></i> No tenés clases asignadas todavía', 'error');
+    if (!groups.length) return window.showToast('<i class="fas fa-circle-xmark"></i> No tienes clases asignadas todavía', 'error');
   }
   groups.sort((a, b) => `${a.schoolName}${a.grade}${a.section}`.localeCompare(`${b.schoolName}${b.grade}${b.section}`));
   window._annTargets = { groups, schools };
@@ -428,11 +428,11 @@ window.openSendAnnouncementModal = async function openSendAnnouncementModal() {
         </div>
         <div>
           <label class="text-[0.6rem] font-bold uppercase text-slate-400 tracking-widest mb-1.5 block">Mensaje</label>
-          <textarea id="ann-message" class="input-field-tw text-sm" rows="4" placeholder="Escribí el aviso..."></textarea>
+          <textarea id="ann-message" class="input-field-tw text-sm" rows="4" placeholder="Escribe el aviso..."></textarea>
         </div>
         <label id="ann-guardians-box" class="flex items-start gap-3 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 cursor-pointer">
           <input type="checkbox" id="ann-guardians" class="w-5 h-5 mt-0.5" onchange="window.updateAnnSummary()">
-          <span class="text-xs text-slate-600 dark:text-slate-300"><b>También avisar a los padres</b> de esos estudiantes<br>Por notificación si la activaron en su portal, o por SMS. Mantenelo corto (menos de 160 letras).</span>
+          <span class="text-xs text-slate-600 dark:text-slate-300"><b>También avisar a los padres</b> de esos estudiantes<br>Por notificación si la activaron en su portal, o por SMS. Mantenlo corto (menos de 160 letras).</span>
         </label>
         <p id="ann-summary" class="text-xs font-bold text-primary"></p>
       </div>
@@ -485,9 +485,9 @@ window.sendAnnouncement = async function sendAnnouncement() {
   const btn = document.getElementById('btn-send-announcement');
   const t = readAnnTargets();
 
-  if (!title || !message) return window.showToast('<i class="fas fa-circle-xmark"></i> Completá título y mensaje', 'error');
-  if (t.scope === 'groups' && !t.pickedGroups.length) return window.showToast('<i class="fas fa-circle-xmark"></i> Elegí al menos un grupo', 'error');
-  if (t.scope === 'schools' && !t.pickedSchools.length) return window.showToast('<i class="fas fa-circle-xmark"></i> Elegí al menos un establecimiento', 'error');
+  if (!title || !message) return window.showToast('<i class="fas fa-circle-xmark"></i> Completa título y mensaje', 'error');
+  if (t.scope === 'groups' && !t.pickedGroups.length) return window.showToast('<i class="fas fa-circle-xmark"></i> Elige al menos un grupo', 'error');
+  if (t.scope === 'schools' && !t.pickedSchools.length) return window.showToast('<i class="fas fa-circle-xmark"></i> Elige al menos un establecimiento', 'error');
 
   const payload = {
     sender_id: window.currentUser.id,

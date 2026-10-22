@@ -169,7 +169,7 @@ function renderTeacherPerformanceHTML(container, data, kpis, opts = {}) {
         con datos distintos -- unificado en una sola fila colapsable por
         docente (menos ruido visual, el detalle se ve solo si hace falta). -->
         <h3 class="text-lg font-bold text-slate-800 dark:text-white uppercase tracking-tight flex items-center gap-2 mb-1"><i class="fas fa-chart-line text-primary"></i> Desglose Individual por Docente</h3>
-        <p class="text-slate-500 dark:text-slate-400 text-xs mb-5">Evaluaciones, satisfacción y actividad real -- ordenado por más activo. Tocá una fila para ver el detalle.</p>
+        <p class="text-slate-500 dark:text-slate-400 text-xs mb-5">Evaluaciones, satisfacción y actividad real -- ordenado por más activo. Toca una fila para ver el detalle.</p>
 
         <div class="space-y-3 mb-10">
             ${(() => {
