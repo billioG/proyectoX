@@ -2414,8 +2414,9 @@ window.selectCourseResource = function selectCourseResource(index) {
   }
 
   if (lesson.content_type === 'scorm') {
-    window.loadIframeViaFetch('scorm-frame', lesson.content_url, lesson.id);
-    window.initScormSession(lesson.id);
+    // La API SCORM tiene que existir (con el avance guardado) ANTES de que el
+    // paquete arranque: el paquete la busca una sola vez al cargar.
+    window.initScormSession(lesson.id).finally(() => window.loadIframeViaFetch('scorm-frame', lesson.content_url, lesson.id));
   } else if (lesson.content_type === 'html5') {
     window.loadIframeViaFetch('html5-frame', lesson.content_url, lesson.id);
   } else if (lesson.content_type === 'h5p') {
@@ -2863,92 +2864,186 @@ function scormPercent(c) {
   return clamp(c.raw);
 }
 
-window.initScormSession = function initScormSession(lessonId) {
-  const cmi = { score: null, status: null, raw: null, min: null, max: null, scaled: null };
-  const recompute = () => { cmi.score = scormPercent(cmi); };
+// ---------- Estado SCORM para RETOMAR donde quedó ----------
+// Los paquetes guardan su avance en cmi.suspend_data y cmi.location
+// (cmi.core.lesson_location en 1.2). Antes no se guardaba nada de eso: al
+// volver a abrir un curso largo el estudiante empezaba de cero. Ahora todo lo
+// que el paquete escribe se guarda en lesson_completions.raw_data.scorm (y una
+// copia en el dispositivo para retomar sin internet) y se le devuelve al abrir.
+const SCORM_LOCAL_KEY = (lessonId) => `px:scorm:${window.currentUser?.id || 'anon'}:${lessonId}`;
 
-  // Identidad real del alumno y de esta lección, por los campos ESTÁNDAR
-  // de SCORM (cmi.core.student_id / cmi.learner_id, etc.) -- cualquier
-  // paquete SCORM bien hecho puede leerlos para no depender de guardar su
-  // propio progreso en localStorage. Ese localStorage vive en el ORIGEN
-  // de Quetzal (el iframe es srcdoc del mismo origen para que la llamada
-  // a window.API funcione) y por eso, si un paquete SÍ lo usa con una
-  // clave fija, ese progreso queda compartido entre CUALQUIER lección y
-  // CUALQUIER alumno que use el mismo dispositivo -- justo el bug de
-  // "ya me marca 100% sin haber entrado" que reportó un docente. La
-  // corrección real va en el paquete SCORM (que lea/escriba su progreso
-  // con una clave que incluya cmi.core.student_id), no acá.
+async function loadScormState(lessonId) {
+  let local = null;
+  try { local = JSON.parse(localStorage.getItem(SCORM_LOCAL_KEY(lessonId)) || 'null'); } catch (e) { }
+  let remote = null;
+  if (!window.isNodeSession && navigator.onLine && window.currentUser?.id) {
+    try {
+      const { data } = await window._supabase.from('lesson_completions').select('raw_data')
+        .eq('lesson_id', lessonId).eq('student_id', window.currentUser.id).maybeSingle();
+      remote = data?.raw_data?.scorm || null;
+    } catch (e) { }
+  }
+  if (local && remote) return (local.ts || 0) >= (remote.ts || 0) ? local : remote;
+  return local || remote || null;
+}
+
+// Tiempo SCORM: 1.2 usa HHHH:MM:SS(.SS); 2004 usa ISO 8601 (PT1H2M3.5S).
+function scormTimeToSeconds(v) {
+  const s = String(v || '').trim();
+  if (!s) return 0;
+  const iso = s.match(/^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:([\d.]+)S)?)?$/i);
+  if (iso) return (+(iso[1] || 0)) * 86400 + (+(iso[2] || 0)) * 3600 + (+(iso[3] || 0)) * 60 + (+(iso[4] || 0));
+  const hms = s.match(/^(\d+):(\d{1,2}):(\d{1,2}(?:\.\d+)?)$/);
+  if (hms) return (+hms[1]) * 3600 + (+hms[2]) * 60 + (+hms[3]);
+  return 0;
+}
+function secondsToScorm12(t) {
+  const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = Math.floor(t % 60);
+  return `${String(h).padStart(4, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+function secondsToIso(t) {
+  const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = Math.round(t % 60);
+  return `PT${h}H${m}M${s}S`;
+}
+
+// Estado del recurso para la app: solo "completed" desbloquea el siguiente.
+// Antes se guardaba tal cual lo que mandaba el paquete, y estados como
+// "not attempted", "browsed" o "unknown" contaban como terminado.
+function scormAppStatus(d) {
+  const s12 = d['cmi.core.lesson_status'];
+  if (s12 != null) return ['completed', 'passed', 'failed'].includes(s12) ? 'completed' : 'incomplete';
+  const comp = d['cmi.completion_status'], succ = d['cmi.success_status'];
+  if (comp === 'completed' || succ === 'passed' || succ === 'failed') return 'completed';
+  return comp || succ ? 'incomplete' : null;
+}
+
+function scormScoreFromData(d) {
+  const n = (k) => (d[k] === undefined || d[k] === '' ? null : parseFloat(d[k]));
+  return scormPercent({
+    raw: n('cmi.core.score.raw') ?? n('cmi.score.raw'),
+    min: n('cmi.core.score.min') ?? n('cmi.score.min'),
+    max: n('cmi.core.score.max') ?? n('cmi.score.max'),
+    scaled: n('cmi.score.scaled'),
+  });
+}
+
+window.initScormSession = async function initScormSession(lessonId) {
   const studentId = window.currentUser?.id || '';
   const studentName = window.userData?.full_name || '';
+  const prev = await loadScormState(lessonId);
+  const state = { ts: Date.now(), total_s: prev?.total_s || 0, data: { ...(prev?.data || {}) } };
+  const d = state.data;
+  // Si el paquete dejó avance guardado, se le indica que es una reanudación.
+  const resuming = !!(d['cmi.suspend_data'] || d['cmi.core.lesson_location'] || d['cmi.location']);
+  let dirty = false, timer = null, finished = false;
 
-  const commit = () => { persistLessonScore(lessonId, cmi.score, cmi.status, { ...cmi }); updateLiveScoreLabel(cmi.score, cmi.status); return 'true'; };
+  const saveLocal = () => { try { localStorage.setItem(SCORM_LOCAL_KEY(lessonId), JSON.stringify(state)); } catch (e) { } };
+  const flush = () => {
+    clearTimeout(timer); timer = null;
+    if (!dirty) return;
+    dirty = false;
+    const score = scormScoreFromData(d);
+    const status = scormAppStatus(d);
+    persistLessonScore(lessonId, score, status, { scorm: state });
+    updateLiveScoreLabel(score, status);
+  };
+  // Muchos paquetes llaman Commit cada pocos segundos: se guarda en el
+  // dispositivo al instante y en la nube como máximo cada 5 s.
+  const commit = (force) => {
+    state.ts = Date.now();
+    dirty = true;
+    saveLocal();
+    if (force) flush(); else if (!timer) timer = setTimeout(flush, 5000);
+    return 'true';
+  };
+  const finish = (sessionKey) => {
+    if (finished) return 'true';
+    finished = true;
+    state.total_s += scormTimeToSeconds(d[sessionKey]);
+    return commit(true);
+  };
+  const count = (prefix) => {
+    let max = -1;
+    const re = new RegExp('^' + prefix.replace(/\./g, '\\.') + '\\.(\\d+)\\.');
+    Object.keys(d).forEach(k => { const m = k.match(re); if (m) max = Math.max(max, +m[1]); });
+    return String(max + 1);
+  };
 
-  const scorm12 = {
+  const get12 = (key) => {
+    switch (key) {
+      case 'cmi.core.student_id': return studentId;
+      case 'cmi.core.student_name': return studentName;
+      case 'cmi.core.lesson_status': return d[key] || 'not attempted';
+      case 'cmi.core.entry': return resuming ? 'resume' : 'ab-initio';
+      case 'cmi.core.credit': return 'credit';
+      case 'cmi.core.lesson_mode': return 'normal';
+      case 'cmi.core.total_time': return secondsToScorm12(state.total_s);
+      case 'cmi.interactions._count': return count('cmi.interactions');
+      case 'cmi.objectives._count': return count('cmi.objectives');
+      case 'cmi.launch_data': return '';
+      default: return d[key] ?? '';
+    }
+  };
+  const get2004 = (key) => {
+    switch (key) {
+      case 'cmi._version': return '1.0';
+      case 'cmi.learner_id': return studentId;
+      case 'cmi.learner_name': return studentName;
+      case 'cmi.completion_status': return d[key] || 'unknown';
+      case 'cmi.success_status': return d[key] || 'unknown';
+      case 'cmi.entry': return resuming ? 'resume' : 'ab-initio';
+      case 'cmi.credit': return 'credit';
+      case 'cmi.mode': return 'normal';
+      case 'cmi.total_time': return secondsToIso(state.total_s);
+      case 'cmi.interactions._count': return count('cmi.interactions');
+      case 'cmi.objectives._count': return count('cmi.objectives');
+      case 'cmi.launch_data': return '';
+      default: return d[key] ?? '';
+    }
+  };
+  const set = (key, value) => {
+    if (typeof key !== 'string' || !key.startsWith('cmi.')) return 'false';
+    d[key] = String(value ?? '');
+    if (/score|status/.test(key)) commit(false);
+    return 'true';
+  };
+
+  window.API = {
     LMSInitialize: () => 'true',
-    LMSFinish: () => commit(),
-    LMSCommit: () => commit(),
-    LMSGetValue: (key) => {
-      if (key === 'cmi.core.score.raw') return cmi.raw !== null ? String(cmi.raw) : '';
-      if (key === 'cmi.core.score.max') return cmi.max !== null ? String(cmi.max) : '';
-      if (key === 'cmi.core.score.min') return cmi.min !== null ? String(cmi.min) : '';
-      if (key === 'cmi.core.lesson_status') return cmi.status || 'incomplete';
-      if (key === 'cmi.core.student_id') return studentId;
-      if (key === 'cmi.core.student_name') return studentName;
-      if (key === 'cmi.core.lesson_location') return String(lessonId || '');
-      return '';
-    },
-    LMSSetValue: (key, value) => {
-      if (key === 'cmi.core.score.raw') { cmi.raw = parseFloat(value); recompute(); }
-      if (key === 'cmi.core.score.max') { cmi.max = parseFloat(value); recompute(); }
-      if (key === 'cmi.core.score.min') { cmi.min = parseFloat(value); recompute(); }
-      if (key === 'cmi.core.lesson_status') cmi.status = value;
-      return 'true';
-    },
+    LMSFinish: () => finish('cmi.core.session_time'),
+    LMSCommit: () => commit(false),
+    LMSGetValue: get12,
+    LMSSetValue: set,
     LMSGetLastError: () => '0',
     LMSGetErrorString: () => '',
     LMSGetDiagnostic: () => '',
   };
-
-  const scorm2004 = {
+  window.API_1484_11 = {
     Initialize: () => 'true',
-    Terminate: () => commit(),
-    Commit: () => commit(),
-    GetValue: (key) => {
-      if (key === 'cmi.score.raw') return cmi.raw !== null ? String(cmi.raw) : '';
-      if (key === 'cmi.score.scaled') return cmi.scaled !== null ? String(cmi.scaled) : '';
-      if (key === 'cmi.score.max') return cmi.max !== null ? String(cmi.max) : '';
-      if (key === 'cmi.score.min') return cmi.min !== null ? String(cmi.min) : '';
-      if (key === 'cmi.completion_status') return cmi.status || 'incomplete';
-      if (key === 'cmi.learner_id') return studentId;
-      if (key === 'cmi.learner_name') return studentName;
-      if (key === 'cmi.location') return String(lessonId || '');
-      return '';
-    },
-    SetValue: (key, value) => {
-      if (key === 'cmi.score.raw') { cmi.raw = parseFloat(value); recompute(); }
-      if (key === 'cmi.score.scaled') { cmi.scaled = parseFloat(value); recompute(); }
-      if (key === 'cmi.score.max') { cmi.max = parseFloat(value); recompute(); }
-      if (key === 'cmi.score.min') { cmi.min = parseFloat(value); recompute(); }
-      if (key === 'cmi.completion_status' || key === 'cmi.success_status') cmi.status = value;
-      return 'true';
-    },
+    Terminate: () => finish('cmi.session_time'),
+    Commit: () => commit(false),
+    GetValue: get2004,
+    SetValue: set,
     GetLastError: () => '0',
     GetErrorString: () => '',
     GetDiagnostic: () => '',
   };
-
-  window.API = scorm12;
-  window.API_1484_11 = scorm2004;
-  window._scormCmi = cmi;
-
-  updateLiveScoreLabel(null, null);
-}
+  window._scormSession = { flush, state };
+  updateLiveScoreLabel(scormScoreFromData(d), scormAppStatus(d));
+};
 
 window.teardownScormSession = function teardownScormSession() {
+  // Lo que el paquete escribió y aún no se mandó a la nube se guarda antes de salir.
+  window._scormSession?.flush();
   delete window.API;
   delete window.API_1484_11;
-  delete window._scormCmi;
-}
+  delete window._scormSession;
+};
+
+// Si se cierra la pestaña o se pasa a otra app, se guarda lo pendiente.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') window._scormSession?.flush();
+});
 
 // ================================================
 // RUNTIME H5P -- captura nota vía eventos xAPI
