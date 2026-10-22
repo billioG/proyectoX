@@ -95,7 +95,7 @@ window.initGamification = async function initGamification() {
       // Ellos sí llevan un progreso general (asistencia + evaluaciones),
       // que es trabajo real de cualquier docente, no del programa de pago.
       if (!window.userData?.is_1bot_team) {
-        const generalCacheKey = `teacher_general_progress_${currentUser.id}`;
+        const generalCacheKey = `teacher_month_v2_${currentUser.id}`;
         await fetchWithCache(generalCacheKey, async () => {
           const { data: assignments } = await _supabase.from('teacher_assignments').select('*').eq('teacher_id', currentUser.id);
           if (typeof window.calculateGeneralTeacherActivity !== 'function' && typeof window.loadModule === 'function') {
@@ -365,45 +365,43 @@ window.renderTeacherSidebar = function renderTeacherSidebar(stats) {
 // evaluaciones (trabajo real de cualquier docente en la plataforma), sin
 // evidencia semanal, informe mensual, reto con XP ni lenguaje de pago.
 window.renderTeacherSidebarGeneral = function renderTeacherSidebarGeneral(stats) {
-  const { totalXP, attCount, attMeta, evalCount, evalMeta } = stats;
   const sidebar = document.getElementById('sidebar');
-  if (!sidebar) return;
-
+  if (!sidebar || !stats || stats.v !== 2) return;
   document.getElementById('gamification-sidebar')?.remove();
+
+  const { monthName, classes, attCount, attMeta, examSheets, evalCount, evalMeta } = stats;
+  const pct = (a, b) => (b ? Math.min(100, Math.round((a / b) * 100)) : 0);
+  const bar = (p) => `<div class="h-1.5 w-full bg-white/10 rounded-full overflow-hidden mt-2"><div class="h-full bg-primary rounded-full" style="width:${p}%"></div></div>`;
+  const row = (icon, title, body, foot) => `
+    <div class="p-3 rounded-2xl bg-white/5 border border-white/[0.06]">
+      <div class="flex items-center gap-2 text-[0.7rem] font-bold text-white"><i class="fas ${icon} text-primary w-4 text-center"></i>${title}</div>
+      <p class="text-[0.75rem] text-white/80 mt-1 leading-snug">${body}</p>
+      ${foot || ''}
+    </div>`;
+
+  const items = [];
+  if (classes) {
+    items.push(row('fa-user-check', 'Asistencia',
+      `Pasaste lista <b>${attCount} de ${attMeta}</b> veces.`,
+      bar(pct(attCount, attMeta)) + `<p class="text-[0.65rem] text-white/60 mt-1.5">Meta: 1 vez por semana en cada una de tus ${classes} clase${classes === 1 ? '' : 's'}.</p>`));
+  }
+  items.push(row('fa-file-circle-check', 'Exámenes',
+    examSheets ? `Calificaste <b>${examSheets}</b> hoja${examSheets === 1 ? '' : 's'} con el celular.` : 'Todavía no calificas hojas con el celular este mes.'));
+  if (evalMeta) {
+    items.push(row('fa-star', 'Proyectos',
+      `Evaluaste <b>${evalCount} de ${evalMeta}</b> proyectos de tus equipos.`,
+      bar(pct(evalCount, evalMeta))));
+  }
 
   const container = document.createElement('div');
   container.id = 'gamification-sidebar';
   container.className = 'px-6 py-4 mt-auto mb-6';
-
   container.innerHTML = `
-    <div class="glass-card p-6 bg-slate-900 text-white border-none shadow-2xl relative overflow-hidden group">
-      <div class="absolute -right-6 -top-6 text-7xl opacity-5 rotate-12 group-hover:rotate-45 transition-transform duration-700 pointer-events-none">
-        <i class="fas fa-chart-line"></i>
-      </div>
-
-      <div class="relative z-10 mb-6">
-        <h4 class="text-[0.65rem] font-bold uppercase tracking-[0.2em] text-primary mb-1">Progreso del Mes</h4>
-        <div class="text-3xl font-bold flex items-baseline gap-2 leading-none">${totalXP} <span class="text-[0.6rem] opacity-40 uppercase tracking-widest font-bold">/ 100</span></div>
-      </div>
-
-      <div class="h-2 w-full bg-white/5 rounded-full overflow-hidden mb-6">
-        <div class="h-full bg-primary rounded-full transition-all duration-1000 shadow-[0_0_15px_rgba(0,173,239,0.5)]" style="width: ${totalXP}%"></div>
-      </div>
-
-      <div class="grid grid-cols-2 gap-3 relative z-10">
-        ${[
-      { l: 'Asistencia', c: attCount, m: attMeta, col: 'text-sky-400', d: 'Días de asistencia tomados este mes en tus clases.' },
-      { l: 'Evaluación', c: evalCount, m: evalMeta, col: 'text-amber-400', d: 'Equipos con al menos un proyecto calificado este mes.' },
-    ].map(o => `
-            <div class="p-3 bg-white/5 rounded-2xl border border-white/[0.03] text-center hover:bg-white/10 transition-colors cursor-help" title="${o.d}">
-                <div class="text-[0.55rem] font-bold uppercase text-white/40 tracking-widest mb-1">${o.l}</div>
-                <div class="text-xs font-bold text-white">${o.c || 0}<span class="opacity-30 mx-0.5">/</span>${o.m ?? '--'}</div>
-            </div>
-        `).join('')}
-      </div>
-    </div>
-  `;
-
+    <div class="glass-card p-5 bg-slate-900 text-white border-none shadow-2xl">
+      <h4 class="text-[0.65rem] font-bold uppercase tracking-[0.2em] text-primary">Tu mes${monthName ? ' · ' + monthName : ''}</h4>
+      <p class="text-[0.7rem] text-white/60 mt-1 mb-4">Lo que has hecho en la plataforma este mes.</p>
+      <div class="flex flex-col gap-3">${items.join('')}</div>
+    </div>`;
   sidebar.appendChild(container);
 }
 

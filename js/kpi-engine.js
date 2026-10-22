@@ -149,58 +149,60 @@ window.calculateMonthlyKPIs = async function calculateMonthlyKPIs(teacherId, ass
 window.calculateGeneralTeacherActivity = async function calculateGeneralTeacherActivity(teacherId, assignments) {
     const _supabase = window._supabase;
     const SYSTEM_CONFIG = window.SYSTEM_CONFIG || { projectsPerBimester: 4 };
+    const key = (o) => `${o.school_code}|${o.grade}|${o.section}`;
 
     try {
         const now = new Date();
-        const currentMonth = now.getMonth() + 1;
-        const currentYear = now.getFullYear();
-        const startOfMonth = new Date(currentYear, currentMonth - 1, 1).toISOString();
-        const endOfMonth = new Date(currentYear, currentMonth, 0, 23, 59, 59).toISOString();
+        const y = now.getFullYear(), m = now.getMonth();
+        const ymd = (d) => d.toLocaleDateString('en-CA');
+        const first = ymd(new Date(y, m, 1)), last = ymd(new Date(y, m + 1, 0));
+        const startIso = new Date(y, m, 1).toISOString(), endIso = new Date(y, m + 1, 0, 23, 59, 59).toISOString();
+        const monthName = now.toLocaleDateString('es-GT', { month: 'long' });
 
-        const safeAssignments = assignments || [];
-        const schoolCodes = [...new Set(safeAssignments.map(a => a.school_code).filter(Boolean))];
+        // Clases del docente (escuela + grado + sección), sin repetir.
+        const classMap = new Map();
+        (assignments || []).forEach(a => { if (a.school_code && a.grade && a.section) classMap.set(key(a), a); });
+        const classes = [...classMap.values()];
+        const schoolCodes = [...new Set(classes.map(c => c.school_code))];
 
-        const [attRes, evalRes, groupsRes, schoolsRes] = await Promise.all([
-            _supabase.from('attendance').select('date').eq('teacher_id', teacherId).gte('date', startOfMonth.split('T')[0]).lte('date', endOfMonth.split('T')[0]),
-            _supabase.from('evaluations').select('id, project_id').eq('teacher_id', teacherId).gte('created_at', startOfMonth).lte('created_at', endOfMonth),
-            schoolCodes.length ? _supabase.from('groups').select('*').in('school_code', schoolCodes) : Promise.resolve({ data: [], error: null }),
-            _supabase.from('schools').select('id, code, projects_per_bimestre'),
+        const [attRes, evalRes, groupsRes, schoolsRes, examRes] = await Promise.all([
+            _supabase.from('attendance').select('date, school_code, grade, section').eq('teacher_id', teacherId).gte('date', first).lte('date', last),
+            _supabase.from('evaluations').select('id, project_id').eq('teacher_id', teacherId).gte('created_at', startIso).lte('created_at', endIso),
+            schoolCodes.length ? _supabase.from('groups').select('school_code, grade, section').in('school_code', schoolCodes) : Promise.resolve({ data: [] }),
+            schoolCodes.length ? _supabase.from('schools').select('code, projects_per_bimestre').in('code', schoolCodes) : Promise.resolve({ data: [] }),
+            _supabase.from('exam_results').select('id', { count: 'exact', head: true }).eq('scanned_by', teacherId).gte('scanned_at', startIso).lte('scanned_at', endIso),
         ]);
 
-        const attCount = new Set(attRes.data?.map(r => r.date)).size;
+        // Asistencia: cada día que se pasó lista EN CADA CLASE cuenta una vez
+        // (antes se contaban días distintos sin importar la clase, y la meta
+        // sí se multiplicaba por clases: con 2 clases nunca se llegaba).
+        const attCount = new Set((attRes.data || []).filter(r => classMap.has(key(r))).map(r => `${r.date}|${key(r)}`)).size;
+        const SESSIONS_PER_MONTH = 4; // una vez por semana en cada clase
+        const attMeta = classes.length * SESSIONS_PER_MONTH;
 
+        const examSheets = examRes.count || 0;
+
+        // Proyectos: equipos de SUS clases (antes se contaban los de toda la
+        // escuela) y la meta es mensual (antes era la del bimestre completo).
         const evalProjectIds = (evalRes.data || []).map(e => e.project_id).filter(Boolean);
         let evalCount = 0;
         if (evalProjectIds.length) {
             const { data: evaluatedProjects } = await _supabase.from('projects').select('id, group_id').in('id', evalProjectIds);
             const distinctGroups = new Set((evaluatedProjects || []).map(p => p.group_id).filter(Boolean));
-            const individualProjects = (evaluatedProjects || []).filter(p => !p.group_id).length;
-            evalCount = distinctGroups.size + individualProjects;
+            evalCount = distinctGroups.size + (evaluatedProjects || []).filter(p => !p.group_id).length;
         }
-
-        const SESSIONS_PER_MONTH = 4;
-        const attMeta = safeAssignments.length * SESSIONS_PER_MONTH;
-
-        const schools = schoolsRes.data || [];
-        const relevantGroups = (groupsRes.data || []).filter(g => schoolCodes.includes(g.school_code));
+        const myGroups = (groupsRes.data || []).filter(g => classMap.has(key(g)));
         let evalMeta = 0;
         schoolCodes.forEach(code => {
-            const school = schools.find(s => s.code === code);
-            const projectsPerBimester = school?.projects_per_bimestre || SYSTEM_CONFIG.projectsPerBimester || 4;
-            const groupsInSchool = relevantGroups.filter(g => g.school_code === code).length;
-            evalMeta += (groupsInSchool * projectsPerBimester);
+            const ppb = (schoolsRes.data || []).find(s => s.code === code)?.projects_per_bimestre || SYSTEM_CONFIG.projectsPerBimester || 4;
+            const n = myGroups.filter(g => g.school_code === code).length;
+            evalMeta += Math.ceil((n * ppb) / 2); // un bimestre = 2 meses
         });
 
-        // 50% asistencia, 50% evaluaciones -- sin evidencia ni informe.
-        const totalXP = Math.round(
-            (Math.min(50, (attCount / (attMeta || 1)) * 50)) +
-            (Math.min(50, (evalCount / (evalMeta || 1)) * 50))
-        ) || 0;
-
-        return { attCount, attMeta, evalCount, evalMeta, totalXP };
+        return { v: 2, monthName, classes: classes.length, attCount, attMeta, examSheets, evalCount, evalMeta };
     } catch (err) {
         console.error('Error en progreso general del docente:', err);
-        return { attCount: 0, attMeta: 0, evalCount: 0, evalMeta: 0, totalXP: 0 };
+        return { v: 2, monthName: '', classes: 0, attCount: 0, attMeta: 0, examSheets: 0, evalCount: 0, evalMeta: 0 };
     }
 }
 
