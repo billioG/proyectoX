@@ -61,7 +61,8 @@ window.processAndRenderFeed = async function processAndRenderFeed(container, all
 
   if (userRole === 'docente') {
     const teacherPanel = await window.renderTeacherManagementPanel();
-    headerHTML += `<div class="mb-10 animate-slideUp">${teacherPanel}</div>`;
+    headerHTML += `<div id="teacher-week-card"></div>`;
+    if (teacherPanel) headerHTML += `<div class="mb-10 animate-slideUp">${teacherPanel}</div>`;
   } else if (userRole === 'admin') {
     headerHTML += (typeof window.renderAdminPanel === 'function') ? window.renderAdminPanel() : '';
   }
@@ -72,6 +73,7 @@ window.processAndRenderFeed = async function processAndRenderFeed(container, all
   container.innerHTML = headerHTML + cardsHTML;
 
   restoreFeedFilters();
+  if (userRole === 'docente') window.renderTeacherWeekCard?.();
   window.setupVideoAudioControl();
   window.applyMyReactionIcons?.();
 }

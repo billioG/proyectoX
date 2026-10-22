@@ -23,6 +23,79 @@ const COMP_KEYS = Object.keys(COMPETENCIES);
 const esc = (v) => (window.sanitizeInput ? window.sanitizeInput(v) : String(v ?? ''));
 const num = (v) => (v === null || v === undefined || v === '' ? null : Number(v));
 
+// "¿Qué hago con estos números?" -- convierte el reporte en acciones para la
+// semana: qué competencia atender primero, con quiénes y cómo (rutinas de 10
+// minutos que no exigen preparar nada nuevo).
+const ACTION_TIPS = {
+  lectura: 'Al iniciar la clase, proyecta una práctica de Comprensión Lectora, léanla en voz alta y respondan juntos. Después pide a estos estudiantes 2 prácticas en casa.',
+  matematica: 'Dedica 10 minutos a Contrarreloj en parejas: junta a un estudiante de esta lista con uno que vaya bien y revisen juntos los errores al final.',
+  pensamiento: 'Abre la clase con una ronda de Encuentra el Error: discutan entre todos por qué la afirmación falsa es falsa.',
+  lenguaje: 'Haz 10 minutos de Ortografía o Ahorcado y pide que copien en el cuaderno las palabras que fallaron.',
+};
+
+function namesList(list, max = 8) {
+  const shown = list.slice(0, max).map(s => esc(s.full_name)).join(', ');
+  return list.length > max ? `${shown} y ${list.length - max} más` : shown;
+}
+
+window.copyProgressNames = function copyProgressNames(btn) {
+  const text = btn?.dataset?.names || '';
+  const done = () => window.showToast?.('<i class="fas fa-copy"></i> Lista copiada', 'success');
+  if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text).then(done).catch(() => window.prompt?.('Copia la lista:', text));
+  else window.prompt?.('Copia la lista:', text);
+};
+
+function actionPlanHtml(d) {
+  const students = d.students || [];
+  const weak = (d.competencies || [])
+    .map(c => ({ key: c.competency, pct: num(c.pct) }))
+    .filter(c => c.pct !== null && c.pct < 80 && COMPETENCIES[c.key])
+    .sort((a, b) => a.pct - b.pct)
+    .slice(0, 2);
+  const noPractice = students.filter(s => !s.practice_n && !s.reto_n);
+
+  const blocks = weak.map(c => {
+    const meta = COMPETENCIES[c.key];
+    const low = students.filter(s => num(s[c.key]) !== null && num(s[c.key]) < 60).sort((a, b) => num(a[c.key]) - num(b[c.key]));
+    const urgent = c.pct < 60;
+    return `
+      <div class="flex gap-3 items-start">
+        <span class="w-9 h-9 rounded-xl flex items-center justify-center text-white shrink-0" style="background:${meta.color}"><i class="fas ${meta.icon}"></i></span>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-bold text-slate-800 dark:text-white">${urgent ? 'Prioridad' : 'Reforzar'}: ${meta.label} (${c.pct} % de aciertos)</p>
+          <p class="text-sm text-slate-600 dark:text-slate-300 mt-1">${ACTION_TIPS[c.key]}</p>
+          ${low.length ? `<p class="text-xs text-slate-500 dark:text-slate-400 mt-1"><b>Con quiénes (menos de 60 %):</b> ${namesList(low)}
+            <button class="ml-1 text-primary font-bold hover:underline" data-names="${window.sanitizeAttr ? window.sanitizeAttr(low.map(s => s.full_name).join(', ')) : ''}" onclick="window.copyProgressNames(this)"><i class="fas fa-copy"></i> Copiar lista</button></p>` : ''}
+        </div>
+      </div>`;
+  });
+
+  if (noPractice.length) {
+    blocks.push(`
+      <div class="flex gap-3 items-start">
+        <span class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"><i class="fas fa-user-clock"></i></span>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-bold text-slate-800 dark:text-white">${noPractice.length} estudiante${noPractice.length === 1 ? '' : 's'} sin práctica en este período</p>
+          <p class="text-sm text-slate-600 dark:text-slate-300 mt-1">Dales 10 minutos en clase para hacer su primera práctica contigo cerca; muchas veces no saben por dónde empezar. Después pide al menos 2 prácticas por semana.</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">${namesList(noPractice)}
+            <button class="ml-1 text-primary font-bold hover:underline" data-names="${window.sanitizeAttr ? window.sanitizeAttr(noPractice.map(s => s.full_name).join(', ')) : ''}" onclick="window.copyProgressNames(this)"><i class="fas fa-copy"></i> Copiar lista</button></p>
+        </div>
+      </div>`);
+  }
+
+  if (!blocks.length) {
+    blocks.push(`<p class="text-sm text-slate-600 dark:text-slate-300"><i class="fas fa-circle-check text-emerald-600"></i> El grupo va bien en todas las competencias. Mantén la rutina de práctica y revisa de nuevo la próxima semana.</p>`);
+  }
+
+  return `
+    <div class="glass-card p-5 sm:p-6 mb-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+      <h3 class="text-sm font-black uppercase tracking-tight text-slate-800 dark:text-white mb-1"><i class="fas fa-lightbulb text-amber-500"></i> Qué hacer esta semana</h3>
+      <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Sugerencias a partir de los resultados. Elige una y vuelve a revisar el viernes.</p>
+      <div class="flex flex-col gap-4">${blocks.join('')}</div>
+    </div>`;
+}
+
+
 // Color según porcentaje de aciertos (verde / ámbar / rojo suave).
 function pctColor(p) {
   if (p === null) return '#94a3b8';
@@ -337,6 +410,7 @@ function renderDetail() {
       <span style="color:#10b981;font-weight:700">80 % o más</span> va bien · <span style="color:#f59e0b;font-weight:700">60 a 79 %</span> necesita refuerzo · <span style="color:#f43f5e;font-weight:700">menos de 60 %</span> necesita apoyo.
       ▲ ▼ compara con los ${d.days} días anteriores. “X de Y practicaron” dice cuántos estudiantes jugaron esa competencia.</p>
     <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">${compCards}</div>
+    ${actionPlanHtml(d)}
     <div class="flex items-center justify-between gap-3 mb-3 flex-wrap">
       <h3 class="text-sm font-black uppercase tracking-tight text-slate-800 dark:text-white">Cada estudiante</h3>
       <select class="input-field-tw h-10 text-xs w-auto" onchange="window.setProgressSort(this.value)">

@@ -595,7 +595,56 @@ function setupNavigationUI() {
   if (!NODE_USB_FEATURE_READY) {
     document.querySelectorAll('.nav-node-usb').forEach(el => { el.style.display = 'none'; });
   }
+
+  if (userRole === 'docente') applyTeacherSimpleMode();
 }
+
+// MODO SIMPLE DEL DOCENTE -- un docente que recién empieza ve solo lo que
+// le ahorra tiempo desde el primer día (Inicio, Asistencia, Exámenes,
+// Estudiantes, Progreso). El resto aparece con "Ver todas las opciones".
+// Por defecto está activo; la elección se recuerda en este dispositivo.
+const SIMPLE_MODE_HIDDEN = ['nav-doc-lessons', 'nav-doc-evaluate', 'nav-doc-groups', 'nav-doc-ranking', 'nav-doc-bonus'];
+function simpleModeKey() { return `PX_SIMPLE_MODE_${window.currentUser?.id || 'anon'}`; }
+function isTeacherSimpleMode() {
+  try { return localStorage.getItem(simpleModeKey()) !== '0'; } catch (e) { return true; }
+}
+
+function applyTeacherSimpleMode() {
+  const simple = isTeacherSimpleMode();
+  SIMPLE_MODE_HIDDEN.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (simple) { el.style.display = 'none'; return; }
+    el.style.display = id === 'nav-doc-bonus' ? (window.userData?.is_1bot_team ? 'flex' : 'none') : '';
+  });
+  document.querySelectorAll('#nav-docente .nav-node-usb').forEach(el => {
+    el.style.display = simple || !NODE_USB_FEATURE_READY ? 'none' : '';
+  });
+
+  const nav = document.getElementById('nav-docente');
+  if (!nav) return;
+  let toggle = document.getElementById('nav-doc-simple-toggle');
+  if (!toggle) {
+    toggle = document.createElement('div');
+    toggle.id = 'nav-doc-simple-toggle';
+    toggle.className = 'nav-item';
+    toggle.style.opacity = '0.85';
+    toggle.onclick = () => window.toggleTeacherSimpleMode();
+    nav.appendChild(toggle);
+  }
+  toggle.innerHTML = simple
+    ? '<i class="fas fa-plus"></i><span>Ver todas las opciones</span>'
+    : '<i class="fas fa-minus"></i><span>Volver al modo simple</span>';
+}
+
+window.toggleTeacherSimpleMode = function toggleTeacherSimpleMode() {
+  const next = !isTeacherSimpleMode();
+  try { localStorage.setItem(simpleModeKey(), next ? '1' : '0'); } catch (e) { }
+  applyTeacherSimpleMode();
+  window.showToast?.(next
+    ? '<i class="fas fa-circle-check"></i> Modo simple: solo lo esencial del día a día.'
+    : '<i class="fas fa-circle-check"></i> Ahora ves todas las opciones. Puedes volver al modo simple al final del menú.', 'success');
+};
 
 function showMandatoryPasswordChangeModal() {
   // Limpiar si ya existe uno (prevenir duplicados)

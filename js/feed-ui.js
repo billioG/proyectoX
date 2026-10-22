@@ -179,3 +179,115 @@ window.renderProjectCard = function renderProjectCard(p) {
 }
 
 console.log('✅ feed-ui.js refacturado (Premium Edition)');
+
+// ================================================
+// TU SEMANA -- tarjeta de inicio del docente
+// ================================================
+// Lo primero que ve el docente al entrar: qué tiene pendiente HOY y esta
+// semana, con un botón para resolverlo. Cada dato se calcula por separado:
+// si uno falla (sin conexión, o una tabla que todavía no existe), los demás
+// se muestran igual.
+window.renderTeacherWeekCard = async function renderTeacherWeekCard() {
+  const box = document.getElementById('teacher-week-card');
+  const sb = window._supabase;
+  const me = window.currentUser?.id;
+  if (!box || !sb || !me) return;
+
+  const esc = window.sanitizeInput;
+  const key = (o) => `${o.school_code}|${o.grade}|${o.section}`;
+  const today = new Date().toLocaleDateString('en-CA'); // AAAA-MM-DD en hora local
+  const since30 = new Date(Date.now() - 30 * 86400000).toISOString();
+
+  const safe = async (fn) => { try { return await fn(); } catch (e) { console.warn('Tu semana:', e?.message || e); return null; } };
+
+  const classes = await safe(async () => {
+    const { data, error } = await sb.from('teacher_assignments').select('school_code, grade, section').eq('teacher_id', me);
+    if (error) throw error;
+    const seen = new Map();
+    (data || []).forEach(c => seen.set(key(c), c));
+    return [...seen.values()];
+  }) || [];
+  if (!classes.length) { box.innerHTML = ''; return; }
+  const myKeys = new Set(classes.map(key));
+
+  const [attended, groups, exams] = await Promise.all([
+    safe(async () => {
+      const { data, error } = await sb.from('attendance').select('school_code, grade, section').eq('teacher_id', me).eq('date', today);
+      if (error) throw error;
+      return new Set((data || []).map(key));
+    }),
+    safe(async () => {
+      const { data, error } = await sb.rpc('get_groups_progress', { p_days: 7 });
+      if (error) throw error;
+      return (data || []).filter(g => myKeys.has(key(g)));
+    }),
+    safe(async () => {
+      const { data, error } = await sb.from('exams').select('id, title, school_code, grade, section, created_at')
+        .eq('teacher_id', me).gte('created_at', since30).order('created_at', { ascending: false }).limit(20);
+      if (error) throw error;
+      return data || [];
+    }),
+  ]);
+
+  const sizeByClass = new Map((groups || []).map(g => [key(g), g.students]));
+  let pendingExams = [];
+  if (exams?.length) {
+    const counts = await safe(async () => {
+      const rows = await window.fetchAllRows(() => sb.from('exam_results').select('exam_id').in('exam_id', exams.map(e => e.id)));
+      const m = new Map();
+      rows.forEach(r => m.set(r.exam_id, (m.get(r.exam_id) || 0) + 1));
+      return m;
+    });
+    if (counts) {
+      pendingExams = exams
+        .map(e => ({ ...e, done: counts.get(e.id) || 0, size: sizeByClass.get(key(e)) }))
+        .filter(e => e.size && e.done < e.size);
+    }
+  }
+
+  const items = [];
+  if (attended) {
+    const missing = classes.filter(c => !attended.has(key(c)));
+    items.push(missing.length
+      ? { icon: 'fa-user-check', tone: 'amber', text: `<b>Asistencia de hoy:</b> falta pasar lista en ${missing.length === 1 ? `${esc(missing[0].grade)} ${esc(missing[0].section)}` : `${missing.length} de tus ${classes.length} clases`}.`, btn: 'Pasar lista', go: "nav('attendance')" }
+      : { icon: 'fa-circle-check', tone: 'green', text: '<b>Asistencia de hoy:</b> lista en todas tus clases.' });
+  }
+  if (exams) {
+    if (pendingExams.length) {
+      const e = pendingExams[0];
+      const more = pendingExams.length > 1 ? ` y ${pendingExams.length - 1} examen(es) más` : '';
+      items.push({ icon: 'fa-file-circle-check', tone: 'amber', text: `<b>Exámenes:</b> “${esc(e.title)}” tiene ${e.done} de ${e.size} hojas calificadas${more}.`, btn: 'Calificar', go: "nav('exams')" });
+    } else if (exams.length) {
+      items.push({ icon: 'fa-circle-check', tone: 'green', text: '<b>Exámenes:</b> todos los del último mes están calificados.' });
+    }
+  }
+  if (groups?.length) {
+    const notPracticing = groups.reduce((a, g) => a + Math.max(0, (g.students || 0) - (g.active || 0)), 0);
+    const total = groups.reduce((a, g) => a + (g.students || 0), 0);
+    items.push(notPracticing
+      ? { icon: 'fa-gamepad', tone: 'amber', text: `<b>Práctica:</b> ${notPracticing} de ${total} estudiantes no practicaron en los últimos 7 días.`, btn: 'Ver a quién apoyar', go: "nav('progress')" }
+      : { icon: 'fa-circle-check', tone: 'green', text: '<b>Práctica:</b> todos tus estudiantes practicaron esta semana.' });
+  }
+  if (!items.length) { box.innerHTML = ''; return; }
+
+  const pending = items.filter(i => i.tone === 'amber').length;
+  const toneCls = { amber: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300', green: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300' };
+  box.innerHTML = `
+    <div class="glass-card p-5 sm:p-6 mb-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+      <div class="flex items-center justify-between gap-3 mb-4">
+        <div>
+          <h3 class="text-base font-black text-slate-800 dark:text-white">Tu semana</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400">${pending ? `Tienes ${pending} pendiente${pending === 1 ? '' : 's'}. Empieza por el primero.` : 'Todo al día. ¡Buen trabajo!'}</p>
+        </div>
+        <i class="fas fa-calendar-week text-2xl text-primary"></i>
+      </div>
+      <div class="flex flex-col gap-3">
+        ${items.map(i => `
+          <div class="flex items-center gap-3 flex-wrap sm:flex-nowrap">
+            <span class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${toneCls[i.tone]}"><i class="fas ${i.icon}"></i></span>
+            <p class="text-sm text-slate-700 dark:text-slate-200 flex-1 min-w-[200px]">${i.text}</p>
+            ${i.btn ? `<button class="btn-primary-tw h-9 px-4 text-xs font-bold shrink-0" onclick="${i.go}">${i.btn}</button>` : ''}
+          </div>`).join('')}
+      </div>
+    </div>`;
+};
