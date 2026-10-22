@@ -46,6 +46,7 @@ del proyecto (necesitan contraseñas o acceso al panel de Supabase).
 
 ## 🔴 Seguridad -- auditoría 21/10/2026
 
+- [ ] Correr `migrations/course-resource-weights.sql` (v1.0.173): ponderación por recurso y protección de notas (rango 0-100, se conserva la mejor). Sin ella la app funciona, pero el botón "Aprobar ponderación" avisa que falta actualizar la base. Las notas SCORM guardadas antes con escala equivocada (ej. 8 en vez de 80) no se corrigen solas: el estudiante debe repetir la actividad.
 - [ ] Publicar v1.0.172 y DESPUÉS correr `migrations/security-hardening-2026-10.sql` (al final muestra una fila: debe dar `false, false, true, true`). Si se corre antes de publicar, las versiones viejas de la app dan error al iniciar sesión.
 - [ ] Correr `migrations/practice-progress.sql` (v1.0.166): en producción la tabla `practice_results` todavía no existe (verificado el 21/10), así que los reportes de progreso por competencia no funcionan.
 - [ ] Correr `migrations/fix-is-staff-coordinador.sql` y compañía (siguen sin marcar abajo).

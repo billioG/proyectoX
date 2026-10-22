@@ -358,43 +358,163 @@ window.saveCourse = async function saveCourse(editingId) {
 }
 
 // ================================================
-// CÁLCULO DE NOTA DEL CURSO -- reparto automático de peso
+// CÁLCULO DE NOTA DEL CURSO -- ponderación por recurso
 // ================================================
-// La nota del curso sale SOLO de las actividades con nota automática
-// (H5P/SCORM/quiz) -- se reparten los puntos del curso en partes iguales
-// entre ellas. Video/PDF/imagen/HTML5/Tinkercad no entran a esta bolsa:
-// solo cuentan para el % de "completado" (visto/no visto), no para la nota.
-// Antes SÍ entraban (con menos peso) y eso diluía la nota real con
-// recursos que ni siquiera se pueden calificar.
-function computeResourceWeights(items) {
-  const weights = new Map();
-  const graded = items.filter(l => LESSON_TYPES_WITH_GRADE.has(l.content_type));
-  if (!graded.length) return weights;
-  const unit = 100 / graded.length;
-  graded.forEach(l => weights.set(l.id, unit));
-  return weights;
+// Cada curso vale `course.weight` puntos del bimestre. Esos puntos se
+// reparten entre los recursos que CUENTAN para la nota:
+//   - Por defecto cuentan los que dan nota real (Quiz/H5P/SCORM); video,
+//     PDF, imagen, HTML5 y Tinkercad solo cuentan para el % de "visto".
+//   - Mientras el docente no apruebe, la app usa una SUGERENCIA: el peso de
+//     cada actividad es proporcional a su tamaño (preguntas calificables de
+//     un quiz; si no se conoce, el promedio de las demás), las evaluaciones
+//     finales/exámenes valen el doble, y un H5P/SCORM que nunca reporta nota
+//     (3+ intentos y ninguna nota) se deja fuera porque no se puede calificar.
+//   - El docente puede aprobar la sugerencia o poner los puntos a mano
+//     (openCourseWeightsModal); se guardan en lessons.grade_points.
+// Cada estudiante gana: puntos del recurso × su nota (%) / 100.
+// Ej.: curso de 10 pts con un SCORM de 6 pts y un quiz de 4 pts; saca 100 %
+// en el SCORM y 50 % en el quiz -> 6 + 2 = 8 de 10 puntos.
+const FINAL_ASSESSMENT_RE = /\b(final|examen|evaluaci[oó]n|prueba|parcial)\b/i;
+const NO_SCORE_MIN_ATTEMPTS = 3;
+
+function countsForGradeByDefault(l) {
+  return LESSON_TYPES_WITH_GRADE.has(l.content_type);
+}
+
+function quizGradableCount(l) {
+  if (l.content_type !== 'quiz') return null;
+  const n = (l.quiz_data || []).filter(q => q.type !== 'text').length;
+  return n || null;
+}
+
+// Reparte `total` puntos según `shares` en pasos de medio punto, sumando
+// EXACTO el total (método del mayor residuo).
+function splitPoints(total, shares) {
+  const sum = shares.reduce((a, b) => a + b, 0);
+  if (!sum || !total) return shares.map(() => 0);
+  const units = Math.round(total * 2);
+  const raw = shares.map(s => (s / sum) * units);
+  const base = raw.map(Math.floor);
+  let left = units - base.reduce((a, b) => a + b, 0);
+  raw.map((r, i) => [r - base[i], i]).sort((a, b) => b[0] - a[0]).forEach(([, i]) => { if (left > 0) { base[i]++; left--; } });
+  return base.map(u => u / 2);
+}
+
+// allCompletions: las de TODOS los estudiantes de la clase (lesson_id, score),
+// solo para detectar paquetes que nunca reportan nota.
+function computeCourseWeighting(course, items, allCompletions = []) {
+  const total = Number(course?.weight ?? 100);
+  const points = new Map();
+  const reasons = new Map();
+  const counted = new Set();
+
+  const counts = (l) => l.counts_for_grade ?? countsForGradeByDefault(l);
+  const approvedSum = items.filter(l => l.counts_for_grade).reduce((a, l) => a + Number(l.grade_points || 0), 0);
+  const approvedValid = !!course?.weights_approved_at
+    && items.every(l => l.counts_for_grade === true || l.counts_for_grade === false)
+    && Math.abs(approvedSum - total) < 0.01;
+
+  if (approvedValid) {
+    items.forEach(l => {
+      if (l.counts_for_grade) {
+        counted.add(l.id);
+        points.set(l.id, Number(l.grade_points || 0));
+        reasons.set(l.id, 'Asignado por el docente');
+      } else {
+        reasons.set(l.id, 'No cuenta para la nota');
+      }
+    });
+    return { mode: 'approved', stale: false, total, points, reasons, counted };
+  }
+
+  const stats = new Map();
+  (allCompletions || []).forEach(c => {
+    const s = stats.get(c.lesson_id) || { n: 0, scored: 0 };
+    s.n++; if (c.score != null) s.scored++;
+    stats.set(c.lesson_id, s);
+  });
+
+  const candidates = [];
+  items.forEach(l => {
+    if (!counts(l)) { reasons.set(l.id, LESSON_TYPES_WITH_GRADE.has(l.content_type) ? 'No cuenta para la nota' : 'Solo cuenta como visto'); return; }
+    const s = stats.get(l.id);
+    if ((l.content_type === 'scorm' || l.content_type === 'h5p') && l.counts_for_grade !== true && s && s.n >= NO_SCORE_MIN_ATTEMPTS && s.scored === 0) {
+      reasons.set(l.id, `No reporta nota (${s.n} intentos sin nota): queda fuera de la sugerencia`);
+      return;
+    }
+    candidates.push(l);
+  });
+
+  const knownSizes = candidates.map(quizGradableCount).filter(n => n);
+  const avgSize = knownSizes.length ? knownSizes.reduce((a, b) => a + b, 0) / knownSizes.length : 1;
+  const shares = candidates.map(l => {
+    const size = quizGradableCount(l);
+    const isFinal = FINAL_ASSESSMENT_RE.test(l.title || '');
+    const why = [];
+    why.push(size ? `${size} pregunta${size === 1 ? '' : 's'}` : (knownSizes.length ? 'tamaño promedio' : 'parte igual'));
+    if (isFinal) why.push('evaluación final ×2');
+    reasons.set(l.id, why.join(' · '));
+    return (size || avgSize) * (isFinal ? 2 : 1);
+  });
+  splitPoints(total, shares).forEach((p, i) => { points.set(candidates[i].id, p); counted.add(candidates[i].id); });
+
+  return { mode: 'suggested', stale: !!course?.weights_approved_at, total, points, reasons, counted };
 }
 
 function resourceScorePct(lesson, completion) {
   if (LESSON_TYPES_WITH_GRADE.has(lesson.content_type)) {
-    return completion?.score != null ? completion.score : 0;
+    return completion?.score != null ? Math.min(100, Math.max(0, Number(completion.score))) : 0;
   }
   return completion ? 100 : 0;
 }
 
-// completionsMap: Map(lessonId -> {score, status}) para UN alumno.
-function computeCourseGradeForStudent(course, items, completionsMap) {
-  const weights = computeResourceWeights(items);
-  let pct = 0;
+// completionsMap: Map(lessonId -> {score, status}) de UN estudiante.
+function computeCourseGradeForStudent(course, items, completionsMap, weighting) {
+  const w = weighting || computeCourseWeighting(course, items);
+  let earned = 0;
   const breakdown = items.map(l => {
     const completion = completionsMap.get(l.id);
     const score = resourceScorePct(l, completion);
-    const weight = weights.get(l.id) || 0;
-    pct += (score * weight) / 100;
-    return { lesson: l, score, weight, done: !!completion };
+    const pts = w.points.get(l.id) || 0;
+    const got = w.counted.has(l.id) ? (score * pts) / 100 : 0;
+    earned += got;
+    return { lesson: l, score, points: pts, earned: got, counted: w.counted.has(l.id), done: !!completion };
   });
-  const points = Math.round(((pct / 100) * (course.weight ?? 100)) * 100) / 100;
-  return { pct: Math.round(pct), points, breakdown };
+  const points = Math.round(earned * 100) / 100;
+  const pct = w.total ? Math.round((earned / w.total) * 100) : 0;
+  return { pct, points, breakdown };
+}
+window.computeCourseWeighting = computeCourseWeighting;
+
+// Para las exportaciones: la ponderación de cada curso se calcula una sola vez.
+function memoWeighting(lessonsByCourse, allCompletions) {
+  const cache = new Map();
+  return (course) => {
+    if (!cache.has(course.id)) {
+      const items = lessonsByCourse.get(course.id) || [];
+      const ids = new Set(items.map(l => l.id));
+      cache.set(course.id, computeCourseWeighting(course, items, (allCompletions || []).filter(c => ids.has(c.lesson_id))));
+    }
+    return cache.get(course.id);
+  };
+}
+
+async function fetchCourseCompletions(lessonIds) {
+  if (!lessonIds.length) return [];
+  // PostgREST corta en 1000 filas: con 30 alumnos y 40 recursos se perdían
+  // notas en silencio. fetchAllRows pagina hasta traer todo.
+  const rows = [];
+  for (let i = 0; i < lessonIds.length; i += 150) {
+    const chunk = lessonIds.slice(i, i + 150);
+    rows.push(...await window.fetchAllRows(() => window._supabase.from('lesson_completions')
+      .select('lesson_id, student_id, score, status').in('lesson_id', chunk).order('lesson_id').order('student_id')));
+  }
+  return rows;
+}
+
+function weightingBadgeHtml(w) {
+  if (w.mode === 'approved') return '<span class="px-2 py-0.5 rounded-full text-[0.55rem] font-black uppercase bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">Ponderación aprobada</span>';
+  return `<span class="px-2 py-0.5 rounded-full text-[0.55rem] font-black uppercase bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">${w.stale ? 'El curso cambió: revisa la ponderación' : 'Ponderación sugerida (sin aprobar)'}</span>`;
 }
 
 window.openCourseGradesModal = async function openCourseGradesModal(courseId) {
@@ -405,80 +525,202 @@ window.openCourseGradesModal = async function openCourseGradesModal(courseId) {
     window._supabase.from('lessons').select('*').eq('course_id', courseId).order('order_index', { ascending: true }),
     window._supabase.from('students').select('id, full_name, username').eq('school_code', course.school_code).eq('grade', course.grade).eq('section', course.section).order('full_name'),
   ]);
-
-  const lessonIds = (items || []).map(l => l.id);
-  const { data: completions } = lessonIds.length
-    ? await window._supabase.from('lesson_completions').select('lesson_id, student_id, score, status').in('lesson_id', lessonIds)
-    : { data: [] };
+  const lessons = items || [];
+  const completions = await fetchCourseCompletions(lessons.map(l => l.id));
+  const weighting = computeCourseWeighting(course, lessons, completions);
+  const countedLessons = lessons.filter(l => weighting.counted.has(l.id));
 
   const completionsByStudent = new Map();
-  (completions || []).forEach(c => {
+  completions.forEach(c => {
     if (!completionsByStudent.has(c.student_id)) completionsByStudent.set(c.student_id, new Map());
     completionsByStudent.get(c.student_id).set(c.lesson_id, c);
   });
 
-  const sanitizeInput = window.sanitizeInput;
+  const esc = window.sanitizeInput;
+  const fmtPts = (n) => (Math.round(n * 100) / 100).toLocaleString('es-GT');
   const modal = document.createElement('div');
-  modal.className = 'fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-sm animate-fadeIn';
+  modal.className = 'fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6 bg-slate-950/80 backdrop-blur-sm animate-fadeIn';
   modal.innerHTML = `
-    <div class="glass-card w-full max-w-3xl max-h-[85vh] flex flex-col p-8 shadow-2xl animate-slideUp">
-      <div class="flex justify-between items-start mb-2">
-        <div>
-          <h2 class="text-lg font-bold text-slate-800 dark:text-white uppercase tracking-tighter">${sanitizeInput(course.title)}</h2>
-          <p class="text-xs text-slate-400 mt-1">${course.bimestre || 1}º Bimestre · vale ${course.weight ?? 100} puntos · ${(items || []).length} recurso(s)</p>
+    <div class="glass-card w-full max-w-5xl max-h-[88vh] flex flex-col p-6 sm:p-8 shadow-2xl animate-slideUp bg-white dark:bg-slate-900">
+      <div class="flex justify-between items-start gap-3 mb-2">
+        <div class="min-w-0">
+          <h2 class="text-lg font-bold text-slate-800 dark:text-white uppercase tracking-tighter">${esc(course.title)}</h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">${course.bimestre || 1}º Bimestre · el curso vale <strong>${course.weight ?? 100} puntos</strong> · ${lessons.length} recurso(s)</p>
+          <div class="mt-2 flex items-center gap-2 flex-wrap">${weightingBadgeHtml(weighting)}
+            <button class="text-[0.65rem] font-black uppercase text-primary hover:underline" onclick="this.closest('.fixed').remove(); window.openCourseWeightsModal('${course.id}')"><i class="fas fa-scale-balanced"></i> ${weighting.mode === 'approved' ? 'Cambiar ponderación' : 'Revisar y aprobar ponderación'}</button>
+          </div>
         </div>
         <button class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500 transition-colors flex items-center justify-center shrink-0" onclick="this.closest('.fixed').remove()"><i class="fas fa-times"></i></button>
       </div>
-      <details class="mt-3 mb-1 group">
-        <summary class="text-[0.65rem] font-bold text-primary uppercase tracking-widest cursor-pointer select-none"><i class="fas fa-circle-info mr-1"></i> ¿Cómo se pondera cada recurso?</summary>
-        <div class="mt-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 text-xs space-y-2">
-          <p class="text-slate-500 dark:text-slate-400">La nota del curso sale <strong>solo</strong> de los recursos con nota real (H5P/SCORM/Quiz), repartida en partes iguales entre ellos. Los de solo lectura (video/PDF/imagen, Tinkercad) cuentan para el % de "visto" pero no afectan la nota. Si no hay ningún recurso con nota, el curso vale 0 puntos hasta que agregues uno.</p>
-          <table class="w-full text-left mt-2">
-            <thead><tr class="text-[0.55rem] uppercase text-slate-400 border-b border-slate-200 dark:border-slate-700">
-              <th class="py-1 pr-2">Recurso</th><th class="py-1 pr-2">Tipo</th><th class="py-1 text-right">Peso</th>
-            </tr></thead>
-            <tbody>
-              ${(() => {
-      const weights = computeResourceWeights(items || []);
-      return (items || []).map(l => `
-                  <tr class="border-b border-slate-100 dark:border-slate-800/50">
-                    <td class="py-1.5 pr-2 font-bold text-slate-600 dark:text-slate-300 truncate max-w-[160px]">${sanitizeInput(l.title)}</td>
-                    <td class="py-1.5 pr-2 text-slate-400">${LESSON_TYPE_LABEL[l.content_type]}${LESSON_TYPES_WITH_GRADE.has(l.content_type) ? ' <span class="text-emerald-500">(nota real)</span>' : ' <span class="text-slate-400">(visto)</span>'}</td>
-                    <td class="py-1.5 text-right font-black text-primary">${(weights.get(l.id) || 0).toFixed(1)}%</td>
-                  </tr>
-                `).join('') || '<tr><td colspan="3" class="py-2 text-slate-400">Sin recursos todavía.</td></tr>';
-    })()}
-            </tbody>
-          </table>
+      <details class="mt-2 mb-2">
+        <summary class="text-[0.65rem] font-bold text-primary uppercase tracking-widest cursor-pointer select-none"><i class="fas fa-circle-info mr-1"></i> ¿Cómo se calcula?</summary>
+        <div class="mt-2 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 text-xs text-slate-600 dark:text-slate-300 space-y-1">
+          <p>Cada recurso que cuenta para la nota tiene sus puntos (la suma es lo que vale el curso). El estudiante gana <strong>puntos del recurso × su nota en ese recurso</strong>.</p>
+          <p>Ejemplo: un SCORM de 6 pts y un quiz de 4 pts. Con 100 % en el SCORM y 50 % en el quiz: 6 + 2 = <strong>8 puntos</strong>.</p>
+          <p>Video, PDF e imagen cuentan como "visto" para el avance, pero no suman puntos salvo que lo decidas en la ponderación.</p>
         </div>
       </details>
-      <div class="overflow-y-auto custom-scrollbar mt-2 -mx-2 px-2">
+      <div class="overflow-auto custom-scrollbar mt-1 -mx-2 px-2">
         <table class="w-full text-left border-collapse text-sm">
           <thead>
-            <tr class="text-[0.6rem] font-black uppercase text-slate-400 tracking-widest border-b border-slate-100 dark:border-slate-800">
-              <th class="py-2 pr-4">Alumno</th>
-              <th class="py-2 pr-4">Progreso</th>
-              <th class="py-2 text-right">Puntos (de ${course.weight ?? 100})</th>
+            <tr class="text-[0.6rem] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest border-b border-slate-200 dark:border-slate-800 align-bottom">
+              <th class="py-2 pr-4 sticky left-0 bg-white dark:bg-slate-900">Estudiante</th>
+              ${countedLessons.map(l => `<th class="py-2 px-2 text-center min-w-[90px]" title="${window.sanitizeAttr(l.title)}">${esc((l.title || '').slice(0, 18))}${(l.title || '').length > 18 ? '…' : ''}<br><span class="normal-case font-bold text-primary">${fmtPts(weighting.points.get(l.id) || 0)} pts</span></th>`).join('')}
+              <th class="py-2 px-2 text-right">Nota</th>
+              <th class="py-2 pl-2 text-right">Puntos (de ${course.weight ?? 100})</th>
             </tr>
           </thead>
           <tbody>
             ${(students || []).map(s => {
-              const grade = computeCourseGradeForStudent(course, items || [], completionsByStudent.get(s.id) || new Map());
+              const grade = computeCourseGradeForStudent(course, lessons, completionsByStudent.get(s.id) || new Map(), weighting);
+              const cells = grade.breakdown.filter(b => b.counted).map(b => `<td class="py-2.5 px-2 text-center ${b.done ? 'text-slate-700 dark:text-slate-200' : 'text-slate-400'}">${b.done ? Math.round(b.score) + '%' : '—'}<br><span class="text-[0.6rem] text-slate-500 dark:text-slate-400">${fmtPts(b.earned)} pts</span></td>`).join('');
               return `
-                <tr class="border-b border-slate-50 dark:border-slate-800/50">
-                  <td class="py-3 pr-4 font-bold text-slate-700 dark:text-slate-200">${sanitizeInput(s.full_name)}</td>
-                  <td class="py-3 pr-4 text-slate-500">${grade.pct}%</td>
-                  <td class="py-3 text-right font-black text-primary">${grade.points}</td>
-                </tr>
-              `;
-            }).join('') || `<tr><td colspan="3" class="py-10 text-center text-slate-400">No hay alumnos en esta clase todavía.</td></tr>`}
+                <tr class="border-b border-slate-100 dark:border-slate-800/50">
+                  <td class="py-2.5 pr-4 font-bold text-slate-700 dark:text-slate-200 sticky left-0 bg-white dark:bg-slate-900">${esc(s.full_name)}</td>
+                  ${cells}
+                  <td class="py-2.5 px-2 text-right text-slate-600 dark:text-slate-300">${grade.pct}%</td>
+                  <td class="py-2.5 pl-2 text-right font-black text-primary">${fmtPts(grade.points)}</td>
+                </tr>`;
+            }).join('') || `<tr><td colspan="${countedLessons.length + 3}" class="py-10 text-center text-slate-400">No hay estudiantes en esta clase todavía.</td></tr>`}
           </tbody>
         </table>
+        ${countedLessons.length ? '' : '<p class="text-xs text-amber-700 dark:text-amber-400 mt-4"><i class="fas fa-triangle-exclamation"></i> Ningún recurso cuenta para la nota: el curso vale 0 puntos hasta que agregues un Quiz, H5P o SCORM, o marques uno en la ponderación.</p>'}
       </div>
     </div>
   `;
   document.body.appendChild(modal);
 }
+
+// ================================================
+// PONDERACIÓN DEL CURSO -- sugerencia + aprobación o ajuste manual
+// ================================================
+window.openCourseWeightsModal = async function openCourseWeightsModal(courseId) {
+  const { data: course, error } = await window._supabase.from('courses').select('*').eq('id', courseId).single();
+  if (error || !course) return window.showToast('<i class="fas fa-circle-xmark"></i> No se pudo cargar el curso', 'error');
+  const { data: items } = await window._supabase.from('lessons').select('*').eq('course_id', courseId).order('order_index', { ascending: true });
+  const lessons = items || [];
+  const completions = await fetchCourseCompletions(lessons.map(l => l.id));
+
+  // La sugerencia se calcula como si el curso no estuviera aprobado (para
+  // poder compararla con lo que el docente tiene guardado).
+  const suggestion = computeCourseWeighting({ ...course, weights_approved_at: null }, lessons.map(l => ({ ...l, counts_for_grade: null })), completions);
+  const current = computeCourseWeighting(course, lessons, completions);
+  window._weightsState = { course, lessons, suggestion, current };
+
+  const esc = window.sanitizeInput;
+  const modal = document.createElement('div');
+  modal.id = 'course-weights-modal';
+  modal.className = 'fixed inset-0 z-[210] flex items-center justify-center p-4 sm:p-6 bg-slate-950/80 backdrop-blur-sm animate-fadeIn';
+  modal.innerHTML = `
+    <div class="glass-card w-full max-w-3xl max-h-[90vh] flex flex-col p-6 sm:p-8 shadow-2xl animate-slideUp bg-white dark:bg-slate-900">
+      <div class="flex justify-between items-start gap-3">
+        <div>
+          <h2 class="text-lg font-bold text-slate-800 dark:text-white uppercase tracking-tighter"><i class="fas fa-scale-balanced text-primary"></i> Ponderación del curso</h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">${esc(course.title)} · vale <strong>${course.weight ?? 100} puntos</strong>. Reparte esos puntos entre los recursos que cuentan para la nota.</p>
+          <div class="mt-2">${weightingBadgeHtml(current)}</div>
+        </div>
+        <button class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500 transition-colors flex items-center justify-center shrink-0" onclick="this.closest('.fixed').remove()"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="overflow-y-auto custom-scrollbar mt-4 -mx-2 px-2">
+        <table class="w-full text-left border-collapse text-sm">
+          <thead><tr class="text-[0.6rem] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest border-b border-slate-200 dark:border-slate-800">
+            <th class="py-2 pr-2">Recurso</th><th class="py-2 px-2 text-center">¿Cuenta?</th><th class="py-2 px-2">Sugerencia</th><th class="py-2 pl-2 text-right w-28">Puntos</th>
+          </tr></thead>
+          <tbody>
+            ${lessons.map(l => {
+              const isCounted = current.counted.has(l.id);
+              const pts = current.points.get(l.id) || 0;
+              const sug = suggestion.points.get(l.id);
+              return `
+              <tr class="border-b border-slate-100 dark:border-slate-800/50" data-lesson="${l.id}">
+                <td class="py-2.5 pr-2"><div class="font-bold text-slate-700 dark:text-slate-200">${esc(l.title)}</div><div class="text-[0.65rem] text-slate-500 dark:text-slate-400">${LESSON_TYPE_LABEL[l.content_type] || l.content_type}${LESSON_TYPES_WITH_GRADE.has(l.content_type) ? ' · da nota' : ' · sin nota (cuenta como visto = 100 %)'}</div></td>
+                <td class="py-2.5 px-2 text-center"><input type="checkbox" class="w-5 h-5 accent-emerald-600" data-role="counts" ${isCounted ? 'checked' : ''} onchange="window.onWeightsInput()"></td>
+                <td class="py-2.5 px-2 text-xs text-slate-500 dark:text-slate-400">${sug != null ? `<strong class="text-slate-700 dark:text-slate-200">${sug} pts</strong> · ` : ''}${esc(suggestion.reasons.get(l.id) || '')}</td>
+                <td class="py-2.5 pl-2 text-right"><input type="number" min="0" step="0.5" value="${isCounted ? pts : 0}" data-role="points" class="input-field-tw h-9 text-sm w-24 text-right" oninput="window.onWeightsInput()" ${isCounted ? '' : 'disabled'}></td>
+              </tr>`;
+            }).join('') || '<tr><td colspan="4" class="py-6 text-center text-slate-400">El curso no tiene recursos todavía.</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+      <div class="mt-4 flex items-center justify-between gap-3 flex-wrap">
+        <p id="weights-total" class="text-sm font-bold"></p>
+        <div class="flex gap-2 flex-wrap">
+          <button class="btn-secondary-tw h-10 px-4 text-xs uppercase font-bold" onclick="window.applyWeightsPreset('suggestion')"><i class="fas fa-wand-magic-sparkles"></i> Usar sugerencia</button>
+          <button class="btn-secondary-tw h-10 px-4 text-xs uppercase font-bold" onclick="window.applyWeightsPreset('equal')"><i class="fas fa-equals"></i> Partes iguales</button>
+          <button id="btn-save-weights" class="btn-primary-tw h-10 px-5 text-xs uppercase font-bold" onclick="window.saveCourseWeights()"><i class="fas fa-check"></i> Aprobar ponderación</button>
+        </div>
+      </div>
+      <p class="text-[0.65rem] text-slate-500 dark:text-slate-400 mt-3">Mientras no apruebes, la nota usa la sugerencia. Si después agregas o quitas recursos, o cambias lo que vale el curso, vuelve a revisar aquí.</p>
+    </div>`;
+  document.body.appendChild(modal);
+  window.onWeightsInput();
+};
+
+function weightsRows() {
+  return [...document.querySelectorAll('#course-weights-modal tr[data-lesson]')];
+}
+
+window.onWeightsInput = function onWeightsInput() {
+  const st = window._weightsState; if (!st) return;
+  const total = Number(st.course.weight ?? 100);
+  let sum = 0;
+  weightsRows().forEach(tr => {
+    const counts = tr.querySelector('[data-role="counts"]').checked;
+    const inp = tr.querySelector('[data-role="points"]');
+    inp.disabled = !counts;
+    if (counts) sum += Math.max(0, parseFloat(inp.value) || 0);
+  });
+  sum = Math.round(sum * 100) / 100;
+  const ok = Math.abs(sum - total) < 0.01;
+  const el = document.getElementById('weights-total');
+  if (el) {
+    el.className = `text-sm font-bold ${ok ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'}`;
+    el.innerHTML = ok
+      ? `<i class="fas fa-circle-check"></i> Suman ${sum} de ${total} puntos`
+      : `<i class="fas fa-triangle-exclamation"></i> Suman ${sum} de ${total} puntos (${sum < total ? 'faltan ' + Math.round((total - sum) * 100) / 100 : 'sobran ' + Math.round((sum - total) * 100) / 100})`;
+  }
+  const btn = document.getElementById('btn-save-weights');
+  if (btn) btn.disabled = !ok;
+};
+
+window.applyWeightsPreset = function applyWeightsPreset(kind) {
+  const st = window._weightsState; if (!st) return;
+  const total = Number(st.course.weight ?? 100);
+  if (kind === 'suggestion') {
+    weightsRows().forEach(tr => {
+      const id = tr.dataset.lesson;
+      const counts = st.suggestion.counted.has(id);
+      tr.querySelector('[data-role="counts"]').checked = counts;
+      tr.querySelector('[data-role="points"]').value = counts ? (st.suggestion.points.get(id) || 0) : 0;
+    });
+  } else {
+    const countedRows = weightsRows().filter(tr => tr.querySelector('[data-role="counts"]').checked);
+    const parts = splitPoints(total, countedRows.map(() => 1));
+    weightsRows().forEach(tr => { if (!tr.querySelector('[data-role="counts"]').checked) tr.querySelector('[data-role="points"]').value = 0; });
+    countedRows.forEach((tr, i) => { tr.querySelector('[data-role="points"]').value = parts[i]; });
+  }
+  window.onWeightsInput();
+};
+
+window.saveCourseWeights = async function saveCourseWeights() {
+  const st = window._weightsState; if (!st) return;
+  const items = weightsRows().map(tr => ({
+    lesson_id: tr.dataset.lesson,
+    counts: tr.querySelector('[data-role="counts"]').checked,
+    points: Math.max(0, parseFloat(tr.querySelector('[data-role="points"]').value) || 0),
+  }));
+  const btn = document.getElementById('btn-save-weights');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+  const { error } = await window._supabase.rpc('set_course_resource_points', { p_course: st.course.id, p_items: items });
+  if (error) {
+    const missing = error.code === 'PGRST202' || /could not find the function/i.test(error.message || '');
+    window.showToast('<i class="fas fa-circle-xmark"></i> ' + (missing ? 'Falta actualizar la base de datos (migrations/course-resource-weights.sql). Avisa al administrador.' : window.friendlyErrorText?.(error) || error.message), 'error');
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Aprobar ponderación'; }
+    return;
+  }
+  window.showToast('<i class="fas fa-circle-check"></i> Ponderación aprobada. Las notas del curso ya la usan.', 'success');
+  document.getElementById('course-weights-modal')?.remove();
+};
 
 // ================================================
 // GESTIONAR RECURSOS DE UN CURSO (docente)
@@ -503,6 +745,7 @@ window.openCourseManager = async function openCourseManager(courseId) {
           <p class="text-xs text-slate-400 mt-1">${window.sanitizeInput(course.schools?.name || course.school_code)} · ${window.sanitizeInput(course.grade)} ${window.sanitizeInput(course.section)}</p>
         </div>
         <div class="flex items-center gap-2 shrink-0">
+          <button class="h-8 px-3 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white text-[0.6rem] font-black uppercase transition-all" onclick="window.openCourseWeightsModal('${course.id}')" title="Cuántos puntos vale cada recurso"><i class="fas fa-scale-balanced"></i> Ponderación</button>
           ${course.is_shared ? `<button class="h-8 px-3 rounded-lg bg-rose-50 dark:bg-rose-900/20 text-rose-500 hover:bg-rose-500 hover:text-white text-[0.6rem] font-black uppercase transition-all" onclick="window.openCourseFeedbackInbox('${course.id}', '${window.sanitizeAttr(course.title)}')"><i class="fas fa-heart"></i> Feedback</button>` : ''}
           <button class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500 transition-colors flex items-center justify-center shrink-0" onclick="this.closest('.fixed').remove()"><i class="fas fa-times"></i></button>
         </div>
@@ -2058,12 +2301,16 @@ window.renderCourseSidebar = function renderCourseSidebar() {
 
   const sidebarEl = document.getElementById('course-player-sidebar');
   if (!sidebarEl) return;
+  const activeCourse = window._activeCourse?.course;
+  const w = activeCourse ? computeCourseWeighting(activeCourse, items) : null;
+  const approvedWeighting = w?.mode === 'approved' ? w : null;
   sidebarEl.innerHTML = items.map((l, i) => {
     const done = isLessonReallyDone(completions.get(l.id));
     const unlocked = isCourseResourceUnlocked(items, i);
     const isActive = i === window._activeCourseIndex;
     const completion = completions.get(l.id);
     const hasGrade = LESSON_TYPES_WITH_GRADE.has(l.content_type) && completion?.score != null;
+    const ptsLabel = approvedWeighting?.counted.has(l.id) ? ` · vale ${approvedWeighting.points.get(l.id)} pts` : '';
     return `
       <div class="p-3 rounded-xl flex items-center gap-3 transition-all ${unlocked ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'} ${isActive ? 'bg-primary/10 border border-primary/30' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}"
            onclick="${unlocked ? `window.selectCourseResource(${i})` : `window.showToast('<i class=\\'fas fa-lock\\'></i> Completá el recurso anterior primero', 'info')`}">
@@ -2072,7 +2319,7 @@ window.renderCourseSidebar = function renderCourseSidebar() {
         </div>
         <div class="min-w-0 flex-1">
           <div class="text-xs font-bold text-slate-700 dark:text-slate-200 truncate">${window.sanitizeInput(l.title)}</div>
-          <div class="text-[0.6rem] text-slate-400">${LESSON_TYPE_LABEL[l.content_type]}${hasGrade ? ` · ${Math.round(completion.score)}%` : ''}</div>
+          <div class="text-[0.6rem] text-slate-400">${LESSON_TYPE_LABEL[l.content_type]}${hasGrade ? ` · ${Math.round(completion.score)}%` : ''}${ptsLabel}</div>
         </div>
       </div>
     `;
@@ -2603,8 +2850,22 @@ window.loadIframeViaFetch = async function loadIframeViaFetch(iframeId, url, sco
   }
 }
 
+// SCORM reporta la nota en bruto (score.raw) con su mínimo y máximo, o escalada
+// (score.scaled, de -1 a 1, solo 2004). La app guarda siempre un PORCENTAJE
+// 0-100: antes se tomaba raw tal cual, así que un paquete que califica sobre
+// 10 y reportaba 8 quedaba con 8 % en vez de 80 %.
+function scormPercent(c) {
+  const clamp = (v) => Math.min(100, Math.max(0, v));
+  if (c.scaled != null && !isNaN(c.scaled)) return clamp(c.scaled * 100);
+  if (c.raw == null || isNaN(c.raw)) return null;
+  const min = c.min != null && !isNaN(c.min) ? c.min : 0;
+  if (c.max != null && !isNaN(c.max) && c.max > min) return clamp(((c.raw - min) / (c.max - min)) * 100);
+  return clamp(c.raw);
+}
+
 window.initScormSession = function initScormSession(lessonId) {
-  const cmi = { score: null, status: null };
+  const cmi = { score: null, status: null, raw: null, min: null, max: null, scaled: null };
+  const recompute = () => { cmi.score = scormPercent(cmi); };
 
   // Identidad real del alumno y de esta lección, por los campos ESTÁNDAR
   // de SCORM (cmi.core.student_id / cmi.learner_id, etc.) -- cualquier
@@ -2627,7 +2888,9 @@ window.initScormSession = function initScormSession(lessonId) {
     LMSFinish: () => commit(),
     LMSCommit: () => commit(),
     LMSGetValue: (key) => {
-      if (key === 'cmi.core.score.raw') return cmi.score !== null ? String(cmi.score) : '';
+      if (key === 'cmi.core.score.raw') return cmi.raw !== null ? String(cmi.raw) : '';
+      if (key === 'cmi.core.score.max') return cmi.max !== null ? String(cmi.max) : '';
+      if (key === 'cmi.core.score.min') return cmi.min !== null ? String(cmi.min) : '';
       if (key === 'cmi.core.lesson_status') return cmi.status || 'incomplete';
       if (key === 'cmi.core.student_id') return studentId;
       if (key === 'cmi.core.student_name') return studentName;
@@ -2635,7 +2898,9 @@ window.initScormSession = function initScormSession(lessonId) {
       return '';
     },
     LMSSetValue: (key, value) => {
-      if (key === 'cmi.core.score.raw') cmi.score = parseFloat(value);
+      if (key === 'cmi.core.score.raw') { cmi.raw = parseFloat(value); recompute(); }
+      if (key === 'cmi.core.score.max') { cmi.max = parseFloat(value); recompute(); }
+      if (key === 'cmi.core.score.min') { cmi.min = parseFloat(value); recompute(); }
       if (key === 'cmi.core.lesson_status') cmi.status = value;
       return 'true';
     },
@@ -2649,7 +2914,10 @@ window.initScormSession = function initScormSession(lessonId) {
     Terminate: () => commit(),
     Commit: () => commit(),
     GetValue: (key) => {
-      if (key === 'cmi.score.raw' || key === 'cmi.score.scaled') return cmi.score !== null ? String(cmi.score) : '';
+      if (key === 'cmi.score.raw') return cmi.raw !== null ? String(cmi.raw) : '';
+      if (key === 'cmi.score.scaled') return cmi.scaled !== null ? String(cmi.scaled) : '';
+      if (key === 'cmi.score.max') return cmi.max !== null ? String(cmi.max) : '';
+      if (key === 'cmi.score.min') return cmi.min !== null ? String(cmi.min) : '';
       if (key === 'cmi.completion_status') return cmi.status || 'incomplete';
       if (key === 'cmi.learner_id') return studentId;
       if (key === 'cmi.learner_name') return studentName;
@@ -2657,8 +2925,10 @@ window.initScormSession = function initScormSession(lessonId) {
       return '';
     },
     SetValue: (key, value) => {
-      if (key === 'cmi.score.raw') cmi.score = parseFloat(value);
-      if (key === 'cmi.score.scaled') cmi.score = parseFloat(value) * 100;
+      if (key === 'cmi.score.raw') { cmi.raw = parseFloat(value); recompute(); }
+      if (key === 'cmi.score.scaled') { cmi.scaled = parseFloat(value); recompute(); }
+      if (key === 'cmi.score.max') { cmi.max = parseFloat(value); recompute(); }
+      if (key === 'cmi.score.min') { cmi.min = parseFloat(value); recompute(); }
       if (key === 'cmi.completion_status' || key === 'cmi.success_status') cmi.status = value;
       return 'true';
     },
@@ -2843,9 +3113,7 @@ window.confirmExportSire = async function confirmExportSire() {
       ? await _supabase.from('lessons').select('*').in('course_id', courseIds)
       : { data: [] };
     const lessonIds = (allLessons || []).map(l => l.id);
-    const { data: allCompletions } = lessonIds.length
-      ? await _supabase.from('lesson_completions').select('lesson_id, student_id, score, status').in('lesson_id', lessonIds)
-      : { data: [] };
+    const allCompletions = await fetchCourseCompletions(lessonIds);
 
     const lessonsByCourse = new Map();
     (allLessons || []).forEach(l => {
@@ -2857,6 +3125,7 @@ window.confirmExportSire = async function confirmExportSire() {
     (allCompletions || []).forEach(c => {
       completionsByStudentLesson.set(`${c.student_id}|${c.lesson_id}`, c);
     });
+    const weightingOf = memoWeighting(lessonsByCourse, allCompletions);
 
     // Puntos de cada estudiante por bimestre = suma de los puntos de todos
     // los cursos de ese bimestre asignados a su clase.
@@ -2867,7 +3136,7 @@ window.confirmExportSire = async function confirmExportSire() {
       (courses || []).forEach(course => {
         const items = lessonsByCourse.get(course.id) || [];
         const completionsMap = new Map(items.map(l => [l.id, completionsByStudentLesson.get(`${s.id}|${l.id}`)]).filter(([, v]) => v));
-        const courseGrade = computeCourseGradeForStudent(course, items, completionsMap);
+        const courseGrade = computeCourseGradeForStudent(course, items, completionsMap, weightingOf(course));
         const bIdx = Math.min(4, Math.max(1, course.bimestre || 1)) - 1;
         unidadPoints[bIdx] += courseGrade.points;
         unidadHasCourses[bIdx] = true;
@@ -2979,9 +3248,7 @@ window.confirmCuadroFinal = async function confirmCuadroFinal() {
       ? await _supabase.from('lessons').select('*').in('course_id', courseIds)
       : { data: [] };
     const lessonIds = (allLessons || []).map(l => l.id);
-    const { data: allCompletions } = lessonIds.length
-      ? await _supabase.from('lesson_completions').select('lesson_id, student_id, score, status').in('lesson_id', lessonIds)
-      : { data: [] };
+    const allCompletions = await fetchCourseCompletions(lessonIds);
 
     const lessonsByCourse = new Map();
     (allLessons || []).forEach(l => {
@@ -2990,6 +3257,7 @@ window.confirmCuadroFinal = async function confirmCuadroFinal() {
     });
     const completionsByStudentLesson = new Map();
     (allCompletions || []).forEach(c => completionsByStudentLesson.set(`${c.student_id}|${c.lesson_id}`, c));
+    const weightingOf = memoWeighting(lessonsByCourse, allCompletions);
 
     // Áreas presentes en esta clase, en el orden oficial del CNB para el
     // nivel de esta clase (no alfabético -- más fácil de leer/transcribir).
@@ -3014,7 +3282,7 @@ window.confirmCuadroFinal = async function confirmCuadroFinal() {
         areaCourses.forEach(course => {
           const items = lessonsByCourse.get(course.id) || [];
           const completionsMap = new Map(items.map(l => [l.id, completionsByStudentLesson.get(`${s.id}|${l.id}`)]).filter(([, v]) => v));
-          const courseGrade = computeCourseGradeForStudent(course, items, completionsMap);
+          const courseGrade = computeCourseGradeForStudent(course, items, completionsMap, weightingOf(course));
           earned += courseGrade.points;
           possible += course.weight ?? 100;
         });

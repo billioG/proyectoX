@@ -30,7 +30,7 @@ function pctColor(p) {
 }
 
 function trendHtml(now, before, dark = false) {
-  if (now === null || before === null) return `<span style="color:#94a3b8">—</span>`;
+  if (now === null || before === null) return `<span style="color:#94a3b8" title="Todavía no hay datos del período anterior para comparar">— sin comparación</span>`;
   const d = now - before;
   if (Math.abs(d) < 3) return `<span style="color:#94a3b8" title="Sin cambios">= igual</span>`;
   return d > 0
@@ -297,8 +297,9 @@ function renderDetail() {
             <div class="text-[0.65rem] text-slate-400">${meta.gameLabel}</div></div>
         </div>
         <div class="flex items-end justify-between">
-          <div class="text-3xl font-black" style="color:${pctColor(pct)}">${pct === null ? '—' : pct + '%'}</div>
-          <div class="text-right text-[0.65rem] text-slate-400">${trendHtml(pct, num(c.pct_prev))}<br>${c.students} de ${d.class_size} estudiantes</div>
+          <div><div class="text-3xl font-black leading-none" style="color:${pctColor(pct)}">${pct === null ? '—' : pct + '%'}</div>
+            <div class="text-[0.6rem] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mt-1">de aciertos</div></div>
+          <div class="text-right text-[0.65rem] text-slate-500 dark:text-slate-400">${trendHtml(pct, num(c.pct_prev))}<br>${c.students} de ${d.class_size} practicaron</div>
         </div>
       </div>`;
   }).join('');
@@ -331,7 +332,10 @@ function renderDetail() {
       <div class="glass-card p-5 border-l-4 border-violet-500"><div class="text-[0.65rem] font-bold uppercase tracking-widest text-slate-400">Con actividad</div>
         <div class="text-3xl font-black text-slate-800 dark:text-white my-1">${d.active_students}</div><div class="text-[0.65rem] font-bold text-slate-400 uppercase">de ${d.class_size} estudiantes</div></div>
     </div>
-    <h3 class="text-sm font-black uppercase tracking-tight text-slate-800 dark:text-white mb-3">Por competencia</h3>
+    <h3 class="text-sm font-black uppercase tracking-tight text-slate-800 dark:text-white mb-1">Por competencia</h3>
+    <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">Porcentaje de respuestas correctas del grupo en prácticas y retos de los últimos ${d.days} días.
+      <span style="color:#10b981;font-weight:700">80 % o más</span> va bien · <span style="color:#f59e0b;font-weight:700">60 a 79 %</span> necesita refuerzo · <span style="color:#f43f5e;font-weight:700">menos de 60 %</span> necesita apoyo.
+      ▲ ▼ compara con los ${d.days} días anteriores. “X de Y practicaron” dice cuántos estudiantes jugaron esa competencia.</p>
     <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">${compCards}</div>
     <div class="flex items-center justify-between gap-3 mb-3 flex-wrap">
       <h3 class="text-sm font-black uppercase tracking-tight text-slate-800 dark:text-white">Cada estudiante</h3>
