@@ -6,6 +6,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { openDb, getMeta } from './db.js';
 import { runSync, loadConfig } from './sync.js';
@@ -136,7 +137,7 @@ const api = {
     if (!/^\d{4}$/.test(String(pin || ''))) return sendJson(res, 400, { error: 'El PIN son 4 números' });
     if (s.locked_until > Date.now()) {
       const mins = Math.ceil((s.locked_until - Date.now()) / 60000);
-      return sendJson(res, 429, { error: `Demasiados intentos. Esperá ${mins} minuto(s) o pedile ayuda a tu docente.` });
+      return sendJson(res, 429, { error: `Demasiados intentos. Espera ${mins} minuto(s) o pídele ayuda a tu docente.` });
     }
 
     let created = false;
@@ -187,9 +188,9 @@ const api = {
   'POST /api/teacher/login': async (req, res) => {
     const { code } = await readBody(req);
     if (!config.teacherCode || String(config.teacherCode).length < 6) {
-      return sendJson(res, 400, { error: 'Este nodo no tiene código de docente. Agregá "teacherCode" en config.json.' });
+      return sendJson(res, 400, { error: 'Este nodo no tiene código de docente. Agrega "teacherCode" en config.json.' });
     }
-    if (teacherLockedUntil > Date.now()) return sendJson(res, 429, { error: 'Demasiados intentos. Esperá unos minutos.' });
+    if (teacherLockedUntil > Date.now()) return sendJson(res, 429, { error: 'Demasiados intentos. Espera unos minutos.' });
     if (!safeEqual(code, config.teacherCode)) {
       teacherFails++;
       if (teacherFails >= 5) { teacherFails = 0; teacherLockedUntil = Date.now() + LOCK_MS; }
@@ -268,6 +269,41 @@ const api = {
   },
 };
 
+// Direcciones de este equipo en la red local (las que escriben los celulares).
+function lanUrls() {
+  const port = config.port || 8080;
+  return Object.values(os.networkInterfaces()).flat()
+    .filter(n => n && n.family === 'IPv4' && !n.internal && !n.address.startsWith('169.254.'))
+    .map(n => `http://${n.address}${port === 80 ? '' : ':' + port}`);
+}
+
+const escHtml = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+// Cartel para imprimir y pegar en el aula: dirección + QR para entrar desde el celular.
+function cartelHtml() {
+  const urls = lanUrls();
+  const main = urls[0] || `http://localhost:${config.port || 8080}`;
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cartel Quetzal</title><style>
+body{font-family:system-ui,Segoe UI,Arial,sans-serif;margin:0;padding:32px 16px;text-align:center;color:#111}
+h1{font-size:40px;margin:0 0 8px}p{font-size:22px;margin:8px 0}.url{font-size:44px;font-weight:800;margin:18px 0;word-break:break-all}
+#qr{display:inline-block;padding:16px;border:2px solid #111;border-radius:12px;margin:12px 0}.otras{color:#555;font-size:18px}
+.steps{max-width:640px;margin:20px auto;text-align:left;font-size:22px;line-height:1.5}
+button{font-size:18px;padding:10px 22px;margin-top:16px;cursor:pointer}@media print{button{display:none}}
+</style></head><body>
+<h1>Entra a Quetzal desde tu celular</h1>
+<p>1. Conéctate al Wi-Fi de la escuela.</p>
+<p>2. Escanea el código o escribe en el navegador:</p>
+<div class="url">${escHtml(main)}</div>
+<div id="qr"></div>
+${urls.length > 1 ? `<p class="otras">Otras direcciones de este equipo: ${urls.slice(1).map(escHtml).join(' · ')}</p>` : ''}
+<div class="steps">3. Elige tu nombre y escribe tu PIN.<br>No necesitas internet ni datos.</div>
+<button onclick="print()">Imprimir</button>
+<script src="/js/qrcode.min.js"></script>
+<script>new QRCode(document.getElementById('qr'), { text: ${JSON.stringify(main)}, width: 260, height: 260 });</script>
+</body></html>`;
+}
+
 // Script que la app carga para saber que está en un nodo escolar.
 function nodeConfigScript() {
   return `window.QUETZAL_NODE = ${JSON.stringify({
@@ -282,6 +318,10 @@ const server = http.createServer(async (req, res) => {
     const route = api[`${req.method} ${url.pathname}`];
     if (route) return await route(req, res, url);
 
+    if (url.pathname === '/cartel') {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+      return res.end(cartelHtml());
+    }
     if (url.pathname === '/node-config.js') {
       res.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-store' });
       return res.end(nodeConfigScript());
@@ -300,7 +340,9 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(config.port || 8080, () => {
-  console.log(`🌳 Nodo Quetzal escuchando en el puerto ${config.port || 8080}`);
+  const port = config.port || 8080;
+  console.log(`🌳 Nodo Quetzal escuchando en el puerto ${port}`);
+  lanUrls().forEach(u => console.log(`   📱 Desde los celulares: ${u}   (cartel para imprimir: ${u}/cartel)`));
 });
 
 // Sync automático: cada N minutos, si hay internet.

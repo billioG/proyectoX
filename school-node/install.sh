@@ -33,7 +33,7 @@ say() { printf '\n\033[1;32m==> %s\033[0m\n' "$1"; }
 warn() { printf '\033[1;33m%s\033[0m\n' "$1"; }
 
 if [ "$(id -u)" -eq 0 ]; then
-  echo "Corré el instalador con tu usuario normal (no con sudo): va a pedir la contraseña cuando haga falta."
+  echo "Ejecuta el instalador con tu usuario normal (no con sudo): pedirá la contraseña cuando haga falta."
   exit 1
 fi
 
@@ -71,8 +71,8 @@ fi
 # ---------- 3. Configuración ----------
 if [ ! -f "$NODE_DIR/config.json" ]; then
   say "Configuración del nodo"
-  echo "Pegá el TOKEN del nodo (lo da el administrador al registrar el nodo en Quetzal LMS)."
-  echo "Si todavía no lo tenés, dejalo vacío y completalo después en $NODE_DIR/config.json"
+  echo "Pega el TOKEN del nodo (lo da el administrador al registrar el nodo en Quetzal LMS)."
+  echo "Si todavía no lo tienes, déjalo vacío y complétalo después en $NODE_DIR/config.json"
   read -r -p "Token: " NODE_TOKEN < /dev/tty || NODE_TOKEN=""
   # "|| true": con pipefail, tr termina por SIGPIPE cuando head corta.
   TEACHER_CODE="$(LC_ALL=C tr -dc '0-9' < /dev/urandom | head -c 6 || true)"
@@ -149,11 +149,11 @@ IPS="$(hostname -I | tr ' ' '\n' | grep -E '^[0-9]+\.' | head -n 3 | tr '\n' ' '
 say "¡Nodo instalado!"
 cat <<EOF
 
-  Abrí en las tablets:   http://quetzal.local
-  (si no abre, usá la IP: $(for ip in $IPS; do printf 'http://%s  ' "$ip"; done))
+  Abre en las tablets:   http://quetzal.local
+  (si no abre, usa la IP: $(for ip in $IPS; do printf 'http://%s  ' "$ip"; done))
 
   Código de docente:     $TEACHER_CODE
-  (para el botón "Docente" en la pantalla de ingreso; guardalo)
+  (para el botón "Docente" en la pantalla de ingreso; guárdalo)
 EOF
 if [ "$HOTSPOT" -eq 1 ]; then
 cat <<EOF

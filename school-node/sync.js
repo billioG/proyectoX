@@ -145,8 +145,12 @@ async function downloadFiles(db, config, log) {
 }
 
 export function loadConfig(dir) {
+  // QUETZAL_CONFIG_DIR permite dejar config.json y data/ fuera del código
+  // (el instalador de Windows los guarda en C:\Quetzal para que una
+  // actualización no los borre).
+  if (process.env.QUETZAL_CONFIG_DIR) dir = process.env.QUETZAL_CONFIG_DIR;
   const file = path.join(dir, 'config.json');
-  if (!fs.existsSync(file)) throw new Error(`Falta ${file} -- copiá config.example.json y completalo.`);
+  if (!fs.existsSync(file)) throw new Error(`Falta ${file} -- copia config.example.json y complétalo.`);
   // Sin el BOM que agrega el Bloc de notas de Windows (si no, JSON.parse falla).
   const config = JSON.parse(fs.readFileSync(file, 'utf8').replace(/^﻿/, ''));
   config.dataDir = path.resolve(dir, config.dataDir || './data');

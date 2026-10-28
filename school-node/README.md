@@ -1,7 +1,10 @@
-# Nodo escolar Quetzal (Raspberry Pi)
+# Nodo escolar Quetzal (computadora con Windows o Raspberry Pi)
 
 Sirve Quetzal LMS en la red local de una escuela **sin internet** y se sincroniza
-con la nube cuando consigue señal (cable, hotspot del celular o, más adelante, USB).
+con la nube cuando consigue señal (cable, hotspot del celular o memoria USB).
+
+Los estudiantes se conectan al Wi-Fi del router con su celular o tablet y abren
+la dirección del nodo (por ejemplo `http://192.168.1.50`). No gastan datos.
 
 ## Qué hace hoy (etapa 1)
 
@@ -21,7 +24,52 @@ con la nube cuando consigue señal (cable, hotspot del celular o, más adelante,
 - En modo nodo se oculta lo que necesita internet (avisos, asistente con IA,
   perfil) y el header muestra el nombre de la escuela.
 
-## Instalación en un comando (recomendado)
+## Instalación en una computadora con Windows 10/11
+
+```
+Router Wi-Fi ──cable── Computadora (nodo Quetzal)
+   │                         └─ cuando hay internet: sincroniza con la nube
+   └── Wi-Fi ── celulares y tablets de los estudiantes
+```
+
+1. Conectar la computadora al router (mejor por **cable**).
+2. Descargar `school-node/instalar-windows.cmd` y `school-node/install-windows.ps1`
+   (en la misma carpeta) y hacer doble clic en `instalar-windows.cmd`. Pide permiso
+   de administrador.
+3. Pegar el **token del nodo** cuando lo pida (ver "Obtener el token del nodo").
+
+El instalador deja todo en `C:\Quetzal`:
+
+| Carpeta / archivo | Qué es |
+|---|---|
+| `app\` | el código (se reemplaza al actualizar) |
+| `node\` | Node.js 22 propio y portátil (no toca otro Node.js de la computadora) |
+| `config.json` | token, código de docente y puerto; solo lo leen administradores |
+| `data\` | base de datos y archivos de cursos (no se borra al actualizar) |
+| `logs
+odo.log` | registro del nodo |
+
+Además: abre el puerto (80, u 8080 si está ocupado) en el firewall **solo para la
+red local**, crea la tarea programada "Quetzal - Nodo escolar" (arranca sola al
+prender la computadora, aunque nadie inicie sesión, y se reinicia si falla), evita
+que la computadora se suspenda enchufada y pone en el escritorio dos accesos:
+**Quetzal (nodo escolar)** y **Quetzal - Cartel para estudiantes** (dirección y QR
+para imprimir; también en `http://IP-DEL-NODO/cartel`).
+
+- Actualizar: `instalar-windows.cmd -Update`
+- Quitar: `instalar-windows.cmd -Uninstall` (conserva `C:\Quetzal\data`; con
+  `-BorrarDatos` también lo borra).
+
+**Router:** reservar la IP de la computadora (reserva DHCP / "IP fija" en el panel
+del router), así la dirección del cartel no cambia. Si el router tiene "aislamiento
+de clientes" o "AP isolation", desactivarlo en la red de los estudiantes, si no
+los celulares no ven la computadora. Un router doméstico aguanta bien 20-30
+celulares a la vez; para más, usar un punto de acceso de mejor calidad.
+
+**Memoria USB en Windows:** el nodo busca la carpeta `QUETZAL` en la raíz de las
+unidades D: a Z:.
+
+## Instalación en Raspberry Pi (un comando)
 
 En la Raspberry, con internet (Raspberry Pi OS 64 bits, con o sin escritorio):
 
@@ -32,9 +80,9 @@ curl -fsSL https://raw.githubusercontent.com/billioG/proyectoX/main/school-node/
 Pide el **token del nodo** (ver "Obtener el token del nodo") y al final muestra:
 
 - la dirección para las tablets: **http://quetzal.local** (o la IP);
-- el **código de docente** (guardalo: es para el panel del docente).
+- el **código de docente** (guárdalo: es para el panel del docente).
 
-Escuelas **sin router**: agregá `--hotspot` y la Raspberry crea su propia red
+Escuelas **sin router**: agrega `--hotspot` y la Raspberry crea su propia red
 Wi-Fi "Quetzal-Escuela" (muestra la contraseña al final):
 
 ```bash
@@ -44,7 +92,7 @@ curl -fsSL https://raw.githubusercontent.com/billioG/proyectoX/main/school-node/
 Actualizar el código más adelante: `bash ~/quetzal/school-node/install.sh --update`
 
 > **Sobre HTTPS.** El nodo funciona por HTTP dentro de la red de la escuela.
-> Todo lo que usan los alumnos en el nodo (cursos, PIN, progreso) anda así.
+> Todo lo que usan los alumnos en el nodo (cursos, PIN, progreso) funciona así.
 > HTTPS solo haría falta para funciones del navegador que lo exigen (modo sin
 > conexión dentro de la tablet, cámara); requiere un subdominio con
 > certificado y queda para una etapa siguiente.
@@ -119,7 +167,7 @@ internet: basta con el token del nodo en `config.json`.
 1. En una memoria USB, crear una carpeta llamada **`QUETZAL`**.
 2. **En la escuela:** conectarla a la Raspberry. En menos de un minuto aparecen
    `de-la-escuela-XXXXXXXX.json` y `estado-XXXXXXXX.txt`. Cuando el estado dice
-   **"YA PODÉS SACAR LA USB"**, sacarla.
+   **"YA PUEDES SACAR LA USB"**, sacarla.
 3. **En una computadora con internet** (Chrome o Edge): entrar a Quetzal LMS
    como docente de esa escuela o admin → menú **Nodo escolar (USB)** → **Elegir
    la carpeta QUETZAL**. La app sube el avance de los alumnos y copia a la USB la
@@ -144,7 +192,7 @@ EOF
 sudo udevadm control --reload-rules
 ```
 
-El nodo busca la carpeta `QUETZAL` en `/media`, `/mnt` y `/run/media`. Para
+El nodo busca la carpeta `QUETZAL` en `/media`, `/mnt` y `/run/media` (en Windows, en D: a Z:). Para
 otra ruta, definir la variable de entorno `QUETZAL_USB_DIR`.
 
 ## Seguridad

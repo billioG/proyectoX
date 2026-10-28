@@ -152,13 +152,16 @@ Redesplegar estas Edge Functions (cambiaron en las últimas versiones):
 
 Detalle en el dossier: https://claude.ai/artifact/BoLjSgRTYwfesywaZaxvEq
 
-## 🔵 Nodo escolar (Raspberry Pi)
+## 🔵 Nodo escolar (Raspberry Pi o computadora con Windows)
 
 - [x] Correr `migrations/school-nodes.sql`.
 - [x] Desplegar `node-sync` con **Verify JWT OFF**.
 - [ ] Registrar el nodo desde la consola (RPC `register_school_node`) e instalar en la Pi según `school-node/README.md`.
 - [x] Instalador de un solo comando (`school-node/install.sh`: Node.js, servicio, `http://quetzal.local`, código de docente, montaje USB, Wi-Fi propia con `--hotspot`).
 - [ ] Probar el instalador en una Raspberry real.
+- [x] Instalador para Windows 10/11 (`school-node/instalar-windows.cmd`): Node.js 22 portátil, tarea programada al arrancar, firewall solo red local, `C:\Quetzal`, cartel con QR en `/cartel`.
+- [ ] Probar el instalador de Windows en una computadora real con router y 20+ celulares (se validó la sintaxis, la descarga de Node.js y el servidor con datos fuera del código; no se ejecutó completo porque cambia la configuración del equipo).
+- [ ] Llevar al nodo exámenes, asistencia y juegos (hoy sin internet solo funcionan Cursos).
 - [ ] HTTPS en el nodo (subdominio con certificado). No bloquea el piloto: el nodo funciona por HTTP en la red de la escuela.
 - [x] Sincronización por USB para escuelas donde el docente no llega a zona con señal (`school-node/usb-sync.js` + menú **Nodo escolar (USB)**).
 - [x] Redesplegar `node-sync` (**Verify JWT OFF**) para activar la sincronización por USB.
