@@ -25,7 +25,8 @@ const FOLDER = 'QUETZAL';
 
 // Dónde se montan las USB: en Raspberry Pi OS en /media/<usuario>/<etiqueta>
 // (o /media/quetzal-usb con la regla udev del README); en Windows cada memoria
-// es una unidad (D:, E:, ...) y la carpeta QUETZAL queda en su raíz.
+// es una unidad (D:, E:, ...) y la carpeta QUETZAL queda en su raíz; en una
+// Chromebook, las memorias compartidas con Linux aparecen en /mnt/chromeos/removable.
 function windowsDrives() {
   const drives = [];
   for (let c = 68; c <= 90; c++) { // D: a Z: (A-C son disquete y el disco del sistema)
@@ -36,7 +37,7 @@ function windowsDrives() {
 }
 
 function findUsbFolders() {
-  const roots = process.platform === 'win32' ? windowsDrives() : ['/media', '/mnt', '/run/media'];
+  const roots = process.platform === 'win32' ? windowsDrives() : ['/media', '/mnt', '/run/media', '/mnt/chromeos/removable'];
   const found = [];
   const look = (dir, depth) => {
     let entries = [];

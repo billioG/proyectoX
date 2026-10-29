@@ -78,6 +78,26 @@ celulares a la vez; para más, usar un punto de acceso de mejor calidad.
 **Memoria USB en Windows:** el nodo busca la carpeta `QUETZAL` en la raíz de las
 unidades D: a Z:.
 
+## Chromebook (solo para pilotos)
+
+Se puede usar una Chromebook que tenga **Linux** activado (Configuración →
+Opciones para desarrolladores → Linux; en Chromebooks administradas por la escuela
+suele estar bloqueado). En la terminal de Linux:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/billioG/proyectoX/main/school-node/install.sh | bash
+```
+
+Detecta ChromeOS solo y usa el puerto **8080**, sin `quetzal.local`. Al final
+indica los 3 pasos que se hacen en ChromeOS: reenviar el puerto 8080 (Linux →
+Reenvío de puertos), reservar la IP de la Chromebook en el router y evitar que se
+suspenda enchufada. Los celulares entran por `http://IP-DE-LA-CHROMEBOOK:8080`.
+
+Limitaciones: el servidor solo corre mientras Linux está abierto (tras reiniciar
+hay que abrir la app Terminal), no puede crear su propia red Wi-Fi y la memoria
+USB hay que compartirla con Linux desde Archivos. Para una escuela, una
+Raspberry Pi o una PC con Windows es más estable.
+
 ## Instalación en Raspberry Pi (un comando)
 
 En la Raspberry, con internet (Raspberry Pi OS 64 bits, con o sin escritorio):
