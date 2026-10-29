@@ -4,7 +4,8 @@ Sirve Quetzal LMS en la red local de una escuela **sin internet** y se sincroniz
 con la nube cuando consigue señal (cable, hotspot del celular o memoria USB).
 
 Los estudiantes se conectan al Wi-Fi del router con su celular o tablet y abren
-la dirección del nodo (por ejemplo `http://192.168.1.50`). No gastan datos.
+la dirección del nodo: **http://quetzal.local** (o la IP, por ejemplo
+`http://192.168.1.50`). No gastan datos.
 
 ## Qué hace hoy (etapa 1)
 
@@ -59,6 +60,14 @@ para imprimir; también en `http://IP-DEL-NODO/cartel`).
 - Actualizar: `instalar-windows.cmd -Update`
 - Quitar: `instalar-windows.cmd -Uninstall` (conserva `C:\Quetzal\data`; con
   `-BorrarDatos` también lo borra).
+
+**Nombre de la dirección:** por defecto `http://quetzal.local`. Para cambiarlo
+(por ejemplo a `http://ada.local`), editar `"hostName": "ada"` en
+`C:\Quetzal\config.json` y reiniciar la computadora (solo letras, números y
+guion). El nombre lo publica el propio nodo por mDNS, sin tocar el router:
+funciona en iPhone y en la mayoría de Android recientes; si algún celular no lo
+encuentra, usar la IP del cartel. El cartel (`/cartel`) siempre muestra el
+nombre y la IP de respaldo.
 
 **Router:** reservar la IP de la computadora (reserva DHCP / "IP fija" en el panel
 del router), así la dirección del cartel no cambia. Si el router tiene "aislamiento

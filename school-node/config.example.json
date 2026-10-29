@@ -3,6 +3,7 @@
   "nodeToken": "PEGAR_ACA_EL_TOKEN_QUE_DA_EL_PANEL_ADMIN",
   "teacherCode": "CAMBIAR_POR_UN_CODIGO_DE_6_A_12_NUMEROS",
   "port": 8080,
+  "hostName": "quetzal",
   "syncEveryMinutes": 10,
   "dataDir": "./data"
 }

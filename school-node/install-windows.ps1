@@ -74,7 +74,7 @@ if ($Uninstall) {
   Say 'Quitando el nodo escolar'
   Stop-Node
   Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction SilentlyContinue
-  Get-NetFirewallRule -DisplayName $FwRule -ErrorAction SilentlyContinue | Remove-NetFirewallRule
+  Get-NetFirewallRule -DisplayName "$FwRule*" -ErrorAction SilentlyContinue | Remove-NetFirewallRule
   foreach ($d in @($AppDir, (Join-Path $Root 'node'))) { if (Test-Path $d) { Remove-Item -Recurse -Force $d } }
   if ($BorrarDatos) {
     Warn 'Borrando también la configuración y los datos sin sincronizar.'
@@ -171,6 +171,7 @@ if (-not (Test-Path $ConfigFile)) {
     nodeToken        = if ($Token.Trim()) { $Token.Trim() } else { 'PEGAR_ACA_EL_TOKEN_QUE_DA_EL_PANEL_ADMIN' }
     teacherCode      = New-TeacherCode
     port             = $Port
+    hostName         = 'quetzal'
     syncEveryMinutes = 10
     dataDir          = './data'
   }
@@ -184,6 +185,7 @@ if (-not (Test-Path $ConfigFile)) {
 $cfgNow = Get-Content $ConfigFile -Raw | ConvertFrom-Json
 $Port = [int]$cfgNow.port
 $TeacherCode = $cfgNow.teacherCode
+$HostName = if ($cfgNow.hostName) { $cfgNow.hostName } else { 'quetzal' }
 
 # ---------- 4. Arranque automático ----------
 Say 'Arranque automático al prender la computadora'
@@ -207,8 +209,11 @@ Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Pr
 
 # ---------- 5. Firewall: solo la red local ----------
 Say "Abriendo el puerto $Port para la red local"
-Get-NetFirewallRule -DisplayName $FwRule -ErrorAction SilentlyContinue | Remove-NetFirewallRule
+Get-NetFirewallRule -DisplayName "$FwRule*" -ErrorAction SilentlyContinue | Remove-NetFirewallRule
 New-NetFirewallRule -DisplayName $FwRule -Direction Inbound -Action Allow -Protocol TCP -LocalPort $Port `
+  -RemoteAddress LocalSubnet -Profile Any | Out-Null
+# mDNS (UDP 5353): para que los celulares encuentren http://quetzal.local
+New-NetFirewallRule -DisplayName "$FwRule - nombre .local" -Direction Inbound -Action Allow -Protocol UDP -LocalPort 5353 `
   -RemoteAddress LocalSubnet -Profile Any | Out-Null
 
 # ---------- 6. Que no se duerma enchufada ----------
@@ -247,10 +252,13 @@ foreach ($s in @(@{ n = 'Quetzal (nodo escolar)'; u = "http://localhost$suffix/"
 Say $(if ($ok) { '¡Nodo instalado y funcionando!' } else { 'Nodo instalado, pero todavía no responde' })
 Write-Host ''
 Write-Host '  Los estudiantes, conectados al Wi-Fi del router, abren en el celular:'
+Write-Host "     http://$HostName.local$suffix     (nombre fácil)" -ForegroundColor Cyan
+Write-Host '  Si ese nombre no abre en algún celular, usar la IP:'
 foreach ($ip in $ips) { Write-Host "     http://$ip$suffix" -ForegroundColor Cyan }
 Write-Host ''
 Write-Host "  Código de docente:   $TeacherCode   (para el botón 'Docente'; guárdalo)"
 Write-Host "  Cartel con QR:       acceso directo 'Quetzal - Cartel para estudiantes' en el escritorio"
+Write-Host "  Cambiar el nombre:   en $ConfigFile edita hostName (ej. ada -> http://ada.local) y reinicia"
 Write-Host "  Configuración:       $ConfigFile"
 Write-Host "  Registro (log):      $LogDir\nodo.log"
 Write-Host "  Actualizar:          ejecuta de nuevo el instalador con -Update"

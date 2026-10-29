@@ -4,6 +4,10 @@ Cambios publicados en Quetzal LMS, del más reciente al más antiguo. Cada líne
 
 Al publicar una versión nueva, agregá una línea arriba de todo (ver CONTRIBUTING.md).
 
+## 2026-10-29
+
+- Nodo escolar: dirección fácil **http://quetzal.local** en vez de la IP. El nodo de Windows publica su nombre por mDNS (sin tocar el router ni renombrar la computadora) y responde con la IP de la red a la que pertenece el celular que pregunta. El nombre se cambia con `"hostName"` en `config.json` (por ejemplo `ada` → `http://ada.local`; solo letras, números y guion). El cartel `/cartel` y el QR usan el nombre y dejan la IP como respaldo; el instalador abre UDP 5353 solo para la red local. En la Raspberry sigue publicándolo avahi (v1.0.179)
+
 ## 2026-10-28
 
 - Nodo escolar en **una computadora con Windows 10/11** (además de la Raspberry Pi): la computadora queda como servidor conectada a un router Wi-Fi, los estudiantes entran desde el celular a la dirección del nodo sin gastar datos y, cuando la computadora tiene internet, se sincroniza sola con la nube cada 10 minutos. Instalador nuevo `school-node/instalar-windows.cmd` + `install-windows.ps1`: descarga su propio Node.js 22 portátil (verificado con la huella oficial de nodejs.org; no toca otro Node.js de la computadora), el código en `C:\Quetzal\app`, crea `C:\Quetzal\config.json` (token y código de docente de 8 números, legible solo por administradores), abre el puerto en el firewall **solo para la red local**, registra una tarea programada que arranca el nodo al prender la computadora (sin iniciar sesión) y lo reinicia si falla, y evita que se suspenda enchufada. Opciones `-Update` y `-Uninstall` (los datos se conservan). Configuración y datos fuera del código (`QUETZAL_CONFIG_DIR`) para que actualizar no los borre. La USB de sincronización se detecta en las unidades D: a Z:. Página nueva **`/cartel`** en el nodo: dirección y código QR para imprimir y pegar en el aula; el nodo muestra al arrancar las direcciones para los celulares. Textos del nodo en tú. Guía para la escuela: `Guia-servidor-escolar-Quetzal` (Word/PDF) (v1.0.178)

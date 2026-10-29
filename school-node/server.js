@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { openDb, getMeta } from './db.js';
 import { runSync, loadConfig } from './sync.js';
 import { runUsbSync } from './usb-sync.js';
+import { startMdns } from './mdns.js';
 
 const NODE_DIR = path.dirname(fileURLToPath(import.meta.url));
 const APP_DIR = path.resolve(NODE_DIR, '..');
@@ -269,6 +270,12 @@ const api = {
   },
 };
 
+// En la Raspberry el nombre lo publica avahi (install.sh); en Windows lo publica el propio nodo.
+const mdns = (config.mdns ?? process.platform === 'win32') ? startMdns(config.hostName) : null;
+const portSuffix = () => ((config.port || 8080) === 80 ? '' : ':' + (config.port || 8080));
+// Nombre fácil (http://quetzal.local), o null si no se pudo publicar.
+const friendlyUrl = () => (mdns ? `http://${mdns.fqdn}${portSuffix()}` : null);
+
 // Direcciones de este equipo en la red local (las que escriben los celulares).
 function lanUrls() {
   const port = config.port || 8080;
@@ -282,7 +289,9 @@ const escHtml = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&
 // Cartel para imprimir y pegar en el aula: dirección + QR para entrar desde el celular.
 function cartelHtml() {
   const urls = lanUrls();
-  const main = urls[0] || `http://localhost:${config.port || 8080}`;
+  const named = friendlyUrl();
+  const main = named || urls[0] || `http://localhost:${config.port || 8080}`;
+  const others = named ? urls : urls.slice(1);
   return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Cartel Quetzal</title><style>
 body{font-family:system-ui,Segoe UI,Arial,sans-serif;margin:0;padding:32px 16px;text-align:center;color:#111}
@@ -296,7 +305,7 @@ button{font-size:18px;padding:10px 22px;margin-top:16px;cursor:pointer}@media pr
 <p>2. Escanea el código o escribe en el navegador:</p>
 <div class="url">${escHtml(main)}</div>
 <div id="qr"></div>
-${urls.length > 1 ? `<p class="otras">Otras direcciones de este equipo: ${urls.slice(1).map(escHtml).join(' · ')}</p>` : ''}
+${others.length ? `<p class="otras">Si no abre, prueba con: ${others.map(escHtml).join(' · ')}</p>` : ''}
 <div class="steps">3. Elige tu nombre y escribe tu PIN.<br>No necesitas internet ni datos.</div>
 <button onclick="print()">Imprimir</button>
 <script src="/js/qrcode.min.js"></script>
@@ -342,6 +351,7 @@ const server = http.createServer(async (req, res) => {
 server.listen(config.port || 8080, () => {
   const port = config.port || 8080;
   console.log(`🌳 Nodo Quetzal escuchando en el puerto ${port}`);
+  if (friendlyUrl()) console.log(`   📱 Nombre fácil:        ${friendlyUrl()}   (si no abre, usa la IP)`);
   lanUrls().forEach(u => console.log(`   📱 Desde los celulares: ${u}   (cartel para imprimir: ${u}/cartel)`));
 });
 

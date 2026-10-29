@@ -13,6 +13,7 @@
     "node": ">=20"
   },
   "dependencies": {
-    "better-sqlite3": "^11.7.0"
+    "better-sqlite3": "^11.7.0",
+    "multicast-dns": "7.2.5"
   }
 }
