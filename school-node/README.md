@@ -57,8 +57,8 @@ que la computadora se suspenda enchufada y pone en el escritorio dos accesos:
 **Quetzal (nodo escolar)** y **Quetzal - Cartel para estudiantes** (dirección y QR
 para imprimir; también en `http://IP-DEL-NODO/cartel`).
 
-- Actualizar: `instalar-windows.cmd -Update`
-- Quitar: `instalar-windows.cmd -Uninstall` (conserva `C:\Quetzal\data`; con
+- Actualizar: doble clic en `actualizar-windows.cmd` (o `instalar-windows.cmd -Update`)
+- Quitar: doble clic en `desinstalar-windows.cmd` (o `instalar-windows.cmd -Uninstall`; conserva `C:\Quetzal\data`; con
   `-BorrarDatos` también lo borra).
 
 **Nombre de la dirección:** por defecto `http://quetzal.local`. Para cambiarlo

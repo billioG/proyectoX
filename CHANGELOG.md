@@ -6,6 +6,8 @@ Al publicar una versión nueva, agregá una línea arriba de todo (ver CONTRIBUT
 
 ## 2026-10-29
 
+- Nodo escolar en Windows: accesos `actualizar-windows.cmd` y `desinstalar-windows.cmd` (doble clic, sin escribir comandos ni opciones) junto a `instalar-windows.cmd`, para que cualquier docente pueda actualizar o quitar el nodo (v1.0.181)
+
 - Nodo escolar en **Chromebook con Linux (Crostini)**, pensado para pilotos: `install.sh` detecta ChromeOS (o `--chromebook`) y usa el puerto 8080 sin `quetzal.local`, hotspot, avahi ni regla de montaje USB (ChromeOS no los permite), y al final imprime los 3 pasos de ChromeOS (reenviar el puerto 8080, reservar la IP, evitar la suspensión). La USB compartida con Linux se detecta en `/mnt/chromeos/removable`. No se probó en una Chromebook real (v1.0.180)
 
 - Nodo escolar: dirección fácil **http://quetzal.local** en vez de la IP. El nodo de Windows publica su nombre por mDNS (sin tocar el router ni renombrar la computadora) y responde con la IP de la red a la que pertenece el celular que pregunta. El nombre se cambia con `"hostName"` en `config.json` (por ejemplo `ada` → `http://ada.local`; solo letras, números y guion). El cartel `/cartel` y el QR usan el nombre y dejan la IP como respaldo; el instalador abre UDP 5353 solo para la red local. En la Raspberry sigue publicándolo avahi (v1.0.179)
