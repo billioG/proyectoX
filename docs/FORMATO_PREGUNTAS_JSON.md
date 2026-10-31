@@ -41,8 +41,8 @@ También se aceptan:
 ## Reglas
 
 - **Todo o nada:** si cualquier pregunta tiene un error no se importa ninguna y se muestra la lista de errores.
-- Máximo 100 preguntas por cuestionario (contando las que ya tenía), 500 caracteres por pregunta,
-  200 por opción, archivo de hasta 1 MB, codificación UTF-8.
+- Máximo 100 preguntas por cuestionario (contando las que ya tenía), 2000 caracteres por pregunta,
+  500 por opción, archivo de hasta 1 MB, codificación UTF-8.
 - Las preguntas importadas se **agregan al final**; el docente las revisa en el constructor antes de guardar.
 - El texto se limpia de caracteres de control. El HTML no se interpreta: la app lo escapa al mostrarlo.
 

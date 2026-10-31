@@ -113,8 +113,10 @@ test('todo o nada: un error en cualquier pregunta no importa ninguna', () => {
 test('enunciados y opciones: limpia caracteres de control y respeta los límites', () => {
   const q = ok([{ tipo: 'tf', pregunta: '  Hola\u0000  \n mundo\t', correcta: true }])[0];
   assert.equal(q.question, 'Hola mundo');
-  assert.match(bad([{ tipo: 'tf', pregunta: 'x'.repeat(501), correcta: true }])[0], /demasiado largo/);
-  assert.match(bad([{ tipo: 'mc', pregunta: 'P', opciones: ['a', 'x'.repeat(201)], correcta: 'A' }])[0], /opción es demasiado larga/);
+  assert.match(bad([{ tipo: 'tf', pregunta: 'x'.repeat(2001), correcta: true }])[0], /tiene 2001 caracteres y el máximo es 2000/);
+  assert.equal(ok([{ tipo: 'tf', pregunta: 'x'.repeat(2000), correcta: true }]).length, 1);
+  assert.match(bad([{ tipo: 'mc', pregunta: 'P', opciones: ['a', 'x'.repeat(501)], correcta: 'A' }])[0], /tiene 501 caracteres y el máximo es 500/);
+  assert.equal(ok([{ tipo: 'mc', pregunta: 'P', opciones: ['a', 'x'.repeat(500)], correcta: 'A' }]).length, 1);
 });
 
 test('el HTML se conserva como texto (la app lo escapa al mostrarlo)', () => {

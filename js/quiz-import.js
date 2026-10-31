@@ -16,8 +16,8 @@
 
 export const QUIZ_IMPORT_LIMITS = {
   maxQuestions: 100,
-  maxQuestionLength: 500,
-  maxOptionLength: 200,
+  maxQuestionLength: 2000,
+  maxOptionLength: 500,
   minOptions: 2,
   maxOptions: 8,
   maxBytes: 1_000_000,
@@ -99,7 +99,7 @@ function detectType(raw, obj) {
 function convertQuestion(obj, type, L) {
   const text = cleanText(pick(obj, KEYS.question).value);
   if (!text) return { error: 'falta el enunciado (campo "pregunta")' };
-  if (text.length > L.maxQuestionLength) return { error: `el enunciado es demasiado largo (máximo ${L.maxQuestionLength} caracteres)` };
+  if (text.length > L.maxQuestionLength) return { error: `el enunciado es demasiado largo (tiene ${text.length} caracteres y el máximo es ${L.maxQuestionLength})` };
 
   if (type === 'text') return { question: { type, question: text } };
 
@@ -109,7 +109,8 @@ function convertQuestion(obj, type, L) {
     const options = rawOptions.map(cleanText).filter(Boolean);
     if (options.length < L.minOptions) return { error: `necesita al menos ${L.minOptions} opciones` };
     if (options.length > L.maxOptions) return { error: `tiene demasiadas opciones (máximo ${L.maxOptions})` };
-    if (options.some(o => o.length > L.maxOptionLength)) return { error: `una opción es demasiado larga (máximo ${L.maxOptionLength} caracteres)` };
+    const longest = Math.max(...options.map(o => o.length));
+    if (longest > L.maxOptionLength) return { error: `una opción es demasiado larga (tiene ${longest} caracteres y el máximo es ${L.maxOptionLength})` };
 
     // Llave interna: correctIndex (empieza en 0).
     const internal = pick(obj, KEYS.correctIndex);
@@ -249,7 +250,7 @@ Reglas:
 - En "mc", "opciones" es una lista de 2 a 8 textos y "correcta" es la LETRA de la opción correcta ("A", "B", "C"...).
 - En "tf", "correcta" es true o false.
 - En "number", "correcta" es un número y "tolerancia" (opcional) es cuánto se permite de diferencia.
-- Cada pregunta con máximo 500 caracteres y cada opción con máximo 200.
+- Cada pregunta con máximo 2000 caracteres y cada opción con máximo 500.
 - Todo en español.`;
 
 // En el navegador queda disponible para lessons.js; en Node (pruebas) no hay window.
