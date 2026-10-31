@@ -6,6 +6,7 @@
     "serve": "http-server -p 8080 -c-1",
     "css": "tailwindcss -c tailwind.config.js -i css/tailwind.src.css -o css/tailwind.css --minify",
     "test": "playwright test",
+    "test:unit": "node --test \"tests-unit/*.test.mjs\"",
     "test:install": "playwright install --with-deps chromium"
   },
   "devDependencies": {

@@ -4,6 +4,10 @@ Cambios publicados en Quetzal LMS, del más reciente al más antiguo. Cada líne
 
 Al publicar una versión nueva, agregá una línea arriba de todo (ver CONTRIBUTING.md).
 
+## 2026-10-31
+
+- Cuestionarios (Quiz) de los cursos: el docente puede **importar preguntas desde un archivo JSON** (o pegar el texto) en vez de escribirlas una por una. Está en el constructor del cuestionario, en «Importar preguntas desde un archivo JSON». Acepta los 5 tipos (opción múltiple, verdadero/falso, número exacto, rango y respuesta abierta); en opción múltiple la respuesta correcta se indica con la letra («B») o con el texto de la opción; también entiende el formato interno en inglés, una lista suelta, las vallas ```json que agregan ChatGPT/Gemini y el BOM del Bloc de notas. Las preguntas se agregan al final de las existentes y se pueden revisar antes de guardar. Es «todo o nada»: si una pregunta tiene un error no se importa ninguna y se explica cuál arreglar («Pregunta 3: falta el enunciado»). Límites: 100 preguntas por cuestionario, 500 caracteres por pregunta, 2 a 8 opciones de hasta 200 caracteres, archivo de hasta 1 MB. El HTML dentro del JSON se muestra como texto (no se ejecuta). Botones para **descargar un ejemplo** y para **copiar las instrucciones** que se pegan en un asistente de IA para que genere el JSON listo. Módulo nuevo `js/quiz-import.js` con 15 pruebas unitarias (`npm run test:unit`, también en CI). Sin cambios en la base de datos (v1.0.182)
+
 ## 2026-10-29
 
 - Nodo escolar en Windows: accesos `actualizar-windows.cmd` y `desinstalar-windows.cmd` (doble clic, sin escribir comandos ni opciones) junto a `instalar-windows.cmd`, para que cualquier docente pueda actualizar o quitar el nodo (v1.0.181)

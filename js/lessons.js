@@ -1097,6 +1097,23 @@ window.openAddResourceModal = function openAddResourceModal(courseId, editLesson
               <button type="button" class="btn-secondary-tw h-10 text-[0.65rem] uppercase font-bold" onclick="window.addQuizQuestion('${type}')"><i class="fas fa-plus"></i> ${label}</button>
             `).join('')}
           </div>
+          <details class="rounded-xl border border-slate-100 dark:border-slate-800 p-4">
+            <summary class="cursor-pointer text-[0.65rem] font-black uppercase tracking-widest text-slate-500"><i class="fas fa-file-import"></i> Importar preguntas desde un archivo JSON</summary>
+            <div class="space-y-3 mt-3">
+              <p class="text-[0.65rem] text-slate-400">Sube un archivo <strong>.json</strong> o pega su contenido. Las preguntas se agregan al final de las que ya tienes y puedes revisarlas antes de guardar. Si una pregunta tiene un error, no se importa ninguna y te decimos cuál arreglar.</p>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <label class="btn-secondary-tw h-10 text-[0.65rem] uppercase font-bold flex items-center justify-center gap-2 cursor-pointer">
+                  <i class="fas fa-upload"></i> Elegir archivo
+                  <input type="file" id="quiz-json-file" accept=".json,application/json" class="hidden" onchange="window.importQuizJsonFile(this)">
+                </label>
+                <button type="button" class="btn-secondary-tw h-10 text-[0.65rem] uppercase font-bold" onclick="window.downloadQuizJsonExample()"><i class="fas fa-download"></i> Descargar ejemplo</button>
+                <button type="button" class="btn-secondary-tw h-10 text-[0.65rem] uppercase font-bold" onclick="window.copyQuizJsonAiPrompt()"><i class="fas fa-robot"></i> Instrucciones para IA</button>
+              </div>
+              <textarea id="quiz-json-text" rows="5" class="input-field-tw text-xs font-mono" placeholder='O pega aquí el JSON, por ejemplo: { "preguntas": [ { "tipo": "tf", "pregunta": "...", "correcta": true } ] }'></textarea>
+              <button type="button" class="btn-primary-tw h-10 px-5 text-[0.65rem] uppercase font-bold" onclick="window.importQuizJsonText()"><i class="fas fa-plus"></i> Agregar preguntas pegadas</button>
+              <div id="quiz-json-result" aria-live="polite"></div>
+            </div>
+          </details>
         </div>
       </div>
       <div class="flex gap-3 mt-8">
@@ -1223,6 +1240,102 @@ window.renderQuizBuilder = function renderQuizBuilder() {
     </div>
   `).join('') || '<p class="text-[0.65rem] text-slate-400 text-center py-4">Agrega al menos una pregunta.</p>';
 }
+
+// ---- Importar preguntas desde JSON (formato y validación en js/quiz-import.js) ----
+function showQuizImportResult(kind, lines) {
+  const el = document.getElementById('quiz-json-result');
+  if (!el) return;
+  const esc = window.sanitizeInput || ((v) => v);
+  const isOk = kind === 'ok';
+  const MAX_SHOWN = 8;
+  const items = lines.slice(0, MAX_SHOWN).map(l => `<li>${esc(l)}</li>`).join('');
+  const more = lines.length > MAX_SHOWN ? `<li>...y ${lines.length - MAX_SHOWN} más.</li>` : '';
+  el.innerHTML = `<div class="${isOk ? 'text-emerald-600' : 'text-rose-500'} text-[0.7rem] font-bold flex gap-2"><i class="fas ${isOk ? 'fa-circle-check' : 'fa-circle-xmark'} mt-0.5"></i><ul class="space-y-1 list-none">${items}${more}</ul></div>`;
+}
+
+// Devuelve true si se agregaron preguntas.
+function applyQuizJsonImport(text) {
+  if (!window.QuizImport) {
+    showQuizImportResult('error', ['El importador todavía está cargando. Intenta de nuevo en unos segundos.']);
+    return false;
+  }
+  if (text.includes('\uFFFD')) {
+    showQuizImportResult('error', ['Las tildes del archivo se ven mal. Guárdalo como UTF-8 (en el Bloc de notas: Guardar como -> Codificación: UTF-8) y vuelve a subirlo.']);
+    return false;
+  }
+  const { parse, limits } = window.QuizImport;
+  const result = parse(text);
+  if (result.errors.length) {
+    showQuizImportResult('error', ['No se importó ninguna pregunta:', ...result.errors]);
+    return false;
+  }
+  const current = window._quizBuilderQuestions || [];
+  const total = current.length + result.questions.length;
+  if (total > limits.maxQuestions) {
+    showQuizImportResult('error', [`El cuestionario quedaría con ${total} preguntas y el máximo es ${limits.maxQuestions}.`]);
+    return false;
+  }
+  result.questions.forEach(q => current.push({ ...q, _id: crypto.randomUUID() }));
+  window._quizBuilderQuestions = current;
+  window.renderQuizBuilder();
+  const n = result.questions.length;
+  const open = result.questions.filter(q => q.type === 'text').length;
+  const msg = `Se agregaron ${n} pregunta${n === 1 ? '' : 's'}${open ? ` (${open} abierta${open === 1 ? '' : 's'}, sin nota automática)` : ''}. Revísalas arriba antes de guardar.`;
+  showQuizImportResult('ok', [msg]);
+  window.showToast(`<i class="fas fa-circle-check"></i> ${msg}`, 'success');
+  return true;
+}
+
+window.importQuizJsonFile = async function importQuizJsonFile(input) {
+  const file = input.files?.[0];
+  input.value = ''; // permite volver a elegir el mismo archivo
+  if (!file) return;
+  const maxBytes = window.QuizImport?.limits.maxBytes || 1_000_000;
+  if (file.size > maxBytes) return showQuizImportResult('error', ['El archivo es demasiado grande (máximo 1 MB).']);
+  let text;
+  try { text = await file.text(); } catch { return showQuizImportResult('error', ['No se pudo leer el archivo.']); }
+  applyQuizJsonImport(text);
+};
+
+window.importQuizJsonText = function importQuizJsonText() {
+  const box = document.getElementById('quiz-json-text');
+  const text = box?.value || '';
+  if (!text.trim()) return showQuizImportResult('error', ['Pega primero el JSON en el cuadro.']);
+  if (applyQuizJsonImport(text)) box.value = '';
+};
+
+window.downloadQuizJsonExample = function downloadQuizJsonExample() {
+  if (!window.QuizImport) return;
+  const blob = new Blob([JSON.stringify(window.QuizImport.example, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'ejemplo-preguntas-quetzal.json';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
+
+// Texto para pegar en un asistente de IA (ChatGPT, Gemini...) y que devuelva el JSON listo.
+window.copyQuizJsonAiPrompt = async function copyQuizJsonAiPrompt() {
+  const text = window.QuizImport?.aiPrompt || '';
+  const done = () => window.showToast('<i class="fas fa-circle-check"></i> Instrucciones copiadas. Pégalas en tu asistente de IA y cambia [TEMA] y [GRADO].', 'success');
+  try {
+    await navigator.clipboard.writeText(text);
+    return done();
+  } catch { /* sin permiso o sin HTTPS: se usa el método clásico */ }
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
+  document.body.appendChild(ta);
+  ta.select();
+  let copied = false;
+  try { copied = document.execCommand('copy'); } catch { }
+  ta.remove();
+  if (copied) done();
+  else window.showToast('<i class="fas fa-circle-xmark"></i> No se pudo copiar. Descarga el ejemplo y úsalo como guía.', 'error');
+};
 
 // Supabase Storage rechaza ciertos caracteres en la key (dos puntos,
 // espacios raros, etc.) -- nombres de archivo generados por el sistema

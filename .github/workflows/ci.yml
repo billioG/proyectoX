@@ -32,6 +32,16 @@ jobs:
           done < <(find js -name '*.js' -print0)
           exit $fail
 
+  unit-tests:
+    name: Pruebas unitarias (importador de preguntas JSON)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --test "tests-unit/*.test.mjs"
+
   edge-functions-typecheck:
     name: Tipos de Edge Functions (Deno)
     runs-on: ubuntu-latest
