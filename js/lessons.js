@@ -1037,8 +1037,9 @@ window.openAddResourceModal = function openAddResourceModal(courseId, editLesson
   window._quizBuilderQuestions = isQuiz ? (editing.quiz_data || []).map(q => ({ ...q, _id: crypto.randomUUID() })) : [];
 
   const modal = document.createElement('div');
-  modal.className = 'fixed inset-0 z-[210] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-sm animate-fadeIn overflow-y-auto';
+  modal.className = 'fixed inset-0 z-[210] bg-slate-950/80 backdrop-blur-sm animate-fadeIn overflow-y-auto overscroll-contain';
   modal.innerHTML = `
+    <div class="min-h-full flex items-center justify-center p-6">
     <div class="glass-card w-full max-w-lg p-8 shadow-2xl animate-slideUp my-6">
       <h2 class="text-lg font-bold text-slate-800 dark:text-white uppercase tracking-tighter mb-6"><i class="fas fa-file-circle-plus text-primary mr-2"></i> ${editing ? 'Editar Recurso' : 'Nuevo Recurso'}</h2>
       <div class="space-y-4">
@@ -1120,6 +1121,7 @@ window.openAddResourceModal = function openAddResourceModal(courseId, editLesson
         <button class="btn-secondary-tw flex-1 h-11 text-xs uppercase font-bold" onclick="this.closest('.fixed').remove()">Cancelar</button>
         <button class="btn-primary-tw flex-1 h-11 text-xs uppercase font-bold" id="btn-save-resource" onclick="window.saveResource('${courseId}', '${editing ? editing.id : ''}')">${editing ? 'Guardar Cambios' : 'Agregar'}</button>
       </div>
+    </div>
     </div>
   `;
   document.body.appendChild(modal);
