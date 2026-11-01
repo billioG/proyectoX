@@ -22,6 +22,31 @@ function courseProgress(courses, completions) {
   });
 }
 
+// Mismos rangos que js/gamification.js (con internet).
+const RANK_TITLES = [[1, 'Novato'], [3, 'Aprendiz'], [5, 'Explorador'], [8, 'Innovador'], [11, 'Ingeniero'], [15, 'Maestro'], [20, 'Leyenda']];
+const rankOf = (level) => RANK_TITLES.reduce((title, [min, name]) => (level >= min ? name : title), RANK_TITLES[0][1]);
+
+function renderXp(x) {
+  const pct = Math.round(((x.level_xp || 0) / (x.xp_per_level || 500)) * 100);
+  const note = x.xp_pending > 0 || x.gems_pending > 0
+    ? `Incluye ${esc(x.xp_pending)} XP ganados aquí que se confirman cuando la escuela se conecte a internet.`
+    : (x.has_base ? '' : 'Tu XP se actualiza cuando la escuela se conecte a internet.');
+  return `
+    <div id="node-profile-xp" class="glass-card p-5">
+      <div class="flex items-center justify-between gap-3 mb-3">
+        <div>
+          <p class="text-[0.65rem] font-black uppercase text-slate-400 tracking-widest">Nivel ${esc(x.level)} · ${esc(rankOf(x.level))}</p>
+          <p class="text-2xl font-black text-slate-800 dark:text-white">${esc(x.xp)} XP</p>
+        </div>
+        <p class="text-lg font-black text-cyan-500"><i class="fas fa-gem"></i> ${esc(x.gems_total)}</p>
+      </div>
+      <div class="h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}">
+        <div class="h-full bg-primary" style="width:${pct}%"></div>
+      </div>
+      ${note ? `<p class="text-[0.7rem] font-bold text-slate-400 mt-3">${note}</p>` : ''}
+    </div>`;
+}
+
 function renderHeader(student) {
   const initial = esc(String(student.full_name || '?').trim().charAt(0).toUpperCase() || '?');
   const klass = [student.grade, student.section].filter(Boolean).join(' ');
@@ -64,14 +89,16 @@ window.loadNodeProfile = async function loadNodeProfile() {
   if (!box) return;
   box.innerHTML = '<div class="p-10 text-center text-slate-400"><i class="fas fa-circle-notch fa-spin text-3xl text-primary"></i></div>';
   try {
-    const [{ student }, { courses, completions }, { projects }] = await Promise.all([
+    const [{ student }, { courses, completions }, { projects }, xp] = await Promise.all([
       window.nodeApi('/api/me'),
       window.nodeApi('/api/courses'),
       window.nodeApi('/api/projects/mine'),
+      window.nodeApi('/api/xp'),
     ]);
     box.innerHTML = `
       <div class="space-y-6 max-w-2xl">
         ${renderHeader(student)}
+        ${renderXp(xp)}
         <div>
           <h3 class="text-[0.7rem] font-black uppercase text-slate-400 tracking-widest mb-3">Mi avance</h3>
           <div id="node-profile-progress" class="space-y-2">${renderProgress(courseProgress(courses, completions))}</div>
@@ -83,7 +110,7 @@ window.loadNodeProfile = async function loadNodeProfile() {
           </div>
           <div id="node-profile-projects" class="space-y-2">${renderProjects(projects)}</div>
         </div>
-        <p class="text-[0.7rem] font-bold text-slate-400"><i class="fas fa-circle-info"></i> Gemas, insignias y certificados se ven cuando entras a Quetzal con internet.</p>
+        <p class="text-[0.7rem] font-bold text-slate-400"><i class="fas fa-circle-info"></i> Insignias, tienda y certificados se ven cuando entras a Quetzal con internet.</p>
       </div>`;
     document.getElementById('node-profile-upload')?.addEventListener('click', () => window.nav('upload'));
   } catch (e) {

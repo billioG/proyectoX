@@ -54,6 +54,8 @@ window.loadNodeFeed = async function loadNodeFeed() {
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-20">${projects.map(card).join('')}</div>`;
     }
     document.getElementById('node-feed-upload')?.addEventListener('click', () => window.nav('upload'));
+    // Cofre diario (sin internet lo sortea el nodo): si hoy no se abrió, ofrece el cofre.
+    window.checkDailyChest?.();
   } catch (e) {
     box.innerHTML = `<div class="glass-card p-8 text-center text-sm text-slate-500">No se pudieron cargar los proyectos: ${esc(e.message)}</div>`;
   }

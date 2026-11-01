@@ -20,6 +20,7 @@ test.beforeAll(async () => {
     courses: [{ id: 'c1', title: 'Robótica básica', grade: 'Primero', section: 'A', created_at: '2026-10-01', lessons: [{ id: 'l1', order_index: 1 }, { id: 'l2', order_index: 2 }, { id: 'l3', order_index: 3 }, { id: 'l4', order_index: 4 }] }],
     completions: [{ lesson_id: 'l1', student_id: 's1' }, { lesson_id: 'l2', student_id: 's1' }],
     // Fichas que bajó el pull: dos aprobadas de la clase de Ana (una con HTML en el título) y una de otra sección.
+    xp: { s1: { xp_total: 420, gems: 12 } },
     cloudProjects: [
       { id: 'f1', user_id: 's9', author_name: 'Luis Ramos', title: 'Semáforo con Arduino', score: 85, bimestre: 2, created_at: '2026-10-30T10:00:00Z' },
       { id: 'f2', user_id: 's9', author_name: 'Luis Ramos', title: 'Brazo <img src=x onerror="window.__xss=1">', score: 70, created_at: '2026-10-29T10:00:00Z' },
@@ -189,20 +190,11 @@ test('el Inicio del estudiante en el nodo muestra las fichas de su clase sin int
   expect(errors).toEqual([]);
 });
 
-test('en el nodo no sale el cofre diario ni el latido llama a la nube (no hay sesión de Supabase)', async ({ page }) => {
+test('el latido de actividad no llama a la nube en el nodo (no hay sesión de Supabase)', async ({ page }) => {
   test.skip(!node, skipReason);
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
   await enterAsStudent(page);
-  await page.locator(`header [onclick="nav('feed')"]`).first().click();
-  await expect(page.locator('#feed-container [data-feed-project]').first()).toBeVisible({ timeout: 15000 });
-
-  // El cofre se pide 2 s después de entrar si hoy no se reclamó: en el nodo no debe aparecer.
-  await page.evaluate(() => { window.userData = { ...(window.userData || {}), daily_chest_last_claimed: '2000-01-01' }; window.checkDailyChest?.(); window.showDailyChestModal?.(); });
-  await page.waitForTimeout(2600);
-  await expect(page.locator('#daily-chest-modal')).toHaveCount(0);
-
-  // El latido de actividad no debe llamar a la nube sin sesión.
   const calls = await page.evaluate(async () => {
     const seen = [];
     window._supabase = { rpc: async (name) => { seen.push(name); return { error: { message: 'No autenticado' } }; } };
@@ -213,5 +205,63 @@ test('en el nodo no sale el cofre diario ni el latido llama a la nube (no hay se
     return seen;
   });
   expect(calls).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
+test('el cofre diario del nodo se abre con un clic, suma XP y no vuelve a salir hoy', async ({ page }) => {
+  test.skip(!node, skipReason);
+  const errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  const token = await node.login('s1', '1234');
+  const before = (await node.api('/api/xp', { token })).data;
+  expect(before.chest_available).toBe(true);
+
+  await enterAsStudent(page);
+  await page.locator(`header [onclick="nav('feed')"]`).first().click();
+  const modal = page.locator('#daily-chest-modal');
+  await expect(modal).toBeVisible({ timeout: 15000 });
+  await modal.locator('[onclick^="window.openChest"]').click();
+  await expect(modal).toContainText(/\+\d+ XP/);
+  const won = Number((await modal.innerText()).match(/\+(\d+) XP/)[1]);
+  expect([20, 50, 100]).toContain(won);
+
+  const after = (await node.api('/api/xp', { token })).data;
+  expect(after.xp).toBe(before.xp + won);
+  expect(after.chest_available).toBe(false);
+
+  // Otra visita el mismo día: ya no sale.
+  // Recargar conserva la sesión del estudiante (no vuelve a pedir PIN).
+  await page.reload();
+  await page.waitForFunction(() => window.isNodeSession && !document.getElementById('node-login'));
+  await page.locator(`header [onclick="nav('feed')"]`).first().click();
+  await expect(page.locator('#feed-container [data-feed-project]').first()).toBeVisible({ timeout: 15000 });
+  await page.waitForTimeout(3500);
+  await expect(page.locator('#daily-chest-modal')).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test('el Perfil del nodo muestra nivel, rango, XP y gemas, y completar una lección avisa +10 XP', async ({ page }) => {
+  test.skip(!node, skipReason);
+  const errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  const token = await node.login('s1', '1234');
+  await enterAsStudent(page);
+
+  // Completar una lección (la que sigue sin completar) avisa +10 XP.
+  await page.evaluate(() => window.nav('lessons'));
+  await page.waitForTimeout(1500);
+  const base = (await node.api('/api/xp', { token })).data;
+  await page.evaluate(() => { window._completionsCache = window._completionsCache || new Map(); return window.markLessonSeen('l3'); });
+  await expect(page.getByText('+10 XP').first()).toBeVisible({ timeout: 10000 });
+  const now = (await node.api('/api/xp', { token })).data;
+  expect(now.xp).toBe(base.xp + 10);
+
+  // El Perfil muestra el total (base 420 + cofre de hoy + 10 de la lección) con clic real.
+  await page.locator(`[onclick="nav('profile')"]`).first().click();
+  const card = page.locator('#node-profile-xp');
+  await expect(card).toContainText(`${now.xp} XP`);
+  await expect(card).toContainText(`Nivel ${now.level}`);
+  await expect(card).toContainText(String(now.gems_total));
+  await expect(card).toContainText(/Novato|Aprendiz/);
   expect(errors).toEqual([]);
 });

@@ -557,8 +557,13 @@ window.refreshMyWalletSoon = function refreshMyWalletSoon() {
 };
 
 window.checkDailyChest = function checkDailyChest() {
-  // Nodo escolar (sin internet): el premio se decide y se guarda en la nube; sin sesión de Supabase no hay cofre.
-  if (window.isNodeSession) return;
+  // Nodo escolar (sin internet): la disponibilidad del cofre la dice el propio nodo (/api/xp); no hay sesión de Supabase.
+  if (window.isNodeSession) {
+    window.nodeApi('/api/xp').then((x) => {
+      if (x.chest_available) setTimeout(() => { if (typeof window.showDailyChestModal === 'function') window.showDailyChestModal(); }, 1500);
+    }).catch(() => {});
+    return;
+  }
   const userData = window.userData;
   if (!userData || window.userRole !== 'estudiante') return;
   const today = guatemalaToday();
@@ -572,7 +577,6 @@ window.checkDailyChest = function checkDailyChest() {
 }
 
 window.showDailyChestModal = function showDailyChestModal() {
-  if (window.isNodeSession) return;
   // Una sola vez (antes podían quedar dos cofres apilados).
   if (document.getElementById('daily-chest-modal')) return;
   const modal = document.createElement('div');
@@ -603,7 +607,13 @@ window.openChest = async function openChest(el) {
   // con Math.random() en el navegador y la fecha solo se miraba antes de
   // mostrar el modal, nunca al escribir (se podía llamar esta función las
   // veces que quisiera desde la consola).
-  const { data: reward, error } = await _supabase.rpc('claim_daily_chest');
+  // En el nodo escolar el nodo sortea el premio y la nube lo valida al sincronizar.
+  let reward, error;
+  if (window.isNodeSession) {
+    try { reward = await window.nodeApi('/api/chest', { method: 'POST' }); } catch (e) { error = e; }
+  } else {
+    ({ data: reward, error } = await _supabase.rpc('claim_daily_chest'));
+  }
 
   if (error) {
     if (typeof showToast === 'function') showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');

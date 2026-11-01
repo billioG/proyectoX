@@ -2888,14 +2888,20 @@ async function upsertLessonCompletion(payload) {
   // nube cuando tenga señal.
   if (window.isNodeSession) {
     try {
-      await window.nodeApi('/api/completions', { method: 'POST', body: { lesson_id: payload.lesson_id, score: payload.score ?? null, status: payload.status || 'completed' } });
+      const r = await window.nodeApi('/api/completions', { method: 'POST', body: { lesson_id: payload.lesson_id, score: payload.score ?? null, status: payload.status || 'completed' } });
+      if (r?.xp) window.showToast?.(`<i class="fas fa-star"></i> +${r.xp} XP`, 'success');
       return { queued: false, error: null };
     } catch (e) {
       return { queued: false, error: e };
     }
   }
+  // +10 XP la primera vez que se completa la lección (la nube lo paga sola con un disparador; ver migrations/xp-events.sql).
+  const firstTime = (payload.status || 'completed') === 'completed' && !window._completionsCache?.has?.(payload.lesson_id);
   const { error } = await window._supabase.from('lesson_completions').upsert(payload, { onConflict: 'lesson_id,student_id' });
-  if (!error) return { queued: false, error: null };
+  if (!error) {
+    if (firstTime) window.showToast?.('<i class="fas fa-star"></i> +10 XP', 'success');
+    return { queued: false, error: null };
+  }
 
   if (navigator.onLine) return { queued: false, error }; // error real, no de conectividad
   await window._syncManager?.enqueue('mark_lesson_complete', payload);
