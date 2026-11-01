@@ -43,11 +43,16 @@ export function createReactionStore(db, { now = Date.now } = {}) {
       return { mine: next };
     },
 
-    /** Votos del proyecto: los de la nube (que ya cuentan mi reacción de la base) corregidos por mi cambio pendiente. */
-    adjustVotes(studentId, projectId, cloudVotes) {
-      const before = COUNTS.has(base(studentId, projectId)) ? 1 : 0;
-      const after = COUNTS.has(effective(studentId, projectId)) ? 1 : 0;
-      return Math.max(0, (Number(cloudVotes) || 0) - before + after);
+    /**
+     * Votos del proyecto que ve cualquier estudiante del nodo: los de la nube (que ya cuentan las reacciones de la
+     * base) corregidos por TODOS los cambios pendientes de este nodo, para que todos vean el mismo número.
+     */
+    adjustVotes(projectId, cloudVotes) {
+      let votes = Number(cloudVotes) || 0;
+      for (const l of db.prepare('SELECT student_id, reaction FROM reactions_local WHERE project_id = ?').all(Number(projectId))) {
+        votes += (COUNTS.has(l.reaction) ? 1 : 0) - (COUNTS.has(base(l.student_id, projectId)) ? 1 : 0);
+      }
+      return Math.max(0, votes);
     },
 
     /** Lo que falta por mandar a la nube. */

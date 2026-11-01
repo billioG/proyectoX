@@ -10,7 +10,10 @@
  * @returns FeedItem[] = { id, title, description, bimestre, score, votes, created_at, author_name,
  *                         group_name, kind, feedback, mine, state: 'cloud'|'uploading'|'pending'|'synced' }
  */
+import { createReactionStore } from './reactions.js';
+
 export function buildStudentFeed(db, student, localRows = []) {
+  const reactions = createReactionStore(db);
   const myGroups = new Set(db.prepare('SELECT group_id FROM group_members WHERE student_id = ?').all(student.id).map(m => m.group_id));
   const cloud = db.prepare('SELECT * FROM cloud_projects WHERE grade = ? AND section = ? ORDER BY created_at DESC, id').all(student.grade, student.section);
 
@@ -24,6 +27,8 @@ export function buildStudentFeed(db, student, localRows = []) {
       id: p.id, title: p.title, description: p.description, bimestre: p.bimestre, score: p.score, votes: p.votes,
       created_at: p.created_at, author_name: p.author_name, group_name: p.group_name, kind: p.kind,
       feedback: mine || team ? p.feedback : null, mine, state: 'cloud',
+      // Mi reacción (la pendiente o la de la última sincronización) y los votos con todo lo pendiente del nodo.
+      my_reaction: reactions.effective(student.id, p.id), votes: reactions.adjustVotes(p.id, p.votes),
     });
   }
 
@@ -34,7 +39,7 @@ export function buildStudentFeed(db, student, localRows = []) {
     local.push({
       id: r.id, title: r.title, description: r.description, bimestre: r.bimestre, score: null, votes: 0,
       created_at: r.created_at, author_name: '', group_name: null, kind: r.kind === 'model' ? 'model' : 'video',
-      feedback: null, mine: true, state: r.status,
+      feedback: null, mine: true, state: r.status, my_reaction: null,
     });
   }
   return [...local, ...items];

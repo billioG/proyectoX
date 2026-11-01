@@ -17,6 +17,7 @@ import { createProjectStore, ProjectError } from './projects.js';
 import { PROJECT_LIMITS } from './project-rules.js';
 import { buildStudentFeed } from './feed.js';
 import { createXpStore, XP_PER_LESSON } from './xp.js';
+import { createReactionStore, ReactionError } from './reactions.js';
 import { friendlySyncError } from './sync-errors.js';
 
 const NODE_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -35,6 +36,7 @@ const projectLimits = {
 };
 const projectStore = createProjectStore(db, { dataDir: config.dataDir, limits: projectLimits });
 const xpStore = createXpStore(db);
+const reactionStore = createReactionStore(db);
 projectStore.cleanup(); // borradores huérfanos de una subida cortada por un reinicio o un apagón
 setInterval(() => projectStore.cleanup(), 3600_000).unref();
 
@@ -112,7 +114,26 @@ function projectRoute(method, pathname) {
   let m;
   if (method === 'PUT' && (m = /^\/api\/projects\/([^/]+)\/file$/.exec(pathname))) return (req, res) => putProjectFile(req, res, m[1]);
   if (method === 'DELETE' && (m = /^\/api\/projects\/([^/]+)$/.exec(pathname))) return (req, res) => deleteProject(req, res, m[1]);
+  if (method === 'POST' && (m = /^\/api\/projects\/([^/]+)\/react$/.exec(pathname))) return (req, res) => reactToProject(req, res, m[1]);
   return null;
+}
+
+// Reacción a un proyecto del Inicio (id = id del proyecto en la nube). Solo se puede reaccionar a lo que el estudiante
+// ve en su Inicio (aprobados de su clase, los suyos y los de su equipo); la nube cuenta los votos al sincronizar.
+async function reactToProject(req, res, id) {
+  const s = studentFromSession(req);
+  if (!s) return sendJson(res, 401, { error: 'Sesión vencida' });
+  const { reaction } = await readBody(req);
+  const visible = /^\d{1,10}$/.test(id) && buildStudentFeed(db, s, []).some(p => p.id === id && p.state === 'cloud');
+  if (!visible) return sendJson(res, 404, { error: 'Proyecto no encontrado.' });
+  try {
+    const { mine } = reactionStore.react(s.id, id, reaction);
+    const cloudVotes = db.prepare('SELECT votes FROM cloud_projects WHERE id = ?').get(id)?.votes ?? 0;
+    sendJson(res, 200, { mine, votes: reactionStore.adjustVotes(id, cloudVotes) });
+  } catch (e) {
+    if (e instanceof ReactionError) return sendJson(res, e.status, { error: e.message });
+    throw e;
+  }
 }
 
 // Subidas en curso (id -> aborta esa subida y resuelve cuando ya limpió). Evita que un DELETE o un

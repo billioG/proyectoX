@@ -56,7 +56,7 @@ test('react: una reacción inventada lanza 400 y no deja nada', { skip }, async 
 test('votes: solo like y excelente cuentan, sumados a los votos de la nube', { skip }, async () => {
   const s = await setup();
   try {
-    const votes = () => s.store.adjustVotes('s1', 27, 3);
+    const votes = () => s.store.adjustVotes(27, 3);
     assert.equal(votes(), 3);
     s.store.react('s1', 27, 'like'); assert.equal(votes(), 4);
     s.store.react('s1', 27, 'wow'); assert.equal(votes(), 3, 'wow no cuenta');
@@ -70,10 +70,10 @@ test('votes: si la nube ya contaba mi like, quitarlo baja el conteo sin dejarlo 
   try {
     s.sync.applyPull(s.db, pull({ reactions: [{ student_id: 's1', project_id: 27, reaction: 'like' }] }));
     assert.equal(s.store.effective('s1', 27), 'like', 'la base de la nube se ve como mi reacción');
-    assert.equal(s.store.adjustVotes('s1', 27, 3), 3);
+    assert.equal(s.store.adjustVotes(27, 3), 3);
     s.store.react('s1', 27, 'like'); // la quita
-    assert.equal(s.store.adjustVotes('s1', 27, 3), 2);
-    assert.equal(s.store.adjustVotes('s1', 27, 0), 0, 'nunca baja de 0');
+    assert.equal(s.store.adjustVotes(27, 3), 2);
+    assert.equal(s.store.adjustVotes(27, 0), 0, 'nunca baja de 0');
   } finally { s.done(); }
 });
 
@@ -104,7 +104,7 @@ test('confirmado en applied.reactions: se borra el pendiente y la base nueva ya 
     s.sync.applyPull(s.db, pull({ applied: { reactions: ['s1|27'] }, reactions: [{ student_id: 's1', project_id: 27, reaction: 'like' }], projects: [ficha({ votes: 4 })] }), push);
     assert.equal(s.left(), 0);
     assert.equal(s.store.effective('s1', 27), 'like');
-    assert.equal(s.store.adjustVotes('s1', 27, 4), 4, 'no se cuenta dos veces');
+    assert.equal(s.store.adjustVotes(27, 4), 4, 'no se cuenta dos veces');
   } finally { s.done(); }
 });
 
