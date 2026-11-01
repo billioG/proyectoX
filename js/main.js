@@ -26,11 +26,14 @@ const MODULE_MAP = {
     'profile': ['js/profile.js', 'js/badges.js', 'js/kpi-engine.js', 'js/gamification.js', 'js/game-arena.js', 'js/duels.js', 'js/hangman-duel.js', 'js/timed-math-duel.js', 'js/debug-duel.js', 'js/spelling-duel.js', 'js/practice-bank.js', 'js/practice.js', 'js/progress.js', 'js/season-pass.js', 'js/leagues.js', 'js/companion.js', 'js/tournaments.js', 'js/profile-modals.js', 'js/feed-ui.js', 'js/project-modals.js', 'js/reports.js', 'js/certificates.js'],
     'feed': ['js/projects.js', 'js/gamification.js', 'js/game-arena.js', 'js/duels.js', 'js/hangman-duel.js', 'js/timed-math-duel.js', 'js/debug-duel.js', 'js/spelling-duel.js', 'js/practice-bank.js', 'js/practice.js', 'js/progress.js', 'js/season-pass.js', 'js/leagues.js', 'js/companion.js', 'js/tournaments.js', 'js/kpi-engine.js', 'js/feed-ui.js', 'js/project-modals.js', 'js/profile-modals.js', 'js/reports.js', 'js/certificates.js'],
     'upload': ['js/project-modals.js', 'js/groups.js', 'js/node-projects.js'],
+    // Perfil sencillo del nodo escolar (sin internet): reemplaza al perfil completo, que depende de la nube.
+    'node-profile': ['js/node-profile.js'],
     'bonus-system': ['js/bonus-system.js', 'js/certificates.js'],
     'lessons': ['js/lessons.js', 'js/quiz-import.js', 'js/weekly-topic.js']
 };
 
 export async function loadModule(name) {
+    if (name === 'profile' && window.isNodeSession) name = 'node-profile';
     if (!MODULE_MAP[name]) return;
 
     const scripts = MODULE_MAP[name];
@@ -322,6 +325,7 @@ export function loadViewContent(view) {
             callViewLoader(view, window.loadBonusSystem);
             break;
         case 'profile':
+            if (window.isNodeSession) { callViewLoader(view, window.loadNodeProfile); break; }
             callViewLoader(view, window.loadProfile);
             if (typeof window.initGamification === 'function') window.initGamification();
             break;

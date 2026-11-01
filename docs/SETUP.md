@@ -39,7 +39,7 @@ que existieran las migraciones.
 1. El responsable del proyecto corre `./scripts/dump-schema.ps1` contra producción y sube `supabase/schema.sql` al repositorio (solo esquema, sin datos).
 2. En el proyecto de prueba: SQL Editor → pegar `supabase/schema.sql` completo → Run.
 
-Si `supabase/schema.sql` todavía no existe en el repositorio, pedíselo al
+Si `supabase/schema.sql` todavía no existe en el repositorio, pídeselo al
 responsable del proyecto antes de seguir.
 
 ## 4. Archivos (Storage)

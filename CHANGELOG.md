@@ -2,7 +2,11 @@
 
 Cambios publicados en Quetzal LMS, del más reciente al más antiguo. Cada línea es un cambio del repositorio; la versión entre paréntesis es la que ven los usuarios en la app.
 
-Al publicar una versión nueva, agregá una línea arriba de todo (ver CONTRIBUTING.md).
+Al publicar una versión nueva, agrega una línea arriba de todo (ver CONTRIBUTING.md).
+
+## 2026-11-01
+
+- **Nodo escolar: el estudiante tiene su Perfil sin internet.** Al tocar su nombre arriba aparece un perfil sencillo con lo que la escuela guarda en la computadora: nombre, grado y sección, el avance por curso (lecciones completadas con su barra) y sus proyectos con el estado («Guardado en la escuela», «Subido a la nube») con acceso directo a «Subir un proyecto». Gemas, insignias, mascota y certificados siguen siendo de la versión con internet (el perfil completo no se carga en modo nodo). Con internet no cambia nada. Además, las copias espejo `supabase-functions/` quedaron en tuteo, idénticas a `supabase/functions/` (v1.0.189)
 
 ## 2026-10-31
 

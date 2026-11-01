@@ -17,6 +17,8 @@ test.beforeAll(async () => {
     students: [{ id: 's1', full_name: 'Ana Pérez', grade: 'Primero', section: 'A' }],
     groups: [{ id: 7, name: 'Equipo Sol', grade: 'Primero', section: 'A' }],
     members: [{ id: 1, group_id: 7, student_id: 's1', role: 'planner' }],
+    courses: [{ id: 'c1', title: 'Robótica básica', grade: 'Primero', section: 'A', created_at: '2026-10-01', lessons: [{ id: 'l1', order_index: 1 }, { id: 'l2', order_index: 2 }, { id: 'l3', order_index: 3 }, { id: 'l4', order_index: 4 }] }],
+    completions: [{ lesson_id: 'l1', student_id: 's1' }, { lesson_id: 'l2', student_id: 's1' }],
   });
   await node.login('s1', '1234'); // crea el PIN
   videoFile = path.join(os.tmpdir(), `quetzal-prueba-${process.pid}.mp4`);
@@ -128,4 +130,28 @@ test('el panel del docente muestra los proyectos por subir y los que fallaron', 
   await page.fill('#t-code', '48213976');
   await page.click('#t-go');
   await expect(page.locator('#t-projects')).toContainText('1 con error');
+});
+
+test('el perfil del estudiante en el nodo muestra su avance y sus proyectos, sin internet', async ({ page }) => {
+  test.skip(!node, skipReason);
+  const errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  const token = await node.login('s1', '1234');
+  const buf = Buffer.alloc(1000, 5);
+  const { id } = (await node.api('/api/projects', { method: 'POST', token, body: { title: 'Mi robot del perfil', description: 'Un robot que sigue una línea negra con dos sensores.', bimestre: 1, filename: 'v.mp4', size: buf.length } })).data;
+  expect((await fetch(`${node.base}/api/projects/${id}/file`, { method: 'PUT', headers: { Authorization: `Bearer ${token}` }, body: buf })).status).toBe(200);
+
+  await enterAsStudent(page);
+  await page.evaluate(() => window.nav('profile'));
+  await expect(page.locator('#profile-content')).toContainText('Ana Pérez');
+  await expect(page.locator('#profile-content')).toContainText('Primero A');
+  const course = page.locator('[data-course-progress="c1"]');
+  await expect(course).toContainText('Robótica básica');
+  await expect(course).toContainText('2 de 4 lecciones');
+  await expect(course.locator('[role=progressbar]')).toHaveAttribute('aria-valuenow', '50');
+  await expect(page.locator('#node-profile-projects')).toContainText('Mi robot del perfil');
+  await expect(page.locator('#node-profile-projects')).toContainText('Guardado en la escuela');
+  await page.click('#node-profile-upload');
+  await expect(page.locator('#btn-upload-project')).toBeVisible();
+  expect(errors).toEqual([]);
 });

@@ -71,6 +71,8 @@ export async function startNode(opts = {}) {
   }
   for (const g of opts.groups || []) seed.prepare('INSERT INTO groups (id, name, grade, section) VALUES (?, ?, ?, ?)').run(g.id, g.name, g.grade ?? null, g.section ?? null);
   for (const m of opts.members || []) seed.prepare('INSERT INTO group_members (id, group_id, student_id, role) VALUES (?, ?, ?, ?)').run(m.id, m.group_id, m.student_id, m.role ?? 'planner');
+  for (const c of opts.courses || []) seed.prepare('INSERT INTO courses (id, grade, section, data) VALUES (?, ?, ?, ?)').run(c.id, c.grade || 'Primero', c.section || 'A', JSON.stringify(c));
+  for (const k of opts.completions || []) seed.prepare("INSERT INTO completions (lesson_id, student_id, score, status, updated_at, dirty) VALUES (?, ?, ?, 'completed', ?, 0)").run(k.lesson_id, k.student_id, k.score ?? 100, new Date().toISOString());
   seed.close();
 
   const base = `http://127.0.0.1:${port}`;
