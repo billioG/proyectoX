@@ -16,6 +16,7 @@ import { localizeIndexHtml } from './offline-assets.js';
 import { createProjectStore, ProjectError } from './projects.js';
 import { PROJECT_LIMITS } from './project-rules.js';
 import { buildStudentFeed } from './feed.js';
+import { createXpStore, XP_PER_LESSON } from './xp.js';
 import { friendlySyncError } from './sync-errors.js';
 
 const NODE_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -33,6 +34,7 @@ const projectLimits = {
   keepSyncedDays: config.keepSyncedProjectDays ?? PROJECT_LIMITS.keepSyncedDays,
 };
 const projectStore = createProjectStore(db, { dataDir: config.dataDir, limits: projectLimits });
+const xpStore = createXpStore(db);
 projectStore.cleanup(); // borradores huérfanos de una subida cortada por un reinicio o un apagón
 setInterval(() => projectStore.cleanup(), 3600_000).unref();
 
@@ -294,6 +296,23 @@ const api = {
     if (!s) return sendJson(res, 401, { error: 'Sesión vencida' });
     sendJson(res, 200, { groups: projectStore.groupsFor(s.id) });
   },
+  // XP del estudiante: base de la última sincronización + lo ganado aquí que la nube aún no confirmó.
+  'GET /api/xp': (req, res) => {
+    const s = studentFromSession(req);
+    if (!s) return sendJson(res, 401, { error: 'Sesión vencida' });
+    sendJson(res, 200, xpStore.summary(s));
+  },
+  // Cofre diario: el nodo sortea el premio; la nube lo valida y lo suma al sincronizar.
+  'POST /api/chest': (req, res) => {
+    const s = studentFromSession(req);
+    if (!s) return sendJson(res, 401, { error: 'Sesión vencida' });
+    try {
+      sendJson(res, 200, xpStore.claimChest(s));
+    } catch (e) {
+      if (e.name === 'XpError') return sendJson(res, e.status, { error: e.message });
+      throw e;
+    }
+  },
   // Inicio del estudiante: proyectos de su clase (fichas de la nube, sin videos) + los suyos guardados aquí.
   'GET /api/feed': (req, res) => {
     const s = studentFromSession(req);
@@ -446,6 +465,7 @@ const api = {
     const { lesson_id, score, status } = await readBody(req);
     if (!lesson_id) return sendJson(res, 400, { error: 'Falta lesson_id' });
     const clean = score == null || score === '' ? null : Math.min(100, Math.max(0, Number(score)));
+    const prev = db.prepare('SELECT status FROM completions WHERE lesson_id = ? AND student_id = ?').get(lesson_id, s.id);
     db.prepare(`
       INSERT INTO completions (lesson_id, student_id, score, status, updated_at, dirty) VALUES (?, ?, ?, ?, ?, 1)
       ON CONFLICT(lesson_id, student_id) DO UPDATE SET
@@ -455,7 +475,9 @@ const api = {
         status = CASE WHEN completions.status = 'completed' OR excluded.status = 'completed' THEN 'completed' ELSE excluded.status END,
         updated_at = excluded.updated_at, dirty = 1
     `).run(lesson_id, s.id, clean, status || 'completed', new Date().toISOString());
-    sendJson(res, 200, { ok: true });
+    // +10 XP la primera vez que la lección pasa a completada (la nube la paga sola al recibir el progreso).
+    const firstTime = (status || 'completed') === 'completed' && prev?.status !== 'completed' && xpStore.recordLesson(s.id, lesson_id);
+    sendJson(res, 200, firstTime ? { ok: true, xp: XP_PER_LESSON } : { ok: true });
   },
 };
 

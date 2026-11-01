@@ -69,6 +69,7 @@ export async function startNode(opts = {}) {
     seed.prepare("INSERT INTO students (id, username, full_name, grade, section, status) VALUES (?, ?, ?, ?, ?, 'activo')")
       .run(s.id, s.username || s.id, s.full_name || s.id, s.grade || 'Primero', s.section || 'A');
   }
+  for (const [id, x] of Object.entries(opts.xp || {})) seed.prepare('UPDATE students SET extra = ? WHERE id = ?').run(JSON.stringify(x), id);
   for (const g of opts.groups || []) seed.prepare('INSERT INTO groups (id, name, grade, section) VALUES (?, ?, ?, ?)').run(g.id, g.name, g.grade ?? null, g.section ?? null);
   for (const m of opts.members || []) seed.prepare('INSERT INTO group_members (id, group_id, student_id, role) VALUES (?, ?, ?, ?)').run(m.id, m.group_id, m.student_id, m.role ?? 'planner');
   for (const c of opts.courses || []) seed.prepare('INSERT INTO courses (id, grade, section, data) VALUES (?, ?, ?, ?)').run(c.id, c.grade || 'Primero', c.section || 'A', JSON.stringify(c));
