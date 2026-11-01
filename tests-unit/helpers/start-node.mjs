@@ -71,6 +71,7 @@ export async function startNode(opts = {}) {
   }
   for (const [id, x] of Object.entries(opts.xp || {})) seed.prepare('UPDATE students SET extra = ? WHERE id = ?').run(JSON.stringify(x), id);
   for (const r of opts.cloudReactions || []) seed.prepare('INSERT INTO cloud_reactions (student_id, project_id, reaction) VALUES (?, ?, ?)').run(r.student_id, r.project_id, r.reaction);
+  for (const t of opts.teachers || []) seed.prepare('INSERT INTO teachers (id, full_name, assignments) VALUES (?, ?, ?)').run(t.id, t.full_name || t.id, JSON.stringify(t.assignments || []));
   for (const g of opts.groups || []) seed.prepare('INSERT INTO groups (id, name, grade, section) VALUES (?, ?, ?, ?)').run(g.id, g.name, g.grade ?? null, g.section ?? null);
   for (const m of opts.members || []) seed.prepare('INSERT INTO group_members (id, group_id, student_id, role) VALUES (?, ?, ?, ?)').run(m.id, m.group_id, m.student_id, m.role ?? 'planner');
   for (const c of opts.courses || []) seed.prepare('INSERT INTO courses (id, grade, section, data) VALUES (?, ?, ?, ?)').run(c.id, c.grade || 'Primero', c.section || 'A', JSON.stringify(c));

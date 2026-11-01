@@ -26,7 +26,11 @@ const scoreCols = CRITERIA.map(c => `${c}_score`);
  * @param opts { now?: () => number }
  */
 export function createEvaluationStore(db, { now = Date.now } = {}) {
-  const assignmentsOf = (teacher) => { try { return JSON.parse(teacher?.assignments || '[]'); } catch { return []; } };
+  // El docente puede venir de la base (assignments como texto JSON) o de teachers.js (ya como lista).
+  const assignmentsOf = (teacher) => {
+    if (Array.isArray(teacher?.assignments)) return teacher.assignments;
+    try { return JSON.parse(teacher?.assignments || '[]'); } catch { return []; }
+  };
   const allowed = (teacher, grade, section) => assignmentsOf(teacher).some(a => a.grade === grade && a.section === section);
   const evalOf = (r) => (r ? {
     teacher_id: r.teacher_id, total_score: r.total_score, feedback: r.feedback ?? '',
@@ -130,11 +134,20 @@ export function createEvaluationStore(db, { now = Date.now } = {}) {
      */
     effectiveForCloud(projectId) {
       const id = Number(projectId);
+      if (!Number.isInteger(id)) return null;
       const rows = db.prepare(`SELECT * FROM evaluations_local WHERE project_key = ?
         OR project_key IN (SELECT 'l:' || id FROM projects WHERE cloud_project_id = ?) ORDER BY updated_at DESC LIMIT 1`).get(`c:${id}`, String(id));
       if (rows) return { ...evalOf(rows), updated_at: rows.updated_at, pending: true };
       const base = db.prepare('SELECT * FROM cloud_evaluations WHERE project_id = ?').get(id);
       return base ? { ...evalOf(base), pending: false } : null;
+    },
+
+    /** La evaluación que ve el dueño de un proyecto guardado en el nodo: la pendiente o, si ya se publicó, la de la nube. */
+    effectiveForLocal(uuid) {
+      const l = db.prepare('SELECT * FROM evaluations_local WHERE project_key = ?').get(`l:${uuid}`);
+      if (l) return { ...evalOf(l), updated_at: l.updated_at, pending: true };
+      const cid = db.prepare('SELECT cloud_project_id FROM projects WHERE id = ?').get(uuid)?.cloud_project_id;
+      return /^\d+$/.test(String(cid || '')) ? this.effectiveForCloud(Number(cid)) : null;
     },
 
     /** Lo que falta por mandar a la nube: project_id si se conoce, si no el uuid del nodo (node_ref). */
