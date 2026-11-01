@@ -162,7 +162,7 @@ if (-not (Test-Path $ConfigFile)) {
   Say 'Configuración del nodo'
   if (-not $Token) {
     Write-Host 'Pega el TOKEN del nodo (lo da el administrador al registrar el nodo en Quetzal LMS).'
-    Write-Host "Si todavía no lo tienes, déjalo vacío y complétalo después en $ConfigFile"
+    Write-Host 'Si todavía no lo tienes, déjalo vacío (presiona Enter): después lo pegas en Quetzal, botón Docente.'
     $Token = Read-Host 'Token'
   }
   if (-not $Port) { $Port = if (Test-PortFree 80) { 80 } else { 8080 } }
@@ -265,5 +265,5 @@ Write-Host "  Actualizar:          ejecuta de nuevo el instalador con -Update"
 Write-Host ''
 if (-not $ok) { Warn "Revisa $LogDir\nodo.log para ver el error." }
 Warn 'Importante: pide al técnico que reserve esta IP en el router (reserva DHCP), así la dirección no cambia.'
-if ($cfgNow.nodeToken -like 'PEGAR*') { Warn "Falta el token: pégalo en $ConfigFile y reinicia la computadora para que sincronice." }
+if ($cfgNow.nodeToken -like 'PEGAR*') { Warn "Falta el token. Abre 'Quetzal (nodo escolar)' en el escritorio, toca 'Docente', escribe el código de docente y pega el token (con internet en esta computadora)." }
 if ($ok) { Start-Process "http://localhost$suffix/cartel" }

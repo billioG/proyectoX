@@ -89,7 +89,7 @@ fi
 if [ ! -f "$NODE_DIR/config.json" ]; then
   say "Configuración del nodo"
   echo "Pega el TOKEN del nodo (lo da el administrador al registrar el nodo en Quetzal LMS)."
-  echo "Si todavía no lo tienes, déjalo vacío y complétalo después en $NODE_DIR/config.json"
+  echo "Si todavía no lo tienes, déjalo vacío: después lo pegas en Quetzal, botón Docente."
   read -r -p "Token: " NODE_TOKEN < /dev/tty || NODE_TOKEN=""
   # "|| true": con pipefail, tr termina por SIGPIPE cuando head corta.
   TEACHER_CODE="$(LC_ALL=C tr -dc '0-9' < /dev/urandom | head -c 6 || true)"

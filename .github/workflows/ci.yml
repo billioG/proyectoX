@@ -33,13 +33,15 @@ jobs:
           exit $fail
 
   unit-tests:
-    name: Pruebas unitarias (importador de preguntas JSON)
+    name: Pruebas unitarias (preguntas JSON, nodo escolar)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      # better-sqlite3: la prueba del servidor del nodo arranca school-node/server.js de verdad.
+      - run: npm ci --prefix school-node
       - run: node --test "tests-unit/*.test.mjs"
 
   edge-functions-typecheck:

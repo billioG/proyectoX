@@ -154,6 +154,8 @@ export function loadConfig(dir) {
   // Sin el BOM que agrega el Bloc de notas de Windows (si no, JSON.parse falla).
   const config = JSON.parse(fs.readFileSync(file, 'utf8').replace(/^﻿/, ''));
   config.dataDir = path.resolve(dir, config.dataDir || './data');
+  // Para que el panel del docente pueda guardar el token sin editar el archivo a mano.
+  Object.defineProperty(config, 'configFile', { value: file, enumerable: false });
   return config;
 }
 

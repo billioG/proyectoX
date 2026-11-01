@@ -127,7 +127,7 @@ async function renderClassPick(box) {
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(9rem,1fr));gap:.75rem">
         ${classes.map((c, i) => `<button data-i="${i}" style="${cardBtn};font-weight:900;font-size:1rem">${esc(c.grade)} ${esc(c.section)}</button>`).join('')}
       </div>
-      ${classes.length ? '' : '<p style="color:#94a3b8">El nodo todavía no tiene alumnos: tiene que sincronizarse con internet una vez.</p>'}
+      ${classes.length ? '' : '<p style="color:#cbd5e1;font-size:1rem;line-height:1.5">El nodo todavía no tiene alumnos: tiene que sincronizarse con internet una vez.</p><p style="color:#94a3b8;font-size:.9rem;line-height:1.5">Toca <b>Docente</b> (abajo a la derecha), escribe el código de docente y conecta el nodo con la nube pegando el token de tu escuela.</p>'}
     </div>`;
   box.querySelectorAll('[data-i]').forEach(btn => btn.onclick = () => {
     const c = classes[Number(btn.dataset.i)];
@@ -271,6 +271,84 @@ function renderTeacherLogin(box, error = '') {
   box.querySelector('#t-code').focus();
 }
 
+// ---- Conexión del nodo con la nube (token de la escuela y "Sincronizar ahora") ----
+// Reemplaza editar config.json a mano: el docente pega el token aquí.
+const cloudBox = 'padding:1rem;border-radius:1rem;margin-bottom:1.25rem';
+const cloudBtn = 'border:0;border-radius:.8rem;padding:.7rem 1.1rem;font-weight:900;font-size:.8rem;cursor:pointer;color:#fff;background:#10b981';
+
+function cloudCardHtml(node, when) {
+  const err = node.last_error ? `<p style="margin:.6rem 0 0;color:#fda4af;font-size:.8rem;font-weight:700"><i class="fas fa-circle-exclamation"></i> ${esc(node.last_error)}</p>` : '';
+  if (!node.has_token) {
+    return `<div style="${cloudBox};background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.35)">
+      <div style="font-weight:900;color:#fcd34d;margin-bottom:.35rem"><i class="fas fa-link-slash"></i> Falta conectar este nodo con la nube</div>
+      <p style="margin:0 0 .7rem;font-size:.8rem;color:#e2e8f0;line-height:1.45">Pega aquí el <b>token</b> de tu escuela (lo da el administrador de Quetzal). La computadora debe tener internet unos minutos.</p>
+      <input id="t-token" type="text" autocomplete="off" spellcheck="false" placeholder="Pega el token aquí"
+        style="width:100%;height:2.8rem;border-radius:.8rem;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:#fff;padding:0 .8rem;font-family:monospace;font-size:.8rem">
+      <p id="t-token-msg" style="margin:.5rem 0 0;min-height:1.1rem;font-size:.8rem;font-weight:700"></p>
+      <button id="t-token-save" style="${cloudBtn};margin-top:.4rem"><i class="fas fa-cloud-arrow-up"></i> Guardar y sincronizar</button>
+      ${err}
+    </div>`;
+  }
+  return `<div style="${cloudBox};background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3)">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:.8rem;flex-wrap:wrap">
+      <div style="font-size:.85rem;color:#e2e8f0"><b style="color:#6ee7b7"><i class="fas fa-cloud"></i> Conectado con la nube</b><br>
+        <span style="color:#94a3b8;font-size:.75rem">${node.syncing ? 'Sincronizando...' : `Última sincronización: ${when(node.last_sync_at)}`}</span></div>
+      <button id="t-sync-now" style="${cloudBtn}" ${node.syncing ? 'disabled' : ''}><i class="fas fa-rotate"></i> Sincronizar ahora</button>
+    </div>
+    <p id="t-token-msg" style="margin:.5rem 0 0;font-size:.8rem;font-weight:700"></p>
+    ${err}
+  </div>`;
+}
+
+// Mientras sincroniza, consulta el avance cada 3 s (hasta 2 minutos) y redibuja el panel.
+// El nodo marca "syncing" antes de responder, así que no depende de la hora del celular.
+async function waitForSync(box) {
+  const msg = box.querySelector('#t-token-msg');
+  for (let i = 0; i < 40; i++) {
+    await new Promise(r => setTimeout(r, 3000));
+    if (!box.isConnected) return;
+    let data;
+    try { data = await teacherApi('/api/teacher/overview'); } catch { continue; }
+    if (!data.node.syncing) return renderTeacherPanel(box);
+    if (msg) msg.textContent = 'Sincronizando... esto puede tardar unos minutos.';
+  }
+  renderTeacherPanel(box);
+}
+
+function wireCloudCard(box, node) {
+  const msg = box.querySelector('#t-token-msg');
+  const say = (text, ok = true) => { if (msg) { msg.textContent = text; msg.style.color = ok ? '#6ee7b7' : '#fda4af'; } };
+
+  box.querySelector('#t-token-save')?.addEventListener('click', async (ev) => {
+    const btn = ev.currentTarget;
+    const token = box.querySelector('#t-token').value;
+    if (!token.trim()) return say('Pega primero el token.', false);
+    btn.disabled = true;
+    say('Guardando...');
+    try {
+      await teacherApi('/api/teacher/token', { token });
+      say('Token guardado. Sincronizando... esto puede tardar unos minutos.');
+      waitForSync(box);
+    } catch (e) {
+      btn.disabled = false;
+      say(e.message, false);
+    }
+  });
+
+  box.querySelector('#t-sync-now')?.addEventListener('click', async (ev) => {
+    const btn = ev.currentTarget;
+    btn.disabled = true;
+    say('Sincronizando...');
+    try {
+      await teacherApi('/api/teacher/sync-now', {});
+      waitForSync(box);
+    } catch (e) {
+      btn.disabled = false;
+      say(e.message, false);
+    }
+  });
+}
+
 async function renderTeacherPanel(box) {
   let data;
   try { data = await teacherApi('/api/teacher/overview'); }
@@ -288,6 +366,8 @@ async function renderTeacherPanel(box) {
         <h2 style="font-size:1.3rem;font-weight:900;margin:0;color:#fff"><i class="fas fa-chalkboard-user"></i> Panel del docente</h2>
         <button id="t-exit" style="padding:.5rem .9rem;border-radius:9999px;border:1px solid rgba(255,255,255,.2);background:transparent;color:#cbd5e1;font-weight:800;font-size:.75rem;cursor:pointer">Salir</button>
       </div>
+
+      <div id="t-cloud">${cloudCardHtml(data.node, when)}</div>
 
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(10rem,1fr));gap:.6rem;margin-bottom:1.25rem">
         <div style="padding:.8rem;border-radius:1rem;background:rgba(255,255,255,.06)"><div style="font-size:.6rem;color:#94a3b8;font-weight:800;text-transform:uppercase">Sync por internet</div><b>${when(data.node.last_sync_at)}</b></div>
@@ -322,6 +402,7 @@ async function renderTeacherPanel(box) {
     </div>`;
 
   box.querySelector('#t-exit').onclick = () => { sessionStorage.removeItem(TEACHER_KEY); window.openNodeLogin(); };
+  wireCloudCard(box, data.node);
   box.querySelectorAll('[data-unlock]').forEach(b => b.onclick = async () => {
     await teacherApi('/api/teacher/unlock', { student_id: b.dataset.unlock }).catch(() => {});
     renderTeacherPanel(box);

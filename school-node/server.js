@@ -232,7 +232,7 @@ const api = {
       FROM session_logs l LEFT JOIN students s ON s.id = l.student_id
       ORDER BY l.id DESC LIMIT 60`).all();
     sendJson(res, 200, {
-      node: { name: getMeta(db, 'node_name'), last_sync_at: getMeta(db, 'last_sync_at'), last_usb_sync_at: getMeta(db, 'last_usb_sync_at') },
+      node: { name: getMeta(db, 'node_name'), last_sync_at: getMeta(db, 'last_sync_at'), last_usb_sync_at: getMeta(db, 'last_usb_sync_at'), has_token: hasToken(), syncing, last_error: lastSyncError?.message || null },
       pending: {
         completions: db.prepare('SELECT COUNT(*) n FROM completions WHERE dirty = 1').get().n,
         pins: db.prepare('SELECT COUNT(*) n FROM students WHERE pin_dirty = 1').get().n,
@@ -246,6 +246,39 @@ const api = {
 
   // El alumno olvidó su PIN: se borra y crea uno nuevo en su próximo
   // ingreso. Se sincroniza con la nube (el borrado también viaja).
+  // Guarda el token de la escuela (lo da el administrador) y sincroniza ya, para que
+  // un docente no tenga que editar config.json. Solo con sesión de docente.
+  'POST /api/teacher/token': async (req, res) => {
+    if (!teacherFromRequest(req)) return sendJson(res, 401, { error: 'Sesión de docente vencida' });
+    const body = await readBody(req);
+    const token = String(body.token ?? '').replace(/["'\s]/g, '');
+    if (!/^[0-9a-fA-F]{64}$/.test(token)) {
+      return sendJson(res, 400, { error: 'El token debe tener 64 letras y números. Cópialo completo, tal como lo dio el administrador.' });
+    }
+    try {
+      // Se escribe en el mismo archivo (no uno nuevo) para conservar sus permisos.
+      const raw = JSON.parse(fs.readFileSync(config.configFile, 'utf8').replace(/^﻿/, ''));
+      raw.nodeToken = token;
+      fs.writeFileSync(config.configFile, JSON.stringify(raw, null, 2));
+    } catch (e) {
+      console.error('No se pudo guardar el token:', e.message);
+      return sendJson(res, 500, { error: 'No se pudo guardar el token en esta computadora.' });
+    }
+    config.nodeToken = token;
+    lastSyncError = null;
+    trySync(); // sin esperar: puede tardar (descarga de archivos); el panel consulta el avance
+    sendJson(res, 200, { saved: true });
+  },
+
+  'POST /api/teacher/sync-now': (req, res) => {
+    if (!teacherFromRequest(req)) return sendJson(res, 401, { error: 'Sesión de docente vencida' });
+    if (!hasToken()) return sendJson(res, 400, { error: 'Falta el token de la escuela.' });
+    if (syncing) return sendJson(res, 200, { started: false, syncing: true });
+    lastSyncError = null;
+    trySync();
+    sendJson(res, 200, { started: true });
+  },
+
   'POST /api/teacher/reset-pin': async (req, res) => {
     if (!teacherFromRequest(req)) return sendJson(res, 401, { error: 'Sesión de docente vencida' });
     const { student_id } = await readBody(req);
@@ -371,11 +404,32 @@ server.listen(config.port || 8080, () => {
 
 // Sync automático: cada N minutos, si hay internet.
 let syncing = false;
+let lastSyncError = null; // { message, at } del último intento que falló
+
+function hasToken() {
+  return !!config.nodeToken && !String(config.nodeToken).startsWith('PEGAR');
+}
+
+// Mensajes que entiende un docente (el error técnico sigue en el registro).
+function friendlySyncError(message) {
+  const m = String(message || '');
+  if (/fetch failed|ENOTFOUND|ECONNREFUSED|ECONNRESET|ETIMEDOUT|EAI_AGAIN|network|timeout|aborted/i.test(m)) return 'No hay internet en esta computadora todavía. Conéctala a un internet que funcione y vuelve a intentar.';
+  if (/token/i.test(m)) return 'La nube no reconoció el token. Revisa que lo copiaste completo o pide uno nuevo al administrador.';
+  return m || 'Error desconocido';
+}
+
 async function trySync() {
-  if (syncing || !config.nodeToken || config.nodeToken.startsWith('PEGAR')) return;
+  if (syncing || !hasToken()) return { started: false };
   syncing = true;
-  try { await runSync(db, config); } catch (e) { console.log('⏸️  Sin sync ahora:', e.message); }
-  finally { syncing = false; }
+  try {
+    await runSync(db, config);
+    lastSyncError = null;
+    return { started: true, ok: true };
+  } catch (e) {
+    console.log('⏸️  Sin sync ahora:', e.message);
+    lastSyncError = { message: friendlySyncError(e.message), at: new Date().toISOString() };
+    return { started: true, ok: false };
+  } finally { syncing = false; }
 }
 setTimeout(trySync, 5000);
 setInterval(trySync, (config.syncEveryMinutes || 10) * 60 * 1000);

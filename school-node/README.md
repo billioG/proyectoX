@@ -40,7 +40,9 @@ Router Wi-Fi ──cable── Computadora (nodo Quetzal)
 2. Descargar `school-node/instalar-windows.cmd` y `school-node/install-windows.ps1`
    (en la misma carpeta) y hacer doble clic en `instalar-windows.cmd`. Pide permiso
    de administrador.
-3. Pegar el **token del nodo** cuando lo pida (ver "Obtener el token del nodo").
+3. Pegar el **token del nodo** cuando lo pida (ver "Obtener el token del nodo"). Si todavía no lo tienes,
+   presiona Enter y pégalo después **sin editar archivos**: abre Quetzal en la computadora → botón **Docente**
+   → código de docente → pega el token → **Guardar y sincronizar**.
 
 El instalador deja todo en `C:\Quetzal`:
 
@@ -59,6 +61,8 @@ que la computadora se suspenda enchufada y pone en el escritorio dos accesos:
 **Quetzal (nodo escolar)** y **Quetzal - Cartel para estudiantes** (dirección y QR
 para imprimir; también en `http://IP-DEL-NODO/cartel`).
 
+- Ver el código de docente o cambiar el nombre de la dirección: doble clic en `abrir-configuracion-windows.cmd`
+  (abre `config.json` en el Bloc de notas con permiso de administrador).
 - Actualizar: doble clic en `actualizar-windows.cmd` (o `instalar-windows.cmd -Update`)
 - Quitar: doble clic en `desinstalar-windows.cmd` (o `instalar-windows.cmd -Uninstall`; conserva `C:\Quetzal\data`; con
   `-BorrarDatos` también lo borra).
@@ -159,7 +163,8 @@ nano config.json   # pegar el token del nodo y elegir un teacherCode (6 a 12 nú
    **Registrar nodo escolar**. (Sin la pantalla, también se puede desde la consola del navegador con
    `window._supabase.rpc('register_school_node', { p_school: 'CODIGO', p_name: 'Nombre' })`.)
 3. Copiar el **token** con el botón **Copiar token**: se muestra **una sola vez** (en la base solo queda su
-   hash). Pegarlo cuando el instalador pida `Token:`, o en `config.json`.
+   hash). Pegarlo cuando el instalador pida `Token:`, o después en el propio nodo: botón **Docente** →
+   código de docente → **Guardar y sincronizar** (el nodo lo guarda en `config.json` y sincroniza).
 
 Desde la misma pantalla se ve cada nodo registrado (cuándo se sincronizó por última vez) y se puede
 **revocar** si se pierde la computadora.
