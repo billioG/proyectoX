@@ -1,6 +1,6 @@
 # Reacciones a proyectos sin internet (nodo escolar)
 
-Estado: diseño aprobado por el usuario (2026-11-01); pendiente revisión del spec escrito.
+Estado: **implementado en v1.0.194** (falta la prueba con la nube real); plan en `docs/superpowers/plans/2026-11-01-reacciones-offline.md`.
 
 ## Objetivo
 Los estudiantes del nodo (sin internet) reaccionan a los proyectos de su Inicio con las mismas cinco reacciones de
@@ -41,7 +41,8 @@ la app, y la nube las aplica y cuenta los votos cuando el nodo se sincroniza.
    `updated_at`). `POST /api/projects/:id/react { reaction }` (sesión de estudiante; `:id` = id de la ficha de la
    nube): el proyecto debe estar en el Inicio del estudiante (mismas reglas de visibilidad que `/api/feed`), si no
    404; reaccionar con la misma que ya tiene la quita; devuelve `{ mine, votes }`. `GET /api/feed` agrega
-   `my_reaction` y `votes` = votos de la nube ± el efecto de lo pendiente (solo `like`/`excelente` cuentan).
+   `my_reaction` y `votes` = votos de la nube ± el efecto de **todo** lo pendiente del nodo, de cualquier estudiante
+   (así todos ven el mismo número; solo `like`/`excelente` cuentan).
 4. **Pantalla:** cada tarjeta del Inicio del nodo tiene un botón de reacción (corazón o la reacción propia), un
    selector con las cinco reacciones y el conteo de votos; se actualiza al instante.
 5. **Pruebas:** `reactions.ts` (validación), nodo (store, API de visibilidad/toggle/votos, push y limpieza tras

@@ -251,6 +251,20 @@ otra ruta, definir la variable de entorno `QUETZAL_USB_DIR`.
   rechaza si quedaría menos libre), `keepSyncedProjectDays` (7: se borra la copia local de lo ya subido).
 - Aún no incluye: fotos como proyecto, aprobación previa del docente ni subida por USB.
 
+### Reacciones a proyectos
+
+- En el Inicio, cada tarjeta de la nube tiene el botón de reacción con las cinco reacciones de la app (una por
+  proyecto; la misma la quita, otra la cambia). Solo se reacciona a lo que el estudiante ve en su Inicio.
+- La nube cuenta los votos (solo ❤️ y ⭐). El nodo guarda la reacción **final** de cada par estudiante-proyecto
+  (`reactions_local`; `null` = la quitó) y la base que bajó la última sincronización (`cloud_reactions`); el número
+  mostrado es el de la nube corregido por todo lo pendiente del nodo. `POST /api/projects/:id/react` (404 si el
+  proyecto no está en su Inicio, 400 si la reacción no es válida).
+- Al sincronizar se mandan las reacciones finales; la nube las aplica con `apply_node_reaction` (misma escuela, sin
+  duplicar). Una reacción pendiente solo se borra cuando la nube la confirma o la rechaza de forma definitiva; con
+  un error pasajero o una función anterior se reintenta en el próximo sync.
+- Hace falta, en este orden: ejecutar `migrations/node-reactions.sql` en Supabase, volver a publicar `node-sync`
+  (subiendo también `reactions.ts`) y actualizar el nodo. Sin push desde el nodo.
+
 ### XP del estudiante
 
 - Ganan XP al completar lecciones (+10 una sola vez), con el cofre diario (el nodo sortea 20, 50 o 100 XP y sus

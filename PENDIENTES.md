@@ -177,6 +177,9 @@ Detalle en el dossier: https://claude.ai/artifact/BoLjSgRTYwfesywaZaxvEq
 - [ ] **Probar el XP con la nube real**: ejecutar `migrations/xp-events.sql`, volver a publicar `node-sync` (con `xp.ts`), completar una lección y abrir el cofre en un nodo, sincronizar y comprobar que el XP y las gemas suben una sola vez; ni el SQL ni la consulta de `index.ts` se pudieron probar de forma automática.
 - [ ] XP retroactivo por las lecciones ya completadas antes de v1.0.193 (hoy no se paga).
 - [ ] Gemas por lecciones, tienda, insignias, retos y ranking en el nodo (hoy el Perfil del nodo solo muestra XP, nivel y gemas).
+- [x] Reacciones a proyectos sin internet en el nodo (5 reacciones, una por proyecto, la nube cuenta los votos): v1.0.194.
+- [ ] **Probar las reacciones con la nube real**: ejecutar `migrations/node-reactions.sql`, volver a publicar `node-sync` (con `reactions.ts`), reaccionar en un nodo, sincronizar y comprobar que el voto sube una sola vez y que llega el aviso al dueño; el SQL sí se probó en PostgreSQL real, la consulta de `index.ts` no.
+- [ ] Notificación push de reacciones desde el nodo (hoy solo el aviso de la campana al sincronizar).
 - [ ] Fotos como proyecto (en la nube y en el nodo a la vez): hoy un proyecto es video o modelo 3D.
 - [ ] Aprobación del docente antes de publicar los proyectos del nodo (hoy se publican solos, igual que en la nube).
 - [ ] Subir proyectos por memoria USB en escuelas que nunca tienen internet.
