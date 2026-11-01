@@ -4,7 +4,7 @@
 // código). Lo que no está en el schema ni en la política no se sirve: una política que falta DENIEGA.
 //
 // schema[tabla] = {
-//   pk, columns: [columnas visibles], relations: { nombre: { type: 'one'|'many', unique?, table, fk, ref } },
+//   pk, columns: [columnas visibles], masked?: [columnas que la app pide pero NUNCA se sirven: devuelven null y no se filtran], relations: { nombre: { type: 'one'|'many', unique?, table, fk, ref } },
 //   writable?: [columnas escribibles] (si falta, la tabla es de solo lectura), defaults?: { col: () => valor },
 //   unique?: [[col, col], ...]
 // }
@@ -68,6 +68,8 @@ export function createEngine({ schema, store, policy = {} }) {
     return t;
   };
   const checkCol = (t, name) => { if (!t.columns.includes(name)) throw err(400, '42703', `column ${name} does not exist`); };
+  // Para pedir una columna (select): se acepta también una enmascarada, que siempre vale null.
+  const checkSelectCol = (t, name) => { if (!t.columns.includes(name) && !(t.masked || []).includes(name)) throw err(400, '42703', `column ${name} does not exist`); };
   const canRead = (ctx, table, row) => (policy.canRead ? policy.canRead(ctx, table, row) === true : false);
   const visible = (ctx, table) => store.all(table).filter((r) => canRead(ctx, table, r));
 
@@ -99,7 +101,10 @@ export function createEngine({ schema, store, policy = {} }) {
     const out = {};
     for (const node of tree) {
       if (node.type === 'star') { for (const c of t.columns) out[c] = row[c] === undefined ? null : row[c]; }
-      else if (node.type === 'col') { checkCol(t, node.name); out[node.alias] = row[node.name] === undefined ? null : row[node.name]; }
+      else if (node.type === 'col') {
+        checkSelectCol(t, node.name);
+        out[node.alias] = (t.masked || []).includes(node.name) || row[node.name] === undefined ? null : row[node.name];
+      }
       else {
         const rel = t.relations?.[node.name];
         const value = related(ctx, t, row, node);
