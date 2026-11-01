@@ -23,6 +23,8 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      # La prueba de proyectos del nodo arranca school-node/server.js de verdad (better-sqlite3).
+      - run: npm ci --prefix school-node
       - run: npx playwright install --with-deps chromium
       - run: npm test
         env:

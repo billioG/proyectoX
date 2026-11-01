@@ -314,6 +314,8 @@ window.deleteProject = async function deleteProject(projectId, title) {
 }
 
 window.uploadProject = async function uploadProject() {
+  // En el nodo escolar (sin internet) el proyecto se guarda en la computadora de la escuela: js/node-projects.js.
+  if (window.isNodeSession) return window.nodeProjects?.uploadProject();
   const title = document.getElementById('project-title')?.value.trim();
   const description = document.getElementById('project-description')?.value.trim();
   const videoFile = document.getElementById('project-video')?.files[0];
@@ -416,6 +418,7 @@ window.uploadProject = async function uploadProject() {
 }
 
 window.initUploadView = async function initUploadView() {
+  if (window.isNodeSession) return window.nodeProjects?.initUploadView();
   const select = document.getElementById('project-group');
   if (!select) return;
   const _supabase = window._supabase;

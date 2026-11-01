@@ -40,7 +40,7 @@ const LAZY_MODULES = [
   'js/coordinator.js', 'js/data/challenges.js', 'js/debug-duel.js', 'js/duels.js',
   'js/exams.js', 'js/omr-core.js', 'js/evaluation-modals.js', 'js/evaluation-notifications.js', 'js/evaluation.js',
   'js/feed-ui.js', 'js/gamification.js', 'js/groups.js', 'js/hangman-duel.js',
-  'js/kpi-engine.js', 'js/lessons.js', 'js/pdf-processor.js', 'js/spelling-duel.js', 'js/practice.js', 'js/practice-bank.js', 'js/progress.js', 'js/game-arena.js', 'js/season-pass.js', 'js/leagues.js', 'js/weekly-topic.js', 'js/quiz-import.js',
+  'js/kpi-engine.js', 'js/lessons.js', 'js/pdf-processor.js', 'js/spelling-duel.js', 'js/practice.js', 'js/practice-bank.js', 'js/progress.js', 'js/game-arena.js', 'js/season-pass.js', 'js/leagues.js', 'js/weekly-topic.js', 'js/quiz-import.js', 'js/node-projects.js',
   'js/profile-modals.js', 'js/profile.js', 'js/programs.js', 'js/project-modals.js',
   'js/projects.js', 'js/ranking.js', 'js/reports.js', 'js/schools.js',
   'js/students.js', 'js/teachers.js', 'js/team-performance-widget.js',

@@ -93,10 +93,10 @@ function enterNode(student) {
     chip.innerHTML = `<i class="fas fa-tree"></i> ${esc(window.QUETZAL_NODE?.name || 'Red de la escuela')}`;
     bell.parentElement.insertBefore(chip, bell);
   }
-  // Sin internet solo funciona Cursos: se ocultan las demás secciones.
+  // Sin internet funcionan Cursos y Subir proyecto (se guarda en el nodo y se publica al sincronizar); el resto se oculta.
   document.querySelectorAll('#nav-estudiante [onclick]').forEach(el => {
     const action = el.getAttribute('onclick') || '';
-    if (!/lessons|logout/i.test(action)) el.style.display = 'none';
+    if (!/lessons|upload|logout/i.test(action)) el.style.display = 'none';
   });
 }
 
