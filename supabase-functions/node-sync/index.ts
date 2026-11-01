@@ -9,12 +9,16 @@
 // Body: { push?: { completions?: [], pins?: [], sessions?: [], projects?: [] } }
 //   o  { action: 'project_upload_url', client_ref, ext, size }  ->  { path, signed_url } (el nodo sube el
 //   archivo de un proyecto directo a Storage con esa URL y luego lo confirma en push.projects).
+// push.xp_events: cofres diarios que el nodo sorteó sin internet ({ kind:'chest', student_id, ref:'YYYY-MM-DD', xp, gems });
+// aquí se validan (xp.ts) y se aplican con apply_node_chest (migrations/xp-events.sql). Los 10 XP por lección los paga
+// la nube sola con un disparador al llegar el progreso. Cada alumno del pull trae xp_total, gems y daily_chest_last_claimed.
 // Respuesta: alumnos, cursos (con lecciones), progreso y archivos de la
 // escuela, las fichas de proyectos de la clase (sin videos ni rutas de Storage, para el Inicio del
 // nodo), más cuántas cosas se aplicaron del push.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { buildFeedProjects, FEED_LIMIT, nextRoles, validateProjectPush, validateUploadRequest } from './projects.ts';
+import { computeStudentXp, validateXpEvent } from './xp.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -142,7 +146,7 @@ Deno.serve(async (req) => {
     const push = (usb ? usb.push : body?.push) || {};
 
     const students = await fetchAll((from, to) => admin.from('students')
-      .select('id, username, full_name, grade, section, profile_photo_url, status, companion_species, gems_earned_total, companion_equipped, pin_hash, pin_salt, pin_updated_at')
+      .select('id, username, full_name, grade, section, profile_photo_url, status, companion_species, gems_earned_total, companion_equipped, xp, gems, daily_chest_last_claimed, pin_hash, pin_salt, pin_updated_at')
       .eq('school_code', node.school_code).order('id').range(from, to));
     const studentIds = new Set(students.map((s: any) => s.id));
 
@@ -273,6 +277,54 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ---- XP: cofres que sorteó el nodo (se validan y aplican) y XP total actualizado de cada alumno ----
+    const appliedXpEvents: string[] = [];
+    const xpErrors: Array<{ student_id: string; ref: string; error: string }> = [];
+    const guatemalaToday = new Date(Date.now() - 6 * 3600_000).toISOString().slice(0, 10);
+    for (const raw of (Array.isArray(push.xp_events) ? push.xp_events : []) as any[]) {
+      const student_id = String(raw?.student_id ?? ''), ref = String(raw?.ref ?? '');
+      const v = validateXpEvent(raw ?? {}, { studentIds, today: guatemalaToday });
+      if (!v.ok) { xpErrors.push({ student_id, ref, error: v.error }); continue; }
+      const { error } = await admin.rpc('apply_node_chest', { p_student: v.event.student_id, p_date: v.event.ref, p_xp: v.event.xp, p_gems: v.event.gems });
+      if (error) { xpErrors.push({ student_id, ref, error: error.message }); continue; }
+      appliedXpEvents.push(`${student_id}|${ref}`); // true (aplicado ahora) y false (ya estaba) cuentan como confirmados
+    }
+    try {
+      const ids = [...studentIds] as string[];
+      const fresh: any[] = [];
+      for (const part of chunk(ids)) {
+        fresh.push(...await fetchAll((from, to) => admin.from('students')
+          .select('id, xp, gems, daily_chest_last_claimed').in('id', part).order('id').range(from, to)));
+      }
+      const projectsById = new Map<string, any>();
+      for (const part of chunk(ids)) {
+        for (const p of await fetchAll((from, to) => admin.from('projects')
+          .select('id, user_id, group_id, score, votes').in('user_id', part).order('id').range(from, to))) projectsById.set(String(p.id), p);
+      }
+      for (const part of chunk(groups.map((g: any) => g.id))) {
+        for (const p of await fetchAll((from, to) => admin.from('projects')
+          .select('id, user_id, group_id, score, votes').in('group_id', part).order('id').range(from, to))) projectsById.set(String(p.id), p);
+      }
+      const badgeCounts = new Map<string, number>();
+      for (const part of chunk(ids)) {
+        for (const b of await fetchAll((from, to) => admin.from('student_badges')
+          .select('id, student_id').in('student_id', part).order('id').range(from, to))) {
+          badgeCounts.set(b.student_id, (badgeCounts.get(b.student_id) || 0) + 1);
+        }
+      }
+      const totals = computeStudentXp({ students: fresh, projects: [...projectsById.values()], memberships: groupMembers, badgeCounts });
+      const freshById = new Map(fresh.map((f: any) => [f.id, f]));
+      for (const st of students as any[]) {
+        const t = totals.get(st.id);
+        if (!t) continue;
+        st.xp_total = t.xp_total;
+        st.gems = t.gems;
+        st.daily_chest_last_claimed = freshById.get(st.id)?.daily_chest_last_claimed ?? null;
+      }
+    } catch (e) {
+      console.error('node-sync: no se pudo calcular el XP de los alumnos', e);
+    }
+
     // Fichas de proyectos para el Inicio del nodo (sin videos). Si la consulta falla, el pull sigue sin
     // `projects` y el nodo conserva las que ya tenía.
     let feedProjects: ReturnType<typeof buildFeedProjects> | undefined;
@@ -307,8 +359,9 @@ Deno.serve(async (req) => {
       courses,
       completions: allCompletions,
       files,
-      applied: { completions: appliedCompletions, pins: appliedPins, sessions: appliedSessions, projects: appliedProjects },
+      applied: { completions: appliedCompletions, pins: appliedPins, sessions: appliedSessions, projects: appliedProjects, xp_events: appliedXpEvents },
       project_errors: projectErrors,
+      xp_errors: xpErrors,
     };
 
     if (!usb) return reply(pull);
