@@ -69,6 +69,13 @@ export function openDb(dataDir) {
     CREATE TABLE IF NOT EXISTS groups (id INTEGER PRIMARY KEY, name TEXT, grade TEXT, section TEXT);
     CREATE TABLE IF NOT EXISTS group_members (id INTEGER PRIMARY KEY, group_id INTEGER, student_id TEXT, role TEXT);
     CREATE INDEX IF NOT EXISTS group_members_student_idx ON group_members (student_id);
+
+    -- Fichas de proyectos de la clase que baja el pull (sin videos): alimentan el Inicio sin internet.
+    CREATE TABLE IF NOT EXISTS cloud_projects (
+      id TEXT PRIMARY KEY, user_id TEXT, group_id INTEGER, title TEXT, description TEXT, bimestre INTEGER,
+      score REAL, votes INTEGER, created_at TEXT, author_name TEXT, group_name TEXT, grade TEXT, section TEXT,
+      kind TEXT, feedback TEXT
+    );
   `);
   return db;
 }

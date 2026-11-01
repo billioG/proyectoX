@@ -122,6 +122,23 @@ export function applyPull(db, data, pushed = {}) {
       for (const m of data.group_members) insertMember.run(m.id, m.group_id, m.student_id, m.role ?? null);
     }
 
+    // Fichas de proyectos para el Inicio: se reemplazan completas, pero solo si el pull las trae
+    // (una función anterior o un archivo USB antiguo no las mandan y no hay que borrar las que ya había).
+    if (Array.isArray(data.projects)) {
+      db.prepare('DELETE FROM cloud_projects').run();
+      const insertProject = db.prepare(`INSERT OR REPLACE INTO cloud_projects
+        (id, user_id, group_id, title, description, bimestre, score, votes, created_at, author_name, group_name, grade, section, kind, feedback)
+        VALUES (@id, @user_id, @group_id, @title, @description, @bimestre, @score, @votes, @created_at, @author_name, @group_name, @grade, @section, @kind, @feedback)`);
+      for (const p of data.projects) {
+        insertProject.run({
+          id: String(p.id), user_id: String(p.user_id), group_id: p.group_id ?? null, title: String(p.title ?? ''), description: String(p.description ?? ''),
+          bimestre: p.bimestre ?? null, score: p.score ?? null, votes: p.votes ?? 0, created_at: p.created_at ?? null,
+          author_name: String(p.author_name ?? ''), group_name: p.group_name ?? null, grade: p.grade ?? null, section: p.section ?? null,
+          kind: p.kind === 'model' ? 'model' : 'video', feedback: p.feedback ?? null,
+        });
+      }
+    }
+
     setMeta(db, 'node_name', data.node?.name || '');
     setMeta(db, 'school_code', data.node?.school_code || '');
     setMeta(db, 'storage_base', data.storage_base || '');
