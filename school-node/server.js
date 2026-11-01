@@ -15,6 +15,7 @@ import { startMdns } from './mdns.js';
 import { localizeIndexHtml } from './offline-assets.js';
 import { createProjectStore, ProjectError } from './projects.js';
 import { PROJECT_LIMITS } from './project-rules.js';
+import { friendlySyncError } from './sync-errors.js';
 
 const NODE_DIR = path.dirname(fileURLToPath(import.meta.url));
 const APP_DIR = path.resolve(NODE_DIR, '..');
@@ -513,14 +514,6 @@ let lastSyncError = null; // { message, at } del último intento que falló
 
 function hasToken() {
   return !!config.nodeToken && !String(config.nodeToken).startsWith('PEGAR');
-}
-
-// Mensajes que entiende un docente (el error técnico sigue en el registro).
-function friendlySyncError(message) {
-  const m = String(message || '');
-  if (/fetch failed|ENOTFOUND|ECONNREFUSED|ECONNRESET|ETIMEDOUT|EAI_AGAIN|network|timeout|aborted/i.test(m)) return 'No hay internet en esta computadora todavía. Conéctala a un internet que funcione y vuelve a intentar.';
-  if (/token/i.test(m)) return 'La nube no reconoció el token. Revisa que lo copiaste completo o pide uno nuevo al administrador.';
-  return m || 'Error desconocido';
 }
 
 async function trySync() {

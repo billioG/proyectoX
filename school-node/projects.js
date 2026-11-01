@@ -95,6 +95,20 @@ export function createProjectStore(db, { dataDir, limits = PROJECT_LIMITS, freeD
       return true;
     },
 
+    // ---- Para la sincronización con la nube (projects-sync.js) ----
+    listPending: () => db.prepare("SELECT * FROM projects WHERE status = 'pending' ORDER BY created_at, rowid").all().map(r => ({ ...r })),
+
+    setCloudPath: (id, cloudPath) => { db.prepare('UPDATE projects SET cloud_path = ? WHERE id = ?').run(cloudPath, id); },
+
+    markFailed: (id, message) => {
+      db.prepare('UPDATE projects SET last_error = ?, attempts = attempts + 1 WHERE id = ?').run(String(message).slice(0, 300), id);
+    },
+
+    markSynced: (id, cloudProjectId) => {
+      db.prepare("UPDATE projects SET status = 'synced', cloud_project_id = ?, last_error = NULL, synced_at = ? WHERE id = ?")
+        .run(String(cloudProjectId), iso(), id);
+    },
+
     groupsFor: (studentId) => db.prepare(
       'SELECT g.id, g.name FROM group_members m JOIN groups g ON g.id = m.group_id WHERE m.student_id = ? ORDER BY g.name',
     ).all(studentId).map(g => ({ ...g })),

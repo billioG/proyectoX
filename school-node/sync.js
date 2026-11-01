@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openDb, setMeta, getMeta } from './db.js';
+import { syncProjects } from './projects-sync.js';
 
 // Lo pendiente de subir a la nube (lo usa también la sincronización por USB).
 export function buildPush(db) {
@@ -32,6 +33,14 @@ export async function runSync(db, config, log = console.log) {
   applyPull(db, data, push);
   log(`✅ Sync: ${data.students?.length || 0} alumnos, ${data.courses?.length || 0} cursos. Subido: ${JSON.stringify(data.applied)}`);
   await downloadFiles(db, config, log);
+
+  // Proyectos que los estudiantes guardaron en la escuela: se publican en la nube.
+  try {
+    const projects = await syncProjects(db, config, { log });
+    if (projects.synced || projects.failed) log(`📤 Proyectos: ${projects.synced} subidos, ${projects.failed} con error (se reintentan en el próximo sync).`);
+  } catch (e) {
+    log('⚠️ Proyectos: no se pudo intentar la subida:', e.message);
+  }
   return data.applied;
 }
 

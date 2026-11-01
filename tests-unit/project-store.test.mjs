@@ -208,3 +208,27 @@ test('applyPull: reemplaza equipos y miembros solo si el pull los trae', { skip 
     assert.equal(s.db.prepare('SELECT COUNT(*) n FROM group_members').get().n, 0);
   } finally { s.done(); }
 });
+
+test('sincronización: listPending, setCloudPath, markFailed y markSynced', { skip }, async () => {
+  const s = await setup();
+  try {
+    const a = s.store.createDraft('s1', input({ title: 'Primero A' }), META); receive(s, a.id);
+    s.clock.t += 1000;
+    const b = s.store.createDraft('s2', input({ title: 'Segundo B' }), META); receive(s, b.id);
+    const draft = s.store.createDraft('s1', input({ title: 'Todavía subiendo' }), META); // uploading: no se sincroniza
+    assert.deepEqual(s.store.listPending().map(p => p.title), ['Primero A', 'Segundo B'], 'solo pendientes, del más viejo al más nuevo');
+
+    s.store.setCloudPath(a.id, '1730000000000_ab12cd34ef.mp4');
+    s.store.markFailed(a.id, 'No hay internet');
+    s.store.markFailed(a.id, 'No hay internet otra vez');
+    const row = s.db.prepare('SELECT cloud_path, last_error, attempts, status FROM projects WHERE id = ?').get(a.id);
+    assert.deepEqual({ ...row }, { cloud_path: '1730000000000_ab12cd34ef.mp4', last_error: 'No hay internet otra vez', attempts: 2, status: 'pending' });
+    assert.equal(s.store.counts().failed, 1);
+
+    s.store.markSynced(a.id, 'cloud-123');
+    const done = s.db.prepare('SELECT status, cloud_project_id, last_error, synced_at FROM projects WHERE id = ?').get(a.id);
+    assert.deepEqual({ ...done }, { status: 'synced', cloud_project_id: 'cloud-123', last_error: null, synced_at: '2026-10-31T12:00:01.000Z' }); // el reloj simulado avanzó 1 s
+    assert.deepEqual(s.store.listPending().map(p => p.title), ['Segundo B']);
+    assert.equal(draft.id.length > 0, true);
+  } finally { s.done(); }
+});
