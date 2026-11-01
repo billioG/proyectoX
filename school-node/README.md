@@ -50,8 +50,7 @@ El instalador deja todo en `C:\Quetzal`:
 | `node\` | Node.js 22 propio y portátil (no toca otro Node.js de la computadora) |
 | `config.json` | token, código de docente y puerto; solo lo leen administradores |
 | `data\` | base de datos y archivos de cursos (no se borra al actualizar) |
-| `logs
-odo.log` | registro del nodo |
+| `logs\nodo.log` | registro del nodo |
 
 Además: abre el puerto (80, u 8080 si está ocupado) en el firewall **solo para la
 red local**, crea la tarea programada "Quetzal - Nodo escolar" (arranca sola al
@@ -156,13 +155,14 @@ nano config.json   # pegar el token del nodo y elegir un teacherCode (6 a 12 nú
 
 1. Correr `migrations/school-nodes.sql` en Supabase y deployar la edge function
    `node-sync` con **Verify JWT en OFF**.
-2. Entrar a la app como **admin**, abrir la consola del navegador (F12) y correr:
+2. Entrar a la app como **admin** → menú **Registrar nodo escolar** → elegir el establecimiento →
+   **Registrar nodo escolar**. (Sin la pantalla, también se puede desde la consola del navegador con
+   `window._supabase.rpc('register_school_node', { p_school: 'CODIGO', p_name: 'Nombre' })`.)
+3. Copiar el **token** con el botón **Copiar token**: se muestra **una sola vez** (en la base solo queda su
+   hash). Pegarlo cuando el instalador pida `Token:`, o en `config.json`.
 
-```js
-await window._supabase.rpc('register_school_node', { p_school: 'CODIGO_ESCUELA', p_name: 'Nombre del nodo' })
-```
-
-3. Copiar el `token` que devuelve (se muestra **una sola vez**) a `config.json`.
+Desde la misma pantalla se ve cada nodo registrado (cuándo se sincronizó por última vez) y se puede
+**revocar** si se pierde la computadora.
 
 ### Probar
 
