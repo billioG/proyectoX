@@ -1,6 +1,6 @@
 # Inicio del estudiante en el nodo escolar (sin internet)
 
-Estado: diseño aprobado por el usuario (2026-11-01); pendiente revisión del spec escrito.
+Estado: **implementado en v1.0.191** (falta la prueba con la nube real); plan en `docs/superpowers/plans/2026-11-01-inicio-en-nodo.md`.
 
 ## Objetivo
 El estudiante que entra al nodo ve en **Inicio** lo mismo que vería con internet, hasta donde se pueda sin nube:

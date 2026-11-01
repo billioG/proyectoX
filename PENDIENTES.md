@@ -170,6 +170,9 @@ Detalle en el dossier: https://claude.ai/artifact/BoLjSgRTYwfesywaZaxvEq
 - [x] Ocultar en modo nodo lo que necesita la nube (avisos, asistente con IA, perfil).
 - [x] Subir proyectos desde el nodo (video o modelo 3D, individual o de equipo, publicación automática al sincronizar): v1.0.188.
 - [ ] **Probar la subida de proyectos con la nube real**: volver a publicar `node-sync` (`--no-verify-jwt`), confirmar el límite de archivo de Storage (≥ 150 MB) y subir un video corto desde un celular en un nodo; el cableado de `supabase/functions/node-sync/index.ts` solo se probó con una nube simulada y la lógica pura, y `deno check` lo corre el CI.
+- [x] Inicio del estudiante en el nodo con las fichas de proyectos de su clase (sin videos): v1.0.191.
+- [ ] **Probar el Inicio del nodo con la nube real**: volver a publicar `node-sync` (con `projects.ts`), sincronizar y comprobar que aparecen las fichas aprobadas de la clase; la consulta de `index.ts` solo se probó con la lógica pura.
+- [ ] Videos y modelos 3D de los compañeros en el nodo (hoy solo fichas), y votos/reacciones sin internet.
 - [ ] Fotos como proyecto (en la nube y en el nodo a la vez): hoy un proyecto es video o modelo 3D.
 - [ ] Aprobación del docente antes de publicar los proyectos del nodo (hoy se publican solos, igual que en la nube).
 - [ ] Subir proyectos por memoria USB en escuelas que nunca tienen internet.

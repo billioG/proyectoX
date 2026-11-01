@@ -251,6 +251,18 @@ otra ruta, definir la variable de entorno `QUETZAL_USB_DIR`.
   rechaza si quedaría menos libre), `keepSyncedProjectDays` (7: se borra la copia local de lo ya subido).
 - Aún no incluye: fotos como proyecto, aprobación previa del docente ni subida por USB.
 
+### Inicio del estudiante (proyectos de la clase)
+
+- Cada sincronización baja las **fichas** de los proyectos de la escuela (los 300 más recientes: título, autor,
+  equipo, bimestre, nota; nunca el video ni su ruta) a la tabla `cloud_projects`. También llegan por USB si el
+  paquete las trae.
+- `GET /api/feed` entrega al estudiante los proyectos **aprobados** de su mismo grado y sección, los suyos y los
+  de su equipo; la retroalimentación del docente solo la ve el dueño y su equipo. Primero van los proyectos propios
+  guardados en el nodo que todavía no aparecen en la nube.
+- Los videos y modelos 3D de otras personas, los votos y las reacciones requieren internet.
+- Hace falta volver a publicar `node-sync` (subiendo también `projects.ts`); si la función es la anterior, el
+  Inicio muestra solo los proyectos propios guardados aquí.
+
 ## Seguridad
 
 - El token del nodo solo da acceso a **su** escuela. Si se pierde la Raspberry,
