@@ -21,6 +21,7 @@ test.beforeAll(async () => {
     completions: [{ lesson_id: 'l1', student_id: 's1' }, { lesson_id: 'l2', student_id: 's1' }],
     // Fichas que bajó el pull: dos aprobadas de la clase de Ana (una con HTML en el título) y una de otra sección.
     xp: { s1: { xp_total: 420, gems: 12 } },
+    teachers: [{ id: 't1', full_name: 'Marta Gómez', assignments: [{ grade: 'Primero', section: 'A' }] }, { id: 't2', full_name: 'Raúl Díaz', assignments: [{ grade: 'Segundo', section: 'B' }] }],
     cloudProjects: [
       { id: '101', user_id: 's9', author_name: 'Luis Ramos', title: 'Semáforo con Arduino', score: 85, votes: 3, bimestre: 2, created_at: '2026-10-30T10:00:00Z' },
       { id: '102', user_id: 's9', author_name: 'Luis Ramos', title: 'Brazo <img src=x onerror="window.__xss=1">', score: 70, created_at: '2026-10-29T10:00:00Z' },
@@ -117,6 +118,7 @@ test('el panel del docente muestra los proyectos por subir y los que fallaron', 
   await page.goto(node.base);
   await page.waitForSelector('#node-login [data-teacher]');
   await page.click('#node-login [data-teacher]');
+  await page.click('#tc-admin'); // administración del nodo con el código compartido
   await page.fill('#t-code', '48213976');
   await page.click('#t-go');
   const tile = page.locator('#t-projects');
@@ -134,6 +136,7 @@ test('el panel del docente muestra los proyectos por subir y los que fallaron', 
   await page.reload();
   await page.waitForSelector('#node-login [data-teacher]');
   await page.click('#node-login [data-teacher]');
+  await page.click('#tc-admin'); // administración del nodo con el código compartido
   await page.fill('#t-code', '48213976');
   await page.click('#t-go');
   await expect(page.locator('#t-projects')).toContainText('1 con error');
@@ -310,4 +313,48 @@ test('el estudiante reacciona a un proyecto en el nodo: elegir, cambiar, quitar 
   await expect(again.locator('[data-votes]')).toHaveText('3');
   await expect(again.locator('[data-react-icon] .fa-heart')).toBeVisible();
   expect(errors).toEqual([]);
+});
+
+test('el docente entra con su PIN personal, evalúa un proyecto y el estudiante ve la nota', async ({ page }) => {
+  test.skip(!node, skipReason);
+  const errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await page.route(/^https?:\/\/(?!localhost|127\.0\.0\.1)/, r => r.abort('failed'));
+  await page.goto(node.base);
+  await page.waitForSelector('#node-login [data-teacher]');
+  await page.click('#node-login [data-teacher]');
+
+  // Elegir su nombre y crear el PIN (la primera vez pide el código de docente del nodo).
+  await page.getByRole('button', { name: /Marta Gómez/ }).click();
+  await page.fill('#tp-pin', '123456');
+  await page.fill('#tp-code', '48213976');
+  await page.click('#tp-go');
+  const list = page.locator('#ev-list');
+  await expect(list).toContainText('Semáforo con Arduino', { timeout: 15000 });
+  await expect(list).not.toContainText('Proyecto de otra sección');
+
+  // Abrir el proyecto, poner las notas y guardar.
+  await page.locator('[data-ev-key="c:101"]').click();
+  await expect(page.locator('#ev-total')).toHaveText('0');
+  for (const [id, v] of [['creativity', '15'], ['clarity', '10'], ['functionality', '20'], ['teamwork', '0'], ['social_impact', '5']]) await page.fill(`#ev-${id}`, v);
+  await expect(page.locator('#ev-total')).toHaveText('50');
+  await page.fill('#ev-feedback', 'Muy buen trabajo con el semáforo.');
+  await page.click('#ev-save');
+  await expect(page.locator('[data-ev-key="c:101"]')).toContainText('50', { timeout: 15000 });
+
+  // El estudiante ve la nueva nota al instante en su Inicio.
+  const token = await node.login('s1', '1234');
+  const mine = (await node.api('/api/feed', { token })).data.projects.find(p => p.id === '101');
+  expect(mine.score).toBe(50);
+  expect(errors).toEqual([]);
+
+  // Salir y volver a entrar: ya no pide el código, solo el PIN.
+  await page.click('#ev-exit');
+  await page.waitForSelector('#node-login [data-teacher]');
+  await page.click('#node-login [data-teacher]');
+  await page.getByRole('button', { name: /Marta Gómez/ }).click();
+  await expect(page.locator('#tp-code')).toHaveCount(0);
+  await page.fill('#tp-pin', '123456');
+  await page.click('#tp-go');
+  await expect(page.locator('#ev-list')).toContainText('Semáforo con Arduino');
 });

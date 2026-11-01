@@ -135,7 +135,7 @@ async function renderClassPick(box) {
     localStorage.setItem(NODE_CLASS_KEY, JSON.stringify(c));
     renderStudentPick(box, c);
   });
-  box.querySelector('[data-teacher]').onclick = () => renderTeacherLogin(box);
+  box.querySelector('[data-teacher]').onclick = () => renderTeacherChoose(box);
 }
 
 async function renderStudentPick(box, cls) {
@@ -167,7 +167,7 @@ async function renderStudentPick(box, cls) {
       </div>
     </div>`;
   box.querySelector('#node-change-class').onclick = () => window.openNodeLogin(true);
-  box.querySelector('[data-teacher]').onclick = () => renderTeacherLogin(box);
+  box.querySelector('[data-teacher]').onclick = () => renderTeacherChoose(box);
   box.querySelectorAll('[data-i]').forEach(btn => btn.onclick = () => renderPinPad(box, students[Number(btn.dataset.i)], cls));
 }
 
@@ -228,6 +228,162 @@ function renderPinPad(box, student, cls) {
   draw();
 }
 
+// ---------- Docente con PIN personal: evaluar proyectos (sin internet) ----------
+// Cada docente elige su nombre y entra con su PIN de 6 números (la primera vez lo crea con el código de docente del
+// nodo). Solo ve y evalúa proyectos de las clases que tiene asignadas; la nube valida y recalcula al sincronizar.
+const TEACHER_P_KEY = 'PX_NODE_TEACHER_P';
+const criteria = [
+  ['creativity', 'Creatividad e innovación'], ['clarity', 'Claridad de presentación'], ['functionality', 'Funcionalidad técnica'],
+  ['teamwork', 'Trabajo en equipo'], ['social_impact', 'Impacto social'],
+];
+const inputStyle = 'width:100%;height:3.2rem;border-radius:1rem;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:#fff;font-size:1.3rem;text-align:center;letter-spacing:.25em';
+const bigBtn = 'width:100%;height:3rem;border-radius:1rem;border:0;background:#10b981;color:#fff;font-weight:900;cursor:pointer';
+const ghostBtn = 'background:none;border:0;color:#94a3b8;font-weight:800;cursor:pointer';
+
+async function evalApi(path, body) {
+  const token = sessionStorage.getItem(TEACHER_P_KEY);
+  const res = await fetch(path, {
+    method: body ? 'POST' : 'GET',
+    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    if (res.status === 401 && path !== '/api/teacher/pin-login') sessionStorage.removeItem(TEACHER_P_KEY);
+    throw Object.assign(new Error(data.error || `Error ${res.status}`), { status: res.status });
+  }
+  return data;
+}
+
+async function renderTeacherChoose(box, error = '') {
+  if (sessionStorage.getItem(TEACHER_P_KEY) && !error) return renderEvalList(box);
+  let teachers = [];
+  try { ({ teachers } = await evalApi('/api/teachers')); } catch (e) { error = error || e.message; }
+  box.innerHTML = `
+    <div style="max-width:24rem;margin:0 auto;text-align:center">
+      <button id="tc-back" style="${ghostBtn};margin-bottom:1rem"><i class="fas fa-arrow-left"></i> Volver</button>
+      <div style="font-size:1.2rem;font-weight:900"><i class="fas fa-chalkboard-user"></i> Soy docente</div>
+      <p style="color:#94a3b8;font-size:.8rem">Elige tu nombre para evaluar los proyectos de tus clases.</p>
+      <p style="color:#fb7185;font-size:.85rem;min-height:1.2rem">${esc(error)}</p>
+      <div style="display:grid;gap:.5rem;margin-bottom:1rem">
+        ${teachers.map(t => `<button data-tid="${esc(t.id)}" style="${cardBtn};flex-direction:row;justify-content:space-between;padding:.9rem 1rem;font-weight:800">
+          <span>${esc(t.full_name)}</span>${t.has_pin ? '' : '<span style="font-size:.6rem;color:#fcd34d">Sin PIN</span>'}</button>`).join('')
+          || '<p style="color:#94a3b8;font-size:.85rem">Este nodo todavía no conoce a los docentes: sincronízalo con internet o por USB.</p>'}
+      </div>
+      <button id="tc-admin" style="${ghostBtn};font-size:.8rem"><i class="fas fa-gear"></i> Administrar el nodo (código de docente)</button>
+    </div>`;
+  box.querySelector('#tc-back').onclick = () => window.openNodeLogin();
+  box.querySelector('#tc-admin').onclick = () => renderTeacherLogin(box);
+  box.querySelectorAll('[data-tid]').forEach(b => b.onclick = () => renderTeacherPin(box, teachers.find(t => t.id === b.dataset.tid)));
+}
+
+function renderTeacherPin(box, teacher, error = '') {
+  box.innerHTML = `
+    <div style="max-width:22rem;margin:0 auto;text-align:center">
+      <button id="tp-back" style="${ghostBtn};margin-bottom:1rem"><i class="fas fa-arrow-left"></i> Volver</button>
+      <div style="font-size:1.2rem;font-weight:900">${esc(teacher.full_name)}</div>
+      <p style="color:#94a3b8;font-size:.8rem">${teacher.has_pin ? 'Escribe tu PIN de 6 números.' : 'Primera vez: crea un PIN de 6 números. Para confirmar que eres tú, escribe también el código de docente de esta escuela.'}</p>
+      <input id="tp-pin" type="password" inputmode="numeric" autocomplete="off" maxlength="6" placeholder="PIN" style="${inputStyle}">
+      ${teacher.has_pin ? '' : `<input id="tp-code" type="password" inputmode="numeric" autocomplete="off" maxlength="12" placeholder="Código de docente" style="${inputStyle};margin-top:.6rem">`}
+      <p style="color:#fb7185;font-size:.85rem;min-height:1.2rem">${esc(error)}</p>
+      <button id="tp-go" style="${bigBtn}">Entrar</button>
+    </div>`;
+  const go = async () => {
+    try {
+      const body = { teacher_id: teacher.id, pin: box.querySelector('#tp-pin').value.trim() };
+      if (!teacher.has_pin) body.code = box.querySelector('#tp-code').value.trim();
+      const { token } = await evalApi('/api/teacher/pin-login', body);
+      sessionStorage.setItem(TEACHER_P_KEY, token);
+      renderEvalList(box);
+    } catch (e) { renderTeacherPin(box, teacher, e.message); }
+  };
+  box.querySelector('#tp-go').onclick = go;
+  box.querySelector('#tp-pin').onkeydown = (e) => { if (e.key === 'Enter') go(); };
+  box.querySelector('#tp-back').onclick = () => renderTeacherChoose(box);
+  box.querySelector('#tp-pin').focus();
+}
+
+async function renderEvalList(box) {
+  let projects;
+  try { ({ projects } = await evalApi('/api/teacher/evaluations')); }
+  catch (e) { return renderTeacherChoose(box, e.status === 401 ? 'La sesión venció, vuelve a entrar con tu PIN.' : e.message); }
+  const chip = (txt, bg, fg) => `<span style="font-size:.6rem;font-weight:900;padding:.15rem .5rem;border-radius:9999px;background:${bg};color:${fg};white-space:nowrap">${txt}</span>`;
+  box.innerHTML = `
+    <div style="max-width:46rem;margin:0 auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-bottom:.25rem">
+        <h2 style="font-size:1.3rem;font-weight:900;margin:0;color:#fff"><i class="fas fa-clipboard-check"></i> Evaluar proyectos</h2>
+        <button id="ev-exit" style="padding:.5rem .9rem;border-radius:9999px;border:1px solid rgba(255,255,255,.2);background:transparent;color:#cbd5e1;font-weight:800;font-size:.75rem;cursor:pointer">Salir</button>
+      </div>
+      <p style="color:#94a3b8;font-size:.8rem;margin:0 0 1rem">Lo que evalúes se sube a la nube cuando la escuela tenga internet.</p>
+      <div id="ev-list" style="display:grid;gap:.5rem">
+        ${projects.map(p => `
+          <button data-ev-key="${esc(p.key)}" style="${cardBtn};flex-direction:row;justify-content:space-between;text-align:left;padding:.8rem 1rem;gap:.8rem">
+            <span style="min-width:0">
+              <span style="display:block;font-weight:800;font-size:.9rem">${esc(p.title)}</span>
+              <span style="display:block;font-size:.7rem;color:#94a3b8">${esc(p.author_name)} · ${esc(p.grade)} ${esc(p.section)}${p.source === 'local' ? ' · guardado en la escuela' : ''}</span>
+            </span>
+            ${p.evaluated ? chip(`Nota ${esc(p.score)}`, 'rgba(16,185,129,.18)', '#6ee7b7') : chip('Por evaluar', 'rgba(251,191,36,.18)', '#fcd34d')}
+          </button>`).join('') || '<p style="color:#94a3b8">Todavía no hay proyectos en tus clases.</p>'}
+      </div>
+    </div>`;
+  box.querySelector('#ev-exit').onclick = () => { sessionStorage.removeItem(TEACHER_P_KEY); window.openNodeLogin(); };
+  box.querySelectorAll('[data-ev-key]').forEach(b => b.onclick = () => renderEvalForm(box, b.dataset.evKey));
+}
+
+async function renderEvalForm(box, key) {
+  let d;
+  try { d = await evalApi(`/api/teacher/evaluations/${encodeURIComponent(key)}`); }
+  catch (e) { window.showToast?.(esc(e.message), 'error'); return renderEvalList(box); }
+  const ev = d.evaluation || {};
+  const token = encodeURIComponent(sessionStorage.getItem(TEACHER_P_KEY) || '');
+  const fileUrl = `/api/teacher/project-file/${encodeURIComponent(d.local_id || '')}?t=${token}`;
+  const media = !d.local_id || !d.has_file
+    ? '<p style="color:#94a3b8;font-size:.8rem"><i class="fas fa-circle-info"></i> El video de este proyecto no está en esta computadora: se ve con internet.</p>'
+    : d.kind === 'model'
+      ? `<p style="font-size:.8rem"><a href="${fileUrl}" style="color:#a5b4fc;font-weight:800"><i class="fas fa-cube"></i> Descargar el modelo 3D</a></p>`
+      : `<video controls preload="metadata" src="${fileUrl}" style="width:100%;max-height:20rem;border-radius:1rem;background:#000"></video>`;
+  box.innerHTML = `
+    <div style="max-width:40rem;margin:0 auto">
+      <button id="ef-back" style="${ghostBtn};margin-bottom:.75rem"><i class="fas fa-arrow-left"></i> Volver a la lista</button>
+      <h2 style="font-size:1.2rem;font-weight:900;margin:0">${esc(d.title)}</h2>
+      <p style="color:#94a3b8;font-size:.8rem;margin:.2rem 0 .8rem">${esc(d.author_name)} · ${esc(d.grade)} ${esc(d.section)}${d.bimestre ? ` · Bimestre ${esc(d.bimestre)}` : ''}</p>
+      ${media}
+      <p style="font-size:.85rem;color:#cbd5e1;white-space:pre-wrap">${esc(d.description)}</p>
+      <div style="display:grid;gap:.6rem;margin:1rem 0">
+        ${criteria.map(([id, label]) => `
+          <label style="display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.6rem .9rem;border-radius:1rem;background:rgba(255,255,255,.05)">
+            <span style="font-weight:800;font-size:.85rem">${label} <span style="color:#64748b">(0 a 20)</span></span>
+            <input id="ev-${id}" type="number" min="0" max="20" step="1" value="${Number.isInteger(ev[`${id}_score`]) ? ev[`${id}_score`] : 0}"
+              style="width:5rem;height:2.6rem;border-radius:.8rem;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:#fff;font-size:1.1rem;font-weight:900;text-align:center">
+          </label>`).join('')}
+      </div>
+      <label style="font-weight:800;font-size:.8rem;color:#94a3b8">Observaciones para el estudiante</label>
+      <textarea id="ev-feedback" maxlength="1000" rows="4" style="width:100%;margin-top:.3rem;padding:.7rem;border-radius:1rem;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:#fff;font-family:inherit">${esc(ev.feedback || '')}</textarea>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin:1rem 0">
+        <div style="font-weight:900">Nota total: <span id="ev-total" style="font-size:1.8rem;color:#6ee7b7">0</span> <span style="color:#64748b">/ 100</span></div>
+        <button id="ev-save" style="${bigBtn};width:auto;padding:0 1.5rem">Guardar evaluación</button>
+      </div>
+      <p id="ev-error" style="color:#fb7185;font-size:.85rem;min-height:1.2rem"></p>
+    </div>`;
+  const read = () => Object.fromEntries(criteria.map(([id]) => [`${id}_score`, Number(box.querySelector(`#ev-${id}`).value)]));
+  const total = () => { const t = Object.values(read()).reduce((a, b) => a + (Number.isInteger(b) && b >= 0 && b <= 20 ? b : 0), 0); box.querySelector('#ev-total').textContent = String(t); };
+  criteria.forEach(([id]) => box.querySelector(`#ev-${id}`).addEventListener('input', total));
+  total();
+  box.querySelector('#ef-back').onclick = () => renderEvalList(box);
+  box.querySelector('#ev-save').onclick = async () => {
+    const btn = box.querySelector('#ev-save');
+    btn.disabled = true;
+    try {
+      await evalApi('/api/teacher/evaluate', { key, ...read(), feedback: box.querySelector('#ev-feedback').value });
+      window.showToast?.('<i class="fas fa-circle-check"></i> Evaluación guardada. Se sube a la nube cuando haya internet.', 'success');
+      renderEvalList(box);
+    } catch (e) {
+      btn.disabled = false;
+      box.querySelector('#ev-error').textContent = e.message;
+    }
+  };
+}
+
 // ---------- Panel del docente (sin internet) ----------
 // Se entra con el código de docente del nodo (config.json → teacherCode).
 const TEACHER_KEY = 'PX_NODE_TEACHER';
@@ -268,7 +424,7 @@ function renderTeacherLogin(box, error = '') {
   };
   box.querySelector('#t-go').onclick = go;
   box.querySelector('#t-code').onkeydown = (e) => { if (e.key === 'Enter') go(); };
-  box.querySelector('#t-back').onclick = () => window.openNodeLogin();
+  box.querySelector('#t-back').onclick = () => renderTeacherChoose(box);
   box.querySelector('#t-code').focus();
 }
 
@@ -393,6 +549,14 @@ async function renderTeacherPanel(box) {
             </div>`).join('')}
         </div>`).join('') || '<p style="color:#94a3b8">El nodo todavía no tiene alumnos: sincronízalo por internet o por USB.</p>'}
 
+      <h3 style="font-size:.85rem;font-weight:900;color:#a5b4fc;margin:1.5rem 0 .5rem">Docentes</h3>
+      <div id="t-teachers" style="display:grid;gap:.4rem">${(data.teachers || []).map(t => `
+        <div style="display:flex;align-items:center;gap:.6rem;padding:.6rem .8rem;border-radius:.9rem;background:rgba(255,255,255,.05)">
+          <div style="flex:1;font-weight:800;font-size:.85rem">${esc(t.full_name)}</div>
+          ${t.has_pin ? chip('Con PIN', 'rgba(16,185,129,.18)', '#6ee7b7') : chip('Sin PIN', 'rgba(251,191,36,.18)', '#fcd34d')}
+          ${t.has_pin ? `<button data-treset="${esc(t.id)}" data-name="${esc(t.full_name)}" style="border:0;border-radius:.6rem;padding:.4rem .6rem;background:rgba(255,255,255,.1);color:#fff;font-size:.7rem;font-weight:800;cursor:pointer">Restablecer PIN</button>` : ''}
+        </div>`).join('') || '<p style="color:#94a3b8">El nodo todavía no conoce a los docentes: sincronízalo.</p>'}</div>
+
       <h3 style="font-size:.85rem;font-weight:900;color:#a5b4fc;margin:1.5rem 0 .5rem">Ingresos recientes</h3>
       <div style="display:grid;gap:.3rem;font-size:.75rem">
         ${data.logs.map(l => `<div style="display:flex;gap:.6rem;padding:.4rem .6rem;border-radius:.6rem;background:rgba(255,255,255,.03)">
@@ -405,6 +569,14 @@ async function renderTeacherPanel(box) {
 
   box.querySelector('#t-exit').onclick = () => { sessionStorage.removeItem(TEACHER_KEY); window.openNodeLogin(); };
   wireCloudCard(box, data.node);
+  box.querySelectorAll('[data-treset]').forEach(b => b.onclick = async () => {
+    if (b.dataset.confirm !== '1') { b.dataset.confirm = '1'; b.textContent = '¿Seguro? Toca otra vez'; b.style.background = '#f59e0b'; return; }
+    try {
+      await teacherApi('/api/teacher/reset-teacher-pin', { teacher_id: b.dataset.treset });
+      window.showToast?.(`<i class="fas fa-key"></i> ${esc(b.dataset.name)} va a crear un PIN nuevo la próxima vez que entre.`, 'success');
+    } catch (e) { window.showToast?.(esc(e.message), 'error'); }
+    renderTeacherPanel(box);
+  });
   box.querySelectorAll('[data-unlock]').forEach(b => b.onclick = async () => {
     await teacherApi('/api/teacher/unlock', { student_id: b.dataset.unlock }).catch(() => {});
     renderTeacherPanel(box);

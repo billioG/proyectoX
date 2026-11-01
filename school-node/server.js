@@ -544,6 +544,7 @@ const api = {
       students,
       logs,
       projects: projectStore.counts(),
+      teachers: teacherStore.list(),
     });
   },
 
