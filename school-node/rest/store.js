@@ -15,6 +15,14 @@ export function createStore({ db, schema }) {
       created_at TEXT NOT NULL, attempts INTEGER NOT NULL DEFAULT 0, last_error TEXT
     );
     CREATE TABLE IF NOT EXISTS rest_meta (key TEXT PRIMARY KEY, value TEXT);
+    -- Verificadores de la contraseña de cada clase (hash con sal; la contraseña en claro nunca llega al nodo).
+    CREATE TABLE IF NOT EXISTS rest_class_verifiers (
+      class_key TEXT PRIMARY KEY, requires_password INTEGER NOT NULL, salt TEXT NOT NULL, hash TEXT NOT NULL
+    );
+    -- Tokens de renovación de las sesiones del nodo (se guarda solo su huella).
+    CREATE TABLE IF NOT EXISTS rest_refresh (
+      token_hash TEXT PRIMARY KEY, uid TEXT NOT NULL, created_at INTEGER NOT NULL
+    );
   `);
 
   const pkOf = (tbl) => {
@@ -36,6 +44,12 @@ export function createStore({ db, schema }) {
     ack: db.prepare('DELETE FROM rest_outbox WHERE seq = ?'),
     fail: db.prepare('UPDATE rest_outbox SET attempts = attempts + 1, last_error = ? WHERE seq = ?'),
     getMeta: db.prepare('SELECT value FROM rest_meta WHERE key = ?'),
+    verifier: db.prepare('SELECT class_key, requires_password, salt, hash FROM rest_class_verifiers WHERE class_key = ?'),
+    delVerifiers: db.prepare('DELETE FROM rest_class_verifiers'),
+    putVerifier: db.prepare('INSERT INTO rest_class_verifiers (class_key, requires_password, salt, hash) VALUES (?, ?, ?, ?)'),
+    putRefresh: db.prepare('INSERT OR REPLACE INTO rest_refresh (token_hash, uid, created_at) VALUES (?, ?, ?)'),
+    getRefresh: db.prepare('SELECT uid, created_at FROM rest_refresh WHERE token_hash = ?'),
+    delRefresh: db.prepare('DELETE FROM rest_refresh WHERE token_hash = ?'),
     setMeta: db.prepare('INSERT INTO rest_meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value'),
   };
 
@@ -103,6 +117,16 @@ export function createStore({ db, schema }) {
         for (const [k, row] of keep) if (!incoming.some((r) => key(r[pk]) === k)) put(tbl, row);
       });
     },
+
+    /** Reemplaza los verificadores de contraseña de clase con los que bajó de la nube. */
+    setClassVerifiers: (list) => transaction(() => {
+      q.delVerifiers.run();
+      for (const v of list) q.putVerifier.run(v.class_key, v.requires_password ? 1 : 0, v.salt || '', v.hash || '');
+    }),
+    classVerifier: (classKey) => { const r = q.verifier.get(classKey); return r ? { ...r, requires_password: !!r.requires_password } : null; },
+    saveRefresh: (tokenHash, uid, at) => { q.putRefresh.run(tokenHash, uid, at); },
+    /** Consume un token de renovación (sirve una sola vez): devuelve { uid, created_at } o null. */
+    takeRefresh: (tokenHash) => transaction(() => { const r = q.getRefresh.get(tokenHash); if (r) q.delRefresh.run(tokenHash); return r || null; }),
 
     getMeta: (k) => q.getMeta.get(k)?.value ?? null,
     setMeta: (k, v) => { q.setMeta.run(k, String(v)); },
