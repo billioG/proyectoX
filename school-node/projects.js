@@ -113,6 +113,11 @@ export function createProjectStore(db, { dataDir, limits = PROJECT_LIMITS, freeD
         .run(String(cloudProjectId), iso(), id);
     },
 
+    // Lo que el Inicio necesita de los proyectos propios guardados en este nodo.
+    feedRows: (studentId) => db.prepare(
+      'SELECT id, title, description, bimestre, kind, status, created_at, cloud_project_id, group_id FROM projects WHERE student_id = ? ORDER BY created_at DESC, rowid DESC',
+    ).all(studentId).map(r => ({ ...r })),
+
     groupsFor: (studentId) => db.prepare(
       'SELECT g.id, g.name FROM group_members m JOIN groups g ON g.id = m.group_id WHERE m.student_id = ? ORDER BY g.name',
     ).all(studentId).map(g => ({ ...g })),

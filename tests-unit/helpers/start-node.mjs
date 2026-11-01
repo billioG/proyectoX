@@ -73,6 +73,11 @@ export async function startNode(opts = {}) {
   for (const m of opts.members || []) seed.prepare('INSERT INTO group_members (id, group_id, student_id, role) VALUES (?, ?, ?, ?)').run(m.id, m.group_id, m.student_id, m.role ?? 'planner');
   for (const c of opts.courses || []) seed.prepare('INSERT INTO courses (id, grade, section, data) VALUES (?, ?, ?, ?)').run(c.id, c.grade || 'Primero', c.section || 'A', JSON.stringify(c));
   for (const k of opts.completions || []) seed.prepare("INSERT INTO completions (lesson_id, student_id, score, status, updated_at, dirty) VALUES (?, ?, ?, 'completed', ?, 0)").run(k.lesson_id, k.student_id, k.score ?? 100, new Date().toISOString());
+  for (const p of opts.cloudProjects || []) {
+    seed.prepare(`INSERT INTO cloud_projects (id, user_id, group_id, title, description, bimestre, score, votes, created_at, author_name, group_name, grade, section, kind, feedback)
+      VALUES (@id, @user_id, @group_id, @title, @description, @bimestre, @score, @votes, @created_at, @author_name, @group_name, @grade, @section, @kind, @feedback)`)
+      .run({ group_id: null, description: 'Un robot.', bimestre: 1, score: 0, votes: 0, created_at: '2026-10-30T10:00:00Z', author_name: p.user_id, group_name: null, grade: 'Primero', section: 'A', kind: 'video', feedback: null, ...p });
+  }
   seed.close();
 
   const base = `http://127.0.0.1:${port}`;

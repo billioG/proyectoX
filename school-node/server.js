@@ -15,6 +15,7 @@ import { startMdns } from './mdns.js';
 import { localizeIndexHtml } from './offline-assets.js';
 import { createProjectStore, ProjectError } from './projects.js';
 import { PROJECT_LIMITS } from './project-rules.js';
+import { buildStudentFeed } from './feed.js';
 import { friendlySyncError } from './sync-errors.js';
 
 const NODE_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -292,6 +293,12 @@ const api = {
     const s = studentFromSession(req);
     if (!s) return sendJson(res, 401, { error: 'Sesión vencida' });
     sendJson(res, 200, { groups: projectStore.groupsFor(s.id) });
+  },
+  // Inicio del estudiante: proyectos de su clase (fichas de la nube, sin videos) + los suyos guardados aquí.
+  'GET /api/feed': (req, res) => {
+    const s = studentFromSession(req);
+    if (!s) return sendJson(res, 401, { error: 'Sesión vencida' });
+    sendJson(res, 200, { projects: buildStudentFeed(db, s, projectStore.feedRows(s.id)) });
   },
   'GET /api/projects/mine': (req, res) => {
     const s = studentFromSession(req);
