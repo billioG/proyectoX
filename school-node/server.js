@@ -18,7 +18,13 @@ import { PROJECT_LIMITS } from './project-rules.js';
 import { buildStudentFeed } from './feed.js';
 import { createXpStore, XP_PER_LESSON } from './xp.js';
 import { createReactionStore, ReactionError } from './reactions.js';
+import { createEvaluationStore, EvaluationError } from './evaluations.js';
+import { createTeacherStore, TeacherAuthError } from './teachers.js';
 import { friendlySyncError } from './sync-errors.js';
+import { createStore as createRestStore } from './rest/store.js';
+import { createAuth as createRestAuth } from './rest/auth.js';
+import { createRestRoutes } from './rest/routes.js';
+import { SCHEMA as REST_SCHEMA } from './rest/schema.js';
 
 const NODE_DIR = path.dirname(fileURLToPath(import.meta.url));
 const APP_DIR = path.resolve(NODE_DIR, '..');
@@ -37,6 +43,25 @@ const projectLimits = {
 const projectStore = createProjectStore(db, { dataDir: config.dataDir, limits: projectLimits });
 const xpStore = createXpStore(db);
 const reactionStore = createReactionStore(db);
+const evaluationStore = createEvaluationStore(db);
+// Código de docente del nodo (config.teacherCode): crea el PIN personal de cada docente. Comparte el bloqueo de
+// intentos del panel de administración.
+function verifyTeacherCode(code) {
+  if (!config.teacherCode || String(config.teacherCode).length < 6) return false;
+  if (teacherLockedUntil > Date.now()) return false;
+  if (code === undefined || code === null || !safeEqual(code, config.teacherCode)) {
+    teacherFails++;
+    if (teacherFails >= 5) { teacherFails = 0; teacherLockedUntil = Date.now() + LOCK_MS; }
+    return false;
+  }
+  teacherFails = 0;
+  return true;
+}
+// hashPin y safeEqual se declaran más abajo: se llaman a través de funciones para no leerlos antes de tiempo.
+// Capa local compatible con Supabase (/rest/v1, /auth/v1, /functions/v1/student-login): réplica de la nube en SQLite.
+const restStore = createRestStore({ db, schema: REST_SCHEMA });
+const restRoutes = createRestRoutes({ store: restStore, auth: createRestAuth({ store: restStore }) });
+const teacherStore = createTeacherStore(db, { hashPin: (pin, salt) => hashPin(pin, salt), verifySetupCode: (code) => verifyTeacherCode(code) });
 projectStore.cleanup(); // borradores huérfanos de una subida cortada por un reinicio o un apagón
 setInterval(() => projectStore.cleanup(), 3600_000).unref();
 
@@ -115,7 +140,72 @@ function projectRoute(method, pathname) {
   if (method === 'PUT' && (m = /^\/api\/projects\/([^/]+)\/file$/.exec(pathname))) return (req, res) => putProjectFile(req, res, m[1]);
   if (method === 'DELETE' && (m = /^\/api\/projects\/([^/]+)$/.exec(pathname))) return (req, res) => deleteProject(req, res, m[1]);
   if (method === 'POST' && (m = /^\/api\/projects\/([^/]+)\/react$/.exec(pathname))) return (req, res) => reactToProject(req, res, m[1]);
+  if (method === 'GET' && (m = /^\/api\/teacher\/evaluations\/([^/]+)$/.exec(pathname))) return (req, res) => teacherProjectDetail(req, res, m[1]);
+  if (method === 'GET' && (m = /^\/api\/teacher\/project-file\/([^/]+)$/.exec(pathname))) return (req, res) => teacherProjectFile(req, res, m[1]);
   return null;
+}
+
+// ---- Docente con PIN personal: evaluar proyectos de sus clases ----
+const TEACHER_PERSONAL_MS = 8 * 3600 * 1000;
+const personalTeacherSessions = new Map(); // token -> { id, exp }
+
+// El video se pide con <video src>, que no puede mandar cabeceras: solo esa ruta acepta el token en ?t=.
+function personalTeacherFromRequest(req, { allowQuery = false } = {}) {
+  let token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+  if (!token && allowQuery) token = new URL(req.url, 'http://x').searchParams.get('t') || '';
+  const s = personalTeacherSessions.get(token);
+  if (!s || s.exp < Date.now()) { personalTeacherSessions.delete(token); return null; }
+  return teacherStore.get(s.id);
+}
+
+function evaluationErrorResponse(res, e) {
+  if (e instanceof EvaluationError) return sendJson(res, e.status, { error: e.message });
+  console.error('Error en evaluaciones del docente:', e.message);
+  return sendJson(res, 500, { error: 'No se pudo completar la acción.' });
+}
+
+function teacherProjectDetail(req, res, rawKey) {
+  const t = personalTeacherFromRequest(req);
+  if (!t) return sendJson(res, 401, { error: 'Entra con tu PIN de docente.' });
+  try {
+    let key = rawKey;
+    try { key = decodeURIComponent(rawKey); } catch { /* clave inválida: 404 abajo */ }
+    const detail = evaluationStore.get(t, key);
+    const hasFile = !!detail.local_id && fs.existsSync(projectStore.finalPath(detail.local_id));
+    sendJson(res, 200, { ...detail, has_file: hasFile });
+  } catch (e) { evaluationErrorResponse(res, e); }
+}
+
+// Sirve el video o modelo guardado en el nodo, con Range para poder adelantar el video.
+function teacherProjectFile(req, res, id) {
+  const t = personalTeacherFromRequest(req, { allowQuery: true });
+  if (!t) return sendJson(res, 401, { error: 'Entra con tu PIN de docente.' });
+  if (!UUID.test(id)) return sendJson(res, 404, { error: 'Archivo no encontrado.' });
+  try {
+    evaluationStore.get(t, `l:${id}`); // 404 si no existe, 403 si no es de una de sus clases
+    const file = projectStore.finalPath(id);
+    if (!fs.existsSync(file)) return sendJson(res, 404, { error: 'El archivo ya no está en esta computadora.' });
+    const mime = db.prepare('SELECT mime FROM projects WHERE id = ?').get(id)?.mime || 'application/octet-stream';
+    const size = fs.statSync(file).size;
+    const headers = { 'Content-Type': mime, 'Accept-Ranges': 'bytes', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' };
+    const range = /^bytes=(\d*)-(\d*)$/.exec(String(req.headers.range || ''));
+    let start = 0, end = size - 1, status = 200;
+    if (range && (range[1] !== '' || range[2] !== '')) {
+      if (range[1] === '') { start = Math.max(0, size - Number(range[2])); } else { start = Number(range[1]); if (range[2] !== '') end = Math.min(end, Number(range[2])); }
+      if (start >= size || start > end) {
+        res.writeHead(416, { 'Content-Range': `bytes */${size}` });
+        return res.end();
+      }
+      status = 206;
+      headers['Content-Range'] = `bytes ${start}-${end}/${size}`;
+    }
+    headers['Content-Length'] = end - start + 1;
+    res.writeHead(status, headers);
+    const stream = fs.createReadStream(file, { start, end });
+    stream.on('error', () => res.destroy());
+    res.on('close', () => stream.destroy());
+    stream.pipe(res);
+  } catch (e) { evaluationErrorResponse(res, e); }
 }
 
 // Reacción a un proyecto del Inicio (id = id del proyecto en la nube). Solo se puede reaccionar a lo que el estudiante
@@ -317,6 +407,43 @@ const api = {
     if (!s) return sendJson(res, 401, { error: 'Sesión vencida' });
     sendJson(res, 200, { groups: projectStore.groupsFor(s.id) });
   },
+  // ---- Docentes: lista pública, PIN personal y evaluar proyectos de sus clases ----
+  'GET /api/teachers': (req, res) => sendJson(res, 200, { teachers: teacherStore.list() }),
+  // Entra con el PIN personal; la primera vez lo crea, con el código de docente del nodo.
+  'POST /api/teacher/pin-login': async (req, res) => {
+    const { teacher_id, pin, code } = await readBody(req);
+    try {
+      const { teacher, created } = teacherStore.login(String(teacher_id ?? ''), pin, code);
+      const token = crypto.randomBytes(32).toString('hex');
+      personalTeacherSessions.set(token, { id: teacher.id, exp: Date.now() + TEACHER_PERSONAL_MS });
+      sendJson(res, 200, { token, created, teacher: { id: teacher.id, full_name: teacher.full_name, assignments: teacher.assignments } });
+    } catch (e) {
+      if (e instanceof TeacherAuthError) return sendJson(res, e.status, { error: e.message });
+      throw e;
+    }
+  },
+  'GET /api/teacher/evaluations': (req, res) => {
+    const t = personalTeacherFromRequest(req);
+    if (!t) return sendJson(res, 401, { error: 'Entra con tu PIN de docente.' });
+    sendJson(res, 200, { projects: evaluationStore.listForTeacher(t) });
+  },
+  'POST /api/teacher/evaluate': async (req, res) => {
+    const t = personalTeacherFromRequest(req);
+    if (!t) return sendJson(res, 401, { error: 'Entra con tu PIN de docente.' });
+    const { key, ...input } = (await readBody(req)) || {};
+    try {
+      const r = evaluationStore.save(t, String(key ?? ''), input);
+      sendJson(res, 200, { ok: true, total_score: r.total_score });
+    } catch (e) { evaluationErrorResponse(res, e); }
+  },
+  // Quien administra el nodo (código compartido) restablece el PIN de un docente que lo olvidó.
+  'POST /api/teacher/reset-teacher-pin': async (req, res) => {
+    if (!teacherFromRequest(req)) return sendJson(res, 401, { error: 'Sesión de docente vencida' });
+    const { teacher_id } = (await readBody(req)) || {};
+    if (!teacherStore.resetPin(String(teacher_id ?? ''))) return sendJson(res, 404, { error: 'Docente no encontrado.' });
+    sendJson(res, 200, { ok: true });
+  },
+
   // XP del estudiante: base de la última sincronización + lo ganado aquí que la nube aún no confirmó.
   'GET /api/xp': (req, res) => {
     const s = studentFromSession(req);
@@ -424,6 +551,7 @@ const api = {
       students,
       logs,
       projects: projectStore.counts(),
+      teachers: teacherStore.list(),
     });
   },
 
@@ -561,6 +689,7 @@ function nodeConfigScript() {
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, 'http://node');
+    if (await restRoutes.handle(req, res, url)) return;
     const route = projectRoute(req.method, url.pathname) || api[`${req.method} ${url.pathname}`];
     if (route) return await route(req, res, url);
 
