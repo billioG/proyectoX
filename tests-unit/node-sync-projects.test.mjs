@@ -88,3 +88,64 @@ test('nextRoles: rota planner → maker → speaker → helper → planner', { s
   assert.deepEqual(mod.nextRoles([{ id: 1, role: 'planner' }]), [], 'con menos de 2 miembros no se rota');
   assert.deepEqual(mod.nextRoles([]), []);
 });
+
+// ---- Fichas de proyectos que baja el nodo (Inicio sin internet) ----
+const STUDENTS = [
+  { id: 's1', full_name: 'Ana Pérez', grade: 'Primero', section: 'A' },
+  { id: 's2', full_name: 'Beto Gómez', grade: 'Primero', section: 'A' },
+];
+const GROUPS = [{ id: 7, name: 'Equipo Sol' }];
+const row = (patch = {}) => ({
+  id: 'p1', user_id: 's1', group_id: null, title: 'Robot seguidor', description: DESC, bimestre: 2, score: 80, votes: 3,
+  created_at: '2026-10-30T10:00:00Z', video_url: 'https://x.supabase.co/storage/v1/object/public/project-videos/1730000000000_ab12cd34ef.mp4',
+  evaluations: [], ...patch,
+});
+
+test('buildFeedProjects: deja solo campos permitidos y nunca video_url ni rutas de Storage', { skip }, () => {
+  const out = mod.buildFeedProjects([row()], STUDENTS, GROUPS);
+  assert.equal(out.length, 1);
+  assert.equal('video_url' in out[0], false);
+  assert.equal('evaluations' in out[0], false);
+  assert.doesNotMatch(JSON.stringify(out), /storage|project-videos|1730000000000|ab12cd34ef/);
+  assert.deepEqual(Object.keys(out[0]).sort(), ['author_name', 'bimestre', 'created_at', 'description', 'feedback', 'grade', 'group_id', 'group_name', 'id', 'kind', 'score', 'section', 'title', 'user_id', 'votes']);
+});
+
+test('buildFeedProjects: kind sale de la extensión (stl/obj/glb = model, el resto = video)', { skip }, () => {
+  const url = (ext) => `https://x/storage/v1/object/public/project-videos/1_ab.${ext}`;
+  const out = mod.buildFeedProjects([
+    row({ id: 'a', video_url: url('glb') }), row({ id: 'b', video_url: url('STL') }), row({ id: 'c', video_url: url('obj') }),
+    row({ id: 'd', video_url: url('mp4') }), row({ id: 'e', video_url: null }),
+  ], STUDENTS, GROUPS);
+  const kinds = Object.fromEntries(out.map(p => [p.id, p.kind]));
+  assert.deepEqual(kinds, { a: 'model', b: 'model', c: 'model', d: 'video', e: 'video' });
+});
+
+test('buildFeedProjects: autor, clase y equipo salen de los estudiantes y equipos; usuarios ajenos al nodo se descartan', { skip }, () => {
+  const out = mod.buildFeedProjects([row({ id: 'a', group_id: 7 }), row({ id: 'b', user_id: 'otro-colegio' })], STUDENTS, GROUPS);
+  assert.equal(out.length, 1);
+  assert.deepEqual([out[0].author_name, out[0].grade, out[0].section, out[0].group_name], ['Ana Pérez', 'Primero', 'A', 'Equipo Sol']);
+  assert.equal(out[0].group_id, 7);
+});
+
+test('buildFeedProjects: feedback es la última evaluación con texto (máx. 1000) o null', { skip }, () => {
+  const out = mod.buildFeedProjects([
+    row({ id: 'a', evaluations: [{ total_score: 70, feedback: 'Primera' }, { total_score: 80, feedback: '  Muy bien  ' }, { total_score: 80, feedback: '' }] }),
+    row({ id: 'b', evaluations: [] }),
+    row({ id: 'c', evaluations: [{ feedback: 'x'.repeat(1500) }] }),
+    row({ id: 'd', evaluations: null }),
+  ], STUDENTS, GROUPS);
+  const by = Object.fromEntries(out.map(p => [p.id, p.feedback]));
+  assert.equal(by.a, 'Muy bien');
+  assert.equal(by.b, null);
+  assert.equal(by.c.length, 1000);
+  assert.equal(by.d, null);
+});
+
+test('buildFeedProjects: ordena por fecha descendente y corta en FEED_LIMIT', { skip }, () => {
+  assert.equal(mod.FEED_LIMIT, 300);
+  const rows = Array.from({ length: 301 }, (_, i) => row({ id: `p${i}`, created_at: new Date(Date.UTC(2026, 0, 1) + i * 86400_000).toISOString() }));
+  const out = mod.buildFeedProjects(rows, STUDENTS, GROUPS);
+  assert.equal(out.length, 300);
+  assert.equal(out[0].id, 'p300');
+  assert.equal(out[299].id, 'p1');
+});

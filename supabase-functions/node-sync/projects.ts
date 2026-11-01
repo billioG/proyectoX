@@ -98,3 +98,70 @@ export function nextRoles(members: Array<{ id: number; role: string }>): Array<{
   const sorted = [...members].sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role));
   return sorted.map((m) => ({ id: m.id, role: ROLE_ORDER[(ROLE_ORDER.indexOf(m.role) + 1) % ROLE_ORDER.length] }));
 }
+
+// ---- Fichas de proyectos para el Inicio del nodo (sin internet) ----
+export const FEED_LIMIT = 300;
+const MODEL_EXT = /\.(stl|obj|glb)(\?|$)/i;
+
+export interface FeedProject {
+  id: string;
+  user_id: string;
+  group_id: number | null;
+  title: string;
+  description: string;
+  bimestre: number | null;
+  score: number | null;
+  votes: number;
+  created_at: string;
+  author_name: string;
+  group_name: string | null;
+  grade: string | null;
+  section: string | null;
+  kind: 'video' | 'model';
+  feedback: string | null;
+}
+
+/**
+ * Convierte filas de `projects` (con `evaluations` anidadas) en fichas para el nodo. Lista blanca de
+ * campos: NUNCA sale `video_url` ni ninguna ruta de Storage (los videos no viajan al nodo). Solo proyectos
+ * de estudiantes del nodo, del más nuevo al más viejo, hasta FEED_LIMIT.
+ */
+export function buildFeedProjects(
+  rows: any[],
+  students: Array<{ id: string; full_name?: string; grade?: string; section?: string }>,
+  groups: Array<{ id: number; name?: string }>,
+): FeedProject[] {
+  const byStudent = new Map(students.map((s) => [s.id, s]));
+  const byGroup = new Map(groups.map((g) => [g.id, g]));
+  const out: FeedProject[] = [];
+  for (const r of rows || []) {
+    const s = byStudent.get(r?.user_id);
+    if (!s) continue;
+    const evals = Array.isArray(r.evaluations) ? r.evaluations : [];
+    let feedback: string | null = null;
+    for (const e of evals) {
+      const text = typeof e?.feedback === 'string' ? e.feedback.trim() : '';
+      if (text) feedback = text.slice(0, 1000);
+    }
+    const groupId = r.group_id === null || r.group_id === undefined ? null : Number(r.group_id);
+    out.push({
+      id: String(r.id),
+      user_id: String(r.user_id),
+      group_id: groupId,
+      title: String(r.title ?? ''),
+      description: String(r.description ?? ''),
+      bimestre: r.bimestre === null || r.bimestre === undefined ? null : Number(r.bimestre),
+      score: r.score === null || r.score === undefined ? null : Number(r.score),
+      votes: Number(r.votes) || 0,
+      created_at: String(r.created_at ?? ''),
+      author_name: String(s.full_name ?? ''),
+      group_name: groupId === null ? null : (byGroup.get(groupId)?.name ?? null),
+      grade: s.grade ?? null,
+      section: s.section ?? null,
+      kind: MODEL_EXT.test(String(r.video_url ?? '')) ? 'model' : 'video',
+      feedback,
+    });
+  }
+  out.sort((a, b) => (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0));
+  return out.slice(0, FEED_LIMIT);
+}

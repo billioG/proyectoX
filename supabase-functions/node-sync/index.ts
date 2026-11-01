@@ -10,10 +10,11 @@
 //   o  { action: 'project_upload_url', client_ref, ext, size }  ->  { path, signed_url } (el nodo sube el
 //   archivo de un proyecto directo a Storage con esa URL y luego lo confirma en push.projects).
 // Respuesta: alumnos, cursos (con lecciones), progreso y archivos de la
-// escuela, más cuántas cosas se aplicaron del push.
+// escuela, las fichas de proyectos de la clase (sin videos ni rutas de Storage, para el Inicio del
+// nodo), más cuántas cosas se aplicaron del push.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { nextRoles, validateProjectPush, validateUploadRequest } from './projects.ts';
+import { buildFeedProjects, FEED_LIMIT, nextRoles, validateProjectPush, validateUploadRequest } from './projects.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -272,6 +273,23 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Fichas de proyectos para el Inicio del nodo (sin videos). Si la consulta falla, el pull sigue sin
+    // `projects` y el nodo conserva las que ya tenía.
+    let feedProjects: ReturnType<typeof buildFeedProjects> | undefined;
+    try {
+      const rows: any[] = [];
+      for (const ids of chunk([...studentIds] as string[])) {
+        const { data, error } = await admin.from('projects')
+          .select('id, user_id, group_id, title, description, bimestre, score, votes, created_at, video_url, evaluations(total_score, feedback)')
+          .in('user_id', ids).order('created_at', { ascending: false }).limit(FEED_LIMIT);
+        if (error) throw error;
+        rows.push(...(data || []));
+      }
+      feedProjects = buildFeedProjects(rows, students, groups);
+    } catch (e) {
+      console.error('node-sync: no se pudieron armar las fichas de proyectos', e);
+    }
+
     const serverTime = new Date().toISOString();
     await admin.from('school_nodes').update({
       last_sync_at: serverTime,
@@ -285,6 +303,7 @@ Deno.serve(async (req) => {
       students,
       groups,
       group_members: groupMembers,
+      projects: feedProjects,
       courses,
       completions: allCompletions,
       files,
