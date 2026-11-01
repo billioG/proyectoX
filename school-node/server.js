@@ -12,6 +12,7 @@ import { openDb, getMeta } from './db.js';
 import { runSync, loadConfig } from './sync.js';
 import { runUsbSync } from './usb-sync.js';
 import { startMdns } from './mdns.js';
+import { localizeIndexHtml } from './offline-assets.js';
 
 const NODE_DIR = path.dirname(fileURLToPath(import.meta.url));
 const APP_DIR = path.resolve(NODE_DIR, '..');
@@ -72,6 +73,18 @@ function serveFile(req, res, baseDir, rel) {
   }
   res.writeHead(200, { 'Content-Type': type, 'Content-Length': size, 'Accept-Ranges': 'bytes' });
   fs.createReadStream(file).pipe(res);
+}
+
+// index.html se entrega con las librerías de CDN cambiadas por las copias locales
+// (vendor/cdn/), para que la app arranque sin internet. Ver offline-assets.js.
+let indexCache = { mtimeMs: 0, html: '' };
+function serveIndex(res) {
+  const file = path.join(APP_DIR, 'index.html');
+  const { mtimeMs } = fs.statSync(file);
+  if (indexCache.mtimeMs !== mtimeMs) indexCache = { mtimeMs, html: localizeIndexHtml(fs.readFileSync(file, 'utf8')) };
+  const body = Buffer.from(indexCache.html, 'utf8');
+  res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Content-Length': body.length, 'Cache-Control': 'no-cache' });
+  res.end(body);
 }
 
 function studentFromSession(req) {
@@ -341,6 +354,7 @@ const server = http.createServer(async (req, res) => {
 
     const rel = decodeURIComponent(url.pathname.replace(/^\/+/, '')) || 'index.html';
     if (!APP_ALLOWED.some(rx => rx.test(rel))) { res.writeHead(404); return res.end('No encontrado'); }
+    if (rel === 'index.html') return serveIndex(res);
     serveFile(req, res, APP_DIR, rel);
   } catch (e) {
     console.error(e);

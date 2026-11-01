@@ -25,6 +25,9 @@ la dirección del nodo: **http://quetzal.local** (o la IP, por ejemplo
 - En modo nodo se oculta lo que necesita internet (avisos, asistente con IA,
   perfil) y el header muestra el nombre de la escuela.
 
+> **Sin internet, la app sigue arrancando.** El nodo entrega `index.html` con las librerías de CDN
+> reemplazadas por copias locales de `vendor/cdn/` (`school-node/offline-assets.js`).
+
 ## Instalación en una computadora con Windows 10/11
 
 ```
