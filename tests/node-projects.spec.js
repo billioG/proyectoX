@@ -19,6 +19,12 @@ test.beforeAll(async () => {
     members: [{ id: 1, group_id: 7, student_id: 's1', role: 'planner' }],
     courses: [{ id: 'c1', title: 'Robótica básica', grade: 'Primero', section: 'A', created_at: '2026-10-01', lessons: [{ id: 'l1', order_index: 1 }, { id: 'l2', order_index: 2 }, { id: 'l3', order_index: 3 }, { id: 'l4', order_index: 4 }] }],
     completions: [{ lesson_id: 'l1', student_id: 's1' }, { lesson_id: 'l2', student_id: 's1' }],
+    // Fichas que bajó el pull: dos aprobadas de la clase de Ana (una con HTML en el título) y una de otra sección.
+    cloudProjects: [
+      { id: 'f1', user_id: 's9', author_name: 'Luis Ramos', title: 'Semáforo con Arduino', score: 85, bimestre: 2, created_at: '2026-10-30T10:00:00Z' },
+      { id: 'f2', user_id: 's9', author_name: 'Luis Ramos', title: 'Brazo <img src=x onerror="window.__xss=1">', score: 70, created_at: '2026-10-29T10:00:00Z' },
+      { id: 'f3', user_id: 's8', author_name: 'Otra Sección', title: 'Proyecto de otra sección', grade: 'Segundo', section: 'B', score: 90 },
+    ],
   });
   await node.login('s1', '1234'); // crea el PIN
   videoFile = path.join(os.tmpdir(), `quetzal-prueba-${process.pid}.mp4`);
@@ -154,5 +160,31 @@ test('el perfil del estudiante en el nodo muestra su avance y sus proyectos, sin
   await expect(page.locator('#node-profile-projects')).toContainText('Guardado en la escuela');
   await page.click('#node-profile-upload');
   await expect(page.locator('#btn-upload-project')).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test('el Inicio del estudiante en el nodo muestra las fichas de su clase sin internet', async ({ page }) => {
+  test.skip(!node, skipReason);
+  const errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await enterAsStudent(page);
+
+  // Inicio vuelve a estar en el menú del estudiante.
+  expect(await page.evaluate(() => { const el = document.getElementById('nav-est-home'); return !!el && el.style.display !== 'none'; })).toBe(true);
+
+  // Como el estudiante: toca el logo de arriba (no llama a nav() directo).
+  await page.locator(`header [onclick="nav('feed')"]`).first().click();
+  const cards = page.locator('#feed-container [data-feed-project]');
+  await expect(cards.first()).toBeVisible({ timeout: 15000 });
+  const f1 = page.locator('[data-feed-project="f1"]');
+  await expect(f1).toContainText('Semáforo con Arduino');
+  await expect(f1).toContainText('Luis Ramos');
+  await expect(f1).toContainText('Nota 85');
+  await expect(page.locator('#feed-container')).not.toContainText('Proyecto de otra sección');
+
+  // El título con HTML se ve como texto y no se ejecuta.
+  await expect(page.locator('[data-feed-project="f2"]')).toContainText('<img src=x');
+  expect(await page.evaluate(() => window.__xss)).toBeUndefined();
+  expect(await page.locator('#feed-container img').count()).toBe(0);
   expect(errors).toEqual([]);
 });

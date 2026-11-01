@@ -31,7 +31,7 @@ window.detectQuetzalNode = async function detectQuetzalNode() {
       .node-mode #mascot-widget-container, .node-mode #mascot-ai-modal { display: none !important; }
       .node-mode header .cursor-pointer { pointer-events: none; }
       .node-mode header button { pointer-events: auto; }
-      .node-mode header [onclick*="'profile'"] { pointer-events: auto; }
+      .node-mode header [onclick*="'profile'"], .node-mode header [onclick*="'feed'"] { pointer-events: auto; }
       #node-chip { display: none; }
       .node-mode #node-chip { display: inline-flex; align-items: center; gap: .4rem; padding: .35rem .75rem; border-radius: 9999px;
         background: rgba(16,185,129,.12); color: #059669; font-size: .65rem; font-weight: 900; text-transform: uppercase; letter-spacing: .02em; }`;
@@ -94,10 +94,10 @@ function enterNode(student) {
     chip.innerHTML = `<i class="fas fa-tree"></i> ${esc(window.QUETZAL_NODE?.name || 'Red de la escuela')}`;
     bell.parentElement.insertBefore(chip, bell);
   }
-  // Sin internet funcionan Cursos y Subir proyecto (se guarda en el nodo y se publica al sincronizar); el resto se oculta.
+  // Sin internet funcionan Inicio (proyectos de la clase), Cursos y Subir proyecto (se guarda en el nodo y se publica al sincronizar); el resto se oculta.
   document.querySelectorAll('#nav-estudiante [onclick]').forEach(el => {
     const action = el.getAttribute('onclick') || '';
-    if (!/lessons|upload|logout/i.test(action)) el.style.display = 'none';
+    if (!/feed|lessons|upload|logout/i.test(action)) el.style.display = 'none';
   });
 }
 

@@ -28,12 +28,15 @@ const MODULE_MAP = {
     'upload': ['js/project-modals.js', 'js/groups.js', 'js/node-projects.js'],
     // Perfil sencillo del nodo escolar (sin internet): reemplaza al perfil completo, que depende de la nube.
     'node-profile': ['js/node-profile.js'],
+    // Inicio del nodo escolar (sin internet): fichas de proyectos de la clase.
+    'node-feed': ['js/node-feed.js'],
     'bonus-system': ['js/bonus-system.js', 'js/certificates.js'],
     'lessons': ['js/lessons.js', 'js/quiz-import.js', 'js/weekly-topic.js']
 };
 
 export async function loadModule(name) {
     if (name === 'profile' && window.isNodeSession) name = 'node-profile';
+    if (name === 'feed' && window.isNodeSession) name = 'node-feed';
     if (!MODULE_MAP[name]) return;
 
     const scripts = MODULE_MAP[name];
@@ -280,6 +283,7 @@ export function loadViewContent(view) {
             if (window.isCoordinator) callViewLoader(view, window.loadCoordinatorReports);
             break;
         case 'feed':
+            if (window.isNodeSession) { loadModule('node-feed').then(() => callViewLoader(view, window.loadNodeFeed)); break; }
             callViewLoader(view, window.loadFeed);
             break;
         case 'schools':
