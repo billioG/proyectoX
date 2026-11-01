@@ -6,7 +6,7 @@
 
 export const XP_PER_LESSON = 10;
 // Mismos tres premios que claim_daily_chest y que supabase/functions/node-sync/xp.ts.
-const CHEST_PRIZES = [
+export const CHEST_PRIZES = [
   { xp: 20, gems: 5, msg: 'Poquito pero bendito' },
   { xp: 50, gems: 15, msg: '¡Nada mal!' },
   { xp: 100, gems: 50, msg: '¡Premio Mayor!' },

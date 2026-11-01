@@ -21,10 +21,7 @@ import { createReactionStore, ReactionError } from './reactions.js';
 import { createEvaluationStore, EvaluationError } from './evaluations.js';
 import { createTeacherStore, TeacherAuthError } from './teachers.js';
 import { friendlySyncError } from './sync-errors.js';
-import { restStoreFor } from './rest/store.js';
-import { createAuth as createRestAuth } from './rest/auth.js';
-import { createRestRoutes } from './rest/routes.js';
-import { SCHEMA as REST_SCHEMA } from './rest/schema.js';
+import { createRestLayer } from './rest/index.js';
 
 const NODE_DIR = path.dirname(fileURLToPath(import.meta.url));
 const APP_DIR = path.resolve(NODE_DIR, '..');
@@ -59,11 +56,12 @@ function verifyTeacherCode(code) {
 }
 // hashPin y safeEqual se declaran más abajo: se llaman a través de funciones para no leerlos antes de tiempo.
 // Capa local compatible con Supabase (/rest/v1, /auth/v1, /functions/v1/student-login): réplica de la nube en SQLite.
-const restStore = restStoreFor(db, REST_SCHEMA);
+const restLayer = createRestLayer(db);
+const restStore = restLayer.store;
 // La app real solo se monta sobre la capa local cuando la réplica ya tiene a los estudiantes y las contraseñas de
 // clase; mientras tanto el nodo se comporta como antes (pantalla propia con PIN).
 const restReady = () => restStore.verifierCount() > 0 && restStore.all('students').length > 0;
-const restRoutes = createRestRoutes({ store: restStore, auth: createRestAuth({ store: restStore }) });
+const restRoutes = restLayer.routes;
 const teacherStore = createTeacherStore(db, { hashPin: (pin, salt) => hashPin(pin, salt), verifySetupCode: (code) => verifyTeacherCode(code) });
 projectStore.cleanup(); // borradores huérfanos de una subida cortada por un reinicio o un apagón
 setInterval(() => projectStore.cleanup(), 3600_000).unref();

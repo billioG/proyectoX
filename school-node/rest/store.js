@@ -56,6 +56,8 @@ export function createStore({ db, schema }) {
 
   // tabla -> filas (arreglo estable; el motor lo recorre y lo filtra, nunca lo modifica)
   let cache = new Map();
+  // Vistas de lectura (tabla -> función que devuelve un mapeador de filas): lo pendiente de subir se suma a la base.
+  const views = new Map();
   const load = (tbl) => {
     let rows = cache.get(tbl);
     if (!rows) { rows = q.rows.all(tbl).map((r) => JSON.parse(r.data)); cache.set(tbl, rows); }
@@ -96,7 +98,13 @@ export function createStore({ db, schema }) {
   };
 
   return {
-    all: (tbl) => load(tbl),
+    all: (tbl) => {
+      const rows = load(tbl);
+      const view = views.get(tbl);
+      return view ? rows.map(view()) : rows;
+    },
+    /** Registra cómo ver una tabla: `makeMapper()` se llama en cada lectura y devuelve (fila) => fila vista. */
+    setView: (tbl, makeMapper) => { views.set(tbl, makeMapper); },
     put,
     remove,
     transaction,

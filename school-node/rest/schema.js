@@ -143,4 +143,5 @@ export const SCHEMA = {
   student_debug_duels: emptyTable(),
   student_spelling_duels: emptyTable(),
   project_reaction_notifications: emptyTable(),
+  student_challenges: emptyTable(),
 };

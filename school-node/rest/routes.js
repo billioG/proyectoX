@@ -89,7 +89,7 @@ export function createRestRoutes({ store, auth, rpcs = {}, onChange = () => {} }
         store.enqueue(r.changes);
         return r;
       });
-      if (out.changes?.length) onChange();
+      if (out.changes?.length) onChange(out.changes, ctx);
 
       const headers = {};
       if (out.count != null) {
