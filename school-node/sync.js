@@ -10,17 +10,26 @@ import { openDb, setMeta, getMeta } from './db.js';
 import { syncProjects } from './projects-sync.js';
 import { createXpStore } from './xp.js';
 import { createReactionStore } from './reactions.js';
+import { createEvaluationStore } from './evaluations.js';
+import { restStoreFor } from './rest/store.js';
+import { restPush, applyRestPull } from './rest/sync.js';
+import { SCHEMA as REST_SCHEMA } from './rest/schema.js';
 
 // Lo pendiente de subir a la nube (lo usa también la sincronización por USB).
 export function buildPush(db) {
+  // Avances de lecciones que la app real guardó en la capa local: viajan junto a los del nodo.
+  const rest = restPush(restStoreFor(db, REST_SCHEMA));
   return {
-    completions: db.prepare('SELECT lesson_id, student_id, score, status, updated_at FROM completions WHERE dirty = 1').all(),
+    completions: [...db.prepare('SELECT lesson_id, student_id, score, status, updated_at FROM completions WHERE dirty = 1').all(), ...rest.completions],
+    rest_seqs: rest.seqs,
     pins: db.prepare('SELECT id AS student_id, pin_hash, pin_salt, pin_updated_at FROM students WHERE pin_dirty = 1').all(),
     sessions: db.prepare('SELECT id, student_id, device, entered_at FROM session_logs WHERE dirty = 1').all(),
     // Cofres diarios sorteados aquí: la nube los valida (un cofre por día, solo premios válidos) y los aplica.
     xp_events: createXpStore(db).pendingChests(),
     // Reacción FINAL de cada estudiante a un proyecto (null = la quitó): la nube la aplica sin duplicar votos.
     reactions: createReactionStore(db).pending(),
+    // Evaluaciones de proyectos hechas por docentes en el nodo: la nube valida y RECALCULA el total.
+    evaluations: createEvaluationStore(db).pending(),
   };
 }
 
@@ -69,6 +78,7 @@ export function applyPull(db, data, pushed = {}) {
     // Lo de XP que se mandó ya está en la base nueva de la nube (se borra después de limpiar los avances sucios).
     createXpStore(db).clearSent(pushed.xp_events || [], pushCompletions, { applied: data.applied?.xp_events, errors: data.xp_errors });
     createReactionStore(db).clearSent(pushed.reactions || [], { applied: data.applied?.reactions, errors: data.reaction_errors });
+    createEvaluationStore(db).clearSent(pushed.evaluations || [], { applied: data.applied?.evaluations, errors: data.evaluation_errors });
 
     // Alumnos: un PIN creado acá y todavía sin subir no se pisa.
     const upsertStudent = db.prepare(`
@@ -155,6 +165,35 @@ export function applyPull(db, data, pushed = {}) {
       }
     }
 
+    // Docentes de la escuela (con sus clases): se actualizan conservando el PIN personal de cada uno, se quitan los que ya
+    // no están y, si el pull no los trae (función vieja o USB antiguo), no se borra ninguno.
+    if (Array.isArray(data.teachers)) {
+      const upsertTeacher = db.prepare(`INSERT INTO teachers (id, full_name, assignments) VALUES (?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET full_name = excluded.full_name, assignments = excluded.assignments`);
+      const keep = new Set();
+      for (const t of data.teachers) {
+        if (!t || !t.id) continue;
+        keep.add(String(t.id));
+        upsertTeacher.run(String(t.id), String(t.full_name ?? ''), JSON.stringify(Array.isArray(t.assignments) ? t.assignments : []));
+      }
+      for (const { id } of db.prepare('SELECT id FROM teachers').all()) if (!keep.has(id)) db.prepare('DELETE FROM teachers WHERE id = ?').run(id);
+    }
+    // Evaluaciones de los proyectos del Inicio: se reemplazan completas solo si el pull las trae.
+    if (Array.isArray(data.evaluations)) {
+      db.prepare('DELETE FROM cloud_evaluations').run();
+      const insertEval = db.prepare(`INSERT OR REPLACE INTO cloud_evaluations
+        (project_id, teacher_id, total_score, creativity_score, clarity_score, functionality_score, teamwork_score, social_impact_score, feedback)
+        VALUES (@project_id, @teacher_id, @total_score, @creativity_score, @clarity_score, @functionality_score, @teamwork_score, @social_impact_score, @feedback)`);
+      for (const e of data.evaluations) {
+        if (!e || !Number.isInteger(Number(e.project_id))) continue;
+        insertEval.run({
+          project_id: Number(e.project_id), teacher_id: e.teacher_id ?? null, total_score: Number(e.total_score) || 0,
+          creativity_score: Number(e.creativity_score) || 0, clarity_score: Number(e.clarity_score) || 0, functionality_score: Number(e.functionality_score) || 0,
+          teamwork_score: Number(e.teamwork_score) || 0, social_impact_score: Number(e.social_impact_score) || 0, feedback: e.feedback ?? null,
+        });
+      }
+    }
+
     // Reacciones propias de los alumnos sobre los proyectos del Inicio: se reemplazan completas, pero solo si el pull
     // las trae (una función anterior o un archivo USB antiguo no las mandan y no hay que borrar las que ya había).
     if (Array.isArray(data.reactions)) {
@@ -171,6 +210,8 @@ export function applyPull(db, data, pushed = {}) {
     setMeta(db, 'last_sync_at', data.server_time || new Date().toISOString());
   });
   apply();
+  // Después de la transacción: si algo fallara, la caché de la capa local no queda a medias.
+  applyRestPull(restStoreFor(db, REST_SCHEMA), data, pushed);
 }
 
 // Descarga los archivos que faltan o cambiaron (6 en paralelo).

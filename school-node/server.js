@@ -21,7 +21,7 @@ import { createReactionStore, ReactionError } from './reactions.js';
 import { createEvaluationStore, EvaluationError } from './evaluations.js';
 import { createTeacherStore, TeacherAuthError } from './teachers.js';
 import { friendlySyncError } from './sync-errors.js';
-import { createStore as createRestStore } from './rest/store.js';
+import { restStoreFor } from './rest/store.js';
 import { createAuth as createRestAuth } from './rest/auth.js';
 import { createRestRoutes } from './rest/routes.js';
 import { SCHEMA as REST_SCHEMA } from './rest/schema.js';
@@ -59,7 +59,7 @@ function verifyTeacherCode(code) {
 }
 // hashPin y safeEqual se declaran más abajo: se llaman a través de funciones para no leerlos antes de tiempo.
 // Capa local compatible con Supabase (/rest/v1, /auth/v1, /functions/v1/student-login): réplica de la nube en SQLite.
-const restStore = createRestStore({ db, schema: REST_SCHEMA });
+const restStore = restStoreFor(db, REST_SCHEMA);
 const restRoutes = createRestRoutes({ store: restStore, auth: createRestAuth({ store: restStore }) });
 const teacherStore = createTeacherStore(db, { hashPin: (pin, salt) => hashPin(pin, salt), verifySetupCode: (code) => verifyTeacherCode(code) });
 projectStore.cleanup(); // borradores huérfanos de una subida cortada por un reinicio o un apagón

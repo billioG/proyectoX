@@ -132,3 +132,11 @@ export function createStore({ db, schema }) {
     setMeta: (k, v) => { q.setMeta.run(k, String(v)); },
   };
 }
+
+// Un solo almacén por base de datos: la caché en memoria no puede estar duplicada entre el servidor y la sincronización.
+const stores = new WeakMap();
+export function restStoreFor(db, schema) {
+  let store = stores.get(db);
+  if (!store) { store = createStore({ db, schema }); stores.set(db, store); }
+  return store;
+}
