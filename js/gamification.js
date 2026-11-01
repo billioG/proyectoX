@@ -59,6 +59,8 @@ window.submitStudentChallengeEvidence = async function submitStudentChallengeEvi
 }
 
 window.initGamification = async function initGamification() {
+  // Nodo escolar: XP, racha y cofre viven en la nube (sin sesión de Supabase fallan con «No autenticado»).
+  if (window.isNodeSession) return;
   const userRole = window.userRole;
   const currentUser = window.currentUser;
   const fetchWithCache = window.fetchWithCache;
@@ -555,6 +557,8 @@ window.refreshMyWalletSoon = function refreshMyWalletSoon() {
 };
 
 window.checkDailyChest = function checkDailyChest() {
+  // Nodo escolar (sin internet): el premio se decide y se guarda en la nube; sin sesión de Supabase no hay cofre.
+  if (window.isNodeSession) return;
   const userData = window.userData;
   if (!userData || window.userRole !== 'estudiante') return;
   const today = guatemalaToday();
@@ -568,6 +572,7 @@ window.checkDailyChest = function checkDailyChest() {
 }
 
 window.showDailyChestModal = function showDailyChestModal() {
+  if (window.isNodeSession) return;
   // Una sola vez (antes podían quedar dos cofres apilados).
   if (document.getElementById('daily-chest-modal')) return;
   const modal = document.createElement('div');

@@ -188,3 +188,30 @@ test('el Inicio del estudiante en el nodo muestra las fichas de su clase sin int
   expect(await page.locator('#feed-container img').count()).toBe(0);
   expect(errors).toEqual([]);
 });
+
+test('en el nodo no sale el cofre diario ni el latido llama a la nube (no hay sesión de Supabase)', async ({ page }) => {
+  test.skip(!node, skipReason);
+  const errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await enterAsStudent(page);
+  await page.locator(`header [onclick="nav('feed')"]`).first().click();
+  await expect(page.locator('#feed-container [data-feed-project]').first()).toBeVisible({ timeout: 15000 });
+
+  // El cofre se pide 2 s después de entrar si hoy no se reclamó: en el nodo no debe aparecer.
+  await page.evaluate(() => { window.userData = { ...(window.userData || {}), daily_chest_last_claimed: '2000-01-01' }; window.checkDailyChest?.(); window.showDailyChestModal?.(); });
+  await page.waitForTimeout(2600);
+  await expect(page.locator('#daily-chest-modal')).toHaveCount(0);
+
+  // El latido de actividad no debe llamar a la nube sin sesión.
+  const calls = await page.evaluate(async () => {
+    const seen = [];
+    window._supabase = { rpc: async (name) => { seen.push(name); return { error: { message: 'No autenticado' } }; } };
+    const t = window.ActivityTracker;
+    if (!t) return ['sin ActivityTracker'];
+    t.isActive = true; t.lastInteraction = Date.now();
+    await t.sendHeartbeat();
+    return seen;
+  });
+  expect(calls).toEqual([]);
+  expect(errors).toEqual([]);
+});

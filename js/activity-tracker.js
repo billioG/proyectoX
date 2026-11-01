@@ -58,6 +58,8 @@ const ActivityTracker = {
     async sendHeartbeat() {
         const user = window.currentUser;
         if (typeof window._supabase === 'undefined' || !user) return;
+        // Nodo escolar: no hay sesión de Supabase, el latido fallaría con «No autenticado».
+        if (window.isNodeSession) return;
         if (!this.isReallyActive()) return;
         // Punto verde de "conectado" para los retos 1v1 (idempotente).
         window.GameArena?.syncPresence?.();
