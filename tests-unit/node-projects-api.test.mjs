@@ -197,3 +197,52 @@ test('poco espacio en disco: 507', { skip, timeout: 60000 }, async () => {
     assert.match(r.data.error, /espacio/);
   } finally { await node.stop(); }
 });
+
+// Abre un PUT que queda a medias para poder actuar mientras el archivo "está llegando".
+function partialPut(node, id, token, size, firstChunk) {
+  let finish;
+  const done = new Promise((resolve) => { finish = resolve; });
+  const req = http.request({ host: '127.0.0.1', port: node.port, path: `/api/projects/${id}/file`, method: 'PUT',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Length': String(size) } }, (res) => {
+    let body = '';
+    res.on('data', d => { body += d; });
+    res.on('end', () => finish({ status: res.statusCode, body }));
+  });
+  req.on('error', (e) => finish({ error: e.code || e.message }));
+  req.write(firstChunk);
+  return { req, done };
+}
+
+test('quitar el proyecto mientras sube desde otra pestaña no tumba el nodo', { skip, timeout: 60000 }, async () => {
+  const { node, t1 } = await boot();
+  try {
+    const { id } = (await node.api('/api/projects', { method: 'POST', token: t1, body: draft({ size: 2_000_000 }) })).data;
+    const up = partialPut(node, id, t1, 2_000_000, Buffer.alloc(1_000_000));
+    await waitFor(() => files(node).includes(`${id}.part`));
+    const del = await node.api(`/api/projects/${id}`, { method: 'DELETE', token: t1 });
+    assert.equal(del.status, 200);
+    try { up.req.end(Buffer.alloc(1_000_000)); } catch { /* la conexión ya se cortó */ }
+    await up.done;
+    await new Promise(r => setTimeout(r, 300));
+    const mine = await node.api('/api/projects/mine', { token: t1 });
+    assert.equal(mine.status, 200, 'el nodo sigue vivo');
+    assert.deepEqual(mine.data.projects, []);
+    assert.deepEqual(files(node), []);
+  } finally { await node.stop(); }
+});
+
+test('un segundo PUT al mismo borrador mientras el primero sube es 409 y no daña el archivo', { skip, timeout: 60000 }, async () => {
+  const { node, t1 } = await boot();
+  try {
+    const { id } = (await node.api('/api/projects', { method: 'POST', token: t1, body: draft({ size: 2_000_000 }) })).data;
+    const first = partialPut(node, id, t1, 2_000_000, Buffer.alloc(1_000_000, 7));
+    await waitFor(() => files(node).includes(`${id}.part`));
+    const second = await rawPut(node, id, t1, { contentLength: 2_000_000, chunks: [Buffer.alloc(2_000_000, 1)] });
+    assert.equal(second.status, 409, JSON.stringify(second));
+    first.req.end(Buffer.alloc(1_000_000, 7));
+    assert.equal((await first.done).status, 200);
+    const stored = fs.readFileSync(path.join(projectsDir(node), `${id}.mp4`));
+    assert.equal(stored.length, 2_000_000);
+    assert.ok(stored.every(b => b === 7), 'el archivo es el del primer PUT, sin mezcla');
+  } finally { await node.stop(); }
+});

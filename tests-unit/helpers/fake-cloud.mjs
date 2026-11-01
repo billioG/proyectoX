@@ -44,7 +44,8 @@ export async function startFakeCloud(opts = {}) {
       const body = JSON.parse((await readBody(req)).toString('utf8') || '{}');
       if (req.headers['x-node-token'] !== FAKE_TOKEN) return send(res, 401, { error: 'Token de nodo requerido' });
 
-      if (body.action === 'project_upload_url') {
+      // La función vieja no conoce `action`: responde el pull completo a cualquier llamada.
+      if (body.action === 'project_upload_url' && !cloud.opts.oldFunction) {
         cloud.stats.urlRequests++;
         const ext = String(body.ext || '');
         if (!/^(mp4|mov|m4v|webm|3gp|avi|mkv|stl|obj|glb)$/.test(ext)) return send(res, 400, { error: 'Tipo de archivo no permitido.' });

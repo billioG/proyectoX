@@ -31,7 +31,7 @@ async function setup(cloudOpts = {}, config = {}) {
     return id;
   };
   const row = (id) => ({ ...db.prepare('SELECT * FROM projects WHERE id = ?').get(id) });
-  return { db, store, cloud, cfg, add, row, sync: () => syncProjects(db, cfg, { log: () => {} }), dataDir, done: async () => { db.close(); fs.rmSync(dataDir, { recursive: true, force: true }); } };
+  return { db, store, cloud, cfg, add, row, sync: (opts = {}) => syncProjects(db, cfg, { log: () => {}, ...opts }), dataDir, done: async () => { db.close(); fs.rmSync(dataDir, { recursive: true, force: true }); } };
 }
 
 test('camino feliz: el proyecto llega a la nube y queda synced', { skip, timeout: 30000 }, async () => {
@@ -87,10 +87,10 @@ test('Storage caído: queda pending con el motivo, sin ruta y con un intento má
     assert.equal(r.cloud_path, null);
     assert.equal(r.attempts, 1);
     assert.match(r.last_error, /No se pudo subir el archivo a la nube \(500\)/);
-    await s.sync();
+    await s.sync({ now: () => Date.now() + 2 * 3600_000 }); // pasó el tiempo de espera
     assert.equal(s.row(id).attempts, 2);
     s.cloud.opts.failStorage = false;
-    assert.deepEqual(await s.sync(), { synced: 1, failed: 0 }, 'cuando Storage vuelve, se sube solo');
+    assert.deepEqual(await s.sync({ now: () => Date.now() + 5 * 3600_000 }), { synced: 1, failed: 0 }, 'cuando Storage vuelve, se sube solo');
   } finally { await s.done(); }
 });
 
@@ -161,5 +161,55 @@ test('a los 8 días de subido, el archivo local se borra y el proyecto sigue en 
     assert.equal(s.store.cleanup().removed, 1);
     assert.equal(fs.existsSync(s.store.finalPath(id)), false);
     assert.equal(s.store.listMine('s1')[0].status, 'synced');
+  } finally { await s.done(); }
+});
+
+test('si falla la subida del archivo, no se reintenta en cada ciclo: espera cada vez más', { skip, timeout: 30000 }, async () => {
+  const s = await setup({ failStorage: true });
+  try {
+    const id = s.add('s1', 'Robot seguidor');
+    const t0 = Date.now();
+    assert.deepEqual(await s.sync({ now: () => t0 }), { synced: 0, failed: 1 });
+    assert.equal(s.cloud.stats.urlRequests, 1);
+    assert.deepEqual(await s.sync({ now: () => t0 + 60_000 }), { synced: 0, failed: 0 }, 'a 1 minuto no vuelve a gastar datos');
+    assert.equal(s.cloud.stats.urlRequests, 1);
+    assert.equal(s.row(id).attempts, 1);
+    assert.deepEqual(await s.sync({ now: () => t0 + 6 * 60_000 }), { synced: 0, failed: 1 }, 'a los 6 minutos reintenta');
+    assert.equal(s.row(id).attempts, 2);
+    assert.deepEqual(await s.sync({ now: () => t0 + 6 * 60_000 + 6 * 60_000 }), { synced: 0, failed: 0 }, 'la 2.ª espera es más larga (10 min)');
+    assert.deepEqual(await s.sync({ now: () => t0 + 6 * 60_000 + 11 * 60_000 }), { synced: 0, failed: 1 });
+  } finally { await s.done(); }
+});
+
+test('sin internet (falla antes de mandar el archivo) se reintenta en cada ciclo', { skip, timeout: 30000 }, async () => {
+  const s = await setup({}, { cloudUrl: 'http://127.0.0.1:1' });
+  try {
+    const id = s.add('s1', 'Robot seguidor');
+    await s.sync();
+    assert.deepEqual(await s.sync(), { synced: 0, failed: 1 });
+    assert.equal(s.row(id).attempts, 2);
+  } finally { await s.done(); }
+});
+
+test('un ciclo no se queda horas subiendo: pasado el presupuesto de tiempo, el resto espera al siguiente', { skip, timeout: 30000 }, async () => {
+  const s = await setup();
+  try {
+    const a = s.add('s1', 'Primer video');
+    const b = s.add('s2', 'Segundo video');
+    assert.deepEqual(await s.sync({ budgetMs: 0 }), { synced: 1, failed: 0 });
+    assert.equal(s.row(a).status, 'synced');
+    assert.equal(s.row(b).status, 'pending');
+    assert.equal(s.row(b).attempts, 0, 'no se marcó como fallido');
+    assert.deepEqual(await s.sync(), { synced: 1, failed: 0 }, 'el siguiente ciclo lo sube');
+  } finally { await s.done(); }
+});
+
+test('función vieja que ignora project_upload_url y responde un pull normal: mensaje claro, no un error técnico', { skip, timeout: 30000 }, async () => {
+  const s = await setup({ oldFunction: true });
+  try {
+    const id = s.add('s1', 'Robot seguidor');
+    assert.deepEqual(await s.sync(), { synced: 0, failed: 1 });
+    assert.equal(s.row(id).last_error, 'La nube todavía no acepta proyectos: pide al administrador actualizar la función node-sync.');
+    assert.equal(s.cloud.stats.uploads, 0, 'no intentó subir nada');
   } finally { await s.done(); }
 });

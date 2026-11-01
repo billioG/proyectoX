@@ -48,7 +48,9 @@ export function createProjectStore(db, { dataDir, limits = PROJECT_LIMITS, freeD
       if (waiting >= limits.maxPendingPerStudent) {
         throw new ProjectError(409, `Ya tienes ${limits.maxPendingPerStudent} proyectos esperando para subirse. Espera a que se sincronicen o cancela alguno.`);
       }
-      if (freeMB() - v.value.size / (1024 * 1024) < limits.minFreeDiskMB) {
+      // Los borradores que aún suben ya tienen reservado su tamaño aunque el disco no lo refleje todavía.
+      const reserved = db.prepare("SELECT IFNULL(SUM(file_size), 0) n FROM projects WHERE status = 'uploading'").get().n;
+      if (freeMB() - (reserved + v.value.size) / (1024 * 1024) < limits.minFreeDiskMB) {
         throw new ProjectError(507, 'No hay espacio suficiente en la computadora de la escuela. Avisa a tu docente.');
       }
 
@@ -89,6 +91,8 @@ export function createProjectStore(db, { dataDir, limits = PROJECT_LIMITS, freeD
     cancel(id, studentId) {
       const r = row(id);
       if (!r || r.student_id !== studentId || r.status === 'synced') return false;
+      // Con el archivo ya en Storage la nube puede haberlo publicado: quitarlo aquí no lo despublica.
+      if (r.cloud_path) throw new ProjectError(409, 'Este proyecto ya se está publicando en la nube. Pide a tu docente que lo revise.');
       rmFile(safe(`${id}.part`));
       rmFile(filePathOf(r));
       db.prepare('DELETE FROM projects WHERE id = ?').run(id);

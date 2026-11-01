@@ -232,3 +232,24 @@ test('sincronización: listPending, setCloudPath, markFailed y markSynced', { sk
     assert.equal(draft.id.length > 0, true);
   } finally { s.done(); }
 });
+
+test('disco: los borradores que aún suben también cuentan como espacio ocupado', { skip }, async () => {
+  // 2300 MB libres: un video de 150 MB cabe (2150 > 2048), pero un segundo mientras el primero sube ya no.
+  const s = await setup({ freeDiskMB: () => 2300 });
+  try {
+    s.store.createDraft('s1', input({ size: 150 * 1024 * 1024 }), META);
+    await rejects(() => s.store.createDraft('s2', input({ size: 150 * 1024 * 1024 }), META), 507, /espacio/);
+  } finally { s.done(); }
+});
+
+test('cancel: un proyecto que ya está en Storage no se puede quitar (409)', { skip }, async () => {
+  const s = await setup();
+  try {
+    const { id } = s.store.createDraft('s1', input(), META);
+    receive(s, id);
+    s.store.setCloudPath(id, '1700000000_ab12cd34ef.mp4');
+    await rejects(() => s.store.cancel(id, 's1'), 409, /publicando|docente/);
+    assert.equal(s.store.listMine('s1').length, 1, 'el proyecto sigue ahí');
+    assert.ok(fs.existsSync(s.store.finalPath(id)), 'y su archivo también');
+  } finally { s.done(); }
+});

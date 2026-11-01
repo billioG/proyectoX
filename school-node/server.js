@@ -112,10 +112,25 @@ function projectRoute(method, pathname) {
   return null;
 }
 
-function deleteProject(req, res, id) {
+// Subidas en curso (id -> aborta esa subida y resuelve cuando ya limpió). Evita que un DELETE o un
+// segundo PUT toquen por debajo el archivo que otra conexión está escribiendo.
+const activeUploads = new Map();
+
+async function deleteProject(req, res, id) {
   const s = studentFromSession(req);
   if (!s) return sendJson(res, 401, { error: 'Sesión vencida' });
-  if (!UUID.test(id) || !projectStore.cancel(id, s.id)) return sendJson(res, 404, { error: 'Proyecto no encontrado.' });
+  if (!UUID.test(id)) return sendJson(res, 404, { error: 'Proyecto no encontrado.' });
+  try {
+    if (activeUploads.has(id) && projectStore.getDraft(id, s.id)) {
+      await activeUploads.get(id)();
+      return sendJson(res, 200, { ok: true });
+    }
+    if (!projectStore.cancel(id, s.id)) return sendJson(res, 404, { error: 'Proyecto no encontrado.' });
+  } catch (e) {
+    if (e instanceof ProjectError) return sendJson(res, e.status, { error: e.message });
+    console.error('No se pudo quitar un proyecto:', e.message);
+    return sendJson(res, 500, { error: 'No se pudo quitar el proyecto.' });
+  }
   sendJson(res, 200, { ok: true });
 }
 
@@ -126,20 +141,28 @@ function putProjectFile(req, res, id) {
   if (!s) { req.resume(); return sendJson(res, 401, { error: 'Sesión vencida' }); }
   const draft = UUID.test(id) ? projectStore.getDraft(id, s.id) : null;
   if (!draft) { req.resume(); return sendJson(res, 404, { error: 'Proyecto no encontrado.' }); }
+  if (activeUploads.has(id)) { req.resume(); return sendJson(res, 409, { error: 'Este archivo ya se está subiendo desde otro lugar.' }); }
 
   let finished = false;
   let out = null;
+  let cleaned = Promise.resolve();
   const abandon = (status, message) => {
     if (finished) return;
     finished = true;
+    activeUploads.delete(id);
     // El archivo se abre de forma asíncrona: se borra recién cuando el flujo cerró, si no el .part reaparece.
-    if (out) { out.once('close', () => projectStore.abortUpload(id)); out.destroy(); } else projectStore.abortUpload(id);
+    if (out) {
+      cleaned = new Promise((resolve) => out.once('close', () => { projectStore.abortUpload(id); resolve(); }));
+      out.destroy();
+    } else projectStore.abortUpload(id);
     if (status && !res.headersSent) {
       res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', Connection: 'close' });
       res.end(JSON.stringify({ error: message }));
     }
     req.destroy();
   };
+
+  activeUploads.set(id, () => { abandon(0); return cleaned; });
 
   const declared = draft.file_size;
   if (Number(req.headers['content-length']) !== declared) return abandon(400, 'El tamaño del archivo no coincide con lo que anunciaste.');
@@ -158,8 +181,16 @@ function putProjectFile(req, res, id) {
     out.end(() => {
       if (finished) return;
       if (received !== declared) return abandon(400, 'El archivo llegó incompleto.');
+      out = null; // ya cerró: si algo falla ahora, abandon limpia al momento
+      try {
+        projectStore.finishUpload(id, received);
+      } catch (e) {
+        // Un error aquí (antivirus que retiene el .part, proyecto borrado) no debe tumbar el nodo de toda la escuela.
+        console.error('No se pudo terminar la subida de un proyecto:', e.message);
+        return abandon(500, 'No se pudo guardar el proyecto. Intenta de nuevo.');
+      }
       finished = true;
-      projectStore.finishUpload(id, received);
+      activeUploads.delete(id);
       sendJson(res, 200, { ok: true });
     });
   });
