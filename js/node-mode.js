@@ -31,6 +31,7 @@ window.detectQuetzalNode = async function detectQuetzalNode() {
       .node-mode #mascot-widget-container, .node-mode #mascot-ai-modal { display: none !important; }
       .node-mode header .cursor-pointer { pointer-events: none; }
       .node-mode header button { pointer-events: auto; }
+      .node-mode header [onclick*="'profile'"] { pointer-events: auto; }
       #node-chip { display: none; }
       .node-mode #node-chip { display: inline-flex; align-items: center; gap: .4rem; padding: .35rem .75rem; border-radius: 9999px;
         background: rgba(16,185,129,.12); color: #059669; font-size: .65rem; font-weight: 900; text-transform: uppercase; letter-spacing: .02em; }`;

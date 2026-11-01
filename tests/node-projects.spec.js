@@ -142,7 +142,8 @@ test('el perfil del estudiante en el nodo muestra su avance y sus proyectos, sin
   expect((await fetch(`${node.base}/api/projects/${id}/file`, { method: 'PUT', headers: { Authorization: `Bearer ${token}` }, body: buf })).status).toBe(200);
 
   await enterAsStudent(page);
-  await page.evaluate(() => window.nav('profile'));
+  // Como el estudiante: toca su nombre en el encabezado (no llama a nav() directo).
+  await page.locator(`[onclick="nav('profile')"]`).first().click();
   await expect(page.locator('#profile-content')).toContainText('Ana Pérez');
   await expect(page.locator('#profile-content')).toContainText('Primero A');
   const course = page.locator('[data-course-progress="c1"]');
