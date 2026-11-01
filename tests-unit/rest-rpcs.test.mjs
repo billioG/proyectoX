@@ -109,3 +109,53 @@ test('el XP pendiente lo ve el propio estudiante y su salón igual que en línea
   assert.deepEqual(own, [{ id: 's1', xp: 100 }]);
   assert.deepEqual(await (await call('GET', '/rest/v1/students?select=id&id=eq.s9', { token })).json(), []);
 });
+
+const REF1 = '123e4567-e89b-42d3-a456-426614174001';
+const practice = (patch = {}) => ({ p_game: 'quiz', p_topic: 'Fracciones', p_correct: 4, p_total: 5, p_duration_ms: 42000, p_source: 'bank', p_client_ref: REF1, p_played_at: '2026-11-02T11:00:00Z', ...patch });
+
+test('Práctica: log_practice queda en la bandeja para la nube, sin duplicarse si la app reintenta', () => {
+  const { layer, ctx, db } = boot();
+  assert.equal(layer.rpcs.log_practice(practice(), ctx), null);
+  assert.equal(layer.rpcs.log_practice(practice(), ctx), null, 'mismo client_ref: no se anota otra vez');
+  layer.rpcs.log_practice(practice({ p_client_ref: '123e4567-e89b-42d3-a456-426614174002' }), ctx);
+  const sent = buildPush(db).rpc;
+  assert.equal(sent.length, 2);
+  assert.deepEqual([sent[0].fn, sent[0].student_id, sent[0].args.p_correct, sent[0].args.p_client_ref], ['log_practice', 's1', 4, REF1]);
+  assert.ok(Number.isInteger(sent[0].seq));
+});
+
+test('Práctica: resultados inválidos se rechazan como en la nube y no dejan nada; un docente no registra nada', () => {
+  const { layer, ctx, db } = boot();
+  const fails = (patch, msg) => assert.throws(() => layer.rpcs.log_practice(practice(patch), ctx), (e) => e.status === 400 && msg.test(e.message));
+  fails({ p_game: 'ruleta' }, /Juego no válido/);
+  fails({ p_total: 0 }, /Resultado no válido/);
+  fails({ p_total: 51 }, /Resultado no válido/);
+  fails({ p_correct: 9 }, /Resultado no válido/);
+  fails({ p_client_ref: 'nada' }, /Falta la referencia/);
+  assert.equal(layer.rpcs.log_practice(practice(), { uid: 't1', role: 'teacher', classKey: null }), null);
+  assert.equal(buildPush(db).rpc.length, 0);
+});
+
+test('Práctica: solo sale de la bandeja cuando la nube la aplicó o la rechazó para siempre; un error pasajero la deja', () => {
+  const { layer, ctx, db, pull, me } = boot();
+  for (const n of [1, 2, 3]) layer.rpcs.log_practice(practice({ p_client_ref: `123e4567-e89b-42d3-a456-42661417400${n}` }), ctx);
+  const push = buildPush(db);
+  const [a, b, c] = push.rpc.map((e) => e.seq);
+  applyPull(db, pull, push); // una nube anterior que no sabe de `rpc`: nada se confirma
+  assert.equal(layer.store.pendingCount(), 3);
+  applyPull(db, { ...pull, applied: { rpc: [a] }, rpc_errors: [{ seq: b, error: 'Resultado no válido', permanent: true }, { seq: c, error: 'timeout', permanent: false }] }, push);
+  assert.deepEqual(layer.store.pending().map((e) => e.seq), [c]);
+  assert.equal(me().xp, 100, 'la práctica no toca el XP');
+});
+
+test('Práctica por HTTP: la app llama /rpc/log_practice y recibe vacío, como con la nube', async () => {
+  const { layer, db } = boot();
+  const { call, token } = await serve(layer);
+  const r = await call('POST', '/rest/v1/rpc/log_practice', { token, body: practice() });
+  assert.equal(r.status, 200);
+  assert.equal(await r.json(), null);
+  assert.equal(buildPush(db).rpc.length, 1);
+  const bad = await call('POST', '/rest/v1/rpc/log_practice', { token, body: practice({ p_total: 0 }) });
+  assert.equal(bad.status, 400);
+  assert.equal((await bad.json()).code, 'P0001');
+});

@@ -30,6 +30,7 @@ import { computeStudentXp, validateXpEvent } from './xp.ts';
 import { validateReactionEvent } from './reactions.ts';
 import { buildTeacherList, shapeEvaluations, validateEvaluationEvent } from './evaluations.ts';
 import { buildClassVerifiers, pullTables } from './tables.ts';
+import { validatePracticeEvent } from './practice.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -451,6 +452,24 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ---- Funciones de la app llamadas en el nodo (hoy: log_practice, la Práctica del Centro de Juego) ----
+    // Cada evento trae su `seq` (el del nodo): lo que se aplicó vuelve en applied.rpc y lo rechazado de forma definitiva
+    // en rpc_errors con permanent: true; un error pasajero se reintenta en el próximo sync.
+    const appliedRpc: number[] = [];
+    const rpcErrors: Array<{ seq: number; error: string; permanent: boolean }> = [];
+    const rpcStartedAt = Date.now();
+    for (const raw of (Array.isArray(push.rpc) ? push.rpc : []).slice(0, 300) as any[]) {
+      if (Date.now() - rpcStartedAt > 40_000) break;
+      const seq = Number(raw?.seq);
+      if (!Number.isInteger(seq)) continue;
+      if (raw?.fn !== 'log_practice') { rpcErrors.push({ seq, error: 'Función no soportada', permanent: true }); continue; }
+      const v = validatePracticeEvent(raw, { studentIds, now: Date.now() });
+      if (!v.ok) { rpcErrors.push({ seq, error: v.error, permanent: true }); continue; }
+      const { error } = await admin.from('practice_results').upsert(v.row, { onConflict: 'student_id,client_ref', ignoreDuplicates: true });
+      if (error) { rpcErrors.push({ seq, error: error.message, permanent: false }); continue; }
+      appliedRpc.push(seq);
+    }
+
     // Tablas para la capa local compatible con Supabase del nodo (la app real corre sobre ellas sin internet) y los
     // verificadores de contraseña de clase para el login. Si falla, el pull sigue sin ellas y el nodo conserva lo que tenía.
     let restTables: Record<string, any[]> | undefined;
@@ -484,11 +503,12 @@ Deno.serve(async (req) => {
       courses,
       completions: allCompletions,
       files,
-      applied: { completions: appliedCompletions, pins: appliedPins, sessions: appliedSessions, projects: appliedProjects, xp_events: appliedXpEvents, reactions: appliedReactions, evaluations: appliedEvaluations },
+      applied: { completions: appliedCompletions, pins: appliedPins, sessions: appliedSessions, projects: appliedProjects, xp_events: appliedXpEvents, reactions: appliedReactions, evaluations: appliedEvaluations, rpc: appliedRpc },
       project_errors: projectErrors,
       xp_errors: xpErrors,
       reaction_errors: reactionErrors,
       evaluation_errors: evaluationErrors,
+      rpc_errors: rpcErrors,
       teachers: teacherList,
       evaluations: feedEvaluations,
       reactions: feedReactions,

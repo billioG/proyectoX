@@ -79,7 +79,7 @@ export function createRestRoutes({ store, auth, rpcs = {}, onChange = () => {} }
         const args = body && typeof body === 'object' ? body : {};
         const fn = publicRpcs[rpcName] || rpcs[rpcName];
         if (!fn) return send(res, 404, { code: 'PGRST202', message: `No se encontró la función ${rpcName}`, details: null, hint: null });
-        const result = fn(args, ctx);
+        const result = store.transaction(() => fn(args, ctx));
         return send(res, 200, result === undefined ? null : result);
       }
 

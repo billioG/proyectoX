@@ -39,6 +39,7 @@ export function createStore({ db, schema }) {
     delTable: db.prepare('DELETE FROM rest_rows WHERE tbl = ?'),
     enqueue: db.prepare('INSERT INTO rest_outbox (tbl, op, pk, row, created_at) VALUES (?, ?, ?, ?, ?)'),
     pending: db.prepare('SELECT seq, tbl, op, pk, row, created_at, attempts, last_error FROM rest_outbox ORDER BY seq'),
+    hasRpc: db.prepare("SELECT 1 FROM rest_outbox WHERE tbl = '_rpc' AND op = ? AND pk = ?"),
     pendingPks: db.prepare('SELECT DISTINCT pk FROM rest_outbox WHERE tbl = ?'),
     count: db.prepare('SELECT COUNT(*) AS n FROM rest_outbox'),
     ack: db.prepare('DELETE FROM rest_outbox WHERE seq = ?'),
@@ -81,10 +82,13 @@ export function createStore({ db, schema }) {
     cache.set(tbl, load(tbl).filter((r) => key(r[pk]) !== key(value)));
   }
 
+  // Las llamadas a funciones (RPC) van a la bandeja como tabla '_rpc': op = nombre de la función, row = { ref, student_id, args }.
+  const RPC = '_rpc';
   function enqueue(changes) {
     const now = new Date().toISOString();
     for (const c of changes || []) {
-      q.enqueue.run(c.table, c.op, key(c.row[pkOf(c.table)]), JSON.stringify(c.row), now);
+      const pk = c.table === RPC ? c.row.ref : c.row[pkOf(c.table)];
+      q.enqueue.run(c.table, c.op, key(pk), JSON.stringify(c.row), now);
     }
   }
 
@@ -111,6 +115,8 @@ export function createStore({ db, schema }) {
     enqueue,
     pending: () => q.pending.all().map((r) => ({ seq: r.seq, table: r.tbl, op: r.op, pk: r.pk, row: JSON.parse(r.row), created_at: r.created_at, attempts: r.attempts, last_error: r.last_error })),
     pendingCount: () => q.count.get().n,
+    /** ¿Ya hay en la bandeja esta función con esta referencia? (para no anotar dos veces un reintento de la app) */
+    hasPendingRpc: (fn, ref) => !!q.hasRpc.get(fn, key(ref)),
     ack: (seqs) => transaction(() => { for (const s of seqs) q.ack.run(s); }),
     fail: (seq, message) => { q.fail.run(String(message).slice(0, 500), seq); },
 
