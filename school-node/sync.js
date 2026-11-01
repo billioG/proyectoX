@@ -102,6 +102,17 @@ export function applyPull(db, data, pushed = {}) {
     `);
     for (const f of data.files || []) upsertFile.run({ path: f.path, etag: f.etag || '', size: f.size || 0 });
 
+    // Equipos: se reemplazan completos, pero solo si el pull los trae (una función de la
+    // nube anterior no los manda y no hay que borrar los que ya se tenían).
+    if (Array.isArray(data.groups) && Array.isArray(data.group_members)) {
+      db.prepare('DELETE FROM groups').run();
+      db.prepare('DELETE FROM group_members').run();
+      const insertGroup = db.prepare('INSERT INTO groups (id, name, grade, section) VALUES (?, ?, ?, ?)');
+      for (const g of data.groups) insertGroup.run(g.id, g.name ?? '', g.grade ?? null, g.section ?? null);
+      const insertMember = db.prepare('INSERT INTO group_members (id, group_id, student_id, role) VALUES (?, ?, ?, ?)');
+      for (const m of data.group_members) insertMember.run(m.id, m.group_id, m.student_id, m.role ?? null);
+    }
+
     setMeta(db, 'node_name', data.node?.name || '');
     setMeta(db, 'school_code', data.node?.school_code || '');
     setMeta(db, 'storage_base', data.storage_base || '');

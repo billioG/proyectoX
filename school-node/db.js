@@ -49,6 +49,26 @@ export function openDb(dataDir) {
     CREATE TABLE IF NOT EXISTS files (
       path TEXT PRIMARY KEY, etag TEXT, size INTEGER, downloaded INTEGER NOT NULL DEFAULT 0
     );
+
+    -- Proyectos que suben los estudiantes al nodo (video o modelo 3D). El archivo vive en
+    -- dataDir/projects/<id>.<ext>. status: uploading -> pending -> synced (ya está en la nube).
+    CREATE TABLE IF NOT EXISTS projects (
+      id TEXT PRIMARY KEY, student_id TEXT NOT NULL, group_id INTEGER,
+      title TEXT NOT NULL, description TEXT NOT NULL, bimestre INTEGER NOT NULL,
+      kind TEXT NOT NULL, ext TEXT NOT NULL, mime TEXT NOT NULL, file_size INTEGER,
+      upload_ip TEXT, user_agent TEXT,
+      status TEXT NOT NULL DEFAULT 'uploading',
+      cloud_path TEXT, cloud_project_id TEXT,
+      attempts INTEGER NOT NULL DEFAULT 0, last_error TEXT,
+      created_at TEXT NOT NULL, synced_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS projects_student_idx ON projects (student_id);
+    CREATE INDEX IF NOT EXISTS projects_status_idx ON projects (status);
+
+    -- Equipos de la escuela y sus miembros (los baja la sincronización).
+    CREATE TABLE IF NOT EXISTS groups (id INTEGER PRIMARY KEY, name TEXT, grade TEXT, section TEXT);
+    CREATE TABLE IF NOT EXISTS group_members (id INTEGER PRIMARY KEY, group_id INTEGER, student_id TEXT, role TEXT);
+    CREATE INDEX IF NOT EXISTS group_members_student_idx ON group_members (student_id);
   `);
   return db;
 }
