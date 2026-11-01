@@ -18,6 +18,7 @@ import './data/student-challenges.js';
 import './kolibri-sync.js';
 import './offline-kit.js';
 import './node-mode.js';
+import './node-sync-chip.js';
 import './notification-center.js';
 import './test-accounts-filter.js';
 import './onboarding.js';

@@ -354,11 +354,31 @@ const api = {
     school_code: getMeta(db, 'school_code'),
     storage_base: getMeta(db, 'storage_base'),
     last_sync_at: getMeta(db, 'last_sync_at'),
+    // Lo que falta por subir a la nube (cambios de la app real + lo del modo anterior) y cómo va la sincronización.
+    pending_changes: restStore.pendingCount()
+      + db.prepare('SELECT COUNT(*) n FROM completions WHERE dirty = 1').get().n
+      + db.prepare("SELECT COUNT(*) n FROM xp_events_local WHERE kind = 'chest'").get().n,
+    syncing,
+    sync_error: lastSyncError ? lastSyncError.message : null,
     pending: {
       completions: db.prepare('SELECT COUNT(*) n FROM completions WHERE dirty = 1').get().n,
       files: db.prepare('SELECT COUNT(*) n FROM files WHERE downloaded = 0').get().n,
     },
   }),
+
+  // «Sincronizar ahora» para cualquier estudiante con sesión (el docente tiene el suyo en el panel). No martilla a la nube:
+  // si ya se está sincronizando, o se pidió hace menos de 15 s, no arranca otra.
+  'POST /api/sync/now': (req, res) => {
+    const who = restLayer.auth.userFromAccessToken((req.headers.authorization || '').replace(/^Bearer\s+/i, ''));
+    if (!who) return sendJson(res, 401, { error: 'Entra con tu usuario para sincronizar.' });
+    if (!hasToken()) return sendJson(res, 400, { error: 'Esta escuela todavía no está conectada a la nube.' });
+    if (syncing) return sendJson(res, 200, { started: false, syncing: true });
+    if (Date.now() - lastSyncRequestAt < 15_000) return sendJson(res, 200, { started: false, throttled: true });
+    lastSyncRequestAt = Date.now();
+    lastSyncError = null;
+    trySync();
+    sendJson(res, 200, { started: true });
+  },
 
   // Lista para "¿Quién sos?": por grado y sección, sin datos sensibles.
   'GET /api/students': (req, res, url) => {
@@ -729,6 +749,7 @@ server.listen(config.port || 8080, () => {
 
 // Sync automático: cada N minutos, si hay internet.
 let syncing = false;
+let lastSyncRequestAt = 0;
 let lastSyncError = null; // { message, at } del último intento que falló
 
 function hasToken() {
