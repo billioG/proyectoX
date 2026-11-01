@@ -1,6 +1,6 @@
 # Subir proyectos desde el nodo escolar (sin internet)
 
-Fecha: 2026-10-31 · Estado: diseño aprobado, pendiente de revisión del documento
+Fecha: 2026-10-31 · Estado: diseño aprobado por el usuario; plan en `docs/superpowers/plans/2026-10-31-proyectos-en-nodo.md`
 
 ## 1. Objetivo
 
@@ -154,7 +154,7 @@ Por cada proyecto de `push.projects`, con la llave de servicio pero **limitado a
 - El nodo no guarda ninguna llave de la nube más allá de su token (que solo da acceso a su escuela).
 - La URL firmada es de un solo archivo, con ruta generada por la nube y de corta vida.
 - La nube valida todo otra vez. El HTML de título y descripción se muestra siempre escapado (como hoy).
-- El archivo se sirve de vuelta solo a su dueño mientras esté en el nodo.
+- El archivo no se expone por ninguna ruta del nodo mientras está guardado (vive fuera de `content/` y solo se sube a la nube).
 
 ## 7. Pruebas
 
