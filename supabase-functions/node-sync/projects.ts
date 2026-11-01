@@ -137,7 +137,8 @@ export function buildFeedProjects(
   for (const r of rows || []) {
     const s = byStudent.get(r?.user_id);
     if (!s) continue;
-    const evals = Array.isArray(r.evaluations) ? r.evaluations : [];
+    // PostgREST embebe la evaluación como objeto (no lista) porque evaluations.project_id es UNIQUE: se aceptan ambas.
+    const evals = Array.isArray(r.evaluations) ? r.evaluations : (r.evaluations ? [r.evaluations] : []);
     let feedback: string | null = null;
     for (const e of evals) {
       const text = typeof e?.feedback === 'string' ? e.feedback.trim() : '';

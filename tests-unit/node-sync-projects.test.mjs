@@ -149,3 +149,13 @@ test('buildFeedProjects: ordena por fecha descendente y corta en FEED_LIMIT', { 
   assert.equal(out[0].id, 'p300');
   assert.equal(out[299].id, 'p1');
 });
+
+test('buildFeedProjects: feedback también llega cuando PostgREST embebe la evaluación como objeto (UNIQUE project_id)', { skip }, () => {
+  const out = mod.buildFeedProjects([
+    row({ id: 'a', evaluations: { total_score: 80, feedback: '  Muy bien  ' } }),
+    row({ id: 'b', evaluations: { total_score: 80, feedback: '' } }),
+  ], STUDENTS, GROUPS);
+  const by = Object.fromEntries(out.map(p => [p.id, p.feedback]));
+  assert.equal(by.a, 'Muy bien');
+  assert.equal(by.b, null);
+});
