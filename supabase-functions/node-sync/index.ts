@@ -12,6 +12,10 @@
 // push.xp_events: cofres diarios que el nodo sorteó sin internet ({ kind:'chest', student_id, ref:'YYYY-MM-DD', xp, gems });
 // aquí se validan (xp.ts) y se aplican con apply_node_chest (migrations/xp-events.sql). Los 10 XP por lección los paga
 // la nube sola con un disparador al llegar el progreso. Cada alumno del pull trae xp_total, gems y daily_chest_last_claimed.
+// push.reactions: la reacción FINAL de un estudiante a un proyecto hecha en el nodo ({ student_id, project_id,
+// reaction } con reaction null = la quitó); se validan (reactions.ts) y se aplican con apply_node_reaction
+// (migrations/node-reactions.sql), así reenviar lo mismo no suma dos veces. El pull trae las reacciones propias de
+// los alumnos del nodo sobre los proyectos de las fichas (`reactions`).
 // Respuesta: alumnos, cursos (con lecciones), progreso y archivos de la
 // escuela, las fichas de proyectos de la clase (sin videos ni rutas de Storage, para el Inicio del
 // nodo), más cuántas cosas se aplicaron del push.
@@ -19,6 +23,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { buildFeedProjects, FEED_LIMIT, nextRoles, validateProjectPush, validateUploadRequest } from './projects.ts';
 import { computeStudentXp, validateXpEvent } from './xp.ts';
+import { validateReactionEvent } from './reactions.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -277,6 +282,22 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ---- Reacciones a proyectos hechas en el nodo (antes del XP y de las fichas: los votos cuentan) ----
+    const appliedReactions: string[] = [];
+    // permanent: el nodo puede olvidar esa reacción (inválida); si no, la reintenta en el próximo sync.
+    const reactionErrors: Array<{ student_id: string; project_id: unknown; error: string; permanent: boolean }> = [];
+    // Un tope por sync: lo que falte sigue pendiente en el nodo y entra en el siguiente.
+    for (const raw of (Array.isArray(push.reactions) ? push.reactions : []).slice(0, 1000) as any[]) {
+      const v = validateReactionEvent(raw ?? {}, { studentIds });
+      if (!v.ok) { reactionErrors.push({ student_id: String(raw?.student_id ?? ''), project_id: raw?.project_id, error: v.error, permanent: true }); continue; }
+      const { error } = await admin.rpc('apply_node_reaction', { p_student: v.event.student_id, p_project: v.event.project_id, p_reaction: v.event.reaction });
+      if (error) {
+        reactionErrors.push({ student_id: v.event.student_id, project_id: v.event.project_id, error: error.message, permanent: /no encontrado|no válida|no es de la escuela/i.test(error.message) });
+        continue;
+      }
+      appliedReactions.push(`${v.event.student_id}|${v.event.project_id}`);
+    }
+
     // ---- XP: cofres que sorteó el nodo (se validan y aplican) y XP total actualizado de cada alumno ----
     const appliedXpEvents: string[] = [];
     // permanent: el nodo puede olvidar ese cofre (inválido); si no, lo reintenta en el próximo sync.
@@ -343,6 +364,24 @@ Deno.serve(async (req) => {
       console.error('node-sync: no se pudieron armar las fichas de proyectos', e);
     }
 
+    // Reacciones propias de los alumnos del nodo sobre los proyectos de las fichas (para pintar su corazón y su
+    // reacción). Si falla, el pull sigue sin `reactions` y el nodo conserva las que ya tenía.
+    let feedReactions: Array<{ student_id: string; project_id: number; reaction: string }> | undefined;
+    if (feedProjects) {
+      try {
+        const projectIds = feedProjects.map((p) => Number(p.id)).filter((n) => Number.isInteger(n));
+        const rows: any[] = [];
+        for (const part of chunk(projectIds)) {
+          rows.push(...await fetchAll((from, to) => admin.from('project_likes')
+            .select('project_id, user_id, reaction').in('project_id', part).order('project_id').order('user_id').range(from, to)));
+        }
+        feedReactions = rows.filter((r) => studentIds.has(r.user_id))
+          .map((r) => ({ student_id: r.user_id, project_id: Number(r.project_id), reaction: r.reaction }));
+      } catch (e) {
+        console.error('node-sync: no se pudieron bajar las reacciones', e);
+      }
+    }
+
     const serverTime = new Date().toISOString();
     await admin.from('school_nodes').update({
       last_sync_at: serverTime,
@@ -360,9 +399,11 @@ Deno.serve(async (req) => {
       courses,
       completions: allCompletions,
       files,
-      applied: { completions: appliedCompletions, pins: appliedPins, sessions: appliedSessions, projects: appliedProjects, xp_events: appliedXpEvents },
+      applied: { completions: appliedCompletions, pins: appliedPins, sessions: appliedSessions, projects: appliedProjects, xp_events: appliedXpEvents, reactions: appliedReactions },
       project_errors: projectErrors,
       xp_errors: xpErrors,
+      reaction_errors: reactionErrors,
+      reactions: feedReactions,
     };
 
     if (!usb) return reply(pull);
