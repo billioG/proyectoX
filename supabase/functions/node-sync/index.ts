@@ -16,6 +16,10 @@
 // reaction } con reaction null = la quitó); se validan (reactions.ts) y se aplican con apply_node_reaction
 // (migrations/node-reactions.sql), así reenviar lo mismo no suma dos veces. El pull trae las reacciones propias de
 // los alumnos del nodo sobre los proyectos de las fichas (`reactions`).
+// push.evaluations: evaluaciones de proyectos que un docente hizo en el nodo ({ key, teacher_id, project_id | node_ref,
+// <criterio>_score x5, feedback }); se validan (evaluations.ts) y se aplican con apply_node_evaluation
+// (migrations/node-evaluations.sql: docente asignado, total recalculado). El pull trae `teachers` (docentes de la
+// escuela con sus clases, sin PIN: el PIN personal vive solo en el nodo) y `evaluations` (de los proyectos de las fichas).
 // Respuesta: alumnos, cursos (con lecciones), progreso y archivos de la
 // escuela, las fichas de proyectos de la clase (sin videos ni rutas de Storage, para el Inicio del
 // nodo), más cuántas cosas se aplicaron del push.
@@ -24,6 +28,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { buildFeedProjects, FEED_LIMIT, nextRoles, validateProjectPush, validateUploadRequest } from './projects.ts';
 import { computeStudentXp, validateXpEvent } from './xp.ts';
 import { validateReactionEvent } from './reactions.ts';
+import { buildTeacherList, shapeEvaluations, validateEvaluationEvent } from './evaluations.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -282,6 +287,48 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ---- Docentes de la escuela y evaluaciones hechas en el nodo (después de publicar los proyectos, antes de las fichas) ----
+    let teacherList: ReturnType<typeof buildTeacherList> | undefined;
+    try {
+      const assignments = await fetchAll((from, to) => admin.from('teacher_assignments')
+        .select('teacher_id, school_code, grade, section').eq('school_code', node.school_code).order('id').range(from, to));
+      const teacherRows: any[] = [];
+      for (const part of chunk([...new Set(assignments.map((a: any) => a.teacher_id as string))])) {
+        teacherRows.push(...await fetchAll((from, to) => admin.from('teachers')
+          .select('id, full_name, role').in('id', part).order('id').range(from, to)));
+      }
+      teacherList = buildTeacherList(teacherRows, assignments, node.school_code);
+    } catch (e) {
+      console.error('node-sync: no se pudieron armar los docentes', e);
+    }
+    const appliedEvaluations: string[] = [];
+    // permanent: el nodo puede olvidar esa evaluación (inválida o sin permiso); "aún no publicado" y los errores
+    // pasajeros se reintentan en el próximo sync.
+    const evaluationErrors: Array<{ key: string; error: string; permanent: boolean }> = [];
+    if (teacherList) {
+      const teacherIds = new Set(teacherList.map((t) => t.id));
+      // Una llamada por evaluación y el nodo corta el sync a los 120 s: tope de cantidad y de tiempo.
+      const evaluationsStartedAt = Date.now();
+      for (const raw of (Array.isArray(push.evaluations) ? push.evaluations : []).slice(0, 200) as any[]) {
+        if (Date.now() - evaluationsStartedAt > 40_000) break;
+        const key = String(raw?.key ?? '').slice(0, 80);
+        const v = validateEvaluationEvent(raw ?? {}, { teacherIds });
+        if (!v.ok) { evaluationErrors.push({ key, error: v.error, permanent: true }); continue; }
+        const { error } = await admin.rpc('apply_node_evaluation', {
+          p_teacher: v.event.teacher_id, p_school_code: node.school_code, p_project_id: v.event.project_id, p_node_ref: v.event.node_ref,
+          p_evaluation: { ...v.event.scores, feedback: v.event.feedback },
+        });
+        if (error) {
+          evaluationErrors.push({ key, error: error.message, permanent: /inválid|no encontrado|no está asignado|Falta el proyecto/i.test(error.message) });
+          continue;
+        }
+        appliedEvaluations.push(key);
+      }
+    } else if (Array.isArray(push.evaluations) && push.evaluations.length) {
+      // Sin la lista de docentes no se puede validar: todo sigue pendiente en el nodo.
+      console.error('node-sync: evaluaciones pendientes sin lista de docentes; se reintentan en el próximo sync');
+    }
+
     // ---- Reacciones a proyectos hechas en el nodo (antes del XP y de las fichas: los votos cuentan) ----
     const appliedReactions: string[] = [];
     // permanent: el nodo puede olvidar esa reacción (inválida); si no, la reintenta en el próximo sync.
@@ -385,6 +432,24 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Evaluaciones de los proyectos de las fichas (notas por criterio y observación), para que el docente vea y corrija.
+    // Si falla, el pull sigue sin `evaluations` y el nodo conserva las que ya tenía.
+    let feedEvaluations: Array<Record<string, unknown>> | undefined;
+    if (feedProjects) {
+      try {
+        const projectIds = feedProjects.map((p) => Number(p.id)).filter((n) => Number.isInteger(n));
+        const rows: any[] = [];
+        for (const part of chunk(projectIds)) {
+          rows.push(...await fetchAll((from, to) => admin.from('evaluations')
+            .select('project_id, teacher_id, total_score, creativity_score, clarity_score, functionality_score, teamwork_score, social_impact_score, feedback')
+            .in('project_id', part).order('project_id').range(from, to)));
+        }
+        feedEvaluations = shapeEvaluations(rows);
+      } catch (e) {
+        console.error('node-sync: no se pudieron bajar las evaluaciones', e);
+      }
+    }
+
     const serverTime = new Date().toISOString();
     await admin.from('school_nodes').update({
       last_sync_at: serverTime,
@@ -402,10 +467,13 @@ Deno.serve(async (req) => {
       courses,
       completions: allCompletions,
       files,
-      applied: { completions: appliedCompletions, pins: appliedPins, sessions: appliedSessions, projects: appliedProjects, xp_events: appliedXpEvents, reactions: appliedReactions },
+      applied: { completions: appliedCompletions, pins: appliedPins, sessions: appliedSessions, projects: appliedProjects, xp_events: appliedXpEvents, reactions: appliedReactions, evaluations: appliedEvaluations },
       project_errors: projectErrors,
       xp_errors: xpErrors,
       reaction_errors: reactionErrors,
+      evaluation_errors: evaluationErrors,
+      teachers: teacherList,
+      evaluations: feedEvaluations,
       reactions: feedReactions,
     };
 
