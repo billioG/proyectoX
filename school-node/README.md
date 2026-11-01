@@ -22,6 +22,9 @@ la dirección del nodo: **http://quetzal.local** (o la IP, por ejemplo
   con el código de docente del nodo. Muestra quién entró y desde qué tablet,
   permite **restablecer el PIN** de un alumno que lo olvidó y **desbloquear** a
   quien falló 5 veces. El PIN restablecido también se sincroniza con la nube.
+- **Proyectos de los estudiantes:** además de Cursos, el estudiante ve **Subir proyecto**: sube un video o modelo 3D
+  (hasta 150 MB) al nodo por el Wi-Fi de la escuela y, cuando el nodo tiene internet, se publica solo en la nube
+  (ver "Proyectos de los estudiantes" abajo).
 - En modo nodo se oculta lo que necesita internet (avisos, asistente con IA,
   perfil) y el header muestra el nombre de la escuela.
 
@@ -231,6 +234,22 @@ sudo udevadm control --reload-rules
 
 El nodo busca la carpeta `QUETZAL` en `/media`, `/mnt` y `/run/media` (en Windows, en D: a Z:). Para
 otra ruta, definir la variable de entorno `QUETZAL_USB_DIR`.
+
+## Proyectos de los estudiantes
+
+- El estudiante entra con su PIN → **Subir proyecto** → título, descripción (40 caracteres o más), bimestre, equipo
+  (o individual) y un archivo: video (`mp4 mov m4v webm 3gp avi mkv`) o modelo 3D (`stl obj glb`), de hasta 150 MB.
+  Se guarda en `dataDir/projects/` y aparece en **Mis proyectos** como «Guardado en la escuela».
+- Con internet, cada sincronización (cada 10 minutos o **Sincronizar ahora**) sube los pendientes: el archivo va
+  directo a Supabase Storage con una URL firmada y la función `node-sync` crea el proyecto (se publica solo, igual
+  que en la nube; el docente puede eliminarlo desde la app). Si falla, el motivo queda en español en «Mis
+  proyectos» y en el recuadro «Proyectos de estudiantes» del panel del docente, y se reintenta sin volver a subir
+  el archivo.
+- **Hace falta volver a publicar la función `node-sync`** (con `--no-verify-jwt`) y que el límite de archivo de
+  Supabase Storage sea de 150 MB o más.
+- Opciones en `config.json` (todas opcionales): `maxPendingProjects` (5 por estudiante), `minFreeDiskMB` (2048: se
+  rechaza si quedaría menos libre), `keepSyncedProjectDays` (7: se borra la copia local de lo ya subido).
+- Aún no incluye: fotos como proyecto, aprobación previa del docente ni subida por USB.
 
 ## Seguridad
 

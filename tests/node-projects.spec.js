@@ -90,3 +90,42 @@ test('el estudiante sube un proyecto en el nodo y lo ve en Mis proyectos', async
 
   expect(errors).toEqual([]);
 });
+
+test('el panel del docente muestra los proyectos por subir y los que fallaron', async ({ page }) => {
+  test.skip(!node, skipReason);
+  const token = await node.login('s1', '1234');
+  const make = async (title) => {
+    const buf = Buffer.alloc(1000, 5);
+    const { id } = (await node.api('/api/projects', { method: 'POST', token, body: { title, description: 'Un robot que sigue una línea negra con dos sensores.', bimestre: 1, filename: 'v.mp4', size: buf.length } })).data;
+    const put = await fetch(`${node.base}/api/projects/${id}/file`, { method: 'PUT', headers: { Authorization: `Bearer ${token}` }, body: buf });
+    expect(put.status).toBe(200);
+    return id;
+  };
+  await make('Proyecto uno');
+  await make('Proyecto dos');
+
+  await page.route(/^https?:\/\/(?!localhost|127\.0\.0\.1)/, r => r.abort('failed'));
+  await page.goto(node.base);
+  await page.waitForSelector('#node-login [data-teacher]');
+  await page.click('#node-login [data-teacher]');
+  await page.fill('#t-code', '48213976');
+  await page.click('#t-go');
+  const tile = page.locator('#t-projects');
+  await expect(tile).toContainText('2 por subir');
+  await expect(tile).toContainText('0 subidos');
+  await expect(tile).not.toContainText('con error');
+
+  // Uno falló al sincronizar: el docente lo ve.
+  await node.stopServer();
+  const { openSqlite } = await import('../tests-unit/helpers/start-node.mjs');
+  const db = openSqlite(path.join(node.dataDir, 'node.db'));
+  db.prepare("UPDATE projects SET last_error = 'No hay internet' WHERE title = 'Proyecto uno'").run();
+  db.close();
+  await node.startServer();
+  await page.reload();
+  await page.waitForSelector('#node-login [data-teacher]');
+  await page.click('#node-login [data-teacher]');
+  await page.fill('#t-code', '48213976');
+  await page.click('#t-go');
+  await expect(page.locator('#t-projects')).toContainText('1 con error');
+});

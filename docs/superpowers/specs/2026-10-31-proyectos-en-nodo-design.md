@@ -1,6 +1,6 @@
 # Subir proyectos desde el nodo escolar (sin internet)
 
-Fecha: 2026-10-31 · Estado: diseño aprobado por el usuario; plan en `docs/superpowers/plans/2026-10-31-proyectos-en-nodo.md`
+Fecha: 2026-10-31 · Estado: **implementado en v1.0.188** (falta la prueba con la nube real); plan en `docs/superpowers/plans/2026-10-31-proyectos-en-nodo.md`
 
 ## 1. Objetivo
 

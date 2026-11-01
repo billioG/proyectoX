@@ -168,7 +168,13 @@ Detalle en el dossier: https://claude.ai/artifact/BoLjSgRTYwfesywaZaxvEq
 - [ ] Probar la USB con una Raspberry real (en la versión Lite, instalar la regla de montaje del README).
 - [x] Panel del docente en el nodo: ingresos, restablecer PIN, desbloquear, estado de sincronización.
 - [x] Ocultar en modo nodo lo que necesita la nube (avisos, asistente con IA, perfil).
-- [ ] Videos de la Quetzadex en el nodo: hoy el modo nodo solo muestra Cursos (sin Centro de Juego), así que no aplica hasta llevar los juegos al nodo.
+- [x] Subir proyectos desde el nodo (video o modelo 3D, individual o de equipo, publicación automática al sincronizar): v1.0.188.
+- [ ] **Probar la subida de proyectos con la nube real**: volver a publicar `node-sync` (`--no-verify-jwt`), confirmar el límite de archivo de Storage (≥ 150 MB) y subir un video corto desde un celular en un nodo; el cableado de `supabase/functions/node-sync/index.ts` solo se probó con una nube simulada y la lógica pura, y `deno check` lo corre el CI.
+- [ ] Fotos como proyecto (en la nube y en el nodo a la vez): hoy un proyecto es video o modelo 3D.
+- [ ] Aprobación del docente antes de publicar los proyectos del nodo (hoy se publican solos, igual que en la nube).
+- [ ] Subir proyectos por memoria USB en escuelas que nunca tienen internet.
+- [ ] Llevar al nodo exámenes, asistencia y juegos (hoy sin internet funcionan Cursos y Subir proyecto).
+- [ ] Videos de la Quetzadex en el nodo: hoy el modo nodo solo muestra Cursos y Subir proyecto (sin Centro de Juego), así que no aplica hasta llevar los juegos al nodo.
 
 ## 🔵 Mejoras pendientes de la app
 

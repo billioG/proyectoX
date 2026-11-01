@@ -374,6 +374,7 @@ async function renderTeacherPanel(box) {
         <div style="padding:.8rem;border-radius:1rem;background:rgba(255,255,255,.06)"><div style="font-size:.6rem;color:#94a3b8;font-weight:800;text-transform:uppercase">Sync por USB</div><b>${when(data.node.last_usb_sync_at)}</b></div>
         <div style="padding:.8rem;border-radius:1rem;background:rgba(255,255,255,.06)"><div style="font-size:.6rem;color:#94a3b8;font-weight:800;text-transform:uppercase">Pendiente de subir</div><b>${p.completions} avances · ${p.pins} PIN · ${p.sessions} ingresos</b></div>
         <div style="padding:.8rem;border-radius:1rem;background:rgba(255,255,255,.06)"><div style="font-size:.6rem;color:#94a3b8;font-weight:800;text-transform:uppercase">Archivos por bajar</div><b>${p.files}</b></div>
+        <div id="t-projects" style="padding:.8rem;border-radius:1rem;background:rgba(255,255,255,.06)"><div style="font-size:.6rem;color:#94a3b8;font-weight:800;text-transform:uppercase">Proyectos de estudiantes</div><b>${data.projects?.pending ?? 0} por subir · ${data.projects?.synced ?? 0} subidos</b>${data.projects?.failed ? `<div style="color:#fda4af;font-size:.7rem;font-weight:800;margin-top:.2rem">${data.projects.failed} con error: revisa que haya internet</div>` : ''}</div>
       </div>
 
       ${Object.entries(byClass).map(([cls, list]) => `
