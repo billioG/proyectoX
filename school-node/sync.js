@@ -10,6 +10,7 @@ import { openDb, setMeta, getMeta } from './db.js';
 import { syncProjects } from './projects-sync.js';
 import { createXpStore } from './xp.js';
 import { createReactionStore } from './reactions.js';
+import { createEvaluationStore } from './evaluations.js';
 
 // Lo pendiente de subir a la nube (lo usa también la sincronización por USB).
 export function buildPush(db) {
@@ -21,6 +22,8 @@ export function buildPush(db) {
     xp_events: createXpStore(db).pendingChests(),
     // Reacción FINAL de cada estudiante a un proyecto (null = la quitó): la nube la aplica sin duplicar votos.
     reactions: createReactionStore(db).pending(),
+    // Evaluaciones de proyectos hechas por docentes en el nodo: la nube valida y RECALCULA el total.
+    evaluations: createEvaluationStore(db).pending(),
   };
 }
 
@@ -69,6 +72,7 @@ export function applyPull(db, data, pushed = {}) {
     // Lo de XP que se mandó ya está en la base nueva de la nube (se borra después de limpiar los avances sucios).
     createXpStore(db).clearSent(pushed.xp_events || [], pushCompletions, { applied: data.applied?.xp_events, errors: data.xp_errors });
     createReactionStore(db).clearSent(pushed.reactions || [], { applied: data.applied?.reactions, errors: data.reaction_errors });
+    createEvaluationStore(db).clearSent(pushed.evaluations || [], { applied: data.applied?.evaluations, errors: data.evaluation_errors });
 
     // Alumnos: un PIN creado acá y todavía sin subir no se pisa.
     const upsertStudent = db.prepare(`
@@ -151,6 +155,35 @@ export function applyPull(db, data, pushed = {}) {
           bimestre: p.bimestre ?? null, score: p.score ?? null, votes: p.votes ?? 0, created_at: p.created_at ?? null,
           author_name: String(p.author_name ?? ''), group_name: p.group_name ?? null, grade: p.grade ?? null, section: p.section ?? null,
           kind: p.kind === 'model' ? 'model' : 'video', feedback: p.feedback ?? null,
+        });
+      }
+    }
+
+    // Docentes de la escuela (con sus clases): se actualizan conservando el PIN personal de cada uno, se quitan los que ya
+    // no están y, si el pull no los trae (función vieja o USB antiguo), no se borra ninguno.
+    if (Array.isArray(data.teachers)) {
+      const upsertTeacher = db.prepare(`INSERT INTO teachers (id, full_name, assignments) VALUES (?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET full_name = excluded.full_name, assignments = excluded.assignments`);
+      const keep = new Set();
+      for (const t of data.teachers) {
+        if (!t || !t.id) continue;
+        keep.add(String(t.id));
+        upsertTeacher.run(String(t.id), String(t.full_name ?? ''), JSON.stringify(Array.isArray(t.assignments) ? t.assignments : []));
+      }
+      for (const { id } of db.prepare('SELECT id FROM teachers').all()) if (!keep.has(id)) db.prepare('DELETE FROM teachers WHERE id = ?').run(id);
+    }
+    // Evaluaciones de los proyectos del Inicio: se reemplazan completas solo si el pull las trae.
+    if (Array.isArray(data.evaluations)) {
+      db.prepare('DELETE FROM cloud_evaluations').run();
+      const insertEval = db.prepare(`INSERT OR REPLACE INTO cloud_evaluations
+        (project_id, teacher_id, total_score, creativity_score, clarity_score, functionality_score, teamwork_score, social_impact_score, feedback)
+        VALUES (@project_id, @teacher_id, @total_score, @creativity_score, @clarity_score, @functionality_score, @teamwork_score, @social_impact_score, @feedback)`);
+      for (const e of data.evaluations) {
+        if (!e || !Number.isInteger(Number(e.project_id))) continue;
+        insertEval.run({
+          project_id: Number(e.project_id), teacher_id: e.teacher_id ?? null, total_score: Number(e.total_score) || 0,
+          creativity_score: Number(e.creativity_score) || 0, clarity_score: Number(e.clarity_score) || 0, functionality_score: Number(e.functionality_score) || 0,
+          teamwork_score: Number(e.teamwork_score) || 0, social_impact_score: Number(e.social_impact_score) || 0, feedback: e.feedback ?? null,
         });
       }
     }
