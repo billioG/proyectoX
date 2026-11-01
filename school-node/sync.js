@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { openDb, setMeta, getMeta } from './db.js';
 import { syncProjects } from './projects-sync.js';
 import { createXpStore } from './xp.js';
+import { createReactionStore } from './reactions.js';
 
 // Lo pendiente de subir a la nube (lo usa también la sincronización por USB).
 export function buildPush(db) {
@@ -18,6 +19,8 @@ export function buildPush(db) {
     sessions: db.prepare('SELECT id, student_id, device, entered_at FROM session_logs WHERE dirty = 1').all(),
     // Cofres diarios sorteados aquí: la nube los valida (un cofre por día, solo premios válidos) y los aplica.
     xp_events: createXpStore(db).pendingChests(),
+    // Reacción FINAL de cada estudiante a un proyecto (null = la quitó): la nube la aplica sin duplicar votos.
+    reactions: createReactionStore(db).pending(),
   };
 }
 
@@ -65,6 +68,7 @@ export function applyPull(db, data, pushed = {}) {
     for (const s of pushSessions) clearSession.run(s.id);
     // Lo de XP que se mandó ya está en la base nueva de la nube (se borra después de limpiar los avances sucios).
     createXpStore(db).clearSent(pushed.xp_events || [], pushCompletions, { applied: data.applied?.xp_events, errors: data.xp_errors });
+    createReactionStore(db).clearSent(pushed.reactions || [], { applied: data.applied?.reactions, errors: data.reaction_errors });
 
     // Alumnos: un PIN creado acá y todavía sin subir no se pisa.
     const upsertStudent = db.prepare(`
@@ -148,6 +152,16 @@ export function applyPull(db, data, pushed = {}) {
           author_name: String(p.author_name ?? ''), group_name: p.group_name ?? null, grade: p.grade ?? null, section: p.section ?? null,
           kind: p.kind === 'model' ? 'model' : 'video', feedback: p.feedback ?? null,
         });
+      }
+    }
+
+    // Reacciones propias de los alumnos sobre los proyectos del Inicio: se reemplazan completas, pero solo si el pull
+    // las trae (una función anterior o un archivo USB antiguo no las mandan y no hay que borrar las que ya había).
+    if (Array.isArray(data.reactions)) {
+      db.prepare('DELETE FROM cloud_reactions').run();
+      const insertReaction = db.prepare('INSERT OR REPLACE INTO cloud_reactions (student_id, project_id, reaction) VALUES (?, ?, ?)');
+      for (const r of data.reactions) {
+        if (r && r.student_id && Number.isInteger(Number(r.project_id)) && r.reaction) insertReaction.run(String(r.student_id), Number(r.project_id), String(r.reaction));
       }
     }
 

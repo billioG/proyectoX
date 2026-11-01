@@ -70,6 +70,17 @@ export function openDb(dataDir) {
     CREATE TABLE IF NOT EXISTS group_members (id INTEGER PRIMARY KEY, group_id INTEGER, student_id TEXT, role TEXT);
     CREATE INDEX IF NOT EXISTS group_members_student_idx ON group_members (student_id);
 
+    -- Reacciones a proyectos: la base que baja el pull (la reacción de cada estudiante) y la reacción FINAL pendiente
+    -- de cada par estudiante-proyecto (reaction NULL = la quitó).
+    CREATE TABLE IF NOT EXISTS cloud_reactions (
+      student_id TEXT NOT NULL, project_id INTEGER NOT NULL, reaction TEXT NOT NULL,
+      PRIMARY KEY (student_id, project_id)
+    );
+    CREATE TABLE IF NOT EXISTS reactions_local (
+      student_id TEXT NOT NULL, project_id INTEGER NOT NULL, reaction TEXT, updated_at TEXT NOT NULL,
+      PRIMARY KEY (student_id, project_id)
+    );
+
     -- XP que el estudiante ganó en este nodo y la nube todavía no confirmó (lección completada, cofre diario).
     CREATE TABLE IF NOT EXISTS xp_events_local (
       id INTEGER PRIMARY KEY AUTOINCREMENT, student_id TEXT NOT NULL, kind TEXT NOT NULL, ref TEXT NOT NULL,
