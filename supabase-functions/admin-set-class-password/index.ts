@@ -136,7 +136,7 @@ Deno.serve(async (req) => {
 
     const grade = String(body?.grade || '').trim();
     const section = String(body?.section || '').trim();
-    if (!grade || !section) return json({ error: 'grade y section son requeridos (o mandá apply_to_whole_school: true)' }, 400);
+    if (!grade || !section) return json({ error: 'grade y section son requeridos (o manda apply_to_whole_school: true)' }, 400);
 
     const { updated, errors } = await applyOneClass(admin, caller.id, school_code, grade, section, requires_password, password);
     return json({ ok: true, updated, errors, password: requires_password ? password : null });

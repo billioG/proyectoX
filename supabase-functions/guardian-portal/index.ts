@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
     const { data: g } = await admin.from('student_guardians')
       .select('id, name, student_id, consent_status, consent_version, students(full_name, school_code, schools(name))')
       .eq('portal_token', token).maybeSingle();
-    if (!g) return json({ error: 'Este enlace ya no es válido. Pedile uno nuevo al docente.' }, 404);
+    if (!g) return json({ error: 'Este enlace ya no es válido. Pídele uno nuevo al docente.' }, 404);
 
     if (action === 'subscribe') {
       const s = subscription;

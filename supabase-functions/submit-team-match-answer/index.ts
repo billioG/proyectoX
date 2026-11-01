@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
       .select('id, captain_id')
       .in('id', [match.team_a_id, match.team_b_id]);
     const myTeam = (teams || []).find((t: any) => t.captain_id === user.id);
-    if (!myTeam) return json({ error: 'No sos capitán de ninguno de los dos equipos' }, 403);
+    if (!myTeam) return json({ error: 'No eres capitán de ninguno de los dos equipos' }, 403);
 
     const { data: existing } = await admin
       .from('tournament_match_answers')

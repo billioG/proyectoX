@@ -142,7 +142,7 @@ Deno.serve(async (req) => {
     const bugKinds = ['un número o cantidad equivocada', 'una causa y efecto invertidos', 'una clasificación incorrecta (a qué grupo/categoría pertenece algo)', 'un orden de pasos o etapas equivocado', 'una unidad de medida equivocada', 'confundir dos cosas parecidas entre sí'];
     const shuffled = [...bugKinds].sort(() => Math.random() - 0.5);
 
-    const system = `Armá ${need > 1 ? `${need} secuencias DISTINTAS` : 'una secuencia'} de 5 a 7 afirmaciones cortas (una oración cada
+    const system = `Arma ${need > 1 ? `${need} secuencias DISTINTAS` : 'una secuencia'} de 5 a 7 afirmaciones cortas (una oración cada
 una) sobre el tema indicado, apropiadas para un estudiante de ${grade} en Guatemala.
 Tienen que ser datos concretos y verificables (no opiniones), del estilo "El agua
 hierve a 100°C a nivel del mar", "La Tierra tarda 365 días en dar una vuelta al Sol".
@@ -152,8 +152,8 @@ una vez que se explica (ej: un número equivocado, una causa y efecto invertidos
 clasificación incorrecta). Las demás afirmaciones tienen que ser perfectamente
 correctas y verificables -- no generes ambigüedad de cuál es la falsa.
 
-MUY IMPORTANTE: revisá vos mismo que haya UNA SOLA afirmación falsa por secuencia, y
-que el error sea un hecho objetivo (no una opinión ni algo discutible). Poné la
+MUY IMPORTANTE: revisa tú mismo que haya UNA SOLA afirmación falsa por secuencia, y
+que el error sea un hecho objetivo (no una opinión ni algo discutible). Pon la
 afirmación falsa en una posición AL AZAR dentro de la secuencia (no siempre en el
 mismo lugar).
 
@@ -162,18 +162,18 @@ Responde ÚNICAMENTE con JSON válido, sin texto adicional, con esta forma exact
 
 El campo "fact" es UN dato curioso y educativo sobre el tema (1 o 2 oraciones, máximo
 220 caracteres) que le deje un aprendizaje al estudiante, DISTINTO de la afirmación
-falsa. Tiene que ser verdadero y verificable; si no estás seguro de un dato, escribí
+falsa. Tiene que ser verdadero y verificable; si no estás seguro de un dato, escribe
 en su lugar un consejo práctico para verificar información antes de creerla.`;
 
     const userMsg = `Tema: ${topic.slice(0, 200)}\nTipo de error: ${shuffled.slice(0, need).join(' / ')}.`
-      + (seenLabels.length ? `\nEstos errores YA salieron en otros retos, armá otros distintos:\n- ${[...new Set(seenLabels)].slice(0, 30).join('\n- ')}` : '');
+      + (seenLabels.length ? `\nEstos errores YA salieron en otros retos, arma otros distintos:\n- ${[...new Set(seenLabels)].slice(0, 30).join('\n- ')}` : '');
 
     // Groq a veces rechaza su propia salida en modo JSON estricto, o genera
     // 0/2+ afirmaciones marcadas como falsas (inválido para el juego) --
     // ambos casos son intermitentes, no dependen del tema. Se reintenta hasta 3
     // veces; el último acepta repetidas antes que dejar al alumno sin juego.
     const picked: StepSet[] = [];
-    let lastError = 'La IA no generó una secuencia válida (probá de nuevo)';
+    let lastError = 'La IA no generó una secuencia válida (prueba de nuevo)';
     for (let attempt = 1; attempt <= 3 && picked.length < need; attempt++) {
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',

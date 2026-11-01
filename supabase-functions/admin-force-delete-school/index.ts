@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
     if (dupErr) return json({ error: dupErr.message }, 500);
     if (sameCodeSchools && sameCodeSchools.length > 0) {
       return json({
-        error: `El código "${code}" también lo usa: ${sameCodeSchools.map(s => s.name).join(', ')}. Corregí los códigos duplicados en Establecimientos antes de forzar esta eliminación -- si no, se borrarían los datos de esos otros establecimientos también.`,
+        error: `El código "${code}" también lo usa: ${sameCodeSchools.map(s => s.name).join(', ')}. Corrige los códigos duplicados en Establecimientos antes de forzar esta eliminación -- si no, se borrarían los datos de esos otros establecimientos también.`,
       }, 409);
     }
 

@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
     quiz: { table: 'student_duels', label: 'Comprensión Lectora', hasTopic: true },
     hangman: { table: 'student_hangman_duels', label: 'Ahorcado', hasTopic: true },
     timed_math: { table: 'student_timed_math_duels', label: 'Contrarreloj', hasTopic: false },
-    debug: { table: 'student_debug_duels', label: 'Encontrá el Error', hasTopic: true },
+    debug: { table: 'student_debug_duels', label: 'Encuentra el Error', hasTopic: true },
     spelling: { table: 'student_spelling_duels', label: 'Ortografía', hasTopic: true },
   };
 
@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
     if (type === 'challenge') {
       messages.push({ to: duel.opponent_id, payload: { title: `⚔️ Nuevo ${config.label}`, body: `${challengerName} te retó por ${duel.wager_gems} gemas -- ${subject}` } });
     } else if (type === 'accepted') {
-      messages.push({ to: duel.challenger_id, payload: { title: '✅ Reto Aceptado', body: `${opponentName} aceptó tu desafío -- ¡ya podés jugar!` } });
+      messages.push({ to: duel.challenger_id, payload: { title: '✅ Reto Aceptado', body: `${opponentName} aceptó tu desafío -- ¡ya puedes jugar!` } });
     } else {
       if (duel.status !== 'completed' || duel.result_notified_at) return json({ ok: true, skipped: true });
       const { data: claimed } = await admin.from(config.table)
@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
           ? { title: '🤝 ¡Empate!', body: `Empataste con ${rival} en ${config.label}. ¿Desempate?` }
           : duel.winner_id === me
             ? { title: '🏆 ¡Ganaste!', body: `Le ganaste a ${rival} en ${config.label}${duel.wager_gems ? ` -- +${duel.wager_gems} gemas` : ''}` }
-            : { title: '😤 Te ganaron', body: `${rival} te ganó en ${config.label}. ¡Pedile la revancha!` };
+            : { title: '😤 Te ganaron', body: `${rival} te ganó en ${config.label}. ¡Pídele la revancha!` };
         messages.push({ to: me, payload });
       }
     }

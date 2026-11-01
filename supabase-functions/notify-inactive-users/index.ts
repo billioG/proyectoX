@@ -59,7 +59,7 @@ function emailHtml(name: string, kind: '24h' | '3d'): { subject: string; html: s
       html: baseTemplate({
         badge: 'Racha en riesgo',
         heading: `¡Hola, ${firstName}!`,
-        body: 'Ayer no te vimos en Quetzal LMS. Tu racha te está esperando -- entrá hoy para no perderla.',
+        body: 'Ayer no te vimos en Quetzal LMS. Tu racha te está esperando -- entra hoy para no perderla.',
         cta: 'Volver a entrar',
       }),
     };
@@ -69,7 +69,7 @@ function emailHtml(name: string, kind: '24h' | '3d'): { subject: string; html: s
     html: baseTemplate({
       badge: '3+ días sin ingresar',
       heading: `${firstName}, hace días que no te vemos`,
-      body: 'Ya pasaron 3 días desde tu última visita. Tus compañeros siguen avanzando -- volvé cuando puedas, acá te esperamos.',
+      body: 'Ya pasaron 3 días desde tu última visita. Tus compañeros siguen avanzando -- vuelve cuando puedas, acá te esperamos.',
       cta: 'Entrar ahora',
     }),
   };
