@@ -78,16 +78,23 @@ test('flujo feliz: borrador, archivo y Mis proyectos', { skip, timeout: 60000 },
   } finally { await node.stop(); }
 });
 
-test('el archivo que se pasa de lo anunciado se corta: sin .part, sin borrador, cupo intacto', { skip, timeout: 60000 }, async () => {
+test('el archivo que se pasa de lo anunciado nunca se guarda de más: sin .part y cupo intacto', { skip, timeout: 60000 }, async () => {
   const { node, t1 } = await boot({ projectMaxBytes: 1_000_000 });
   try {
     const { id } = (await node.api('/api/projects', { method: 'POST', token: t1, body: draft({ size: 500_000 }) })).data;
-    // Anuncia 500 KB pero manda 3 MB.
-    const cut = await rawPut(node, id, t1, { contentLength: 500_000, chunks: [Buffer.alloc(1_000_000), Buffer.alloc(1_000_000), Buffer.alloc(1_000_000)] });
-    assert.ok(cut.error || cut.status === 413, `debía cortarse: ${JSON.stringify(cut)}`);
-    await waitFor(async () => files(node).length === 0 && (await node.api('/api/projects/mine', { token: t1 })).data.projects.length === 0);
+    // Anuncia 500 KB pero manda 3 MB. HTTP toma los primeros 500 KB como la petición completa y el resto como
+    // basura que corta la conexión; según quién llegue primero el servidor ve la subida exacta o la aborta.
+    await rawPut(node, id, t1, { contentLength: 500_000, chunks: [Buffer.alloc(1_000_000), Buffer.alloc(1_000_000), Buffer.alloc(1_000_000)] });
+    const mine = async () => (await node.api('/api/projects/mine', { token: t1 })).data.projects;
+    await waitFor(async () => !files(node).some(f => f.endsWith('.part')) && (await mine()).every(p => p.status !== 'uploading'));
+    const left = await mine();
+    assert.ok(left.length <= 1, 'a lo sumo la subida exacta');
+    for (const p of left) {
+      assert.equal(p.file_size, 500_000, 'jamás más de lo anunciado');
+      assert.equal(fs.statSync(path.join(projectsDir(node), `${p.id}.mp4`)).size, 500_000);
+      assert.equal((await node.api(`/api/projects/${p.id}`, { method: 'DELETE', token: t1 })).status, 200);
+    }
     assert.deepEqual(files(node), [], 'no queda ningún archivo');
-    assert.deepEqual((await node.api('/api/projects/mine', { token: t1 })).data.projects, [], 'no queda borrador');
     for (let i = 0; i < 5; i++) {
       const ok = await node.api('/api/projects', { method: 'POST', token: t1, body: draft({ title: `Proyecto ${i}`, size: 1000 }) });
       assert.equal(ok.status, 200, `el cupo debía seguir libre (${i})`);
