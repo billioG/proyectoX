@@ -6,15 +6,19 @@
 //
 // Deploy con "Verify JWT" en OFF (el nodo no tiene usuario de Supabase).
 //
-// Body: { push?: { completions?: [], pins?: [], sessions?: [] } }
+// Body: { push?: { completions?: [], pins?: [], sessions?: [], projects?: [] } }
+//   o  { action: 'project_upload_url', client_ref, ext, size }  ->  { path, signed_url } (el nodo sube el
+//   archivo de un proyecto directo a Storage con esa URL y luego lo confirma en push.projects).
 // Respuesta: alumnos, cursos (con lecciones), progreso y archivos de la
 // escuela, más cuántas cosas se aplicaron del push.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { nextRoles, validateProjectPush, validateUploadRequest } from './projects.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const BUCKET = 'course-content';
+const PROJECT_BUCKET = 'project-videos';
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -107,7 +111,7 @@ Deno.serve(async (req) => {
     usb = body?.usb;
     const authHeader = req.headers.get('Authorization') || '';
     const { data: { user } } = await admin.auth.getUser(authHeader.replace(/^Bearer\s+/i, ''));
-    if (!user) return reply({ error: 'Iniciá sesión como docente o administrador' }, 401);
+    if (!user) return reply({ error: 'Inicia sesión como docente o administrador' }, 401);
     if (!/^[0-9a-f]{64}$/.test(usb?.node?.token_hash || '') || typeof usb?.public_key !== 'string') {
       return reply({ error: 'El archivo de la USB no es válido' }, 400);
     }
@@ -123,6 +127,16 @@ Deno.serve(async (req) => {
   }
   if (!node || node.revoked_at) return reply({ error: 'Nodo no autorizado o revocado' }, 401);
 
+  // Permiso de subida de un archivo de proyecto (video o modelo 3D): URL firmada de un solo archivo,
+  // con ruta generada aquí. Solo para nodos con token (no por USB). Se responde antes del pull pesado.
+  if (!usb && body?.action === 'project_upload_url') {
+    const v = validateUploadRequest(body);
+    if (!v.ok) return reply({ error: v.error }, 400);
+    const { data, error } = await admin.storage.from(PROJECT_BUCKET).createSignedUploadUrl(v.path);
+    if (error || !data) return reply({ error: `No se pudo preparar la subida: ${error?.message || 'sin respuesta'}` }, 500);
+    return reply({ path: v.path, signed_url: data.signedUrl });
+  }
+
   try {
     const push = (usb ? usb.push : body?.push) || {};
 
@@ -130,6 +144,15 @@ Deno.serve(async (req) => {
       .select('id, username, full_name, grade, section, profile_photo_url, status, companion_species, gems_earned_total, companion_equipped, pin_hash, pin_salt, pin_updated_at')
       .eq('school_code', node.school_code).order('id').range(from, to));
     const studentIds = new Set(students.map((s: any) => s.id));
+
+    // Equipos de la escuela y sus miembros: el nodo los usa para elegir equipo, y aquí para validar proyectos.
+    const groups = await fetchAll((from, to) => admin.from('groups')
+      .select('id, name, grade, section').eq('school_code', node.school_code).order('id').range(from, to));
+    const groupMembers: any[] = [];
+    for (const ids of chunk(groups.map((g: any) => g.id))) {
+      groupMembers.push(...await fetchAll((from, to) => admin.from('group_members')
+        .select('id, group_id, student_id, role').in('group_id', ids).order('id').range(from, to)));
+    }
 
     // ---- PUSH ----
     let appliedCompletions = 0, appliedPins = 0, appliedSessions = 0;
@@ -177,6 +200,54 @@ Deno.serve(async (req) => {
       if (!error) appliedSessions = sessions.length;
     }
 
+    // Proyectos subidos en la escuela: el archivo ya está en Storage (URL firmada); aquí se valida y se publica.
+    const appliedProjects: Array<{ client_ref: string; project_id: string }> = [];
+    const projectErrors: Array<{ client_ref: string; error: string }> = [];
+    const pushedProjects: any[] = !usb && Array.isArray(push.projects) ? push.projects : [];
+    if (pushedProjects.length) {
+      const membersOf = new Map<number, Set<string>>();
+      for (const m of groupMembers) {
+        if (!membersOf.has(m.group_id)) membersOf.set(m.group_id, new Set());
+        membersOf.get(m.group_id)!.add(m.student_id);
+      }
+      const sizes = new Map<string, number | null>();
+      for (const p of pushedProjects) {
+        if (typeof p?.cloud_path !== 'string') continue;
+        const { data } = await admin.storage.from(PROJECT_BUCKET).list('', { limit: 5, search: p.cloud_path });
+        const hit = (data || []).find((o: any) => o.name === p.cloud_path);
+        sizes.set(p.cloud_path, hit ? Number(hit.metadata?.size ?? 0) : null);
+      }
+      for (const p of pushedProjects) {
+        const ref = String(p?.client_ref ?? '');
+        const v = validateProjectPush(p, { nodeId: node.id, studentIds, membersOf, objectSize: (path) => sizes.get(path) ?? null });
+        if (!v.ok) { projectErrors.push({ client_ref: ref, error: v.error }); continue; }
+        const row: any = { ...v.row };
+
+        // Idempotencia: un reintento no duplica (misma referencia del nodo, o mismo estudiante + título + bimestre).
+        const { data: sameRef } = await admin.from('projects').select('id').eq('client_metadata->>node_ref', ref).limit(1);
+        const { data: sameTitle } = sameRef?.length ? { data: null } : await admin.from('projects').select('id')
+          .eq('user_id', row.user_id).eq('title', row.title).eq('bimestre', row.bimestre).limit(1);
+        const existing = sameRef?.[0] || sameTitle?.[0];
+        if (existing) { appliedProjects.push({ client_ref: ref, project_id: String(existing.id) }); continue; }
+
+        row.video_url = `${SUPABASE_URL}/storage/v1/object/public/${PROJECT_BUCKET}/${row.cloud_path}`;
+        delete row.cloud_path;
+        const { data: inserted, error } = await admin.from('projects').insert(row).select('id').single();
+        if (error || !inserted) { projectErrors.push({ client_ref: ref, error: `No se pudo crear el proyecto: ${error?.message || 'sin respuesta'}` }); continue; }
+
+        // Proyecto de equipo: rotar los roles, como hace la app al publicar.
+        if (row.group_id !== null) {
+          const members = groupMembers.filter((m: any) => m.group_id === row.group_id);
+          for (const r of nextRoles(members)) {
+            await admin.from('group_members').update({ role: r.role }).eq('id', r.id);
+            const local = members.find((m: any) => m.id === r.id);
+            if (local) local.role = r.role;
+          }
+        }
+        appliedProjects.push({ client_ref: ref, project_id: String(inserted.id) });
+      }
+    }
+
     // ---- PULL ----
     const courses = await fetchAll((from, to) => admin.from('courses')
       .select('*, lessons(*)').eq('school_code', node.school_code).order('id').range(from, to));
@@ -204,7 +275,7 @@ Deno.serve(async (req) => {
     const serverTime = new Date().toISOString();
     await admin.from('school_nodes').update({
       last_sync_at: serverTime,
-      last_sync_info: { via: usb ? 'usb' : 'internet', students: students.length, courses: courses.length, files: files.length, appliedCompletions, appliedPins, appliedSessions },
+      last_sync_info: { via: usb ? 'usb' : 'internet', students: students.length, courses: courses.length, files: files.length, appliedCompletions, appliedPins, appliedSessions, appliedProjects: appliedProjects.length },
     }).eq('id', node.id);
 
     const pull = {
@@ -212,10 +283,13 @@ Deno.serve(async (req) => {
       node: { id: node.id, name: node.name, school_code: node.school_code },
       storage_base: storagePrefix,
       students,
+      groups,
+      group_members: groupMembers,
       courses,
       completions: allCompletions,
       files,
-      applied: { completions: appliedCompletions, pins: appliedPins, sessions: appliedSessions },
+      applied: { completions: appliedCompletions, pins: appliedPins, sessions: appliedSessions, projects: appliedProjects },
+      project_errors: projectErrors,
     };
 
     if (!usb) return reply(pull);
