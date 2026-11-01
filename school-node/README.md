@@ -251,6 +251,20 @@ otra ruta, definir la variable de entorno `QUETZAL_USB_DIR`.
   rechaza si quedaría menos libre), `keepSyncedProjectDays` (7: se borra la copia local de lo ya subido).
 - Aún no incluye: fotos como proyecto, aprobación previa del docente ni subida por USB.
 
+### XP del estudiante
+
+- Ganan XP al completar lecciones (+10 una sola vez), con el cofre diario (el nodo sortea 20, 50 o 100 XP y sus
+  gemas) y al publicarse sus proyectos (50 XP más la nota, calculado por la nube).
+- La nube es la única que escribe XP y gemas. El nodo guarda la **base** que bajó la última sincronización
+  (`xp_total`, `gems`, `daily_chest_last_claimed`, dentro de `students.extra`) y los **eventos pendientes**
+  (`xp_events_local`). `GET /api/xp` suma ambos; al sincronizar se envían los cofres, la nube los valida (un cofre
+  por día, solo premios válidos, fecha de hasta 3 días atrás) y los pendientes enviados se borran porque la base
+  nueva ya los incluye. El día cambia en hora de Guatemala (UTC-6).
+- Hace falta, en este orden: ejecutar `migrations/xp-events.sql` en Supabase, volver a publicar `node-sync`
+  (subiendo también `xp.ts`) y actualizar el nodo. Con la función anterior el Perfil parte de 0 XP.
+- Un administrador de la computadora de la escuela podría forzar siempre el premio mayor del cofre: la nube solo
+  puede comprobar que sea un premio válido y uno por día.
+
 ### Inicio del estudiante (proyectos de la clase)
 
 - Cada sincronización baja las **fichas** de los proyectos de la escuela (los 300 más recientes: título, autor,

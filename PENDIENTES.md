@@ -173,6 +173,10 @@ Detalle en el dossier: https://claude.ai/artifact/BoLjSgRTYwfesywaZaxvEq
 - [x] Inicio del estudiante en el nodo con las fichas de proyectos de su clase (sin videos): v1.0.191.
 - [ ] **Probar el Inicio del nodo con la nube real**: volver a publicar `node-sync` (con `projects.ts`), sincronizar y comprobar que aparecen las fichas aprobadas de la clase; la consulta de `index.ts` solo se probó con la lógica pura.
 - [ ] Videos y modelos 3D de los compañeros en el nodo (hoy solo fichas), y votos/reacciones sin internet.
+- [x] XP sin internet en el nodo (lecciones, proyectos, cofre diario) y +10 XP por lección también con internet: v1.0.193.
+- [ ] **Probar el XP con la nube real**: ejecutar `migrations/xp-events.sql`, volver a publicar `node-sync` (con `xp.ts`), completar una lección y abrir el cofre en un nodo, sincronizar y comprobar que el XP y las gemas suben una sola vez; ni el SQL ni la consulta de `index.ts` se pudieron probar de forma automática.
+- [ ] XP retroactivo por las lecciones ya completadas antes de v1.0.193 (hoy no se paga).
+- [ ] Gemas por lecciones, tienda, insignias, retos y ranking en el nodo (hoy el Perfil del nodo solo muestra XP, nivel y gemas).
 - [ ] Fotos como proyecto (en la nube y en el nodo a la vez): hoy un proyecto es video o modelo 3D.
 - [ ] Aprobación del docente antes de publicar los proyectos del nodo (hoy se publican solos, igual que en la nube).
 - [ ] Subir proyectos por memoria USB en escuelas que nunca tienen internet.

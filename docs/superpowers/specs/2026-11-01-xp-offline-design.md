@@ -1,6 +1,6 @@
 # XP sin internet (nodo escolar) con sincronización a la nube
 
-Estado: diseño aprobado por el usuario (2026-11-01); pendiente revisión del spec escrito.
+Estado: **implementado en v1.0.193** (falta la prueba con la nube real); plan en `docs/superpowers/plans/2026-11-01-xp-offline.md`.
 
 ## Objetivo
 Los estudiantes del nodo (sin internet) ganan XP al completar lecciones, al subir proyectos y al abrir el
