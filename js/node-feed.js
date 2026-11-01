@@ -7,6 +7,16 @@
 
 const esc = (v) => (window.sanitizeInput ? window.sanitizeInput(String(v ?? '')) : String(v ?? ''));
 
+// Las mismas cinco reacciones de la app con internet (js/reactions.js); solo ❤️ y ⭐ cuentan como voto.
+const REACTIONS = [
+  { key: 'like', emoji: '❤️', label: 'Me gusta' },
+  { key: 'excelente', emoji: '⭐', label: '¡Excelente, A+!' },
+  { key: 'wow', emoji: '🤩', label: '¡WOW!' },
+  { key: 'destacar', emoji: '🏅', label: 'Merece destacarse' },
+  { key: 'animo', emoji: '💪', label: '¡Sigue adelante!' },
+];
+const reactionIcon = (key) => REACTIONS.find(r => r.key === key)?.emoji || '<i class="fas fa-heart"></i>';
+
 const STATE = {
   uploading: 'Subiendo...',
   pending: 'Guardado en la escuela',
@@ -32,8 +42,47 @@ function card(p) {
       </div>
       <p class="text-xs text-slate-600 dark:text-slate-300 break-words">${esc(p.description)}</p>
       ${p.feedback ? `<p class="text-[0.7rem] font-bold text-slate-500 border-l-4 border-primary/40 pl-2">Comentario de tu docente: ${esc(p.feedback)}</p>` : ''}
-      <div>${badge(p)}</div>
+      <div class="flex items-center justify-between gap-3">
+        <div>${badge(p)}</div>
+        ${p.state === 'cloud' ? `
+        <div class="flex items-center gap-2">
+          <button type="button" data-react-btn class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-lg" title="Reaccionar" aria-label="Reaccionar a este proyecto"><span data-react-icon>${reactionIcon(p.my_reaction)}</span></button>
+          <span class="text-xs font-black text-slate-600 dark:text-slate-300 min-w-[1.5rem] text-center" title="Votos"><span data-votes>${esc(p.votes ?? 0)}</span></span>
+        </div>` : ''}
+      </div>
+      ${p.state === 'cloud' ? `
+      <div data-react-picker class="hidden flex flex-wrap gap-2">
+        ${REACTIONS.map(r => `<button type="button" data-react-pick="${r.key}" class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-xl" title="${esc(r.label)}" aria-label="${esc(r.label)}">${r.emoji}</button>`).join('')}
+      </div>` : ''}
     </article>`;
+}
+
+// Reaccionar: se guarda en el nodo y la nube lo cuenta al sincronizar. Un clic en el botón abre las cinco
+// reacciones; elegir la que ya tienes la quita.
+async function onReactClick(e) {
+  const card = e.target.closest('[data-feed-project]');
+  if (!card) return;
+  if (e.target.closest('[data-react-btn]')) {
+    const picker = card.querySelector('[data-react-picker]');
+    document.querySelectorAll('#feed-container [data-react-picker]').forEach(el => { if (el !== picker) el.classList.add('hidden'); });
+    picker?.classList.toggle('hidden');
+    return;
+  }
+  const pick = e.target.closest('[data-react-pick]');
+  if (!pick) return;
+  pick.disabled = true;
+  try {
+    const r = await window.nodeApi(`/api/projects/${encodeURIComponent(card.dataset.feedProject)}/react`, { method: 'POST', body: { reaction: pick.dataset.reactPick } });
+    card.querySelector('[data-react-icon]').innerHTML = reactionIcon(r.mine);
+    card.querySelector('[data-votes]').textContent = String(r.votes);
+    card.querySelector('[data-react-picker]')?.classList.add('hidden');
+    const info = REACTIONS.find(x => x.key === r.mine);
+    window.showToast?.(info ? `${info.emoji} ${info.label}` : '<i class="fas fa-heart-crack"></i> Reacción removida', info ? 'success' : 'default');
+  } catch (err) {
+    window.showToast?.(`<i class="fas fa-circle-xmark"></i> ${esc(err.message)}`, 'error');
+  } finally {
+    pick.disabled = false;
+  }
 }
 
 window.loadNodeFeed = async function loadNodeFeed() {
@@ -54,6 +103,7 @@ window.loadNodeFeed = async function loadNodeFeed() {
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-20">${projects.map(card).join('')}</div>`;
     }
     document.getElementById('node-feed-upload')?.addEventListener('click', () => window.nav('upload'));
+    box.onclick = onReactClick; // una sola vez por carga (reemplaza el anterior)
     // Cofre diario (sin internet lo sortea el nodo): si hoy no se abrió, ofrece el cofre.
     window.checkDailyChest?.();
   } catch (e) {

@@ -22,9 +22,9 @@ test.beforeAll(async () => {
     // Fichas que bajó el pull: dos aprobadas de la clase de Ana (una con HTML en el título) y una de otra sección.
     xp: { s1: { xp_total: 420, gems: 12 } },
     cloudProjects: [
-      { id: 'f1', user_id: 's9', author_name: 'Luis Ramos', title: 'Semáforo con Arduino', score: 85, bimestre: 2, created_at: '2026-10-30T10:00:00Z' },
-      { id: 'f2', user_id: 's9', author_name: 'Luis Ramos', title: 'Brazo <img src=x onerror="window.__xss=1">', score: 70, created_at: '2026-10-29T10:00:00Z' },
-      { id: 'f3', user_id: 's8', author_name: 'Otra Sección', title: 'Proyecto de otra sección', grade: 'Segundo', section: 'B', score: 90 },
+      { id: '101', user_id: 's9', author_name: 'Luis Ramos', title: 'Semáforo con Arduino', score: 85, votes: 3, bimestre: 2, created_at: '2026-10-30T10:00:00Z' },
+      { id: '102', user_id: 's9', author_name: 'Luis Ramos', title: 'Brazo <img src=x onerror="window.__xss=1">', score: 70, created_at: '2026-10-29T10:00:00Z' },
+      { id: '103', user_id: 's8', author_name: 'Otra Sección', title: 'Proyecto de otra sección', grade: 'Segundo', section: 'B', score: 90 },
     ],
   });
   await node.login('s1', '1234'); // crea el PIN
@@ -177,14 +177,14 @@ test('el Inicio del estudiante en el nodo muestra las fichas de su clase sin int
   await page.locator(`header [onclick="nav('feed')"]`).first().click();
   const cards = page.locator('#feed-container [data-feed-project]');
   await expect(cards.first()).toBeVisible({ timeout: 15000 });
-  const f1 = page.locator('[data-feed-project="f1"]');
+  const f1 = page.locator('[data-feed-project="101"]');
   await expect(f1).toContainText('Semáforo con Arduino');
   await expect(f1).toContainText('Luis Ramos');
   await expect(f1).toContainText('Nota 85');
   await expect(page.locator('#feed-container')).not.toContainText('Proyecto de otra sección');
 
   // El título con HTML se ve como texto y no se ejecuta.
-  await expect(page.locator('[data-feed-project="f2"]')).toContainText('<img src=x');
+  await expect(page.locator('[data-feed-project="102"]')).toContainText('<img src=x');
   expect(await page.evaluate(() => window.__xss)).toBeUndefined();
   expect(await page.locator('#feed-container img').count()).toBe(0);
   expect(errors).toEqual([]);
@@ -263,5 +263,51 @@ test('el Perfil del nodo muestra nivel, rango, XP y gemas, y completar una lecci
   await expect(card).toContainText(`Nivel ${now.level}`);
   await expect(card).toContainText(String(now.gems_total));
   await expect(card).toContainText(/Novato|Aprendiz/);
+  expect(errors).toEqual([]);
+});
+
+test('el estudiante reacciona a un proyecto en el nodo: elegir, cambiar, quitar y conservar al recargar', async ({ page }) => {
+  test.skip(!node, skipReason);
+  const errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  const token = await node.login('s1', '1234');
+  await enterAsStudent(page);
+  await page.locator(`header [onclick="nav('feed')"]`).first().click();
+  const card = page.locator('[data-feed-project="101"]');
+  await expect(card).toBeVisible({ timeout: 15000 });
+  const votes = card.locator('[data-votes]');
+  await expect(votes).toHaveText('3');
+
+  await expect(card.locator('[data-react-picker]')).toBeHidden(); // el selector está cerrado hasta tocar el botón
+  // Elegir "Me gusta": el botón muestra la reacción y el voto sube.
+  await card.locator('[data-react-btn]').click();
+  await card.locator('[data-react-pick="like"]').click();
+  await expect(card.locator('[data-react-icon]')).toContainText('❤️');
+  await expect(votes).toHaveText('4');
+
+  // Cambiar a WOW (no cuenta como voto): el voto baja.
+  await card.locator('[data-react-btn]').click();
+  await card.locator('[data-react-pick="wow"]').click();
+  await expect(card.locator('[data-react-icon]')).toContainText('🤩');
+  await expect(votes).toHaveText('3');
+
+  // Cambiar a Excelente (cuenta) y recargar: se conserva.
+  await card.locator('[data-react-btn]').click();
+  await card.locator('[data-react-pick="excelente"]').click();
+  await expect(votes).toHaveText('4');
+  const saved = (await node.api('/api/feed', { token })).data.projects.find(p => p.id === '101');
+  expect([saved.my_reaction, saved.votes]).toEqual(['excelente', 4]);
+  await page.reload();
+  await page.waitForFunction(() => window.isNodeSession && !document.getElementById('node-login'));
+  await page.locator(`header [onclick="nav('feed')"]`).first().click();
+  const again = page.locator('[data-feed-project="101"]');
+  await expect(again.locator('[data-react-icon]')).toContainText('⭐', { timeout: 15000 });
+  await expect(again.locator('[data-votes]')).toHaveText('4');
+
+  // Tocar la misma la quita.
+  await again.locator('[data-react-btn]').click();
+  await again.locator('[data-react-pick="excelente"]').click();
+  await expect(again.locator('[data-votes]')).toHaveText('3');
+  await expect(again.locator('[data-react-icon] .fa-heart')).toBeVisible();
   expect(errors).toEqual([]);
 });
