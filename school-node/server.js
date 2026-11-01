@@ -464,6 +464,11 @@ const api = {
     if (!s) return sendJson(res, 401, { error: 'Sesión vencida' });
     const { lesson_id, score, status } = await readBody(req);
     if (!lesson_id) return sendJson(res, 400, { error: 'Falta lesson_id' });
+    // Solo lecciones de los cursos de la clase del estudiante: un id inventado o ajeno no es progreso (y la
+    // nube rechazaría la sincronización completa con una lección inexistente).
+    const lessonIds = new Set(db.prepare('SELECT data FROM courses WHERE grade = ? AND section = ?').all(s.grade, s.section)
+      .flatMap(r => { try { return (JSON.parse(r.data).lessons || []).map(l => String(l.id)); } catch { return []; } }));
+    if (!lessonIds.has(String(lesson_id))) return sendJson(res, 404, { error: 'Esa lección no existe en tu clase.' });
     const clean = score == null || score === '' ? null : Math.min(100, Math.max(0, Number(score)));
     const prev = db.prepare('SELECT status FROM completions WHERE lesson_id = ? AND student_id = ?').get(lesson_id, s.id);
     db.prepare(`

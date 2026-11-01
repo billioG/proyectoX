@@ -14,7 +14,7 @@ export const CHEST_PRIZES: ReadonlyArray<{ xp: number; gems: number }> = [
 ];
 
 const DAY_MS = 86400_000;
-const MAX_DAYS_BACK = 3; // un nodo sin internet puede tardar en sincronizar
+const MAX_DAYS_BACK = 14; // un nodo sin internet (o que sincroniza por USB) puede tardar: igual que apply_node_chest
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 // Fecha YYYY-MM-DD real (rechaza 2026-02-30).

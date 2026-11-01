@@ -115,7 +115,7 @@ test('tras sincronizar, el XP pendiente enviado se borra y el nuevo total ya lo 
 
     const push = s.sync.buildPush(s.db);
     // La nube pagó la lección (+10) y el cofre (+50/15): su nuevo total es 160 / 25 y reclamó hoy.
-    s.sync.applyPull(s.db, pull([cloudStudent({ xp_total: 160, gems: 25, daily_chest_last_claimed: '2026-11-01' })]), push);
+    s.sync.applyPull(s.db, pull([cloudStudent({ xp_total: 160, gems: 25, daily_chest_last_claimed: '2026-11-01' })], { applied: { xp_events: ['s1|2026-11-01'] } }), push);
     const sum = s.store.summary(s.student());
     assert.deepEqual([sum.xp_total, sum.xp_pending, sum.xp, sum.gems_total, sum.chest_available], [160, 0, 160, 25, false]);
     assert.equal(s.db.prepare('SELECT COUNT(*) n FROM xp_events_local').get().n, 0);
@@ -144,5 +144,50 @@ test('un pull sin xp_total conserva la base anterior (función vieja o USB antig
     const sum = s.store.summary(s.student());
     assert.deepEqual([sum.xp_total, sum.gems, sum.has_base], [300, 7, true]);
     assert.equal(sum.chest_available, true);
+  } finally { s.done(); }
+});
+
+// ---- El nodo solo borra los cofres que la nube confirmó o rechazó de forma definitiva ----
+async function withChestPushed(random = () => 0.5) {
+  const s = await setup(undefined, random);
+  s.load();
+  s.store.claimChest(s.student());
+  const push = s.sync.buildPush(s.db);
+  assert.equal(push.xp_events.length, 1);
+  return { s, push };
+}
+const chestsLeft = (s) => s.db.prepare("SELECT COUNT(*) n FROM xp_events_local WHERE kind = 'chest'").get().n;
+
+test('con la función vieja (la respuesta no trae applied.xp_events) el cofre pendiente se conserva', { skip }, async () => {
+  const { s, push } = await withChestPushed();
+  try {
+    s.sync.applyPull(s.db, pull([cloudStudent()], { applied: { completions: 0 } }), push);
+    assert.equal(chestsLeft(s), 1);
+    assert.equal(s.store.summary(s.student()).xp_pending, 50, 'el estudiante no ve bajar su XP');
+    assert.equal(s.sync.buildPush(s.db).xp_events.length, 1, 'se reenvía en el próximo sync');
+  } finally { s.done(); }
+});
+
+test('un cofre con error pasajero de la nube (xp_errors sin permanent) se conserva para reintentar', { skip }, async () => {
+  const { s, push } = await withChestPushed();
+  try {
+    s.sync.applyPull(s.db, pull([cloudStudent()], { applied: { xp_events: [] }, xp_errors: [{ student_id: 's1', ref: '2026-11-01', error: 'timeout', permanent: false }] }), push);
+    assert.equal(chestsLeft(s), 1);
+  } finally { s.done(); }
+});
+
+test('un cofre que la nube rechazó de forma definitiva (permanent) se borra', { skip }, async () => {
+  const { s, push } = await withChestPushed();
+  try {
+    s.sync.applyPull(s.db, pull([cloudStudent()], { applied: { xp_events: [] }, xp_errors: [{ student_id: 's1', ref: '2026-11-01', error: 'Premio del cofre inválido.', permanent: true }] }), push);
+    assert.equal(chestsLeft(s), 0);
+  } finally { s.done(); }
+});
+
+test('un cofre confirmado en applied.xp_events se borra', { skip }, async () => {
+  const { s, push } = await withChestPushed();
+  try {
+    s.sync.applyPull(s.db, pull([cloudStudent()], { applied: { xp_events: ['s1|2026-11-01'] } }), push);
+    assert.equal(chestsLeft(s), 0);
   } finally { s.done(); }
 });

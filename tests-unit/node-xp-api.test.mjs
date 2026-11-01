@@ -8,9 +8,14 @@ after(() => stopAllNodes());
 
 const skip = !sqliteAvailable() && 'better-sqlite3 no está instalado para esta versión de Node';
 const STUDENTS = [{ id: 's1', full_name: 'Ana' }, { id: 's2', full_name: 'Beto' }];
+// Los alumnos son de Primero A; el curso de Segundo B no es de su clase.
+const COURSES = [
+  { id: 'c1', title: 'Robótica', grade: 'Primero', section: 'A', created_at: '2026-10-01', lessons: ['l1', 'l2', 'l3'].map((id, i) => ({ id, order_index: i })) },
+  { id: 'c2', title: 'Otra clase', grade: 'Segundo', section: 'B', created_at: '2026-10-01', lessons: [{ id: 'otra-clase', order_index: 0 }] },
+];
 
 async function boot(xp) {
-  const node = await startNode({ students: STUDENTS, xp });
+  const node = await startNode({ students: STUDENTS, xp, courses: COURSES });
   return { node, t1: await node.login('s1'), t2: await node.login('s2') };
 }
 const complete = (node, token, lesson_id, status = 'completed') =>
@@ -79,5 +84,25 @@ test('si la nube ya registró el cofre de hoy, el nodo no ofrece otro', { skip, 
   try {
     assert.equal((await node.api('/api/xp', { token: t1 })).data.chest_available, false);
     assert.equal((await node.api('/api/chest', { method: 'POST', token: t1 })).status, 409);
+  } finally { await node.stop(); }
+});
+
+test('una lección inventada o de otra clase no se acepta: sin XP y sin dejar progreso sucio', { skip, timeout: 60000 }, async () => {
+  const { node, t1 } = await boot();
+  try {
+    for (const id of ['inventada', 'otra-clase', 'x'.repeat(5000)]) {
+      const r = await complete(node, t1, id);
+      assert.equal(r.status, 404, id.slice(0, 20));
+      assert.match(r.data.error, /no existe en tu clase/i);
+    }
+    const sum = (await node.api('/api/xp', { token: t1 })).data;
+    assert.deepEqual([sum.xp_pending, sum.xp], [0, 0]);
+    const { openSqlite } = await import('./helpers/start-node.mjs');
+    const path = await import('node:path');
+    await node.stopServer();
+    const db = openSqlite(path.join(node.dataDir, 'node.db'));
+    assert.equal(db.prepare('SELECT COUNT(*) n FROM completions').get().n, 0, 'no se guardó ningún avance');
+    db.close();
+    await node.startServer();
   } finally { await node.stop(); }
 });

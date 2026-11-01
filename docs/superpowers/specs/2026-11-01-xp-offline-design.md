@@ -27,8 +27,11 @@ cofre diario, lo ven en su Perfil, y todo se valida y suma en la nube cuando el 
    políticas; disparador `AFTER INSERT OR UPDATE OF status` en `lesson_completions` (security definer) que, al
    pasar a `completed`, inserta `('lesson', lesson_id, 10, 0)` y, solo si se insertó, suma a `students.xp`;
    función `apply_node_chest(p_student, p_date, p_xp, p_gems)` (solo `service_role`) que acepta el cofre si el
-   premio es válido, la fecha no es futura ni de hace más de 3 días y `daily_chest_last_claimed` es menor, inserta el
-   evento `('chest', fecha, ...)` y actualiza xp, gems y `daily_chest_last_claimed` de forma atómica e idempotente.
+   premio es válido, la fecha (hora de Guatemala) no es futura ni de hace más de **14 días** y el estudiante no
+   reclamó ese mismo día, inserta el evento `('chest', fecha, ...)` y actualiza xp, gems y `daily_chest_last_claimed`
+   (sin retroceder) de forma atómica e idempotente. El disparador de lecciones paga solo lecciones **de la clase del
+   estudiante** y hasta **30 al día** (corrección tras la revisión final: sin esto un estudiante podía insertar
+   progreso de cualquier lección y farmear XP).
 2. **`node-sync`** (lógica pura en `xp.ts`, con espejo): el pull agrega por estudiante `xp_total`, `gems` y
    `daily_chest_last_claimed` (XP total con la misma fórmula de la app; consulta de proyectos, equipos e
    insignias de los alumnos del nodo); el push acepta `xp_events` de tipo `chest`, valida con `validateXpEvent`
@@ -38,7 +41,10 @@ cofre diario, lo ven en su Perfil, y todo se valida y suma en la nube cuando el 
    `xp_events_local (id, student_id, kind, ref, xp, gems, created_at)` con los eventos aún no confirmados:
    `lesson` (se crea la primera vez que una lección pasa a `completed` en el nodo; la nube la paga con su
    disparador al subir el progreso) y `chest` (se sube en el push). XP mostrado = `xp_total` + suma de pendientes.
-   Tras un sync exitoso los pendientes enviados se borran (el nuevo `xp_total` ya los incluye). `POST /api/chest`
+   Tras un sync los cofres pendientes se borran solo si la nube los confirmó (`applied.xp_events`) o los rechazó
+   de forma definitiva (`xp_errors` con `permanent`); los de error pasajero, o con una función anterior, se conservan
+   para reintentar. Los pendientes de lección se borran cuando su progreso se subió (el nuevo `xp_total` ya los
+   incluye). El nodo solo acepta progreso de lecciones de los cursos de su clase. `POST /api/chest`
    sortea el premio (uno por día según `daily_chest_last_claimed` y los pendientes) y lo registra.
 4. **Pantalla:** el cofre diario vuelve en el nodo (usa `POST /api/chest`); el Perfil del nodo muestra nivel, rango,
    barra de XP y gemas; al completar una lección sale «+10 XP» (en el nodo y con internet).

@@ -31,7 +31,7 @@ test('validateXpEvent acepta un cofre válido de hoy y de ayer', { skip }, () =>
     assert.deepEqual(r.event, { student_id: 's1', ref: '2026-11-01', xp: p.xp, gems: p.gems });
   }
   assert.equal(mod.validateXpEvent(chest({ ref: '2026-10-31' }), ctx()).ok, true);
-  assert.equal(mod.validateXpEvent(chest({ ref: '2026-10-29' }), ctx()).ok, true, 'hasta 3 días atrás');
+  assert.equal(mod.validateXpEvent(chest({ ref: '2026-10-18' }), ctx()).ok, true, 'hasta 14 días atrás (USB semanal)');
 });
 
 test('validateXpEvent rechaza tipo, estudiante, fechas y premios inválidos', { skip }, () => {
@@ -40,7 +40,7 @@ test('validateXpEvent rechaza tipo, estudiante, fechas y premios inválidos', { 
   bad({ student_id: 'ajeno' });
   bad({ student_id: 42 });
   bad({ ref: '2026-11-02' });            // futura
-  bad({ ref: '2026-10-28' });            // hace 4 días
+  bad({ ref: '2026-10-17' });            // hace 15 días
   bad({ ref: '2026-02-30' });            // no existe
   bad({ ref: '01/11/2026' });            // formato
   bad({ ref: undefined });

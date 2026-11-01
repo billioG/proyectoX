@@ -279,14 +279,15 @@ Deno.serve(async (req) => {
 
     // ---- XP: cofres que sorteó el nodo (se validan y aplican) y XP total actualizado de cada alumno ----
     const appliedXpEvents: string[] = [];
-    const xpErrors: Array<{ student_id: string; ref: string; error: string }> = [];
+    // permanent: el nodo puede olvidar ese cofre (inválido); si no, lo reintenta en el próximo sync.
+    const xpErrors: Array<{ student_id: string; ref: string; error: string; permanent: boolean }> = [];
     const guatemalaToday = new Date(Date.now() - 6 * 3600_000).toISOString().slice(0, 10);
     for (const raw of (Array.isArray(push.xp_events) ? push.xp_events : []) as any[]) {
       const student_id = String(raw?.student_id ?? ''), ref = String(raw?.ref ?? '');
       const v = validateXpEvent(raw ?? {}, { studentIds, today: guatemalaToday });
-      if (!v.ok) { xpErrors.push({ student_id, ref, error: v.error }); continue; }
+      if (!v.ok) { xpErrors.push({ student_id, ref, error: v.error, permanent: true }); continue; }
       const { error } = await admin.rpc('apply_node_chest', { p_student: v.event.student_id, p_date: v.event.ref, p_xp: v.event.xp, p_gems: v.event.gems });
-      if (error) { xpErrors.push({ student_id, ref, error: error.message }); continue; }
+      if (error) { xpErrors.push({ student_id, ref, error: error.message, permanent: /inválido|fuera de rango|no encontrado/i.test(error.message) }); continue; }
       appliedXpEvents.push(`${student_id}|${ref}`); // true (aplicado ahora) y false (ya estaba) cuentan como confirmados
     }
     try {

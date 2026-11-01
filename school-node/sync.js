@@ -64,7 +64,7 @@ export function applyPull(db, data, pushed = {}) {
     const clearSession = db.prepare('UPDATE session_logs SET dirty = 0 WHERE id = ?');
     for (const s of pushSessions) clearSession.run(s.id);
     // Lo de XP que se mandó ya está en la base nueva de la nube (se borra después de limpiar los avances sucios).
-    createXpStore(db).clearSent(pushed.xp_events || [], pushCompletions);
+    createXpStore(db).clearSent(pushed.xp_events || [], pushCompletions, { applied: data.applied?.xp_events, errors: data.xp_errors });
 
     // Alumnos: un PIN creado acá y todavía sin subir no se pisa.
     const upsertStudent = db.prepare(`

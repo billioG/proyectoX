@@ -258,8 +258,10 @@ otra ruta, definir la variable de entorno `QUETZAL_USB_DIR`.
 - La nube es la única que escribe XP y gemas. El nodo guarda la **base** que bajó la última sincronización
   (`xp_total`, `gems`, `daily_chest_last_claimed`, dentro de `students.extra`) y los **eventos pendientes**
   (`xp_events_local`). `GET /api/xp` suma ambos; al sincronizar se envían los cofres, la nube los valida (un cofre
-  por día, solo premios válidos, fecha de hasta 3 días atrás) y los pendientes enviados se borran porque la base
-  nueva ya los incluye. El día cambia en hora de Guatemala (UTC-6).
+  por día, solo premios válidos, fecha de hasta 14 días atrás). Un cofre pendiente solo se borra cuando la nube lo
+  confirma o lo rechaza de forma definitiva; con un error pasajero o una función anterior se reintenta en el próximo
+  sync. El día cambia en hora de Guatemala (UTC-6). El nodo solo acepta progreso de lecciones de los cursos de la
+  clase del estudiante.
 - Hace falta, en este orden: ejecutar `migrations/xp-events.sql` en Supabase, volver a publicar `node-sync`
   (subiendo también `xp.ts`) y actualizar el nodo. Con la función anterior el Perfil parte de 0 XP.
 - Un administrador de la computadora de la escuela podría forzar siempre el premio mayor del cofre: la nube solo

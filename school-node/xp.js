@@ -75,12 +75,19 @@ export function createXpStore(db, { now = Date.now, random = Math.random } = {})
     },
 
     /**
-     * Borra lo que ya se mandó (la base nueva de la nube lo incluye). Una lección cuyo progreso volvió a quedar
-     * sucio mientras se sincronizaba conserva su evento.
+     * Borra lo que ya se mandó y la nube resolvió. Los cofres solo se borran si la nube los confirmó
+     * (`applied` = claves "estudiante|fecha" de applied.xp_events) o los rechazó de forma definitiva
+     * (`errors` con permanent: true); un error pasajero, o una función de la nube anterior que no responde
+     * applied.xp_events, deja el cofre para reintentarlo en el próximo sync (el estudiante no ve bajar su XP).
+     * Una lección cuyo progreso volvió a quedar sucio mientras se sincronizaba conserva su evento.
      */
-    clearSent(pushedEvents = [], pushedCompletions = []) {
+    clearSent(pushedEvents = [], pushedCompletions = [], { applied, errors } = {}) {
       const delChest = db.prepare("DELETE FROM xp_events_local WHERE kind = 'chest' AND student_id = ? AND ref = ?");
-      for (const e of pushedEvents) delChest.run(e.student_id, e.ref);
+      if (Array.isArray(applied)) {
+        const done = new Set(applied);
+        for (const e of (Array.isArray(errors) ? errors : [])) if (e && e.permanent === true) done.add(`${e.student_id}|${e.ref}`);
+        for (const e of pushedEvents) if (done.has(`${e.student_id}|${e.ref}`)) delChest.run(e.student_id, e.ref);
+      }
       const delLesson = db.prepare(`DELETE FROM xp_events_local WHERE kind = 'lesson' AND student_id = ? AND ref = ?
         AND NOT EXISTS (SELECT 1 FROM completions c WHERE c.lesson_id = xp_events_local.ref AND c.student_id = xp_events_local.student_id AND c.dirty = 1)`);
       for (const c of pushedCompletions) delLesson.run(c.student_id, String(c.lesson_id));
