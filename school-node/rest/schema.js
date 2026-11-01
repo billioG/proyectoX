@@ -10,6 +10,8 @@
 // (class_weekly_topics, student_companions, student_cosmetics...) se añaden cuando el almacén soporte claves compuestas.
 
 const table = (def) => def;
+// Lo que la app consulta al entrar y el nodo todavía no tiene: responde vacío (nada pendiente) en vez de error.
+const emptyTable = () => ({ pk: 'id', columns: [], relations: {}, empty: true });
 
 export const SCHEMA = {
   schools: table({
@@ -26,7 +28,7 @@ export const SCHEMA = {
       'streak', 'last_login', 'streak_freeze', 'daily_chest_last_claimed', 'gems_earned_total', 'has_gold_frame', 'has_mascot_glasses',
       'status', 'companion_equipped', 'companion_species', 'season_id', 'season_xp', 'league_tier', 'league_week', 'league_last_result',
       'duel_win_streak', 'best_duel_win_streak'],
-    masked: ['email', 'cui', 'birth_date', 'gender', 'codigo_personal', 'qr_code', 'qr_data', 'password_generated', 'created_by'],
+    masked: ['email', 'cui', 'birth_date', 'gender', 'codigo_personal', 'qr_code', 'qr_data', 'password_generated', 'created_by', 'pin_updated_at'],
     relations: { schools: { type: 'one', table: 'schools', fk: 'school_code', ref: 'code' } },
   }),
 
@@ -129,4 +131,16 @@ export const SCHEMA = {
       badges: { type: 'one', table: 'badges', fk: 'badge_id', ref: 'id' },
     },
   }),
+
+  announcements: emptyTable(),
+  announcement_reads: emptyTable(),
+  surveys: emptyTable(),
+  resource_comments: emptyTable(),
+  comment_notifications: emptyTable(),
+  student_duels: emptyTable(),
+  student_hangman_duels: emptyTable(),
+  student_timed_math_duels: emptyTable(),
+  student_debug_duels: emptyTable(),
+  student_spelling_duels: emptyTable(),
+  project_reaction_notifications: emptyTable(),
 };

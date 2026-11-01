@@ -126,3 +126,23 @@ test('proyectos y escritura: solo lectura en la prueba de concepto (nada de inse
   fails(() => run(s, 'PATCH', '/rest/v1/students?id=eq.s1', ana, { body: { xp: 99999 } }), 403, '42501');
   assert.equal(s.data.students[0].xp, 10);
 });
+
+test('lo que la app pide al entrar y el nodo no tiene (anuncios, duelos, comentarios...) responde vacío, sin errores, y no se puede escribir', () => {
+  const s = makeStore();
+  for (const t of ['announcements', 'announcement_reads', 'surveys', 'resource_comments', 'comment_notifications', 'student_duels', 'student_hangman_duels',
+    'student_timed_math_duels', 'student_debug_duels', 'student_spelling_duels', 'project_reaction_notifications']) {
+    const r = run(s, 'GET', `/rest/v1/${t}?select=id,wager_gems,challenger:students!challenger_id(full_name)&opponent_id=eq.s1&status=eq.pending`, ana);
+    assert.deepEqual(r.rows, [], t);
+    assert.equal(run(s, 'GET', `/rest/v1/${t}?select=id`, ana, { headers: { prefer: 'count=exact' } }).count, 0, `${t} cuenta 0`);
+    fails(() => run(s, 'POST', `/rest/v1/${t}`, ana, { body: { id: 1 } }), 403, '42501');
+    fails(() => run(s, 'GET', `/rest/v1/${t}?select=id`, ana, { headers: { accept: 'application/vnd.pgrst.object+json' } }), 406, 'PGRST116');
+  }
+  fails(() => run(s, 'GET', '/rest/v1/class_passwords?select=*', ana), 404, '42P01');
+});
+
+test('pin_updated_at se acepta (la app lo pide) pero siempre vale null', () => {
+  const s = makeStore();
+  s.data.students[0].pin_updated_at = '2026-01-01';
+  const r = run(s, 'GET', '/rest/v1/students?select=id,pin_updated_at&id=eq.s1', ana);
+  assert.deepEqual(r.rows[0], { id: 's1', pin_updated_at: null });
+});

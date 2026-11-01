@@ -45,6 +45,7 @@ export function createStore({ db, schema }) {
     fail: db.prepare('UPDATE rest_outbox SET attempts = attempts + 1, last_error = ? WHERE seq = ?'),
     getMeta: db.prepare('SELECT value FROM rest_meta WHERE key = ?'),
     verifier: db.prepare('SELECT class_key, requires_password, salt, hash FROM rest_class_verifiers WHERE class_key = ?'),
+    countVerifiers: db.prepare('SELECT COUNT(*) AS n FROM rest_class_verifiers'),
     delVerifiers: db.prepare('DELETE FROM rest_class_verifiers'),
     putVerifier: db.prepare('INSERT INTO rest_class_verifiers (class_key, requires_password, salt, hash) VALUES (?, ?, ?, ?)'),
     putRefresh: db.prepare('INSERT OR REPLACE INTO rest_refresh (token_hash, uid, created_at) VALUES (?, ?, ?)'),
@@ -123,6 +124,7 @@ export function createStore({ db, schema }) {
       q.delVerifiers.run();
       for (const v of list) q.putVerifier.run(v.class_key, v.requires_password ? 1 : 0, v.salt || '', v.hash || '');
     }),
+    verifierCount: () => q.countVerifiers.get().n,
     classVerifier: (classKey) => { const r = q.verifier.get(classKey); return r ? { ...r, requires_password: !!r.requires_password } : null; },
     saveRefresh: (tokenHash, uid, at) => { q.putRefresh.run(tokenHash, uid, at); },
     /** Consume un token de renovación (sirve una sola vez): devuelve { uid, created_at } o null. */

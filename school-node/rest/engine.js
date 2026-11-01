@@ -7,6 +7,7 @@
 //   pk, columns: [columnas visibles], masked?: [columnas que la app pide pero NUNCA se sirven: devuelven null y no se filtran], relations: { nombre: { type: 'one'|'many', unique?, table, fk, ref } },
 //   writable?: [columnas escribibles] (si falta, la tabla es de solo lectura), defaults?: { col: () => valor },
 //   unique?: [[col, col], ...]
+//   empty?: true  tabla que la app consulta y el nodo no tiene: lecturas siempre vacías, escrituras denegadas
 // }
 // policy = { canRead(ctx, tabla, fila), canInsert(ctx, tabla, fila), canUpdate(ctx, tabla, vieja, nueva), canDelete(ctx, tabla, fila) }
 
@@ -136,6 +137,11 @@ export function createEngine({ schema, store, policy = {} }) {
 
   function select(p, ctx) {
     const t = tableDef(p.table);
+    // Tablas que la app consulta pero el nodo no tiene (anuncios, duelos...): siempre vacías, sin validar columnas.
+    if (t.empty) {
+      if (p.single === 'object') throw err(406, 'PGRST116', 'JSON object requested, multiple (or no) rows returned');
+      return { rows: [], count: p.count ? 0 : null, changes: [] };
+    }
     if (!policy.canRead) throw denied(p.table);
     checkFilters(t, p.filters);
     let rows = visible(ctx, p.table).filter((r) => p.filters.every((f) => matches(r, f)));

@@ -60,6 +60,9 @@ function verifyTeacherCode(code) {
 // hashPin y safeEqual se declaran más abajo: se llaman a través de funciones para no leerlos antes de tiempo.
 // Capa local compatible con Supabase (/rest/v1, /auth/v1, /functions/v1/student-login): réplica de la nube en SQLite.
 const restStore = restStoreFor(db, REST_SCHEMA);
+// La app real solo se monta sobre la capa local cuando la réplica ya tiene a los estudiantes y las contraseñas de
+// clase; mientras tanto el nodo se comporta como antes (pantalla propia con PIN).
+const restReady = () => restStore.verifierCount() > 0 && restStore.all('students').length > 0;
 const restRoutes = createRestRoutes({ store: restStore, auth: createRestAuth({ store: restStore }) });
 const teacherStore = createTeacherStore(db, { hashPin: (pin, salt) => hashPin(pin, salt), verifySetupCode: (code) => verifyTeacherCode(code) });
 projectStore.cleanup(); // borradores huérfanos de una subida cortada por un reinicio o un apagón
@@ -127,7 +130,9 @@ function serveIndex(res) {
   const file = path.join(APP_DIR, 'index.html');
   const { mtimeMs } = fs.statSync(file);
   if (indexCache.mtimeMs !== mtimeMs) indexCache = { mtimeMs, html: localizeIndexHtml(fs.readFileSync(file, 'utf8')) };
-  const body = Buffer.from(indexCache.html, 'utf8');
+  // /node-config.js define window.QUETZAL_NODE antes que cualquier módulo: config.js decide con él a quién le habla.
+  const body = Buffer.from(indexCache.html.replace(/<head[^>]*>/i, (m) => `${m}
+<script src="/node-config.js"></script>`), 'utf8');
   res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Content-Length': body.length, 'Cache-Control': 'no-cache' });
   res.end(body);
 }
@@ -346,6 +351,7 @@ const api = {
   // Estado del nodo (lo usa la app para saber que está en modo nodo).
   'GET /api/node/status': (req, res) => sendJson(res, 200, {
     node: true,
+    rest: restReady(),
     name: getMeta(db, 'node_name'),
     school_code: getMeta(db, 'school_code'),
     storage_base: getMeta(db, 'storage_base'),
@@ -682,7 +688,7 @@ ${others.length ? `<p class="otras">Si no abre, prueba con: ${others.map(escHtml
 function nodeConfigScript() {
   return `window.QUETZAL_NODE = ${JSON.stringify({
     name: getMeta(db, 'node_name'), school_code: getMeta(db, 'school_code'),
-    storage_base: getMeta(db, 'storage_base'), last_sync_at: getMeta(db, 'last_sync_at'),
+    storage_base: getMeta(db, 'storage_base'), last_sync_at: getMeta(db, 'last_sync_at'), rest: restReady(),
   })};`;
 }
 

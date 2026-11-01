@@ -71,6 +71,7 @@ export async function startNode(opts = {}) {
   }
   for (const [id, x] of Object.entries(opts.xp || {})) seed.prepare('UPDATE students SET extra = ? WHERE id = ?').run(JSON.stringify(x), id);
   for (const r of opts.cloudReactions || []) seed.prepare('INSERT INTO cloud_reactions (student_id, project_id, reaction) VALUES (?, ?, ?)').run(r.student_id, r.project_id, r.reaction);
+  for (const t of opts.teachers || []) seed.prepare('INSERT INTO teachers (id, full_name, assignments) VALUES (?, ?, ?)').run(t.id, t.full_name || t.id, JSON.stringify(t.assignments || []));
   for (const g of opts.groups || []) seed.prepare('INSERT INTO groups (id, name, grade, section) VALUES (?, ?, ?, ?)').run(g.id, g.name, g.grade ?? null, g.section ?? null);
   for (const m of opts.members || []) seed.prepare('INSERT INTO group_members (id, group_id, student_id, role) VALUES (?, ?, ?, ?)').run(m.id, m.group_id, m.student_id, m.role ?? 'planner');
   for (const c of opts.courses || []) seed.prepare('INSERT INTO courses (id, grade, section, data) VALUES (?, ?, ?, ?)').run(c.id, c.grade || 'Primero', c.section || 'A', JSON.stringify(c));
@@ -79,6 +80,13 @@ export async function startNode(opts = {}) {
     seed.prepare(`INSERT INTO cloud_projects (id, user_id, group_id, title, description, bimestre, score, votes, created_at, author_name, group_name, grade, section, kind, feedback)
       VALUES (@id, @user_id, @group_id, @title, @description, @bimestre, @score, @votes, @created_at, @author_name, @group_name, @grade, @section, @kind, @feedback)`)
       .run({ group_id: null, description: 'Un robot.', bimestre: 1, score: 0, votes: 0, created_at: '2026-10-30T10:00:00Z', author_name: p.user_id, group_name: null, grade: 'Primero', section: 'A', kind: 'video', feedback: null, ...p });
+  }
+  if (opts.rest) {
+    // Réplica de la capa local compatible con Supabase: { tables, class_verifiers }, como lo baja la nube.
+    const { restStoreFor } = await import('../../school-node/rest/store.js');
+    const { SCHEMA } = await import('../../school-node/rest/schema.js');
+    const { applyRestPull } = await import('../../school-node/rest/sync.js');
+    applyRestPull(restStoreFor(seed, SCHEMA), opts.rest);
   }
   seed.close();
 

@@ -29,7 +29,7 @@ test('las columnas que bajan son exactamente las que el nodo sirve; nada sensibl
       assert.ok(!SENSITIVE.includes(c), `${table}.${c} es sensible`);
     }
   }
-  for (const table of Object.keys(SCHEMA).filter((t) => t !== 'teachers')) {
+  for (const table of Object.keys(SCHEMA).filter((t) => t !== 'teachers' && !SCHEMA[t].empty)) {
     assert.ok(mod.TABLE_COLUMNS[table], `${table} del esquema del nodo no se baja de la nube`);
   }
 });
