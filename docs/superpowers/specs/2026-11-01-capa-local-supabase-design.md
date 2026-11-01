@@ -1,6 +1,6 @@
 # Capa local compatible con Supabase en el nodo escolar (prueba de concepto)
 
-Estado: diseño aprobado en conversación (2026-11-01); **pendiente revisión del spec escrito**.
+Estado: diseño aprobado en conversación (2026-11-01); el usuario pidió empezar a implementar. Ajustes pedidos al arrancar: login idéntico al de línea (sin listar usuarios) y Práctica del Centro de Juego offline.
 
 ## Objetivo
 Que la **app real** (las mismas pantallas y el mismo código que se usan con internet) funcione en el nodo escolar sin
@@ -21,6 +21,10 @@ copiadas por función (Inicio, Perfil, cofre, reacciones, evaluar), lo que dupli
 - La prueba de concepto cubre **estudiante y docente**: Inicio, Cursos, Perfil, avance de lecciones, y del docente
   Evaluar proyectos y Avisos. Crear cursos y subir proyectos con archivos son la fase siguiente.
 - Sincronización automática + botón; las pantallas copiadas no se borran hasta que la real las cubra.
+- **Login idéntico al de línea y sin listar a nadie** (el nodo ya no muestra la lista de estudiantes ni los PIN de
+  4 números): se usa la **pantalla de entrada real** (`login-username` / `login-password`).
+- **Centro de Juego → Práctica** debe funcionar offline (es solo código y datos del navegador; lo único que toca la
+  nube es registrar el avance con la RPC `log_practice`, que se emula). La IA y lo que la necesita no.
 
 ## Diseño
 1. **Endpoints compatibles** en el servidor del nodo: `/rest/v1/<tabla>` (PostgREST: select con columnas y
@@ -34,9 +38,18 @@ copiadas por función (Inicio, Perfil, cofre, reacciones, evaluar), lo que dupli
    correos, hashes).
 3. **Reglas de acceso locales (RLS en código)** por tabla y rol, según el uid del JWT: un estudiante ve lo suyo y lo
    de su clase; un docente lo de sus clases asignadas. Todo lo demás, vacío o 403.
-4. **Entrada:** el login con PIN del nodo (estudiante) y el de docente entregan una **sesión firmada por el nodo**
-   (JWT con `sub` = uuid, `role: authenticated`), guardada donde `supabase-js` la espera, de modo que
-   `getSession()` funciona y la app arranca «ya conectada». En modo nodo, `config.js` apunta el cliente al propio nodo.
+4. **Entrada = el login real de la app, sin lista de usuarios.** El nodo implementa lo que el login real llama:
+   - **Estudiantes:** `POST /functions/v1/student-login { username, password }` y `/auth/v1/verify` (el mismo
+     intercambio de `token_hash` por sesión), más las RPC `resolve_login_mode_by_username` y `get_class_login_mode`.
+     La contraseña es la **contraseña de la clase**; si el docente la desactivó en línea, esa clase entra solo con el
+     usuario (igual que en línea). La nube baja por clase un **verificador** (sal + hash PBKDF2 calculado en la
+     función con la contraseña real; nunca la contraseña) y el nodo lo comprueba localmente.
+   - **Docentes:** el mismo formulario con correo y, como contraseña, su **PIN para entrar sin internet** (punto 5);
+     `POST /auth/v1/token?grant_type=password`.
+   - Intentos limitados por usuario y por IP con bloqueo, y mensajes que no revelan si el usuario existe.
+   - La sesión es un **JWT firmado por el nodo** (`sub` = uuid, `role: authenticated`), en el almacenamiento donde
+     `supabase-js` la espera: `getSession()` funciona. En modo nodo, `config.js` apunta el cliente al propio nodo y
+     se retira la pantalla de selección propia del nodo.
 5. **Docentes — PIN que se crea EN LÍNEA (corrige la debilidad del código compartido):** el docente fija «PIN para
    entrar sin internet» en su perfil de la app con internet (RPC propia); la nube guarda hash y sal y los baja al
    nodo como ya se hace con los PIN de estudiantes. Sin código compartido para crear PIN, y el origen de cada cambio
@@ -59,6 +72,11 @@ copiadas por función (Inicio, Perfil, cofre, reacciones, evaluar), lo que dupli
   sincronización de lo que hagan.
 - **F3 (informe):** esfuerzo medido (tablas, RPC y reglas emuladas, consultas que faltaron) y qué no se puede offline.
 
+## Centro de Juego: Práctica
+Incluida en F1: `practice.js` y `practice-bank.js` no usan la nube; el avance se registra con `log_practice` (y se
+lee con `get_my_practice_progress`), RPC que el nodo emula guardando en su base y subiendo por la bandeja
+(idempotente por `client_ref`). Retos entre jugadores (tiempo real), IA y generadores con IA quedan fuera.
+
 ## Fuera de alcance de la prueba de concepto
 Crear cursos y lecciones, subir proyectos con archivos (Storage), retos en tiempo real, IA, notificaciones push,
 exámenes, SCORM. No se borra ninguna pantalla copiada hasta que la real las cubra.
@@ -74,5 +92,6 @@ exámenes, SCORM. No se borra ninguna pantalla copiada hasta que la real las cub
 1. Un estudiante no lee filas de otra clase ni columnas sensibles por ninguna consulta, incluidas las anidadas.
 2. Una escritura sin regla en la nube se rechaza de forma definitiva y no se aplica.
 3. La sesión del nodo no sirve en la nube (y viceversa) y no se puede fabricar desde el navegador.
-4. El PIN del docente no se puede crear ni restablecer con un secreto compartido.
+4. El PIN del docente no se puede crear ni restablecer con un secreto compartido, y el login del nodo no revela
+   qué usuarios existen.
 5. La app real, sin tocar sus pantallas, muestra Inicio, Cursos y Perfil offline con los mismos datos que en línea.
