@@ -8,6 +8,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openDb, setMeta, getMeta } from './db.js';
 import { syncProjects } from './projects-sync.js';
+import { createXpStore } from './xp.js';
 
 // Lo pendiente de subir a la nube (lo usa también la sincronización por USB).
 export function buildPush(db) {
@@ -15,6 +16,8 @@ export function buildPush(db) {
     completions: db.prepare('SELECT lesson_id, student_id, score, status, updated_at FROM completions WHERE dirty = 1').all(),
     pins: db.prepare('SELECT id AS student_id, pin_hash, pin_salt, pin_updated_at FROM students WHERE pin_dirty = 1').all(),
     sessions: db.prepare('SELECT id, student_id, device, entered_at FROM session_logs WHERE dirty = 1').all(),
+    // Cofres diarios sorteados aquí: la nube los valida (un cofre por día, solo premios válidos) y los aplica.
+    xp_events: createXpStore(db).pendingChests(),
   };
 }
 
@@ -60,6 +63,8 @@ export function applyPull(db, data, pushed = {}) {
     for (const p of pushPins) clearPin.run(p.student_id, p.pin_updated_at);
     const clearSession = db.prepare('UPDATE session_logs SET dirty = 0 WHERE id = ?');
     for (const s of pushSessions) clearSession.run(s.id);
+    // Lo de XP que se mandó ya está en la base nueva de la nube (se borra después de limpiar los avances sucios).
+    createXpStore(db).clearSent(pushed.xp_events || [], pushCompletions);
 
     // Alumnos: un PIN creado acá y todavía sin subir no se pisa.
     const upsertStudent = db.prepare(`
@@ -72,13 +77,20 @@ export function applyPull(db, data, pushed = {}) {
         pin_salt = CASE WHEN students.pin_dirty = 1 THEN students.pin_salt ELSE excluded.pin_salt END,
         pin_updated_at = CASE WHEN students.pin_dirty = 1 THEN students.pin_updated_at ELSE excluded.pin_updated_at END
     `);
+    const prevExtra = (id) => { try { return JSON.parse(db.prepare('SELECT extra FROM students WHERE id = ?').get(id)?.extra || '{}'); } catch { return {}; } };
     const cloudIds = new Set();
     for (const s of data.students || []) {
       cloudIds.add(s.id);
       upsertStudent.run({
         id: s.id, username: s.username, full_name: s.full_name, grade: s.grade, section: s.section,
         profile_photo_url: s.profile_photo_url, status: s.status,
-        extra: JSON.stringify({ companion_species: s.companion_species, gems_earned_total: s.gems_earned_total, companion_equipped: s.companion_equipped }),
+        extra: JSON.stringify({
+          companion_species: s.companion_species, gems_earned_total: s.gems_earned_total, companion_equipped: s.companion_equipped,
+          // XP de la nube. Si el pull no los trae (función vieja o USB antiguo) se conserva la base anterior.
+          xp_total: s.xp_total !== undefined ? s.xp_total : prevExtra(s.id).xp_total,
+          gems: s.xp_total !== undefined ? s.gems : prevExtra(s.id).gems,
+          daily_chest_last_claimed: s.daily_chest_last_claimed !== undefined ? s.daily_chest_last_claimed : prevExtra(s.id).daily_chest_last_claimed,
+        }),
         pin_hash: s.pin_hash, pin_salt: s.pin_salt, pin_updated_at: s.pin_updated_at,
       });
     }
