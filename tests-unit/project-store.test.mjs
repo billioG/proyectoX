@@ -45,6 +45,7 @@ test('createDraft: deja el borrador uploading con los datos validados', { skip }
     assert.equal(row.student_id, 's1');
     assert.equal(row.group_id, 7);
     assert.equal(row.kind, 'video');
+    assert.equal(row.file_size, 3_000_000, 'guarda el tamaño anunciado para validar la subida');
     assert.equal(row.upload_ip, '192.168.3.20');
     assert.equal(row.user_agent, 'Mozilla/5.0 (Android)');
     assert.equal(row.created_at, '2026-10-31T12:00:00.000Z');

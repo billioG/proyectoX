@@ -13,12 +13,26 @@ import { runSync, loadConfig } from './sync.js';
 import { runUsbSync } from './usb-sync.js';
 import { startMdns } from './mdns.js';
 import { localizeIndexHtml } from './offline-assets.js';
+import { createProjectStore, ProjectError } from './projects.js';
+import { PROJECT_LIMITS } from './project-rules.js';
 
 const NODE_DIR = path.dirname(fileURLToPath(import.meta.url));
 const APP_DIR = path.resolve(NODE_DIR, '..');
 const config = loadConfig(NODE_DIR);
 const db = openDb(config.dataDir);
 const CONTENT_DIR = path.resolve(config.dataDir, 'content');
+
+// Proyectos que suben los estudiantes (video o modelo 3D). Las opciones se pueden bajar en config.json.
+const projectLimits = {
+  ...PROJECT_LIMITS,
+  maxBytes: config.projectMaxBytes ?? PROJECT_LIMITS.maxBytes,
+  maxPendingPerStudent: config.maxPendingProjects ?? PROJECT_LIMITS.maxPendingPerStudent,
+  minFreeDiskMB: config.minFreeDiskMB ?? PROJECT_LIMITS.minFreeDiskMB,
+  keepSyncedDays: config.keepSyncedProjectDays ?? PROJECT_LIMITS.keepSyncedDays,
+};
+const projectStore = createProjectStore(db, { dataDir: config.dataDir, limits: projectLimits });
+projectStore.cleanup(); // borradores huérfanos de una subida cortada por un reinicio o un apagón
+setInterval(() => projectStore.cleanup(), 3600_000).unref();
 
 // Mismos parámetros que js/offline-kit.js: el hash del PIN sirve igual en
 // el nodo, en la nube y en las tablets.
@@ -85,6 +99,71 @@ function serveIndex(res) {
   const body = Buffer.from(indexCache.html, 'utf8');
   res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Content-Length': body.length, 'Cache-Control': 'no-cache' });
   res.end(body);
+}
+
+// ---- Rutas con id: PUT /api/projects/:id/file y DELETE /api/projects/:id ----
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+function projectRoute(method, pathname) {
+  let m;
+  if (method === 'PUT' && (m = /^\/api\/projects\/([^/]+)\/file$/.exec(pathname))) return (req, res) => putProjectFile(req, res, m[1]);
+  if (method === 'DELETE' && (m = /^\/api\/projects\/([^/]+)$/.exec(pathname))) return (req, res) => deleteProject(req, res, m[1]);
+  return null;
+}
+
+function deleteProject(req, res, id) {
+  const s = studentFromSession(req);
+  if (!s) return sendJson(res, 401, { error: 'Sesión vencida' });
+  if (!UUID.test(id) || !projectStore.cancel(id, s.id)) return sendJson(res, 404, { error: 'Proyecto no encontrado.' });
+  sendJson(res, 200, { ok: true });
+}
+
+// Recibe el archivo en streaming: cuenta los bytes mientras llegan, corta si se pasa de lo
+// anunciado y, si la conexión se cae a mitad, no deja nada a medias.
+function putProjectFile(req, res, id) {
+  const s = studentFromSession(req);
+  if (!s) { req.resume(); return sendJson(res, 401, { error: 'Sesión vencida' }); }
+  const draft = UUID.test(id) ? projectStore.getDraft(id, s.id) : null;
+  if (!draft) { req.resume(); return sendJson(res, 404, { error: 'Proyecto no encontrado.' }); }
+
+  let finished = false;
+  let out = null;
+  const abandon = (status, message) => {
+    if (finished) return;
+    finished = true;
+    // El archivo se abre de forma asíncrona: se borra recién cuando el flujo cerró, si no el .part reaparece.
+    if (out) { out.once('close', () => projectStore.abortUpload(id)); out.destroy(); } else projectStore.abortUpload(id);
+    if (status && !res.headersSent) {
+      res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', Connection: 'close' });
+      res.end(JSON.stringify({ error: message }));
+    }
+    req.destroy();
+  };
+
+  const declared = draft.file_size;
+  if (Number(req.headers['content-length']) !== declared) return abandon(400, 'El tamaño del archivo no coincide con lo que anunciaste.');
+
+  out = fs.createWriteStream(projectStore.tmpPath(id));
+  out.on('error', () => abandon(507, 'No se pudo guardar el archivo en la computadora de la escuela.'));
+
+  let received = 0;
+  req.on('data', (chunk) => {
+    received += chunk.length;
+    if (received > declared) return abandon(413, 'El archivo es más grande de lo que anunciaste.');
+    if (!out.write(chunk)) { req.pause(); out.once('drain', () => req.resume()); }
+  });
+  req.on('end', () => {
+    if (finished) return;
+    out.end(() => {
+      if (finished) return;
+      if (received !== declared) return abandon(400, 'El archivo llegó incompleto.');
+      finished = true;
+      projectStore.finishUpload(id, received);
+      sendJson(res, 200, { ok: true });
+    });
+  });
+  req.on('close', () => { if (!req.complete) abandon(0); });
+  req.on('error', () => abandon(0));
 }
 
 function studentFromSession(req) {
@@ -176,6 +255,30 @@ const api = {
     sendJson(res, 200, { token, created, last_entry: lastEntry, student: publicStudent(s) });
   },
 
+  // ---- Proyectos (video o modelo 3D) que sube el estudiante; se publican en la nube al sincronizar ----
+  'GET /api/projects/groups': (req, res) => {
+    const s = studentFromSession(req);
+    if (!s) return sendJson(res, 401, { error: 'Sesión vencida' });
+    sendJson(res, 200, { groups: projectStore.groupsFor(s.id) });
+  },
+  'GET /api/projects/mine': (req, res) => {
+    const s = studentFromSession(req);
+    if (!s) return sendJson(res, 401, { error: 'Sesión vencida' });
+    sendJson(res, 200, { projects: projectStore.listMine(s.id) });
+  },
+  'POST /api/projects': async (req, res) => {
+    const s = studentFromSession(req);
+    if (!s) return sendJson(res, 401, { error: 'Sesión vencida' });
+    try {
+      const body = await readBody(req);
+      const meta = { ip: String(req.socket.remoteAddress || '').replace(/^::ffff:/, ''), userAgent: req.headers['user-agent'] || '' };
+      sendJson(res, 200, projectStore.createDraft(s.id, body, meta));
+    } catch (e) {
+      if (e instanceof ProjectError) return sendJson(res, e.status, { error: e.message });
+      throw e;
+    }
+  },
+
   'POST /api/logout': (req, res) => {
     const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
     db.prepare('DELETE FROM sessions WHERE token = ?').run(token);
@@ -241,6 +344,7 @@ const api = {
       },
       students,
       logs,
+      projects: projectStore.counts(),
     });
   },
 
@@ -370,7 +474,7 @@ function nodeConfigScript() {
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, 'http://node');
-    const route = api[`${req.method} ${url.pathname}`];
+    const route = projectRoute(req.method, url.pathname) || api[`${req.method} ${url.pathname}`];
     if (route) return await route(req, res, url);
 
     if (url.pathname === '/cartel') {
@@ -395,6 +499,7 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
+server.requestTimeout = 30 * 60 * 1000; // un video grande por Wi-Fi tarda más que los 5 minutos que trae Node
 server.listen(config.port || 8080, () => {
   const port = config.port || 8080;
   console.log(`🌳 Nodo Quetzal escuchando en el puerto ${port}`);

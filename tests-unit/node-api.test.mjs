@@ -2,51 +2,18 @@
 // del docente (sin editar config.json). Arranca school-node/server.js de verdad con una
 // configuración temporal. Si la dependencia nativa (better-sqlite3) no está instalada
 // para esta versión de Node, la prueba se omite. Correr con: npm run test:unit
-import test from 'node:test';
+import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
-import net from 'node:net';
-import { spawn } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
-import { createRequire } from 'node:module';
+import { startNode, sqliteAvailable, TEACHER_CODE, stopAllNodes } from './helpers/start-node.mjs';
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const NODE_DIR = path.join(ROOT, 'school-node');
+after(() => stopAllNodes());
 
-let sqliteOk = true;
-try { createRequire(path.join(NODE_DIR, 'x.js'))('better-sqlite3'); new (createRequire(path.join(NODE_DIR, 'x.js'))('better-sqlite3'))(':memory:').close(); } catch { sqliteOk = false; }
-
-const freePort = () => new Promise((resolve) => { const s = net.createServer().listen(0, () => { const { port } = s.address(); s.close(() => resolve(port)); }); });
 const TOKEN = 'ab12cd34'.repeat(8);
-const TEACHER_CODE = '48213976';
 
-async function startNode() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'quetzal-node-'));
-  const port = await freePort();
-  const configFile = path.join(dir, 'config.json');
+test('guardar el token desde el panel del docente', { skip: !sqliteAvailable() && 'better-sqlite3 no está instalado para este Node', timeout: 60000 }, async () => {
   // Con BOM y una llave extra, como la dejaría el Bloc de notas: se debe conservar todo.
-  fs.writeFileSync(configFile, '﻿' + JSON.stringify({ cloudUrl: 'http://127.0.0.1:1', nodeToken: 'PEGAR_ACA_EL_TOKEN_QUE_DA_EL_PANEL_ADMIN', teacherCode: TEACHER_CODE, port, hostName: 'quetzal', mdns: false, syncEveryMinutes: 600, dataDir: './data', extra: 'se conserva' }));
-  const child = spawn(process.execPath, ['server.js'], { cwd: NODE_DIR, env: { ...process.env, QUETZAL_CONFIG_DIR: dir }, stdio: ['ignore', 'pipe', 'pipe'] });
-  let log = '';
-  child.stdout.on('data', d => { log += d; });
-  child.stderr.on('data', d => { log += d; });
-  const base = `http://127.0.0.1:${port}`;
-  for (let i = 0; i < 60; i++) {
-    try { if ((await fetch(base + '/api/node/status')).ok) break; } catch { /* aún arrancando */ }
-    await new Promise(r => setTimeout(r, 250));
-    if (child.exitCode !== null) throw new Error('el nodo no arrancó:\n' + log);
-  }
-  const api = async (p, { method = 'GET', body, token } = {}) => {
-    const res = await fetch(base + p, { method, headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: body ? JSON.stringify(body) : undefined });
-    return { status: res.status, data: await res.json().catch(() => ({})) };
-  };
-  return { api, configFile, stop: () => { child.kill(); try { fs.rmSync(dir, { recursive: true, force: true }); } catch { } } };
-}
-
-test('guardar el token desde el panel del docente', { skip: !sqliteOk && 'better-sqlite3 no está instalado para este Node', timeout: 60000 }, async () => {
-  const node = await startNode();
+  const node = await startNode({ bom: true, config: { extra: 'se conserva' } });
   try {
     // Sin sesión de docente no se puede.
     assert.equal((await node.api('/api/teacher/token', { method: 'POST', body: { token: TOKEN } })).status, 401);
@@ -91,5 +58,5 @@ test('guardar el token desde el panel del docente', { skip: !sqliteOk && 'better
     assert.equal(info.has_token, true);
     assert.equal(info.syncing, false);
     assert.match(info.last_error, /No hay internet en esta computadora/);
-  } finally { node.stop(); }
+  } finally { await node.stop(); }
 });

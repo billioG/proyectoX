@@ -5,5 +5,8 @@
   "port": 8080,
   "hostName": "quetzal",
   "syncEveryMinutes": 10,
+  "maxPendingProjects": 5,
+  "minFreeDiskMB": 2048,
+  "keepSyncedProjectDays": 7,
   "dataDir": "./data"
 }

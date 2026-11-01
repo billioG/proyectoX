@@ -54,9 +54,10 @@ export function createProjectStore(db, { dataDir, limits = PROJECT_LIMITS, freeD
 
       const id = crypto.randomUUID();
       const { value } = v;
-      db.prepare(`INSERT INTO projects (id, student_id, group_id, title, description, bimestre, kind, ext, mime, upload_ip, user_agent, status, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'uploading', ?)`)
-        .run(id, studentId, value.group_id, value.title, value.description, value.bimestre, value.kind, value.ext, value.mime,
+      // file_size guarda el tamaño ANUNCIADO mientras sube; finishUpload lo reemplaza por los bytes recibidos.
+      db.prepare(`INSERT INTO projects (id, student_id, group_id, title, description, bimestre, kind, ext, mime, file_size, upload_ip, user_agent, status, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'uploading', ?)`)
+        .run(id, studentId, value.group_id, value.title, value.description, value.bimestre, value.kind, value.ext, value.mime, value.size,
           String(meta.ip ?? '').slice(0, 64), String(meta.userAgent ?? '').slice(0, 200), iso());
       return { id, max_bytes: limits.maxBytes };
     },
