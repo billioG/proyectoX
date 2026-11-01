@@ -46,7 +46,10 @@ begin
   else
     insert into public.project_likes (project_id, user_id, reaction)
     values (p_project, p_student, p_reaction)
-    on conflict (project_id, user_id) do update set reaction = excluded.reaction;
+    -- Si la reacción ya es esa NO se hace UPDATE: el disparador de avisos se activa con cualquier UPDATE de
+    -- reaction aunque el valor no cambie, y reenviar el mismo estado le volvería a avisar al dueño.
+    on conflict (project_id, user_id) do update set reaction = excluded.reaction
+      where public.project_likes.reaction is distinct from excluded.reaction;
   end if;
 
   select count(*) into v_votes from public.project_likes

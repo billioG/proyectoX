@@ -286,8 +286,11 @@ Deno.serve(async (req) => {
     const appliedReactions: string[] = [];
     // permanent: el nodo puede olvidar esa reacción (inválida); si no, la reintenta en el próximo sync.
     const reactionErrors: Array<{ student_id: string; project_id: unknown; error: string; permanent: boolean }> = [];
-    // Un tope por sync: lo que falte sigue pendiente en el nodo y entra en el siguiente.
-    for (const raw of (Array.isArray(push.reactions) ? push.reactions : []).slice(0, 1000) as any[]) {
+    // Cada reacción es una llamada aparte y el nodo corta el sync a los 120 s: un tope de cantidad y de tiempo.
+    // Lo que falte sigue pendiente en el nodo (no está en applied.reactions) y entra en el siguiente sync.
+    const reactionsStartedAt = Date.now();
+    for (const raw of (Array.isArray(push.reactions) ? push.reactions : []).slice(0, 300) as any[]) {
+      if (Date.now() - reactionsStartedAt > 40_000) break;
       const v = validateReactionEvent(raw ?? {}, { studentIds });
       if (!v.ok) { reactionErrors.push({ student_id: String(raw?.student_id ?? ''), project_id: raw?.project_id, error: v.error, permanent: true }); continue; }
       const { error } = await admin.rpc('apply_node_reaction', { p_student: v.event.student_id, p_project: v.event.project_id, p_reaction: v.event.reaction });

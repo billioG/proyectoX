@@ -10,6 +10,8 @@ insert into public.projects (id, user_id) values
   (1, '00000000-0000-0000-0000-00000000000a'),   -- proyecto de ESC1
   (2, '00000000-0000-0000-0000-00000000000c');   -- proyecto de ESC2
 
+-- El disparador REAL de avisos de reacciones (avisa al dueño y al equipo cuando cambia project_likes).
+\ir ../../migrations/project-reaction-notifications.sql
 \ir ../../migrations/node-reactions.sql
 -- Idempotente: la segunda vez no falla.
 \ir ../../migrations/node-reactions.sql
@@ -64,7 +66,21 @@ do $$ begin
   if (select votes from public.projects where id = 2) <> 0 then raise exception 'SIN_EFECTO_EN_OTRA_ESCUELA'; end if;
 end $$;
 
--- 6) Permisos: solo service_role ejecuta la función.
+-- 6) Reenviar la MISMA reacción no vuelve a avisar al dueño (un menor); cambiarla sí.
+do $$ declare r boolean; c timestamptz; c2 timestamptz; begin
+  perform apply_node_reaction('00000000-0000-0000-0000-00000000000b', 1, 'like');
+  update public.project_reaction_notifications set read = true;
+  select created_at into c from public.project_reaction_notifications where actor_id = '00000000-0000-0000-0000-00000000000b' and project_id = 1;
+  perform pg_sleep(0.05);
+  perform apply_node_reaction('00000000-0000-0000-0000-00000000000b', 1, 'like');
+  select read, created_at into r, c2 from public.project_reaction_notifications where actor_id = '00000000-0000-0000-0000-00000000000b' and project_id = 1;
+  if r is not true or c2 <> c then raise exception 'REENVIO_NO_AVISA_DE_NUEVO: read=% created_at cambió=%', r, c2 <> c; end if;
+  perform apply_node_reaction('00000000-0000-0000-0000-00000000000b', 1, 'wow');
+  select read into r from public.project_reaction_notifications where actor_id = '00000000-0000-0000-0000-00000000000b' and project_id = 1;
+  if r is not false then raise exception 'CAMBIAR_SI_AVISA: read=%', r; end if;
+end $$;
+
+-- 7) Permisos: solo service_role ejecuta la función.
 do $$ begin
   if has_function_privilege('authenticated', 'public.apply_node_reaction(uuid,integer,text)', 'execute')
      or has_function_privilege('anon', 'public.apply_node_reaction(uuid,integer,text)', 'execute') then raise exception 'PERMISOS_CLIENTES'; end if;

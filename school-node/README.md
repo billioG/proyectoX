@@ -289,7 +289,8 @@ otra ruta, definir la variable de entorno `QUETZAL_USB_DIR`.
 - `GET /api/feed` entrega al estudiante los proyectos **aprobados** de su mismo grado y sección, los suyos y los
   de su equipo; la retroalimentación del docente solo la ve el dueño y su equipo. Primero van los proyectos propios
   guardados en el nodo que todavía no aparecen en la nube.
-- Los videos y modelos 3D de otras personas, los votos y las reacciones requieren internet.
+- Los videos y modelos 3D de otras personas requieren internet. Las reacciones sí se pueden dar sin internet
+  (ver «Reacciones a proyectos»); los votos los cuenta la nube.
 - Hace falta volver a publicar `node-sync` (subiendo también `projects.ts`); si la función es la anterior, el
   Inicio muestra solo los proyectos propios guardados aquí.
 

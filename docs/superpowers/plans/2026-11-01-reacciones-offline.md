@@ -23,7 +23,7 @@ aplica y cuenta los votos al sincronizar.
 2. **`migrations/node-reactions.sql`:** `apply_node_reaction(p_student uuid, p_project integer, p_reaction text)`
    (`security definer`, solo `service_role`), idempotente, misma escuela, recalcula `projects.votes`. Pruebas contra
    PostgreSQL real desechable: `tests-unit/node-reactions-sql.test.mjs` (+ `helpers/temp-postgres.mjs`).
-3. **`node-sync` (`index.ts`):** aplica `push.reactions` (tope 1000 por sync), responde `applied.reactions` y
+3. **`node-sync` (`index.ts`):** aplica `push.reactions` (tope 300 por sync y 40 s), responde `applied.reactions` y
    `reaction_errors` (con `permanent`), baja `reactions` propias de los alumnos sobre las fichas del Inicio. Sin
    prueba automática (sin Deno ni nube real).
 4. **Nodo — almacén:** tablas `cloud_reactions` y `reactions_local`; `school-node/reactions.js`
