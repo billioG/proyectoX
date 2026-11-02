@@ -58,6 +58,29 @@ No necesitas revisar perfil por perfil.
 
 ---
 
+## 4. 📡 Trabajar sin internet (Nodo escolar)
+Si tu escuela tiene un **nodo escolar** (una computadora o Raspberry Pi con la app), puedes seguir usando Quetzal **sin internet**. Conéctate al Wi-Fi de la escuela y abre la dirección del cartel (por ejemplo `http://quetzal.local`).
+
+### 🎓 Estudiantes
+*   **Entrar:** con tu **usuario** y la **contraseña de tu clase**, igual que con internet.
+*   **Qué puedes hacer:** ver Inicio, Cursos y tu Perfil, completar lecciones (+10 XP al instante), abrir tu **cofre diario** y jugar la **Práctica** del Centro de Juego.
+*   **Qué no hay sin internet:** retos contra compañeros, asistente con IA y notificaciones. Esas pantallas salen vacías.
+*   **Aviso de abajo a la izquierda:** te dice si ya se subió todo a la nube. Se sincroniza solo cuando hay internet; también puedes tocar **Sincronizar ahora**.
+
+### 👨‍🏫 Docentes
+*   **Crea tu PIN (una sola vez, con internet):** entra a tu **Perfil** y, en la tarjeta **«PIN para entrar sin internet»**, escribe un PIN de 6 números dos veces y guarda. Nadie más puede verlo.
+*   **Entrar al nodo:** con tu **correo** y ese **PIN** (no con la contraseña de tu cuenta).
+*   **Evaluar proyectos y enviar avisos** a tus grupos funcionan igual que con internet. Lo que hagas se sube solo al volver la señal.
+*   **Limitaciones:** no puedes borrar ni editar un aviso sin internet; los avisos a padres y las notificaciones push se envían cuando el nodo se sincroniza con internet.
+*   **¿No fijaste tu PIN?** Entra con el enlace **Docente** del aviso de abajo (`/?modo=pin`) y usa el código de docente del nodo, o pide ayuda a tu administrador.
+
+### ⚖️ Administrador / quien instala el nodo
+*   Instalar o actualizar el nodo (Windows o Raspberry por SSH): ver `school-node/README.md`.
+*   Cada vez que se publique una versión con cambios de nodo, ejecuta las migraciones nuevas en Supabase y vuelve a desplegar `node-sync` (ver `docs/MIGRATIONS.md`).
+*   Para que la app real funcione en el nodo, **todas las clases deben tener contraseña de clase**; si una no la tiene, el nodo usa el modo anterior (PIN) para toda la escuela.
+
+---
+
 ## 💡 Onboarding Rápido (Preguntas Frecuentes)
 
 *   **¿Qué pasa si un usuario olvida marcar su asistencia GPS?** El Admin puede realizar un ajuste manual en el panel de desempeño para corregir la asistencia si hay una justificación válida.

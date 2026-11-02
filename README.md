@@ -40,7 +40,7 @@ En producción: [clases.yoaprendo.online](https://clases.yoaprendo.online)
 | [privacidad.html](privacidad.html) | Política de privacidad |
 | [docs/METRICAS_ADMIN.md](docs/METRICAS_ADMIN.md) | Cómo se calculan las métricas del panel de administración |
 | [MANUAL_DE_USUARIO.md](MANUAL_DE_USUARIO.md) | Uso para docentes y administración |
-| [school-node/README.md](school-node/README.md) | Instalar el nodo escolar en una Raspberry Pi |
+| [school-node/README.md](school-node/README.md) | Instalar y actualizar el nodo escolar (Windows o Raspberry Pi, también por SSH) y cómo funciona la app sin internet |
 
 ## Empezar rápido
 

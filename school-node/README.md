@@ -7,7 +7,34 @@ Los estudiantes se conectan al Wi-Fi del router con su celular o tablet y abren
 la dirección del nodo: **http://quetzal.local** (o la IP, por ejemplo
 `http://192.168.1.50`). No gastan datos.
 
-## Qué hace hoy (etapa 1)
+## La app real sobre el nodo (desde v1.0.196)
+
+Cuando el nodo ya **sincronizó una vez** con la nube, tus estudiantes y docentes abren la **misma app de siempre**
+(no una pantalla aparte) y funciona sin internet:
+
+- **Estudiantes:** entran con su **usuario y la contraseña de la clase** (o solo con el usuario si esa clase no usa
+  contraseña), igual que en línea. No hay lista de usuarios. Ven Inicio, Cursos, Perfil, el cofre diario y la
+  **Práctica** del Centro de Juego (con preguntas del banco, sin IA). Completar una lección suma +10 XP al instante.
+- **Docentes:** entran con su **correo y un PIN de 6 números** que fijaron **una vez con internet**, en su Perfil
+  (tarjeta «PIN para entrar sin internet»). Desde ahí **evalúan proyectos** de sus clases (el nodo recalcula el total y la
+  nube lo vuelve a validar) y **envían avisos** a sus grupos. Un docente que nunca fijó su PIN no entra por aquí.
+- **Sincronización:** automática cada 10 minutos cuando hay internet, o a mano con el botón **Sincronizar ahora** del
+  aviso de abajo a la izquierda, que también muestra «Sincronizado hace X» o «N cambios por subir».
+- **Modo anterior (PIN y panel del nodo):** sigue disponible en **`/?modo=pin`** (o con el enlace «Docente» del aviso):
+  restablecer PIN de un estudiante, desbloquear, sincronizar por USB y ver ingresos.
+- **Cuándo se activa:** solo si la réplica ya tiene a los estudiantes **y todas las clases con estudiantes activos tienen
+  contraseña de clase conocida**. Si alguna clase no la tiene, el nodo se queda en el modo anterior para que nadie pierda
+  el acceso. Antes de la primera sincronización también funciona el modo anterior.
+
+**Lo que no funciona sin internet:** la IA (evaluar con IA, generar preguntas), retos 1v1, mascota, anuncios push, avisos
+a padres, encuestas, asistencia y exámenes. Esas pantallas salen vacías, sin errores. La **racha diaria** no sube sin internet
+(la calcula la nube al sincronizar). Un docente no puede borrar ni editar un aviso sin internet.
+
+Lo que se hace sin internet se guarda en el nodo (en una «bandeja de salida») y se sube al sincronizar; si algo no se
+puede aplicar en la nube (por ejemplo una evaluación de un proyecto que no es de la clase del docente), se descarta sin
+trabar el resto de la sincronización.
+
+## Qué hace el modo anterior (PIN) y el panel del nodo
 
 - Sirve la app y los archivos de los cursos (H5P, videos, PDF) a las tablets.
 - Login de alumnos con **PIN personal de 4 números** (se crea la primera vez).
@@ -25,8 +52,8 @@ la dirección del nodo: **http://quetzal.local** (o la IP, por ejemplo
 - **Proyectos de los estudiantes:** además de Cursos, el estudiante ve **Subir proyecto**: sube un video o modelo 3D
   (hasta 150 MB) al nodo por el Wi-Fi de la escuela y, cuando el nodo tiene internet, se publica solo en la nube
   (ver "Proyectos de los estudiantes" abajo).
-- En modo nodo se oculta lo que necesita internet (avisos, asistente con IA,
-  perfil) y el header muestra el nombre de la escuela.
+- En el modo anterior se oculta lo que necesita internet (asistente con IA) y el header muestra el nombre de la escuela.
+  Con la app real activa (arriba) ya no se oculta nada: lo que no puede funcionar sin internet sale vacío.
 
 > **Sin internet, la app sigue arrancando.** El nodo entrega `index.html` con las librerías de CDN
 > reemplazadas por copias locales de `vendor/cdn/` (`school-node/offline-assets.js`).
@@ -135,11 +162,69 @@ Actualizar el código más adelante: `bash ~/quetzal/school-node/install.sh --up
 > conexión dentro de la tablet, cámara); requiere un subdominio con
 > certificado y queda para una etapa siguiente.
 
+## Instalar o actualizar por SSH (Raspberry Pi)
+
+Sirve para instalar o actualizar el nodo **sin teclado ni pantalla en la Raspberry**, desde tu computadora.
+
+**1. Activa SSH en la Raspberry** (una vez). Con Raspberry Pi Imager, en «Configuración avanzada» marca *Habilitar SSH* y
+pon usuario y contraseña. O con pantalla: `sudo raspi-config` → *Interface Options* → *SSH* → *Enable*.
+
+**2. Conéctate** desde tu computadora (en la misma red que la Raspberry, o por Internet con una VPN):
+
+```bash
+ssh TU_USUARIO@quetzal.local      # o con la IP: ssh TU_USUARIO@192.168.1.50
+```
+
+Windows 10/11 ya trae `ssh` en PowerShell. La primera vez pregunta «Are you sure...»: escribe `yes`.
+
+**3a. Primera instalación** (la Raspberry necesita internet; pide el **token del nodo**, ver «Obtener el token del nodo»):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/billioG/proyectoX/main/school-node/install.sh | bash
+```
+
+Con red Wi-Fi propia (escuelas sin router) agrega `-s -- --hotspot` al final. El instalador es interactivo y
+funciona igual por SSH. Al terminar muestra la dirección para las tablets y el **código de docente**: guárdalos.
+
+**3b. Actualizar un nodo ya instalado** (conserva estudiantes, progreso y configuración):
+
+```bash
+bash ~/quetzal/school-node/install.sh --update
+```
+
+Baja el código de GitHub, instala dependencias y reinicia el servicio. **Ojo:** el código viene de la rama `main` de
+GitHub, así que una función nueva solo llega al nodo cuando ya está publicada allí.
+
+**4. Comprueba que quedó bien:**
+
+```bash
+sudo systemctl status quetzal-node --no-pager      # debe decir "active (running)"
+journalctl -u quetzal-node -n 30 --no-pager        # últimas líneas del registro
+curl -s http://localhost/api/node/status           # {"node":true,"rest":true,...}
+```
+
+En `api/node/status`: `"rest": true` significa que la app real ya está activa; `"rest": false` es normal antes de la
+primera sincronización o si alguna clase no tiene contraseña de clase (el nodo sigue en el modo anterior).
+`pending_changes` son los cambios que faltan por subir a la nube.
+
+**5. Primera sincronización tras actualizar:** espera 10 minutos o entra a `http://IP-DEL-NODO/?modo=pin` → **Docente** →
+**Sincronizar ahora**. Después abre `http://IP-DEL-NODO` desde una tablet y prueba entrar.
+
+> **No uses `node sync.js` a mano con el nodo encendido** para sincronizar: es otro proceso y el servidor seguiría
+> mostrando los datos anteriores hasta reiniciarlo (`sudo systemctl restart quetzal-node`). Usa el botón **Sincronizar ahora**.
+
+**Antes de actualizar, en la nube** (una vez por versión, si la nota de versión lo pide): ejecutar las migraciones nuevas en
+el SQL Editor de Supabase y volver a desplegar la función `node-sync` con **todos** sus archivos
+(`index.ts`, `tables.ts`, `practice.ts`, `completions.ts`, `announcements.ts`, `evaluations.ts`, `projects.ts`, `xp.ts`,
+`reactions.ts`) y **Verify JWT en OFF**. Ver `docs/MIGRATIONS.md`.
+
+Un nodo con **Windows** se actualiza con `actualizar-windows.cmd` (no necesita SSH).
+
 ## Requisitos
 
 - Raspberry Pi 4 (4 GB) con Raspberry Pi OS Lite 64-bit.
 - Recomendado: SSD por USB en vez de microSD (aguanta mejor los cortes de luz).
-- Node.js 20 o superior.
+- Node.js 22 (el instalador lo instala; con Node 20 las pruebas con TypeScript se omiten).
 
 ## Instalación manual (si no se puede usar el instalador)
 
@@ -314,3 +399,10 @@ otra ruta, definir la variable de entorno `QUETZAL_USB_DIR`.
   se revoca con `revoke_school_node` desde el panel admin.
 - La llave maestra de Supabase nunca se guarda en la Raspberry.
 - Los PIN se guardan con hash PBKDF2 (nunca en texto plano).
+- **Contraseña de clase:** al nodo solo baja un verificador (hash PBKDF2 con sal), nunca la contraseña. Aun así, el archivo
+  de la base del nodo (`data/node.db`) debe quedar bajo llave: con un archivo copiado se podría intentar adivinar una
+  contraseña de clase corta sin conexión.
+- **PIN de docente:** se fija en línea (el servidor solo guarda hash y sal) y en el nodo solo vive la huella del correo, no el correo.
+- **Sesión del nodo:** un token firmado con un secreto que solo existe en ese nodo; no sirve en la nube. 10 intentos fallidos
+  por IP o por usuario en 5 minutos bloquean el ingreso un rato.
+

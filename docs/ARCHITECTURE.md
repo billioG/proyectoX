@@ -39,7 +39,7 @@ se publica. El único paso de build es Tailwind (`css/tailwind.src.css` →
 1. `index.html` carga Supabase, `js/config.js` (URL y clave pública) y `js/app.js`.
 2. `app.js` importa los módulos base y llama a `initAuth()` (`js/auth.js`).
 3. `initAuth()` decide el modo:
-   - **Nodo escolar**: si la app se abrió desde una Raspberry (`detectQuetzalNode`), todo pasa a `js/node-mode.js`.
+   - **Nodo escolar**: si la app se abrió desde una Raspberry con la réplica lista (`window.QUETZAL_NODE.rest`), `js/config.js` apunta el cliente de Supabase al propio nodo y corre la **app real** sin internet (ver `school-node/README.md`). Si la réplica aún no está lista (o con `/?modo=pin`), `detectQuetzalNode` activa el modo anterior de `js/node-mode.js`.
    - **Sesión en la nube**: `handleSuccessfulLogin()` carga el perfil desde `teachers` o `students` y fija el rol.
    - **Sin conexión**: usa las cuentas guardadas en la tablet (`js/offline-kit.js`).
 4. `nav(vista)` (en `js/main.js`) muestra la sección y carga sus módulos bajo demanda con `loadModule()` según `MODULE_MAP`.
@@ -69,7 +69,9 @@ manda el navegador.
 | `utils.js` | `sanitizeInput`, `fetchWithCache`, `fetchAllRows`, grados, toasts |
 | `sync-manager.js` | Caché local y cola de cambios sin conexión |
 | `offline-kit.js` | Varias cuentas por tablet, PIN, almacenamiento persistente |
-| `node-mode.js` | Modo nodo escolar (API local de la Raspberry) |
+| `node-mode.js` | Modo nodo escolar anterior (PIN y panel del nodo), disponible en `/?modo=pin` |
+| `node-sync-chip.js` | Aviso «Sincronizado hace X / N cambios por subir» y botón «Sincronizar ahora» (solo sobre el nodo) |
+| `teacher-node-pin.js` | Tarjeta del Perfil del docente para fijar su PIN de entrada al nodo (solo en la nube) |
 | `notification-center.js` | Refresca los contadores (campana, evaluar, duelos) |
 | `activity-tracker.js` | Tiempo activo (latido cada 30 s, calculado en servidor) |
 
@@ -147,7 +149,7 @@ Hay tres niveles:
 
 1. **Caché de la app** (`service-worker.js`): la aplicación abre sin internet. `CACHE_NAME` cambia en cada versión.
 2. **Tablet sin internet** (`offline-kit.js`, `sync-manager.js`): cuentas guardadas con PIN, cursos descargados, cambios en cola hasta que vuelve la señal.
-3. **Nodo escolar** (`school-node/`, `node-mode.js`): una Raspberry sirve la app y el contenido a toda la escuela por Wi-Fi local; sincroniza con `node-sync` cuando tiene señal. Ver `school-node/README.md`.
+3. **Nodo escolar** (`school-node/`): una Raspberry sirve la app y el contenido a toda la escuela por Wi-Fi local. Habla el «idioma» de Supabase (`/rest/v1`, `/auth/v1`, `/functions/v1/student-login`, en `school-node/rest/`) sobre una réplica SQLite de las tablas de la escuela, con las mismas reglas de acceso que la nube (RLS en código), una **bandeja de salida** con lo que se hace sin internet, y sincroniza con `node-sync` cuando tiene señal (la nube valida de nuevo todo lo que sube). Ver `school-node/README.md`.
 
 ## Gamificación y economía
 
