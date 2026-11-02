@@ -79,6 +79,9 @@ export function createPolicy({ store }) {
   const str = (v, max) => typeof v === 'string' && v.length <= max;
   const int = (v, lo, hi) => Number.isInteger(v) && v >= lo && v <= hi;
   const tagsOk = (v) => Array.isArray(v) && v.length <= 30 && v.every((t) => str(t, 50));
+  // Los mismos sitios que permite la nube para enlaces externos (disparador check_lesson_content_url).
+  const EXTERNAL_HOSTS = ['youtube.com', 'youtu.be', 'drive.google.com', 'tinkercad.com'];
+  const allowedExternal = (v) => { try { const h = new URL(v).hostname.toLowerCase(); return EXTERNAL_HOSTS.some((x) => h === x || h.endsWith('.' + x)); } catch { return false; } };
   const httpsUrl = (v) => str(v, 1000) && /^https:\/\/[^\s]+$/i.test(v) && !/[\u0000-\u001F\u007F]/.test(v);
   const myClass = (ctx, c) => ctx.role === 'admin' || assignmentsOf(ctx).some((m) => sameGroup(c, m));
   const mayEditCourse = (ctx, course) => !!course && staff(ctx) && (ctx.role === 'admin' || course.created_by === ctx.uid);
@@ -111,7 +114,7 @@ export function createPolicy({ store }) {
       && nullOr(l.content_path, (v) => v === `lessons/${l.id}`)
       && (l.content_type === 'quiz'
         ? l.content_url == null && Array.isArray(l.quiz_data) && l.quiz_data.length >= 1 && l.quiz_data.length <= 200 && JSON.stringify(l.quiz_data).length <= 300000
-        : l.quiz_data == null && typeof l.content_url === 'string' && (httpsUrl(l.content_url) || (str(l.content_url, 1000) && ownFile(l.id)(l.content_url))));
+        : l.quiz_data == null && typeof l.content_url === 'string' && ((httpsUrl(l.content_url) && allowedExternal(l.content_url)) || (str(l.content_url, 1000) && ownFile(l.id)(l.content_url))));
   };
 
   const readRules = {

@@ -73,6 +73,25 @@ test('enlace externo https y quiz valen; http, javascript:, rutas de otra lecciÃ
   }
 });
 
+test('las columnas obligatorias con valor por defecto en la nube nunca viajan como null (tags, peso, bimestre, orden)', { skip }, () => {
+  const c = ctx({ courses: new Map([[C1, { school_code: 'ESC1', created_by: 't1', is_shared: false }]]) });
+  const { actions } = plan([
+    op(1, 'courses', 'insert', C2, course({ tags: null, weight: null, bimestre: null })),
+    op(2, 'lessons', 'insert', L1, lesson({ tags: null, order_index: 0 })),
+  ], c);
+  const [cr, le] = actions.map((a) => a.row);
+  assert.deepEqual(cr.tags, []);
+  assert.equal('weight' in cr || 'bimestre' in cr, false, 'se deja que la nube use su valor por defecto');
+  assert.deepEqual(le.tags, []);
+  assert.equal(le.order_index, 0);
+});
+
+test('un enlace externo solo vale en los sitios que la nube permite (YouTube, Drive, Tinkercad y su propio Storage)', { skip }, () => {
+  const mk = (url) => plan([op(1, 'lessons', 'insert', L1, lesson({ content_type: 'video', content_url: url, content_path: null }))], ctx({ courses: new Map([[C1, { school_code: 'ESC1', created_by: 't1', is_shared: false }]]) })).results[0].ok;
+  for (const good of ['https://www.youtube.com/watch?v=a', 'https://youtu.be/a', 'https://drive.google.com/file/d/1/view', 'https://www.tinkercad.com/things/x']) assert.equal(mk(good), true, good);
+  for (const bad of ['https://evil.example.com/x', 'https://youtube.com.evil.com/x', 'https://notyoutube.com/x', 'https://evil.com/?https://youtube.com/']) assert.equal(mk(bad), false, bad);
+});
+
 test('curso de otra escuela, docente sin esa clase, a nombre de otro y datos raros se rechazan; el administrador puede en cualquier clase de la escuela', { skip }, () => {
   const bad = [course({ school_code: 'ESC2' }), course({ grade: 'Segundo', section: 'B' }), course({ created_by: 't9' }), course({ created_by: 'nadie' }), course({ title: ' ' }),
     course({ weight: 101 }), course({ bimestre: 9 }), course({ tinkercad_class_url: 'http://x' }), course({ is_shared: 'si' })];

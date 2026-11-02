@@ -10,6 +10,8 @@ const BAD_CHARS = /[\u0000-\u001F\u007F\\:*?"<>|%]/;
 const CONTROL = /[\u0000-\u001F\u007F]/;
 const ALLOWED_EXT = new Set(('html htm xhtml js mjs css json xml xsd dtd png jpg jpeg gif svg webp ico bmp avif mp3 ogg oga wav m4a aac flac mp4 webm ogv mov m4v pdf '
   + 'txt csv md woff woff2 ttf otf eot wasm map glb gltf bin docx pptx xlsx doc ppt xls odt odp ods zip h5p vtt srt swf').split(' '));
+// Mismos sitios que el disparador check_lesson_content_url de la nube (migrations/content-url-allowlist.sql); el Storage propio se valida aparte.
+const EXTERNAL_HOSTS = ['youtube.com', 'youtu.be', 'drive.google.com', 'tinkercad.com'];
 const LESSON_TYPES = ['video', 'pdf', 'image', 'scorm', 'h5p', 'html5', 'quiz', 'tinkercad'];
 
 type Fail = { ok: false; error: string };
@@ -108,7 +110,11 @@ function lessonUrlOk(row: any, id: string, ctx: ContentCtx): boolean {
   if (url.startsWith(`${ctx.cloudUrl}/functions/v1/serve-scorm-entry?`)) {
     try { return okRel(new URL(url).searchParams.get('path') || ''); } catch { return false; }
   }
-  return httpsUrl(url);
+  if (!httpsUrl(url)) return false;
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return EXTERNAL_HOSTS.some((h) => host === h || host.endsWith(`.${h}`));
+  } catch { return false; }
 }
 
 function checkLesson(row: any, id: string, ctx: ContentCtx): string | null {
@@ -158,7 +164,10 @@ export function planContentOps(ops: ContentOp[], ctx: ContentCtx): { actions: Co
       if (existing && existing.created_by !== row.created_by) { done(fail(seq, 'Solo el autor edita su curso.')); continue; }
       const err = checkCourse(row, ctx);
       if (err) { done(fail(seq, err)); continue; }
-      const next = { ...pick(row, COURSE_COLUMNS), id, school_code: ctx.schoolCode, is_shared: row.is_shared === true };
+      const next: Record<string, unknown> = { ...pick(row, COURSE_COLUMNS), id, school_code: ctx.schoolCode, is_shared: row.is_shared === true };
+      // Columnas obligatorias con valor por defecto en la nube: un null las rompería (not null); se deja que la nube use su valor.
+      next.tags = Array.isArray(next.tags) ? next.tags : [];
+      for (const c of ['weight', 'bimestre']) if (next[c] == null) delete next[c];
       ctx.courses.set(id, { school_code: ctx.schoolCode, created_by: row.created_by, is_shared: next.is_shared as boolean });
       results.push({ seq, ok: true });
       actions.push({ seq, table: 'courses', kind: 'upsert', row: next });
@@ -180,7 +189,8 @@ export function planContentOps(ops: ContentOp[], ctx: ContentCtx): { actions: Co
       }
       const err = checkLesson(row, id, ctx);
       if (err) { done(fail(seq, err)); continue; }
-      const next = { ...pick(row, LESSON_COLUMNS), id, school_code: ctx.schoolCode, is_shared: row.is_shared === true };
+      const next: Record<string, unknown> = { ...pick(row, LESSON_COLUMNS), id, school_code: ctx.schoolCode, is_shared: row.is_shared === true };
+      next.tags = Array.isArray(next.tags) ? next.tags : [];
       ctx.lessons.set(id, { school_code: ctx.schoolCode, course_id: row.course_id, created_by: row.created_by });
       results.push({ seq, ok: true });
       actions.push({ seq, table: 'lessons', kind: 'upsert', row: next });

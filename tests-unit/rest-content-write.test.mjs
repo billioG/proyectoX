@@ -98,6 +98,7 @@ test('el docente agrega recursos a SU curso: archivo propio, enlace https y quiz
     lesson(c.id, { id: '8a2b8c1e-5d4a-4e7b-9a10-123456789abc', content_url: `${STORAGE}/lessons/${L1}/guia.pdf` }), // la ruta no es de esta lección
     lesson(c.id, { id: '9a2b8c1e-5d4a-4e7b-9a10-123456789abc', content_url: 'javascript:alert(1)', content_path: null }),
     lesson(c.id, { id: 'aa2b8c1e-5d4a-4e7b-9a10-123456789abc', content_url: 'http://sitio-inseguro.com/x', content_path: null }),
+    lesson(c.id, { id: 'ab2b8c1e-5d4a-4e7b-9a10-123456789abc', content_url: 'https://sitio-no-permitido.com/x', content_path: null }),
     lesson(c.id, { id: 'ba2b8c1e-5d4a-4e7b-9a10-123456789abc', audience: 'todos' }),
     lesson(c.id, { id: 'ca2b8c1e-5d4a-4e7b-9a10-123456789abc', title: '' }),
     lesson(c.id, { id: 'da2b8c1e-5d4a-4e7b-9a10-123456789abc', grade: 'Segundo' }),
