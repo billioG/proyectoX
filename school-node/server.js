@@ -24,6 +24,7 @@ import { friendlySyncError } from './sync-errors.js';
 import { createRestLayer } from './rest/index.js';
 import { createPhotos } from './rest/photos.js';
 import { createContentStore, createStorageHandler } from './content-upload.js';
+import { POLYFILLS } from './browser-polyfills.js';
 
 const NODE_DIR = path.dirname(fileURLToPath(import.meta.url));
 const APP_DIR = path.resolve(NODE_DIR, '..');
@@ -713,7 +714,7 @@ ${others.length ? `<p class="otras">Si no abre, prueba con: ${others.map(escHtml
 
 // Script que la app carga para saber que está en un nodo escolar.
 function nodeConfigScript() {
-  return `window.QUETZAL_NODE = ${JSON.stringify({
+  return `${POLYFILLS}window.QUETZAL_NODE = ${JSON.stringify({
     name: getMeta(db, 'node_name'), school_code: getMeta(db, 'school_code'),
     storage_base: getMeta(db, 'storage_base'), last_sync_at: getMeta(db, 'last_sync_at'), rest: restReady(),
   })};`;

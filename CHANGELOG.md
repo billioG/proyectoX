@@ -6,6 +6,7 @@ Al publicar una versión nueva, agrega una línea arriba de todo (ver CONTRIBUTI
 
 ## 2026-11-02
 
+- **Nodo escolar: subir un recurso ya no falla con «crypto.randomUUID is not a function».** El servidor se abre por `http://IP` (el navegador lo trata como página no segura y no trae esa función); ahora el nodo entrega un reemplazo antes que la app. (v1.0.203)
 - **Nodo escolar: el docente crea cursos y recursos sin internet y se suben a la nube.** Con la pantalla de siempre, en la Raspberry crea un curso, le sube videos, PDF, imágenes, paquetes SCORM/H5P/HTML5, enlaces o cuestionarios, y sus estudiantes lo ven al momento. Cuando el nodo tiene internet, primero suben los archivos (directo a Storage, con URL firmada; hasta 150 MB cada uno) y después el curso y sus recursos, con la misma dirección pública; «Compartir» lo manda a la Biblioteca Compartida. La barra de estado cuenta «N cambios y N archivos por subir» y avisa si la nube rechaza un archivo. Requiere volver a desplegar `node-sync` (ahora con `content.ts`, 10 archivos). También: `.insert().select().single()` de la app ya devuelve un objeto en el nodo. (v1.0.202)
 - **Nodo escolar: la lista de cursos del docente ya carga sin internet.** Faltaba la relación curso → autor en la capa local, y el Inicio/Recursos del docente fallaba con «Bad Request». (v1.0.201)
 

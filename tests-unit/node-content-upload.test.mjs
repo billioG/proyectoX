@@ -56,6 +56,12 @@ test('el docente sube un archivo como lo hace la app y se sirve en la dirección
   assert.equal(raw.status, 200, 'también acepta el cuerpo sin multipart');
 });
 
+test('/node-config.js trae el reemplazo de crypto.randomUUID antes de la configuración (el nodo se abre por http://IP)', { skip, timeout: 60000 }, async () => {
+  const node = await startNode({ rest });
+  const js = await (await fetch(`${node.base}/node-config.js`)).text();
+  assert.ok(js.indexOf('randomUUID') >= 0 && js.indexOf('randomUUID') < js.indexOf('window.QUETZAL_NODE'));
+});
+
 test('sin sesión, estudiante o ruta mala: no se sube nada', { skip, timeout: 60000 }, async () => {
   const node = await startNode({ rest });
   const s = await sessions(node);
