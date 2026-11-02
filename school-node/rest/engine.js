@@ -8,6 +8,7 @@
 //   writable?: [columnas escribibles] (si falta, la tabla es de solo lectura), defaults?: { col: () => valor },
 //   unique?: [[col, col], ...]
 //   noUpdate?: true  la tabla se puede insertar pero no editar (la nube no da permiso de UPDATE): editar responde 403
+//   hidden?: true  tabla interna: se guarda en la réplica (para cálculos del nodo) pero para el navegador NO existe (404)
 //   empty?: true  tabla que la app consulta y el nodo no tiene: lecturas siempre vacías, escrituras denegadas
 // }
 // policy = { canRead(ctx, tabla, fila), canInsert(ctx, tabla, fila), canUpdate(ctx, tabla, vieja, nueva), canDelete(ctx, tabla, fila) }
@@ -86,7 +87,7 @@ function matches(row, f) {
 export function createEngine({ schema, store, policy = {} }) {
   const tableDef = (name) => {
     const t = Object.hasOwn(schema, name) ? schema[name] : null; // nunca nombres heredados (constructor, __proto__...)
-    if (!t) throw err(404, '42P01', NOT_OFFLINE);
+    if (!t || t.hidden) throw err(404, '42P01', NOT_OFFLINE); // `hidden`: la réplica la guarda pero el navegador no la ve (como en la nube)
     return t;
   };
   const checkCol = (t, name) => { if (!t.columns.includes(name)) throw err(400, '42703', `column ${name} does not exist`); };

@@ -46,9 +46,14 @@ export const SCHEMA = {
     relations: { schools: { type: 'one', table: 'schools', fk: 'school_code', ref: 'code' } },
   }),
 
+  // Equipos: el docente los arma sin internet. En la nube el id es un serial; lo que se crea aquí recibe un número entero en un rango reservado
+  // (no choca con los de la nube y sirve tal cual al sincronizar). Al borrar un equipo se van sus miembros.
   groups: table({
     pk: 'id',
     columns: ['id', 'name', 'school_code', 'grade', 'section', 'created_by', 'created_at'],
+    writable: ['name', 'school_code', 'grade', 'section'],
+    defaults: { id: () => 1_500_000_000 + Math.floor(Math.random() * 500_000_000), created_at: () => new Date().toISOString() },
+    cascade: [{ table: 'group_members', fk: 'group_id' }],
     relations: {
       group_members: { type: 'many', table: 'group_members', fk: 'group_id', ref: 'id' },
       schools: { type: 'one', table: 'schools', fk: 'school_code', ref: 'code' },
@@ -58,6 +63,10 @@ export const SCHEMA = {
   group_members: table({
     pk: 'id',
     columns: ['id', 'group_id', 'student_id', 'role', 'is_leader', 'created_at'],
+    writable: ['group_id', 'student_id', 'role', 'is_leader'],
+    coerce: { group_id: 'integer' },
+    unique: [['group_id', 'student_id']],
+    defaults: { id: () => 1_500_000_000 + Math.floor(Math.random() * 500_000_000), created_at: () => new Date().toISOString() },
     relations: {
       groups: { type: 'one', table: 'groups', fk: 'group_id', ref: 'id' },
       students: { type: 'one', table: 'students', fk: 'student_id', ref: 'id' },
@@ -151,13 +160,36 @@ export const SCHEMA = {
   student_spelling_duels: emptyTable(),
   project_reaction_notifications: emptyTable(),
   student_challenges: emptyTable(),
-  attendance: emptyTable(),
   exams: emptyTable(),
   exam_results: emptyTable(),
   teacher_rocks: emptyTable(),
   teacher_rock_completions: emptyTable(),
   ai_evaluations: emptyTable(),
   ai_code_evaluations: emptyTable(),
+
+  // Práctica ya guardada en la nube: INTERNA (nadie la lee directo; en la nube tampoco). Solo alimenta get_*_progress (progress.js).
+  practice_results: table({
+    pk: 'id',
+    hidden: true,
+    columns: ['id', 'student_id', 'game', 'competency', 'topic', 'correct', 'total', 'score', 'played_at'],
+    relations: {},
+  }),
+
+  // Asistencia: el docente pasa lista (la app la manda con upsert por estudiante y día). En la nube la clave es un serial; aquí el id de lo que
+  // se marca sin internet es «estudiante:fecha» y al sincronizar vuelve con el número de la nube. Sin borrar (solo administradores, en la nube).
+  attendance: table({
+    pk: 'id',
+    columns: ['id', 'student_id', 'teacher_id', 'school_code', 'grade', 'section', 'date', 'time', 'status', 'created_at'],
+    writable: ['student_id', 'teacher_id', 'school_code', 'grade', 'section', 'date', 'time', 'status'],
+    unique: [['student_id', 'date']],
+    defaults: {
+      id: (row) => `${row.student_id}:${row.date}`,
+      time: () => new Date().toTimeString().slice(0, 8),
+      status: () => 'present',
+      created_at: () => new Date().toISOString(),
+    },
+    relations: { students: { type: 'one', table: 'students', fk: 'student_id', ref: 'id' } },
+  }),
 
   // Comentarios de equipo, «me gusta» y notas privadas de los recursos (reglas en policies.js, las de la nube). Sin adjuntos: subir una
   // imagen necesita internet. id y fecha las pone el nodo (el id viaja a la nube, que lo usa para no duplicar).

@@ -131,7 +131,7 @@ test('lo que la app pide al entrar y el nodo no tiene (anuncios, duelos, comenta
   const s = makeStore();
   for (const t of ['surveys', 'exams', 'comment_notifications', 'student_duels', 'student_hangman_duels',
     'student_timed_math_duels', 'student_debug_duels', 'student_spelling_duels', 'project_reaction_notifications', 'student_challenges',
-    'attendance', 'exams', 'exam_results', 'teacher_rocks', 'teacher_rock_completions', 'ai_evaluations', 'ai_code_evaluations']) {
+    'exam_results', 'exams', 'exam_results', 'teacher_rocks', 'teacher_rock_completions', 'ai_evaluations', 'ai_code_evaluations']) {
     const r = run(s, 'GET', `/rest/v1/${t}?select=id,wager_gems,challenger:students!challenger_id(full_name)&opponent_id=eq.s1&status=eq.pending`, ana);
     assert.deepEqual(r.rows, [], t);
     assert.equal(run(s, 'GET', `/rest/v1/${t}?select=id`, ana, { headers: { prefer: 'count=exact' } }).count, 0, `${t} cuenta 0`);

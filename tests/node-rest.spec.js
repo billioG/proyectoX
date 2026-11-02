@@ -262,3 +262,46 @@ test('la estudiante comenta, da me gusta y guarda una nota sin internet con el c
   expect(status.pending_changes).toBeGreaterThanOrEqual(3);
   expect(errors).toEqual([]);
 });
+
+test('el docente pasa lista sin internet con el cliente real de la app (upsert por estudiante y día) y el reporte trae el nombre del alumno', async ({ page }) => {
+  test.skip(!node, skipReason);
+  const errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await open(page);
+  await login(page, 'marta@escuela.com', '654321');
+  await page.waitForFunction(() => window.currentUser?.id === 't1');
+  const r = await page.evaluate(async () => {
+    const sb = window._supabase;
+    const today = new Date().toISOString().split('T')[0];
+    const mk = (id) => ({ student_id: id, teacher_id: window.currentUser.id, school_code: 'ESC1', grade: 'Primero', section: 'A', date: today, status: 'present' });
+    const a = await sb.from('attendance').upsert(mk('s1'), { onConflict: 'student_id,date' });
+    const b = await sb.from('attendance').upsert(mk('s1'), { onConflict: 'student_id,date' });
+    const c = await sb.from('attendance').upsert(mk('s2'), { onConflict: 'student_id,date' });
+    const { data: present } = await sb.from('attendance').select('student_id').eq('date', today);
+    const { data: report } = await sb.from('attendance').select('*, students(full_name)').eq('school_code', 'ESC1').eq('grade', 'Primero').eq('section', 'A');
+    return { errs: [a.error?.message, b.error?.message, c.error?.message].filter(Boolean), present: present.map((x) => x.student_id).sort(), names: report.map((x) => x.students.full_name).sort(), hasTime: report.every((x) => /^\d\d:\d\d/.test(x.time)) };
+  });
+  expect(r).toEqual({ errs: [], present: ['s1', 's2'], names: ['Ana López', 'Beto Ruiz'], hasTime: true });
+  expect(errors).toEqual([]);
+});
+
+test('el docente arma un equipo y ve el progreso de su clase sin internet con el cliente real de la app', async ({ page }) => {
+  test.skip(!node, skipReason);
+  const errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await open(page);
+  await login(page, 'marta@escuela.com', '654321');
+  await page.waitForFunction(() => window.currentUser?.id === 't1');
+  const r = await page.evaluate(async () => {
+    const sb = window._supabase;
+    const { data: g, error: ge } = await sb.from('groups').insert({ name: 'Cometas', school_code: 'ESC1', grade: 'Primero', section: 'A' }).select().single();
+    const { error: me } = await sb.from('group_members').insert([{ group_id: g?.id, student_id: 's1', role: 'planner' }, { group_id: g?.id, student_id: 's2', role: 'builder' }]);
+    const { data: list } = await sb.from('groups').select('*, group_members(id, role, students(id, full_name))').eq('id', g?.id);
+    const { data: groups, error: pe } = await sb.rpc('get_groups_progress', { p_days: 30 });
+    const { data: one, error: oe } = await sb.rpc('get_group_progress', { p_school: 'ESC1', p_grade: 'Primero', p_section: 'A', p_days: 30 });
+    const { error: bad } = await sb.rpc('get_group_progress', { p_school: 'ESC1', p_grade: 'Quinto', p_section: 'Z' });
+    return { ge: ge?.message ?? null, me: me?.message ?? null, members: list[0].group_members.map((m) => m.students.full_name).sort(), groups: groups?.map((x) => [x.grade, x.section, x.students]), pe: pe?.message ?? null, oe: oe?.message ?? null, size: one?.class_size, denied: !!bad };
+  });
+  expect(r).toEqual({ ge: null, me: null, members: ['Ana López', 'Beto Ruiz'], groups: [['Primero', 'A', 2]], pe: null, oe: null, size: 2, denied: true });
+  expect(errors).toEqual([]);
+});

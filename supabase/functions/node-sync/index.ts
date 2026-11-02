@@ -35,6 +35,8 @@ import { classifyRead, isUuid, validateAnnouncementEvent, validateReadEvent } fr
 import { sanitizeCompletions, type CompletionRow } from './completions.ts';
 import { planContentOps, validateContentUploadRequest, validateObjectPath } from './content.ts';
 import { isSocialTable, planSocialOps } from './social.ts';
+import { isAttendanceTable, planAttendanceOps } from './attendance.ts';
+import { isGroupTable, planGroupOps } from './groups.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -575,7 +577,7 @@ Deno.serve(async (req) => {
         // Cursos a los que apuntan los recursos del lote y todavía no se cargaron.
         const missing = [...new Set(pushedContent.filter((o) => o?.tbl === 'lessons' && isUuid(o?.row?.course_id) && !courses.has(o.row.course_id)).map((o) => o.row.course_id))] as string[];
         for (const part of chunk(missing)) for (const c of await fetchAll((from, to) => admin.from('courses').select('id, school_code, created_by, is_shared').in('id', part).order('id').range(from, to))) courses.set(c.id, c);
-        const plan = planContentOps(pushedContent.filter((o) => !isSocialTable(o?.tbl)), {
+        const plan = planContentOps(pushedContent.filter((o) => !isSocialTable(o?.tbl) && !isAttendanceTable(o?.tbl) && !isGroupTable(o?.tbl)), {
           schoolCode: node.school_code, storageBase: `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/`, cloudUrl: SUPABASE_URL, assignments: schoolAssignments,
           adminIds: new Set((admins || []).map((a: any) => a.id as string)),
           courses: new Map([...courses].map(([k, c]) => [k, { school_code: c.school_code, created_by: c.created_by, is_shared: !!c.is_shared }])),
@@ -597,6 +599,29 @@ Deno.serve(async (req) => {
           if (error) { contentErrors.push({ seq: a.seq, error: error.message, permanent: false }); failed.add(a.seq); }
         }
         for (const r of plan.results) if (r.ok && !failed.has(r.seq)) appliedContent.push(r.seq);
+
+        // Equipos y miembros armados en el nodo: se aplican ANTES que lo que apunta a ellos (comentarios por equipo) y respetan el rango de ids reservado.
+        const groupOps = pushedContent.filter((o) => isGroupTable(o?.tbl));
+        if (groupOps.length) {
+          const gids = [...new Set(groupOps.flatMap((o) => [o?.tbl === 'groups' ? Number(o?.pk) : null, o?.tbl === 'group_members' ? Number(o?.row?.group_id) : null]).filter((n) => Number.isInteger(n)))] as number[];
+          const mids = [...new Set(groupOps.filter((o) => o?.tbl === 'group_members').map((o) => Number(o?.pk)).filter((n) => Number.isInteger(n)))] as number[];
+          const groupsMap = new Map<number, { school_code: string; grade: string; section: string }>();
+          const membersMap = new Map<number, { group_id: number }>();
+          for (const part of chunk(gids)) for (const g of await fetchAll((from, to) => admin.from('groups').select('id, school_code, grade, section').in('id', part).order('id').range(from, to))) groupsMap.set(g.id, { school_code: g.school_code, grade: g.grade, section: g.section });
+          for (const part of chunk(mids)) for (const m of await fetchAll((from, to) => admin.from('group_members').select('id, group_id').in('id', part).order('id').range(from, to))) membersMap.set(m.id, { group_id: m.group_id });
+          const gp = planGroupOps(groupOps, {
+            schoolCode: node.school_code, assignments: schoolAssignments, adminIds: new Set((admins || []).map((a: any) => a.id as string)),
+            students: new Map(students.map((s: any) => [s.id as string, { grade: s.grade as string, section: s.section as string }])), groups: groupsMap, members: membersMap,
+          });
+          const failedGp = new Set<number>();
+          for (const r of gp.results) if (!r.ok) contentErrors.push({ seq: r.seq, error: r.error, permanent: true });
+          for (const a of gp.actions) {
+            if (Date.now() - startedAt > 40_000) { failedGp.add(a.seq); continue; }
+            const { error } = a.kind === 'upsert' ? await admin.from(a.table).upsert(a.row, { onConflict: 'id' }) : await admin.from(a.table).delete().eq('id', a.id);
+            if (error) { contentErrors.push({ seq: a.seq, error: error.message, permanent: false }); failedGp.add(a.seq); }
+          }
+          for (const r of gp.results) if (r.ok && !failedGp.has(r.seq)) appliedContent.push(r.seq);
+        }
 
         // Comentarios, «me gusta» y notas de los recursos: después de los recursos (apuntan a ellos), con las mismas reglas de la nube.
         const socialOps = pushedContent.filter((o) => isSocialTable(o?.tbl));
@@ -623,6 +648,23 @@ Deno.serve(async (req) => {
             if (error) { contentErrors.push({ seq: a.seq, error: error.message, permanent: false }); failedSocial.add(a.seq); }
           }
           for (const r of social.results) if (r.ok && !failedSocial.has(r.seq)) appliedContent.push(r.seq);
+        }
+
+        // Asistencia pasada en el nodo: un registro por estudiante y día (upsert), con las reglas de la nube.
+        const attendanceOps = pushedContent.filter((o) => isAttendanceTable(o?.tbl));
+        if (attendanceOps.length) {
+          const att = planAttendanceOps(attendanceOps, {
+            schoolCode: node.school_code, now: Date.now(), assignments: schoolAssignments, adminIds: new Set((admins || []).map((a: any) => a.id as string)),
+            students: new Map(students.map((s: any) => [s.id as string, { grade: s.grade as string, section: s.section as string }])),
+          });
+          const failedAtt = new Set<number>();
+          for (const r of att.results) if (!r.ok) contentErrors.push({ seq: r.seq, error: r.error, permanent: true });
+          for (const a of att.actions) {
+            if (Date.now() - startedAt > 40_000) { failedAtt.add(a.seq); continue; }
+            const { error } = await admin.from('attendance').upsert(a.row, { onConflict: 'student_id,date' });
+            if (error) { contentErrors.push({ seq: a.seq, error: error.message, permanent: false }); failedAtt.add(a.seq); }
+          }
+          for (const r of att.results) if (r.ok && !failedAtt.has(r.seq)) appliedContent.push(r.seq);
         }
       } catch (e) {
         appliedContent.length = 0; contentErrors.length = 0;

@@ -98,6 +98,8 @@ test('baja solo lo de la escuela del nodo, con las columnas permitidas y sin dat
       { id: 'a4', sender_id: 'admin', sender_role: 'admin', audience: 'all', title: 'VIEJO', message: 'x', created_at: '2020-01-01T00:00:00Z' },
     ],
     announcement_reads: [{ id: 1, announcement_id: 'a1', user_id: 's1' }, { id: 2, announcement_id: 'a1', user_id: 's9' }, { id: 3, announcement_id: 'a3', user_id: 's9' }],
+    practice_results: [{ id: 'p1', student_id: 's1', game: 'quiz', competency: 'lectura', score: 0.8, played_at: new Date().toISOString(), client_ref: 'SECRETO-REF' }, { id: 'p2', student_id: 's9', game: 'quiz', competency: 'lectura', score: 1, played_at: new Date().toISOString() }, { id: 'p3', student_id: 's1', game: 'quiz', competency: 'lectura', score: 1, played_at: '2020-01-01T00:00:00Z' }],
+    attendance: [{ id: 1, student_id: 's1', school_code: 'ESC1', date: new Date().toISOString().slice(0, 10), status: 'present' }, { id: 2, student_id: 's9', school_code: 'ESC2', date: new Date().toISOString().slice(0, 10), status: 'present' }, { id: 3, student_id: 's1', school_code: 'ESC1', date: '2020-01-01', status: 'present' }],
     resource_comments: [{ id: 'k1', group_id: 7, lesson_id: 'l1', content: 'Hola', author_id: 's1' }, { id: 'k2', group_id: 8, lesson_id: 'l2', content: 'GRUPO-AJENO', author_id: 's9' }],
     resource_comment_likes: [{ comment_id: 'k1', user_id: 's1' }, { comment_id: 'k2', user_id: 's9' }],
     resource_notes: [{ id: 'n1', lesson_id: 'l1', student_id: 's1', content: 'mi nota' }, { id: 'n2', lesson_id: 'l2', student_id: 's9', content: 'NOTA-AJENA' }],
@@ -122,6 +124,8 @@ test('baja solo lo de la escuela del nodo, con las columnas permitidas y sin dat
   assert.deepEqual(ids('lesson_completions'), ['lc1']);
   assert.deepEqual(ids('student_badges'), [1]);
   assert.deepEqual(ids('badges'), [1]);
+  assert.deepEqual(ids('practice_results'), ['p1'], 'solo de estudiantes de la escuela y de los últimos 60 días, sin la referencia interna');
+  assert.deepEqual(ids('attendance'), [1], 'solo la de la escuela y de los últimos 120 días');
   assert.deepEqual(ids('resource_comments'), ['k1'], 'solo los comentarios de los equipos de la escuela');
   assert.deepEqual(ids('resource_comment_likes'), ['k1:s1'], 'el id del «me gusta» es comentario:usuario');
   assert.deepEqual(ids('resource_notes'), ['n1'], 'solo las notas de estudiantes de la escuela'); 

@@ -30,6 +30,7 @@ export const TABLE_COLUMNS: Record<string, string[]> = {
   lesson_completions: ['id', 'lesson_id', 'student_id', 'completed_at', 'score', 'status', 'raw_data'],
   announcements: ANNOUNCEMENT_COLUMNS,
   announcement_reads: ['id', 'announcement_id', 'user_id', 'read_at'],
+  attendance: ['id', 'student_id', 'teacher_id', 'school_code', 'grade', 'section', 'date', 'time', 'status', 'created_at'],
   resource_comments: ['id', 'lesson_id', 'group_id', 'parent_id', 'author_id', 'author_name', 'author_role', 'content', 'attachment_url', 'created_at'],
   resource_comment_likes: ['comment_id', 'user_id', 'created_at'],
   resource_notes: ['id', 'lesson_id', 'student_id', 'content', 'updated_at', 'created_at'],
@@ -108,6 +109,9 @@ export async function pullTables(
     const likes = await fetchAll((from, to) => admin.from('resource_comment_likes').select(list('resource_comment_likes')).in('comment_id', part).order('comment_id').order('user_id').range(from, to));
     out.resource_comment_likes.push(...likes.map((l: any) => ({ ...l, id: `${l.comment_id}:${l.user_id}` })));
   }
+  // Asistencia de los últimos 120 días de la escuela (cada docente ve solo la suya: lo decide la capa local).
+  const attSince = new Date(Date.now() - 120 * 24 * 3600_000).toISOString().slice(0, 10);
+  out.attendance = await fetchAll((from, to) => admin.from('attendance').select(list('attendance')).eq('school_code', school).gte('date', attSince).order('id').range(from, to));
   out.resource_notes = await byIds('resource_notes', 'student_id', students);
 
   out.badges = await fetchAll((from, to) => admin.from('badges').select(list('badges')).order('id').range(from, to));

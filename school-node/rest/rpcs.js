@@ -1,6 +1,7 @@
 // Funciones (RPC) de la nube que la app llama y que el nodo emula con la misma respuesta. `ctx` = quién llama.
 // Las que cambian datos del estudiante no tocan la réplica: anotan lo pendiente (xp.js) y la nube lo valida al sincronizar.
 import { RestError } from './query.js';
+import { createProgress } from './progress.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const GAMES = ['quiz', 'hangman', 'spelling', 'debug', 'timed_math'];
@@ -10,6 +11,7 @@ const invalid = (message) => new RestError(400, message, 'P0001');
 const unavailable = (what) => new RestError(400, `${what} aún no está disponible sin internet`, 'P0001');
 
 export function createRpcs({ store, xp, now = Date.now }) {
+  const progress = createProgress({ store, now });
   const studentOnly = (ctx, what) => { if (ctx?.role !== 'student') throw unavailable(what); };
 
   return {
@@ -23,8 +25,10 @@ export function createRpcs({ store, xp, now = Date.now }) {
       return { streak: row?.streak || 0, changed: false, lastLogin: row?.last_login ?? null };
     },
 
-    // Progreso de los grupos del docente (pantalla de Progreso): todavía no se calcula en el nodo.
-    get_groups_progress: () => [],
+    // Progreso de práctica (pantalla de Progreso del docente y «Mi progreso» del estudiante): se calcula aquí con lo que bajó de la nube y lo pendiente.
+    get_groups_progress: (args, ctx) => progress.getGroupsProgress(args, ctx),
+    get_group_progress: (args, ctx) => progress.getGroupProgress(args, ctx),
+    get_my_progress: (args, ctx) => progress.getMyProgress(args, ctx),
 
     // Práctica del Centro de Juego (no necesita IA): mismas reglas que la nube; la nube la guarda al sincronizar.
     log_practice: (args, ctx) => {

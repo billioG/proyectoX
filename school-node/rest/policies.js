@@ -143,7 +143,31 @@ export function createPolicy({ store }) {
     && (() => { const c = store.all('resource_comments').find((x) => x.id === l.comment_id); return !!c && canSeeComment(ctx, c); })();
   const canNote = (ctx, n) => ctx.role === 'student' && n.student_id === ctx.uid && lessonKnown(n.lesson_id) && text(n.content, 5000) && noProfanity(n.content);
 
+  // ---- Asistencia (reglas de la nube: el docente inserta y ve lo suyo; la nube valida otra vez al sincronizar) ----
+  const ATT_STATUS = ['present', 'absent', 'late', 'excused'];
+  const dayMs = 24 * 3600_000;
+  const validAttendance = (ctx, a) => {
+    if (a.teacher_id !== ctx.uid || !staff(ctx) || !ATT_STATUS.includes(a.status)) return false;
+    if (typeof a.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(a.date)) return false;
+    const t = Date.parse(`${a.date}T00:00:00Z`);
+    if (Number.isNaN(t) || t > Date.now() + dayMs || t < Date.now() - 45 * dayMs) return false;
+    if (typeof a.time !== 'string' || !/^\d{2}:\d{2}(:\d{2})?$/.test(a.time)) return false;
+    const st = store.all('students').find((s) => s.id === a.student_id);
+    if (!st || a.school_code !== st.school_code || a.grade !== st.grade || a.section !== st.section) return false;
+    return myClass(ctx, st);
+  };
+
+  // ---- Equipos (en la nube: solo personal; aquí además solo de sus clases) ----
+  const groupOf = (id) => store.all('groups').find((g) => g.id === id);
+  const memberOk = (m) => (m.role == null || (typeof m.role === 'string' && m.role.length <= 30)) && (m.is_leader == null || typeof m.is_leader === 'boolean');
+  const canAddMember = (ctx, m) => {
+    const g = groupOf(m.group_id);
+    const st = store.all('students').find((s) => s.id === m.student_id);
+    return staff(ctx) && !!g && myClass(ctx, g) && !!st && sameGroup(st, g) && memberOk(m);
+  };
+
   const readRules = {
+    attendance: (ctx, r) => ctx.role === 'admin' || r.teacher_id === ctx.uid,
     resource_comments: (ctx, r) => canSeeComment(ctx, r),
     resource_comment_likes: (ctx, r) => { const c = store.all('resource_comments').find((x) => x.id === r.comment_id); return !!c && canSeeComment(ctx, c); },
     resource_notes: (ctx, r) => r.student_id === ctx.uid,
@@ -179,6 +203,9 @@ export function createPolicy({ store }) {
     canInsert: (ctx, table, row) => (table === 'lesson_completions' && own(ctx, row.student_id) && validCompletion(row))
       || (table === 'announcements' && canSendAnnouncement(ctx, row))
       || (table === 'announcement_reads' && canMarkRead(ctx, row))
+      || (table === 'attendance' && validAttendance(ctx, row))
+      || (table === 'groups' && staff(ctx) && text(row.name, 80) && typeof row.school_code === 'string' && myClass(ctx, row) && row.created_by == null)
+      || (table === 'group_members' && canAddMember(ctx, row))
       || (table === 'resource_comments' && canComment(ctx, row))
       || (table === 'resource_comment_likes' && canLike(ctx, row))
       || (table === 'resource_notes' && canNote(ctx, row))
@@ -188,12 +215,17 @@ export function createPolicy({ store }) {
     // lesson_completions_update_own (la nueva fila también debe ser propia)
     canUpdate: (ctx, table, oldRow, newRow) => (table === 'lesson_completions' && own(ctx, oldRow.student_id) && own(ctx, newRow.student_id) && validCompletion(newRow))
       || (table === 'announcement_reads' && own(ctx, oldRow.user_id) && canMarkRead(ctx, newRow))
+      || (table === 'groups' && staff(ctx) && myClass(ctx, oldRow) && newRow.school_code === oldRow.school_code && newRow.grade === oldRow.grade && newRow.section === oldRow.section && text(newRow.name, 80))
+      || (table === 'group_members' && newRow.group_id === oldRow.group_id && newRow.student_id === oldRow.student_id && canAddMember(ctx, newRow))
+      || (table === 'attendance' && oldRow.teacher_id === ctx.uid && newRow.student_id === oldRow.student_id && newRow.date === oldRow.date && validAttendance(ctx, newRow))
       || (table === 'courses' && mayEditCourse(ctx, oldRow) && newRow.created_by === oldRow.created_by && validCourse({ ...ctx, uid: oldRow.created_by }, newRow))
       || (table === 'lessons' && staff(ctx) && newRow.id === oldRow.id && newRow.course_id === oldRow.course_id && newRow.created_by === oldRow.created_by
         && mayEditCourse(ctx, store.all('courses').find((c) => c.id === oldRow.course_id)) && validLesson({ ...ctx, uid: oldRow.created_by }, newRow)),
 
     // lesson_completions_delete_own_or_admin
     canDelete: (ctx, table, row) => (table === 'lesson_completions' && (own(ctx, row.student_id) || ctx.role === 'admin'))
+      || (table === 'groups' && staff(ctx) && myClass(ctx, row))
+      || (table === 'group_members' && staff(ctx) && !!groupOf(row.group_id) && myClass(ctx, groupOf(row.group_id)))
       || (table === 'resource_comments' && (row.author_id === ctx.uid || staff(ctx)))
       || (table === 'resource_comment_likes' && row.user_id === ctx.uid)
       || (table === 'resource_notes' && row.student_id === ctx.uid)
