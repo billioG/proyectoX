@@ -19,6 +19,7 @@ const reasonableDate = (v: unknown, now: number): string => {
   const t = typeof v === 'string' ? Date.parse(v) : NaN;
   return new Date(Number.isNaN(t) || t > now + 5 * 60_000 || t < now - 30 * DAY_MS ? now : t).toISOString();
 };
+export const isUuid = (v: unknown): v is string => typeof v === 'string' && UUID.test(v);
 const isGroup = (g: any) => g && typeof g === 'object' && typeof g.school_code === 'string' && typeof g.grade === 'string' && typeof g.section === 'string';
 
 export function validateAnnouncementEvent(
@@ -80,4 +81,31 @@ export function announcementVisibleToSchool(a: any, schoolCode: string): boolean
 
 export function shapeAnnouncements(rows: any[]): Array<Record<string, unknown>> {
   return (rows || []).map((r) => Object.fromEntries(ANNOUNCEMENT_COLUMNS.map((c) => [c, r[c] === undefined ? null : r[c]])));
+}
+
+/**
+ * Qué hacer con una lectura según el aviso al que apunta (ya consultado en la nube, con lo recién aplicado):
+ *  - el aviso existe y alcanza a la escuela: se aplica;
+ *  - el aviso es de otra escuela: se rechaza para siempre;
+ *  - el aviso no existe (se borró, o la nube lo rechazó): se rechaza para siempre, salvo que su aviso falló ahora mismo
+ *    por un error pasajero (entonces se reintenta junto con él). Así una lectura huérfana no se reintenta sin fin.
+ */
+export function classifyRead(
+  announcement: any | undefined,
+  schoolCode: string,
+  announcementFailedNow: boolean,
+): { action: 'apply' | 'defer' | 'reject'; reason?: string } {
+  if (!announcement) {
+    return announcementFailedNow ? { action: 'defer', reason: 'El aviso todavía no está en la nube' } : { action: 'reject', reason: 'El aviso ya no existe' };
+  }
+  if (!announcementVisibleToSchool(announcement, schoolCode)) return { action: 'reject', reason: 'El aviso no es de esta escuela' };
+  return { action: 'apply' };
+}
+
+/** Lo que baja a un nodo: de la lista de grupos y escuelas del aviso solo quedan los de ESA escuela (nunca los de otras). */
+export function restrictToSchool<T extends Record<string, any>>(a: T, schoolCode: string): T {
+  const out: Record<string, any> = { ...a };
+  if (Array.isArray(a.target_groups)) out.target_groups = a.target_groups.filter((g: any) => g?.school_code === schoolCode);
+  if (Array.isArray(a.target_schools)) out.target_schools = a.target_schools.filter((c: any) => c === schoolCode);
+  return out as T;
 }

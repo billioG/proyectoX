@@ -136,8 +136,14 @@ test('lo escrito sube en la sincronización y solo sale de la bandeja cuando la 
   assert.equal(layer.store.pendingCount(), 2);
   assert.ok(layer.store.all('announcements').some((a) => a.id === row.id), 'la bajada no pisa el aviso local pendiente');
 
-  applyPull(db, { ...pull, applied: { announcements: [row.id], announcement_reads: [`${row.id}|s1`] }, tables: { ...pull.tables, announcements: [...pull.tables.announcements, row] } }, push);
+  // La nube aplicó lo subido, pero la bajada de esa misma respuesta todavía no lo trae: no debe desaparecer del nodo.
+  applyPull(db, { ...pull, applied: { announcements: [row.id], announcement_reads: [`${row.id}|s1`] } }, push);
   assert.equal(layer.store.pendingCount(), 0);
+  assert.ok(layer.store.all('announcements').some((a) => a.id === row.id), 'el aviso sigue visible tras confirmarse');
+  assert.equal(layer.store.all('announcement_reads').filter((r) => r.announcement_id === row.id).length, 1, 'y sigue leído');
+  // En la bajada siguiente la nube ya lo trae: se reemplaza por su versión.
+  applyPull(db, { ...pull, tables: { ...pull.tables, announcements: [...pull.tables.announcements, row] } });
+  assert.ok(layer.store.all('announcements').some((a) => a.id === row.id));
 
   // Rechazo definitivo: sale de la bandeja y el aviso desaparece del nodo con la siguiente bajada.
   const [bad] = await (await call('POST', '/rest/v1/announcements?select=id', { token: t1, headers: REP, body: own({ title: 'Otro' }) })).json();
@@ -145,4 +151,14 @@ test('lo escrito sube en la sincronización y solo sale de la bandeja cuando la 
   applyPull(db, { ...pull, announcement_errors: [{ id: bad.id, error: 'no autorizado', permanent: true }] }, push2);
   assert.equal(layer.store.pendingCount(), 0);
   assert.ok(!layer.store.all('announcements').some((a) => a.id === bad.id));
+});
+
+test('un título o mensaje que queda vacío al limpiar caracteres de control se rechaza (la nube lo rechazaría y el aviso se perdería sin avisar)', async () => {
+  const { call, teacher, layer } = await boot();
+  const t1 = await teacher('marta@escuela.com');
+  const post = (patch) => call('POST', '/rest/v1/announcements', { token: t1, body: own(patch) });
+  assert.equal((await post({ title: String.fromCharCode(7) })).status, 403);
+  assert.equal((await post({ message: ' ' + String.fromCharCode(0, 1, 2) + ' ' })).status, 403);
+  assert.equal((await post({ title: 'Hola' + String.fromCharCode(7) + ' mundo' })).status, 201);
+  assert.equal(layer.store.all('announcements').filter((a) => a.sender_id === 't1').length, 1);
 });

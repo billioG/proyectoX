@@ -67,7 +67,15 @@ export function applyRestPull(store, data, pushed = {}) {
   if (data.tables && typeof data.tables === 'object') {
     // Mientras una evaluación siga pendiente de subir, la bajada no la pisa.
     const pendingEvals = store.pendingRpcRefs('sync_save_evaluation');
-    const keepFor = { evaluations: (row) => pendingEvals.has(String(row.project_id)) };
+    // Y lo que la nube acaba de confirmar en esta misma respuesta (avisos y lecturas) se conserva aunque su bajada aún no lo traiga:
+    // en la sincronización siguiente ya viene de la nube y se reemplaza por su versión.
+    const justAnnouncements = new Set(Array.isArray(data.applied?.announcements) ? data.applied.announcements : []);
+    const justReads = new Set(Array.isArray(data.applied?.announcement_reads) ? data.applied.announcement_reads : []);
+    const keepFor = {
+      evaluations: (row) => pendingEvals.has(String(row.project_id)),
+      announcements: (row) => justAnnouncements.has(row.id),
+      announcement_reads: (row) => justReads.has(`${row.announcement_id}|${row.user_id}`),
+    };
     store.transaction(() => {
       for (const [table, rows] of Object.entries(data.tables)) {
         if (SCHEMA[table] && Array.isArray(rows)) store.replaceBase(table, rows, { keep: keepFor[table] });

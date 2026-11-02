@@ -61,6 +61,7 @@ function fakeAdmin(data) {
       eq: (c, v) => { rows = rows.filter((r) => r[c] === v); return q; },
       in: (c, vs) => { rows = rows.filter((r) => vs.includes(r[c])); return q; },
       gte: (c, v) => { rows = rows.filter((r) => r[c] >= v); return q; },
+      or: () => q,
       order: () => q,
       limit: (n) => { rows = rows.slice(0, n); return q; },
       range: (a, b) => { rows = rows.slice(a, b + 1); return q; },
@@ -91,7 +92,7 @@ test('baja solo lo de la escuela del nodo, con las columnas permitidas y sin dat
     lessons: [{ id: 'l1', course_id: 'c1', title: 'Intro' }, { id: 'l2', course_id: 'c2', title: 'Ajena' }],
     lesson_completions: [{ id: 'lc1', lesson_id: 'l1', student_id: 's1' }, { id: 'lc2', lesson_id: 'l2', student_id: 's9' }],
     announcements: [
-      { id: 'a1', sender_id: 'admin', sender_role: 'admin', audience: 'all', title: 'Para todos', message: 'Hola', created_at: new Date().toISOString() },
+      { id: 'a1', sender_id: 'admin', sender_role: 'admin', audience: 'all', title: 'Para todos', message: 'Hola', created_at: new Date().toISOString(), target_groups: [{ school_code: 'ESC1', grade: 'Primero', section: 'A' }, { school_code: 'ESC2', grade: 'GRUPO-DE-OTRA-ESCUELA', section: 'Z' }] },
       { id: 'a2', sender_id: 't1', sender_role: 'docente', audience: 'students', school_code: 'ESC1', grade: 'Primero', section: 'A', title: 'De mi clase', message: 'x', created_at: new Date().toISOString() },
       { id: 'a3', sender_id: 't2', sender_role: 'docente', audience: 'students', school_code: 'ESC2', grade: 'Primero', section: 'A', title: 'AVISO-AJENO', message: 'x', created_at: new Date().toISOString() },
       { id: 'a4', sender_id: 'admin', sender_role: 'admin', audience: 'all', title: 'VIEJO', message: 'x', created_at: '2020-01-01T00:00:00Z' },
@@ -119,7 +120,7 @@ test('baja solo lo de la escuela del nodo, con las columnas permitidas y sin dat
   assert.deepEqual(ids('student_badges'), [1]);
   assert.deepEqual(ids('badges'), [1]);
   const text = JSON.stringify(t);
-  assert.doesNotMatch(text, /SECRETO|ana@x\.com|10\.0\.0\.1|client_metadata|"phone"|Zoe|Ajeno|Ajena|marta@escuela|base_salary|9999|AVISO-AJENO|VIEJO/);
+  assert.doesNotMatch(text, /SECRETO|ana@x\.com|10\.0\.0\.1|client_metadata|"phone"|Zoe|Ajeno|Ajena|marta@escuela|base_salary|9999|AVISO-AJENO|VIEJO|GRUPO-DE-OTRA-ESCUELA/);
 });
 
 test('las entradas de docentes llevan la huella del correo (igual que la del nodo), el PIN hasheado, y nunca el correo en claro', { skip }, async () => {

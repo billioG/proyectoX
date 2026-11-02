@@ -87,3 +87,22 @@ test('lo que baja usa solo las columnas permitidas', { skip }, () => {
   assert.equal('secreto' in out[0], false);
   assert.equal(out[0].title, 'T');
 });
+
+test('una lectura se aplica si su aviso existe y alcanza a la escuela; si no, se rechaza para siempre, salvo que el aviso falló ahora por un error pasajero', { skip }, () => {
+  const c = (a, failedNow = false) => mod.classifyRead(a, 'ESC1', failedNow).action;
+  assert.equal(c({ id: ID, school_code: 'ESC1' }), 'apply');
+  assert.equal(c({ id: ID, school_code: null, target_groups: null, target_schools: null }), 'apply', 'aviso general');
+  assert.equal(c({ id: ID, school_code: 'ESC2' }), 'reject', 'aviso de otra escuela');
+  assert.equal(c({ id: ID, target_groups: [{ school_code: 'ESC2' }] }), 'reject');
+  assert.equal(c(undefined), 'reject', 'el aviso ya no existe (se borró o la nube lo rechazó): no se reintenta para siempre');
+  assert.equal(c(undefined, true), 'defer', 'su aviso falló hace un momento por un error pasajero: se reintenta junto con él');
+});
+
+test('a un nodo solo bajan los grupos y escuelas de SU escuela, nunca los de otras escuelas del mismo aviso', { skip }, () => {
+  const out = mod.restrictToSchool({ id: ID, title: 'T', target_groups: [{ school_code: 'ESC1', grade: 'Primero', section: 'A' }, { school_code: 'ESC2', grade: 'Segundo', section: 'B' }], target_schools: ['ESC1', 'ESC3'] }, 'ESC1');
+  assert.deepEqual(out.target_groups, [{ school_code: 'ESC1', grade: 'Primero', section: 'A' }]);
+  assert.deepEqual(out.target_schools, ['ESC1']);
+  assert.equal(mod.restrictToSchool({ id: ID, target_groups: null, target_schools: null }, 'ESC1').target_groups, null);
+  assert.equal(mod.isUuid(ID), true);
+  assert.equal(mod.isUuid('no-es'), false);
+});

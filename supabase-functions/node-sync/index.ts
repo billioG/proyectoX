@@ -31,7 +31,7 @@ import { validateReactionEvent } from './reactions.ts';
 import { buildTeacherList, shapeEvaluations, validateEvaluationEvent } from './evaluations.ts';
 import { buildClassVerifiers, buildTeacherLogins, pullTables } from './tables.ts';
 import { validatePracticeEvent } from './practice.ts';
-import { validateAnnouncementEvent, validateReadEvent } from './announcements.ts';
+import { classifyRead, isUuid, validateAnnouncementEvent, validateReadEvent } from './announcements.ts';
 import { sanitizeCompletions, type CompletionRow } from './completions.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -490,6 +490,55 @@ Deno.serve(async (req) => {
       appliedRpc.push(seq);
     }
 
+    // ---- Avisos y lecturas hechos en el nodo (el id lo puso el nodo: reintentar no duplica) ----
+    // Se aplican ANTES de armar las tablas de la bajada: así lo recién subido ya viene en la misma respuesta y no desaparece
+    // del nodo hasta la siguiente sincronización. applied.announcements = ids; applied.announcement_reads = 'aviso|usuario'.
+    // Lo rechazado de forma definitiva vuelve en announcement_errors / announcement_read_errors con permanent: true; un error
+    // pasajero se reintenta en el próximo sync. Si algo de este bloque falla, no se confirma nada y se reintenta todo.
+    const appliedAnnouncements: string[] = [];
+    const announcementErrors: Array<{ id: string; error: string; permanent: boolean }> = [];
+    const appliedReads: string[] = [];
+    const readErrors: Array<{ key: string; error: string; permanent: boolean }> = [];
+    const pushedAnnouncements: any[] = Array.isArray(push.announcements) ? push.announcements.slice(0, 200) : [];
+    const pushedReads: any[] = Array.isArray(push.announcement_reads) ? push.announcement_reads.slice(0, 500) : [];
+    if (pushedAnnouncements.length || pushedReads.length) {
+      try {
+        const schoolAssignments = await fetchAll((from, to) => admin.from('teacher_assignments').select('teacher_id, school_code, grade, section').eq('school_code', node.school_code).order('id').range(from, to));
+        const userIds = new Set<string>([...studentIds, ...schoolAssignments.map((a: any) => a.teacher_id as string)]);
+        const annStartedAt = Date.now();
+        const failedNow = new Set<string>(); // avisos que fallaron ahora por un error pasajero
+        for (const raw of pushedAnnouncements) {
+          if (Date.now() - annStartedAt > 30_000) break;
+          const id = String(raw?.id ?? '');
+          const v = validateAnnouncementEvent(raw, { schoolCode: node.school_code, now: Date.now(), assignments: schoolAssignments });
+          if (!v.ok) { announcementErrors.push({ id, error: v.error, permanent: true }); continue; }
+          const { error } = await admin.from('announcements').upsert(v.row, { onConflict: 'id', ignoreDuplicates: true });
+          if (error) { announcementErrors.push({ id, error: error.message, permanent: false }); failedNow.add(id); continue; }
+          appliedAnnouncements.push(id);
+        }
+        // Los avisos a los que apuntan las lecturas, ya con lo recién aplicado.
+        const known = new Map<string, any>();
+        for (const part of chunk([...new Set(pushedReads.map((r) => r?.announcement_id).filter(isUuid))] as string[])) {
+          for (const a of await fetchAll((from, to) => admin.from('announcements').select('id, school_code, target_groups, target_schools').in('id', part).order('id').range(from, to))) known.set(a.id, a);
+        }
+        for (const raw of pushedReads) {
+          if (Date.now() - annStartedAt > 40_000) break;
+          const key = `${raw?.announcement_id}|${raw?.user_id}`;
+          const v = validateReadEvent(raw, { userIds, now: Date.now() });
+          if (!v.ok) { readErrors.push({ key, error: v.error, permanent: true }); continue; }
+          const c = classifyRead(known.get(v.row.announcement_id), node.school_code, failedNow.has(v.row.announcement_id));
+          if (c.action !== 'apply') { readErrors.push({ key, error: c.reason || 'No se pudo aplicar', permanent: c.action === 'reject' }); continue; }
+          const { error } = await admin.from('announcement_reads').upsert(v.row, { onConflict: 'announcement_id,user_id', ignoreDuplicates: true });
+          if (error) { readErrors.push({ key, error: error.message, permanent: false }); continue; }
+          appliedReads.push(key);
+        }
+      } catch (e) {
+        // Nada se confirma: el nodo conserva todo en su bandeja y lo reintenta en la próxima sincronización.
+        appliedAnnouncements.length = 0; appliedReads.length = 0; announcementErrors.length = 0; readErrors.length = 0;
+        console.error('node-sync: no se pudieron aplicar los avisos y lecturas', e);
+      }
+    }
+
     // Tablas para la capa local compatible con Supabase del nodo (la app real corre sobre ellas sin internet) y los
     // verificadores de contraseña de clase para el login. Si falla, el pull sigue sin ellas y el nodo conserva lo que tenía.
     let restTables: Record<string, any[]> | undefined;
@@ -504,40 +553,6 @@ Deno.serve(async (req) => {
       restTables = undefined;
       classVerifiers = undefined;
       console.error('node-sync: no se pudieron armar las tablas de la capa local', e);
-    }
-
-    // ---- Avisos y lecturas hechos en el nodo (el id lo puso el nodo: reintentar no duplica) ----
-    // applied.announcements = ids; applied.announcement_reads = 'aviso|usuario'. Lo rechazado de forma definitiva vuelve en
-    // announcement_errors / announcement_read_errors con permanent: true; un error pasajero se reintenta en el próximo sync.
-    const appliedAnnouncements: string[] = [];
-    const announcementErrors: Array<{ id: string; error: string; permanent: boolean }> = [];
-    const appliedReads: string[] = [];
-    const readErrors: Array<{ key: string; error: string; permanent: boolean }> = [];
-    const pushedAnnouncements: any[] = Array.isArray(push.announcements) ? push.announcements.slice(0, 200) : [];
-    const pushedReads: any[] = Array.isArray(push.announcement_reads) ? push.announcement_reads.slice(0, 500) : [];
-    if (pushedAnnouncements.length || pushedReads.length) {
-      const schoolAssignments = await fetchAll((from, to) => admin.from('teacher_assignments').select('teacher_id, school_code, grade, section').eq('school_code', node.school_code).order('id').range(from, to));
-      const userIds = new Set<string>([...studentIds, ...schoolAssignments.map((a: any) => a.teacher_id as string)]);
-      const annStartedAt = Date.now();
-      for (const raw of pushedAnnouncements) {
-        if (Date.now() - annStartedAt > 30_000) break;
-        const id = String(raw?.id ?? '');
-        const v = validateAnnouncementEvent(raw, { schoolCode: node.school_code, now: Date.now(), assignments: schoolAssignments });
-        if (!v.ok) { announcementErrors.push({ id, error: v.error, permanent: true }); continue; }
-        const { error } = await admin.from('announcements').upsert(v.row, { onConflict: 'id', ignoreDuplicates: true });
-        if (error) { announcementErrors.push({ id, error: error.message, permanent: false }); continue; }
-        appliedAnnouncements.push(id);
-      }
-      for (const raw of pushedReads) {
-        if (Date.now() - annStartedAt > 40_000) break;
-        const key = `${raw?.announcement_id}|${raw?.user_id}`;
-        const v = validateReadEvent(raw, { userIds, now: Date.now() });
-        if (!v.ok) { readErrors.push({ key, error: v.error, permanent: true }); continue; }
-        const { error } = await admin.from('announcement_reads').upsert(v.row, { onConflict: 'announcement_id,user_id', ignoreDuplicates: true });
-        // Un aviso que aún no está en la nube (falló o va en este mismo sync) rompe la clave foránea: se reintenta.
-        if (error) { readErrors.push({ key, error: error.message, permanent: false }); continue; }
-        appliedReads.push(key);
-      }
     }
 
     // Entrada de los docentes al nodo: huella del correo + el PIN que fijaron EN LÍNEA (migrations/teacher-node-pin.sql). Aparte del

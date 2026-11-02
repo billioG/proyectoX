@@ -5,7 +5,7 @@
 // Las columnas de cada tabla tienen que ser las mismas que el nodo sirve (school-node/rest/schema.js); una prueba lo
 // comprueba. Más abajo, los verificadores de contraseña de clase: el nodo recibe un hash con sal, nunca la contraseña.
 
-import { ANNOUNCEMENT_COLUMNS, announcementVisibleToSchool } from './announcements.ts';
+import { ANNOUNCEMENT_COLUMNS, announcementVisibleToSchool, restrictToSchool } from './announcements.ts';
 
 export const TABLE_COLUMNS: Record<string, string[]> = {
   schools: ['id', 'code', 'name', 'address', 'department', 'municipality', 'sector', 'level', 'schedule', 'area', 'created_at',
@@ -56,7 +56,9 @@ export async function pullTables(
   const byIds = async (table: string, column: string, ids: unknown[], orderBy = 'id') => {
     const rows: any[] = [];
     for (const part of chunk(ids)) {
-      rows.push(...await fetchAll((from, to) => admin.from(table).select(list(table)).in(column, part).order(orderBy).range(from, to)));
+      rows.push(...await fetchAll((from, to) => (orderBy === 'id'
+        ? admin.from(table).select(list(table)).in(column, part).order('id')
+        : admin.from(table).select(list(table)).in(column, part).order(orderBy).order('id')).range(from, to)));
     }
     return rows;
   };
@@ -87,8 +89,11 @@ export async function pullTables(
   out.lesson_completions = await byIds('lesson_completions', 'student_id', students);
   // Avisos de los últimos 90 días que alcanzan a la escuela (el nodo aplica después las reglas de quién ve cuál) y sus lecturas.
   const since = new Date(Date.now() - 90 * 24 * 3600_000).toISOString();
-  const recent = await fetchAll((from, to) => admin.from('announcements').select(list('announcements')).gte('created_at', since).order('created_at', { ascending: false }).range(from, to));
-  out.announcements = recent.filter((a) => announcementVisibleToSchool(a, school)).slice(0, 200);
+  // Con un criterio de orden único (fecha e id) y solo los que son de la escuela o generales (los de grupos se afinan abajo).
+  const recent = await fetchAll((from, to) => admin.from('announcements').select(list('announcements')).gte('created_at', since)
+    .or(`school_code.eq.${school},school_code.is.null`).order('created_at', { ascending: false }).order('id').range(from, to));
+  // Del aviso solo baja lo de esta escuela: los grupos y escuelas de otras escuelas nunca viajan al nodo.
+  out.announcements = recent.filter((a) => announcementVisibleToSchool(a, school)).slice(0, 200).map((a) => restrictToSchool(a, school));
   const userIds = new Set<string>([...students, ...out.teachers.map((t) => t.id as string)]);
   out.announcement_reads = (await byIds('announcement_reads', 'announcement_id', out.announcements.map((a) => a.id), 'announcement_id')).filter((r) => userIds.has(r.user_id));
 

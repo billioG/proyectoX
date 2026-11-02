@@ -51,7 +51,14 @@ export function createPolicy({ store }) {
     }
     return false;
   };
-  const text = (v, max) => typeof v === 'string' && v.trim().length >= 1 && v.trim().length <= max;
+  // Mismo limpiado que hace la nube (caracteres de control a espacio) ANTES de contar: si no, un título de puro control pasa aquí,
+  // la nube lo rechaza para siempre y el aviso se pierde sin avisar.
+  const CONTROL = /[\u0000-\u001F\u007F]+/g;
+  const text = (v, max) => {
+    if (typeof v !== 'string') return false;
+    const n = v.replace(CONTROL, ' ').replace(/ {2,}/g, ' ').trim().length;
+    return n >= 1 && n <= max;
+  };
   // El docente solo envía a estudiantes de SUS grupos: una sola clase, o una lista de grupos; nunca a docentes, a todos ni por escuela.
   const canSendAnnouncement = (ctx, a) => {
     if (ctx.role !== 'teacher' || a.sender_id !== ctx.uid || a.sender_role !== 'docente' || a.audience !== 'students' || a.target_schools != null) return false;
