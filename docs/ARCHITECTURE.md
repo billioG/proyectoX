@@ -73,6 +73,7 @@ manda el navegador.
 | `node-sync-chip.js` | Aviso «Sincronizado hace X / N cambios por subir» y botón «Sincronizar ahora» (solo sobre el nodo) |
 | `school-node/content-upload.js`, `multipart.js`, `content-sync.js` | Subida de archivos de cursos al nodo (Storage emulado) y a la nube; `supabase/functions/node-sync/content.ts` valida los cursos y recursos que sube un nodo |
 | `supabase/functions/node-sync/social.ts`, `school-node/rest/profanity.js` | Comentarios, «me gusta» y notas de recursos hechos en el nodo: validación en la nube y filtro de groserías (el mismo de la nube) |
+| `supabase/functions/node-sync/attendance.ts`, `groups.ts`, `school-node/rest/progress.js` | Asistencia y equipos hechos en el nodo (validación en la nube) y progreso de práctica calculado en el nodo |
 | `teacher-node-pin.js` | Ya no se carga (v1.0.200): el docente entra al nodo con su contraseña normal |
 | `notification-center.js` | Refresca los contadores (campana, evaluar, duelos) |
 | `activity-tracker.js` | Tiempo activo (latido cada 30 s, calculado en servidor) |
