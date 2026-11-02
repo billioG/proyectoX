@@ -198,7 +198,8 @@ export function createEngine({ schema, store, policy = {} }) {
   function insertRow(ctx, name, t, input, changes) {
     checkWritable(t, name, input);
     const row = { ...input };
-    for (const [c, fn] of Object.entries(t.defaults || {})) if (row[c] === undefined) row[c] = fn();
+    for (const c of Object.keys(t.coerce || {})) if (typeof row[c] === 'string' && /^\d+$/.test(row[c])) row[c] = Number(row[c]);
+    for (const [c, fn] of Object.entries(t.defaults || {})) if (row[c] === undefined) row[c] = fn(row);
     for (const c of t.columns) if (row[c] === undefined) row[c] = null;
     if (!policy.canInsert || policy.canInsert(ctx, name, row) !== true) throw denied(name);
     if (uniqueClash(t, store.all(name), row, null)) throw err(409, '23505', 'duplicate key value violates unique constraint');
@@ -258,6 +259,17 @@ export function createEngine({ schema, store, policy = {} }) {
     }
     return { rows: represent(p, ctx, name, done), count: null, changes };
   }
+  // Los hijos que la nube borra en cascada (clave foránea): también sus propios hijos (respuestas de respuestas, «me gusta»).
+  function cascade(name, row) {
+    const t = tableDef(name);
+    for (const c of t.cascade || []) {
+      const child = tableDef(c.table);
+      for (const kid of store.all(c.table).filter((r) => r[c.fk] === row[t.pk])) {
+        store.remove(c.table, kid[child.pk]);
+        cascade(c.table, kid);
+      }
+    }
+  }
   function remove(p, ctx) {
     const name = p.table, t = tableDef(name);
     if (!t.writable) throw unavailable();
@@ -268,10 +280,7 @@ export function createEngine({ schema, store, policy = {} }) {
       if (!policy.canDelete || policy.canDelete(ctx, name, row) !== true) continue;
       store.remove(name, row[t.pk]);
       // Los hijos que la nube borra en cascada (clave foránea) se quitan también aquí; no viajan: la nube hace lo mismo sola.
-      for (const c of t.cascade || []) {
-        const child = tableDef(c.table);
-        for (const kid of store.all(c.table).filter((r) => r[c.fk] === row[t.pk])) store.remove(c.table, kid[child.pk]);
-      }
+      cascade(name, row);
       changes.push({ op: 'delete', table: name, row });
       done.push(row);
     }

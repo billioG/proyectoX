@@ -22,7 +22,8 @@ Cuando el nodo ya **sincronizó una vez** con la nube, tus estudiantes y docente
   **crean cursos y recursos** (videos, PDF, imágenes, paquetes SCORM/H5P/HTML5, enlaces y cuestionarios) con la misma pantalla de
   siempre: los archivos se guardan en la Raspberry y los estudiantes los ven al instante. Al sincronizar con internet suben a la nube
   (primero los archivos, directo a Storage con una URL firmada; después el curso y sus recursos) y quedan con la misma dirección.
-  «Compartir» manda el curso a la Biblioteca Compartida. Límites: 150 MB por archivo, solo sus propios cursos, y un curso compartido
+  Los **comentarios de equipo, «me gusta» y notas privadas** de los recursos también funcionan (con el mismo filtro de lenguaje que la nube) y
+  suben al sincronizar; solo los adjuntos de imagen necesitan internet. «Compartir» manda el curso a la Biblioteca Compartida. Límites: 150 MB por archivo, solo sus propios cursos, y un curso compartido
   se borra en línea (sin internet solo se puede dejar de compartir). Si la nube rechaza un archivo, la barra de estado lo dice y por qué.
 - **Sincronización:** automática cada 10 minutos cuando hay internet, o a mano con el botón **Sincronizar ahora** del
   aviso de abajo a la izquierda, que también muestra «Sincronizado hace X» o «N cambios por subir».

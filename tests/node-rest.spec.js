@@ -21,6 +21,7 @@ test.beforeAll(async () => {
         teachers: [{ id: 't1', full_name: 'Marta Gómez', role: 'docente' }],
         teacher_assignments: [{ id: 1, teacher_id: 't1', school_code: 'ESC1', grade: 'Primero', section: 'A' }],
         groups: [{ id: 7, name: 'Equipo Sol', school_code: 'ESC1', grade: 'Primero', section: 'A' }],
+        group_members: [{ id: 1, group_id: 7, student_id: 's1' }, { id: 2, group_id: 7, student_id: 's2' }],
         students: [
           { id: 's1', username: 'ana1', full_name: 'Ana López', school_code: 'ESC1', grade: 'Primero', section: 'A', status: 'activo', xp: 1240, gems: 30, streak: 6, role: 'estudiante' },
           { id: 's2', username: 'beto1', full_name: 'Beto Ruiz', school_code: 'ESC1', grade: 'Primero', section: 'A', status: 'activo', xp: 800, gems: 10, streak: 2, role: 'estudiante' },
@@ -235,5 +236,29 @@ test('el docente crea un curso con un PDF sin internet con el cliente real de la
   const status = await (await fetch(node.base + '/api/node/status')).json();
   expect(status.pending.uploads).toBe(1);
   expect(status.pending_changes).toBeGreaterThanOrEqual(2);
+  expect(errors).toEqual([]);
+});
+
+test('la estudiante comenta, da me gusta y guarda una nota sin internet con el cliente real de la app; las groserías se rechazan con el aviso de la app', async ({ page }) => {
+  test.skip(!node, skipReason);
+  const errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await open(page);
+  await login(page, 'ana1', 'clase123');
+  await page.waitForFunction(() => window.currentUser?.id === 's1');
+  const r = await page.evaluate(async () => {
+    const sb = window._supabase;
+    const base = { lesson_id: 'l1', group_id: '7', parent_id: null, author_id: window.currentUser.id, author_name: 'Ana López', author_role: 'estudiante' };
+    const { data: c, error: ce } = await sb.from('resource_comments').insert({ ...base, content: 'Muy buena clase' }).select().single();
+    const bad = await sb.from('resource_comments').insert({ ...base, content: 'eres un idiota' });
+    const { error: le } = await sb.from('resource_comment_likes').insert({ comment_id: c?.id, user_id: window.currentUser.id });
+    const { error: ne } = await sb.from('resource_notes').insert({ lesson_id: 'l1', student_id: window.currentUser.id, content: 'Repasar' });
+    const { data: listed } = await sb.from('resource_comments').select('*').eq('lesson_id', 'l1').eq('group_id', '7').order('created_at', { ascending: true });
+    const { data: likes } = await sb.from('resource_comment_likes').select('comment_id, user_id').in('comment_id', [c?.id]);
+    return { ce: ce?.message ?? null, badMessage: bad.error?.message ?? null, le: le?.message ?? null, ne: ne?.message ?? null, listed: listed?.length, likes: likes?.length, group: c?.group_id };
+  });
+  expect(r).toEqual({ ce: null, badMessage: expect.stringContaining('CONTENIDO_INAPROPIADO'), le: null, ne: null, listed: 1, likes: 1, group: 7 });
+  const status = await (await fetch(node.base + '/api/node/status')).json();
+  expect(status.pending_changes).toBeGreaterThanOrEqual(3);
   expect(errors).toEqual([]);
 });

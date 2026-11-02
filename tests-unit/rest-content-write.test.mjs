@@ -121,6 +121,7 @@ test('insert(...).select().single() de supabase-js devuelve UN objeto (no una li
   assert.match(c.id, /^[0-9a-f-]{36}$/);
   const two = await h.call('POST', '/rest/v1/courses?select=*', { token: t1, headers: single, body: [course({ title: 'A' }), course({ title: 'B' })] });
   assert.equal(two.status, 406);
+  assert.equal((await two.json()).code, 'PGRST116');
   assert.equal(h.layer.store.all('courses').filter((x) => x.created_by === 't1').length, 1, 'se deshizo todo');
   const none = await h.call('PATCH', '/rest/v1/courses?id=eq.no-existe&select=*', { token: t1, headers: single, body: { title: 'X' } });
   assert.equal(none.status, 406);

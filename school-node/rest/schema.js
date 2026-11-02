@@ -143,7 +143,6 @@ export const SCHEMA = {
   }),
 
   surveys: emptyTable(),
-  resource_comments: emptyTable(),
   comment_notifications: emptyTable(),
   student_duels: emptyTable(),
   student_hangman_duels: emptyTable(),
@@ -159,6 +158,36 @@ export const SCHEMA = {
   teacher_rock_completions: emptyTable(),
   ai_evaluations: emptyTable(),
   ai_code_evaluations: emptyTable(),
+
+  // Comentarios de equipo, «me gusta» y notas privadas de los recursos (reglas en policies.js, las de la nube). Sin adjuntos: subir una
+  // imagen necesita internet. id y fecha las pone el nodo (el id viaja a la nube, que lo usa para no duplicar).
+  resource_comments: table({
+    pk: 'id',
+    noUpdate: true,
+    columns: ['id', 'lesson_id', 'group_id', 'parent_id', 'author_id', 'author_name', 'author_role', 'content', 'attachment_url', 'created_at'],
+    coerce: { group_id: 'integer' }, // la app manda el equipo como texto del <select>; en la nube es integer
+    writable: ['lesson_id', 'group_id', 'parent_id', 'author_id', 'author_name', 'author_role', 'content', 'attachment_url'],
+    defaults: { id: () => globalThis.crypto.randomUUID(), created_at: () => new Date().toISOString() },
+    cascade: [{ table: 'resource_comments', fk: 'parent_id' }, { table: 'resource_comment_likes', fk: 'comment_id' }],
+    relations: {},
+  }),
+  // En la nube la clave es (comment_id, user_id); aquí el id es «comentario:usuario» (igual lo arma la bajada).
+  resource_comment_likes: table({
+    pk: 'id',
+    columns: ['comment_id', 'user_id', 'created_at'],
+    writable: ['comment_id', 'user_id'],
+    unique: [['comment_id', 'user_id']],
+    defaults: { id: (row) => `${row.comment_id}:${row.user_id}`, created_at: () => new Date().toISOString() },
+    relations: {},
+  }),
+  resource_notes: table({
+    pk: 'id',
+    noUpdate: true,
+    columns: ['id', 'lesson_id', 'student_id', 'content', 'updated_at', 'created_at'],
+    writable: ['lesson_id', 'student_id', 'content'],
+    defaults: { id: () => globalThis.crypto.randomUUID(), created_at: () => new Date().toISOString(), updated_at: () => new Date().toISOString() },
+    relations: {},
+  }),
 
   // Avisos: los envía el docente a sus grupos (reglas en policies.js, las mismas de can_send_announcement) y los ven según
   // can_see_announcement. id y fecha las pone el nodo (el id viaja a la nube, que lo usa para no duplicar).

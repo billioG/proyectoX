@@ -30,6 +30,9 @@ export const TABLE_COLUMNS: Record<string, string[]> = {
   lesson_completions: ['id', 'lesson_id', 'student_id', 'completed_at', 'score', 'status', 'raw_data'],
   announcements: ANNOUNCEMENT_COLUMNS,
   announcement_reads: ['id', 'announcement_id', 'user_id', 'read_at'],
+  resource_comments: ['id', 'lesson_id', 'group_id', 'parent_id', 'author_id', 'author_name', 'author_role', 'content', 'attachment_url', 'created_at'],
+  resource_comment_likes: ['comment_id', 'user_id', 'created_at'],
+  resource_notes: ['id', 'lesson_id', 'student_id', 'content', 'updated_at', 'created_at'],
   badges: ['id', 'code', 'name', 'description', 'icon', 'category', 'criteria_type', 'criteria_value', 'created_at'],
   student_badges: ['id', 'student_id', 'badge_id', 'earned_at', 'celebrated'],
 };
@@ -96,6 +99,16 @@ export async function pullTables(
   out.announcements = recent.filter((a) => announcementVisibleToSchool(a, school)).slice(0, 200).map((a) => restrictToSchool(a, school));
   const userIds = new Set<string>([...students, ...out.teachers.map((t) => t.id as string)]);
   out.announcement_reads = (await byIds('announcement_reads', 'announcement_id', out.announcements.map((a) => a.id), 'announcement_id')).filter((r) => userIds.has(r.user_id));
+
+  // Comentarios de los equipos de la escuela (con sus «me gusta») y las notas privadas de sus estudiantes. La clave de un «me gusta» en
+  // la nube es (comment_id, user_id); el nodo usa «comentario:usuario» como id.
+  out.resource_comments = await byIds('resource_comments', 'group_id', out.groups.map((g) => g.id));
+  out.resource_comment_likes = [];
+  for (const part of chunk(out.resource_comments.map((c) => c.id))) {
+    const likes = await fetchAll((from, to) => admin.from('resource_comment_likes').select(list('resource_comment_likes')).in('comment_id', part).order('comment_id').order('user_id').range(from, to));
+    out.resource_comment_likes.push(...likes.map((l: any) => ({ ...l, id: `${l.comment_id}:${l.user_id}` })));
+  }
+  out.resource_notes = await byIds('resource_notes', 'student_id', students);
 
   out.badges = await fetchAll((from, to) => admin.from('badges').select(list('badges')).order('id').range(from, to));
   out.student_badges = await byIds('student_badges', 'student_id', students);

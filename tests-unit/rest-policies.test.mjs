@@ -129,7 +129,7 @@ test('proyectos y escritura: solo lectura en la prueba de concepto (nada de inse
 
 test('lo que la app pide al entrar y el nodo no tiene (anuncios, duelos, comentarios...) responde vacío, sin errores, y no se puede escribir', () => {
   const s = makeStore();
-  for (const t of ['surveys', 'resource_comments', 'comment_notifications', 'student_duels', 'student_hangman_duels',
+  for (const t of ['surveys', 'exams', 'comment_notifications', 'student_duels', 'student_hangman_duels',
     'student_timed_math_duels', 'student_debug_duels', 'student_spelling_duels', 'project_reaction_notifications', 'student_challenges',
     'attendance', 'exams', 'exam_results', 'teacher_rocks', 'teacher_rock_completions', 'ai_evaluations', 'ai_code_evaluations']) {
     const r = run(s, 'GET', `/rest/v1/${t}?select=id,wager_gems,challenger:students!challenger_id(full_name)&opponent_id=eq.s1&status=eq.pending`, ana);
@@ -152,9 +152,9 @@ test('lo que el nodo no puede hacer sin internet lo dice en español claro (no �
   const s = makeStore();
   const unavailable = (e) => e.status >= 400 && /sin internet/i.test(e.message) && !/permission denied|does not exist|permiso|administrador/i.test(e.message);
   // Escribir en una tabla vacía (comentarios, notas), en una que no se escribe (proyectos) y en una que el nodo no tiene.
-  assert.throws(() => run(s, 'POST', '/rest/v1/resource_comments', ana, { body: { content: 'hola' } }), unavailable);
+  assert.throws(() => run(s, 'POST', '/rest/v1/surveys', ana, { body: { content: 'hola' } }), unavailable);
   assert.throws(() => run(s, 'POST', '/rest/v1/projects', ana, { body: { user_id: 's1', title: 'x' } }), unavailable);
-  assert.throws(() => run(s, 'POST', '/rest/v1/resource_notes', ana, { body: { content: 'hola' } }), unavailable);
+  assert.throws(() => run(s, 'POST', '/rest/v1/exams', ana, { body: { content: 'hola' } }), unavailable);
   assert.throws(() => run(s, 'GET', '/rest/v1/class_weekly_topics?select=*', ana), unavailable);
   // Los códigos siguen siendo los de la nube (la app y las pruebas se apoyan en ellos).
   fails(() => run(s, 'POST', '/rest/v1/projects', ana, { body: { user_id: 's1', title: 'x' } }), 403, '42501');

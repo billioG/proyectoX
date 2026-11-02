@@ -14,6 +14,9 @@ export function restPush(store, { gate = () => true, toCloudUrl = (u) => u } = {
   const announcements = [];
   const reads = new Map(); // 'aviso|usuario' -> lectura (una sola por par: la última)
   const content = []; // cursos y recursos hechos en el nodo, EN ORDEN (la nube los confirma por seq)
+  // Lo que todavía no viaja (su recurso espera archivos): lo que depende de eso espera también.
+  const waiting = { lessons: new Set(), comments: new Set(), commentLesson: new Map() };
+  const lessonOfComment = (id) => store.all('resource_comments').find((c) => c.id === id)?.lesson_id;
   for (const e of store.pending()) {
     // Funciones de la app (Práctica): la nube confirma cada una por su seq; mientras no, siguen en la bandeja.
     // Evaluaciones de proyectos: viajan en el formato que la nube ya valida (push.evaluations), con su seq como clave.
@@ -25,8 +28,17 @@ export function restPush(store, { gate = () => true, toCloudUrl = (u) => u } = {
     // Avisos y lecturas: la nube confirma cada uno (por id, o por aviso|usuario); mientras no, siguen en la bandeja.
     if (e.table === 'announcements') { announcements.push({ ...e.row, seq: e.seq }); continue; }
     // Cursos y recursos: el curso viaja siempre; un recurso solo cuando sus archivos ya llegaron a la nube (gate). La nube confirma por seq.
+    // Comentarios, «me gusta» y notas de los recursos: viajan en el mismo orden; esperan si su recurso (o el comentario) aún no subió.
+    if (e.table === 'resource_comments' || e.table === 'resource_comment_likes' || e.table === 'resource_notes') {
+      const lessonId = e.table === 'resource_comment_likes' ? waiting.commentLesson.get(e.row.comment_id) ?? lessonOfComment(e.row.comment_id) : e.row.lesson_id;
+      if (e.table === 'resource_comments') waiting.commentLesson.set(e.pk, e.row.lesson_id);
+      if (lessonId != null && (waiting.lessons.has(lessonId) || (e.row.parent_id != null && waiting.comments.has(e.row.parent_id)))) { waiting.comments.add(e.pk); continue; }
+      if (e.table === 'resource_comment_likes' && waiting.comments.has(e.row.comment_id)) continue;
+      content.push({ seq: e.seq, tbl: e.table, op: e.op, pk: e.pk, row: e.row });
+      continue;
+    }
     if (e.table === 'courses' || e.table === 'lessons') {
-      if (e.table === 'lessons' && !gate(e.pk)) continue;
+      if (e.table === 'lessons' && !gate(e.pk)) { waiting.lessons.add(e.pk); continue; }
       const row = e.table === 'lessons' && typeof e.row?.content_url === 'string' ? { ...e.row, content_url: toCloudUrl(e.row.content_url) } : e.row;
       content.push({ seq: e.seq, tbl: e.table, op: e.op, pk: e.pk, row });
       continue;

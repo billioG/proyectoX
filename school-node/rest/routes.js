@@ -88,7 +88,7 @@ export function createRestRoutes({ store, auth, rpcs = {}, onChange = () => {} }
         const r = engine.execute(parsed, ctx);
         // supabase-js .single() sobre una escritura: exactamente una fila, o se deshace todo (igual que PostgREST).
         if (parsed.single === 'object' && parsed.returnRep && parsed.kind !== 'select' && (!Array.isArray(r.rows) || r.rows.length !== 1)) {
-          throw new RestError(406, 'PGRST116', 'JSON object requested, multiple (or no) rows returned');
+          throw new RestError(406, 'JSON object requested, multiple (or no) rows returned', 'PGRST116');
         }
         store.enqueue(r.changes);
         return r;

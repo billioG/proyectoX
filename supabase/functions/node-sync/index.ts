@@ -34,6 +34,7 @@ import { validatePracticeEvent } from './practice.ts';
 import { classifyRead, isUuid, validateAnnouncementEvent, validateReadEvent } from './announcements.ts';
 import { sanitizeCompletions, type CompletionRow } from './completions.ts';
 import { planContentOps, validateContentUploadRequest, validateObjectPath } from './content.ts';
+import { isSocialTable, planSocialOps } from './social.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -574,7 +575,7 @@ Deno.serve(async (req) => {
         // Cursos a los que apuntan los recursos del lote y todavía no se cargaron.
         const missing = [...new Set(pushedContent.filter((o) => o?.tbl === 'lessons' && isUuid(o?.row?.course_id) && !courses.has(o.row.course_id)).map((o) => o.row.course_id))] as string[];
         for (const part of chunk(missing)) for (const c of await fetchAll((from, to) => admin.from('courses').select('id, school_code, created_by, is_shared').in('id', part).order('id').range(from, to))) courses.set(c.id, c);
-        const plan = planContentOps(pushedContent, {
+        const plan = planContentOps(pushedContent.filter((o) => !isSocialTable(o?.tbl)), {
           schoolCode: node.school_code, storageBase: `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/`, cloudUrl: SUPABASE_URL, assignments: schoolAssignments,
           adminIds: new Set((admins || []).map((a: any) => a.id as string)),
           courses: new Map([...courses].map(([k, c]) => [k, { school_code: c.school_code, created_by: c.created_by, is_shared: !!c.is_shared }])),
@@ -596,6 +597,33 @@ Deno.serve(async (req) => {
           if (error) { contentErrors.push({ seq: a.seq, error: error.message, permanent: false }); failed.add(a.seq); }
         }
         for (const r of plan.results) if (r.ok && !failed.has(r.seq)) appliedContent.push(r.seq);
+
+        // Comentarios, «me gusta» y notas de los recursos: después de los recursos (apuntan a ellos), con las mismas reglas de la nube.
+        const socialOps = pushedContent.filter((o) => isSocialTable(o?.tbl));
+        if (socialOps.length) {
+          const groupRows = await fetchAll((from, to) => admin.from('groups').select('id').eq('school_code', node.school_code).order('id').range(from, to));
+          const groupIds = groupRows.map((g: any) => g.id as number);
+          const members = new Set<string>();
+          for (const part of chunk(groupIds)) for (const m of await fetchAll((from, to) => admin.from('group_members').select('id, group_id, student_id').in('group_id', part).order('id').range(from, to))) members.add(`${m.group_id}:${m.student_id}`);
+          const lessonRows = await fetchAll((from, to) => admin.from('lessons').select('id').eq('school_code', node.school_code).order('id').range(from, to));
+          const wanted = [...new Set(socialOps.flatMap((o) => [o?.pk, o?.row?.parent_id, o?.row?.comment_id, typeof o?.pk === 'string' ? o.pk.split(':')[0] : null]).filter(isUuid))] as string[];
+          const comments = new Map<string, { lesson_id: string; group_id: number }>();
+          for (const part of chunk(wanted)) for (const c of await fetchAll((from, to) => admin.from('resource_comments').select('id, lesson_id, group_id').in('id', part).order('id').range(from, to))) comments.set(c.id, { lesson_id: c.lesson_id, group_id: c.group_id });
+          const social = planSocialOps(socialOps, {
+            schoolCode: node.school_code, studentIds, assignments: schoolAssignments, adminIds: new Set((admins || []).map((a: any) => a.id as string)),
+            groups: new Set(groupIds), groupMembers: members, lessons: new Set(lessonRows.map((l: any) => l.id as string)), comments,
+          });
+          const failedSocial = new Set<number>();
+          for (const r of social.results) if (!r.ok) contentErrors.push({ seq: r.seq, error: r.error, permanent: true });
+          for (const a of social.actions) {
+            if (Date.now() - startedAt > 40_000) { failedSocial.add(a.seq); continue; }
+            let error: { message: string } | null = null;
+            if (a.kind === 'upsert') ({ error } = await admin.from(a.table).upsert(a.row, { onConflict: a.onConflict }));
+            else { let q = admin.from(a.table).delete(); for (const [k, v] of Object.entries(a.match)) q = q.eq(k, v as any); ({ error } = await q); }
+            if (error) { contentErrors.push({ seq: a.seq, error: error.message, permanent: false }); failedSocial.add(a.seq); }
+          }
+          for (const r of social.results) if (r.ok && !failedSocial.has(r.seq)) appliedContent.push(r.seq);
+        }
       } catch (e) {
         appliedContent.length = 0; contentErrors.length = 0;
         console.error('node-sync: no se pudieron aplicar los cursos y recursos', e);

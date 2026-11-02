@@ -2,6 +2,9 @@
 // (pg_policies). Lo que no tiene regla explícita se DENIEGA. `ctx` = { uid, role: 'student'|'teacher'|'admin',
 // classKey: 'escuela|grado|sección' (solo estudiantes) }. is_staff() de la nube = docente o administrador.
 
+import { RestError } from './query.js';
+import { containsProfanity } from './profanity.js';
+
 export function createPolicy({ store }) {
   const staff = (ctx) => ctx.role === 'teacher' || ctx.role === 'admin';
   const own = (ctx, id) => id === ctx.uid;
@@ -117,7 +120,33 @@ export function createPolicy({ store }) {
         : l.quiz_data == null && typeof l.content_url === 'string' && ((httpsUrl(l.content_url) && allowedExternal(l.content_url)) || (str(l.content_url, 1000) && ownFile(l.id)(l.content_url))));
   };
 
+  // ---- Comentarios de equipo, «me gusta» y notas privadas de los recursos (reglas de la nube; la nube las valida otra vez al sincronizar) ----
+  const inGroup = (uid, groupId) => store.all('group_members').some((m) => m.group_id === groupId && m.student_id === uid);
+  const canSeeComment = (ctx, c) => staff(ctx) || inGroup(ctx.uid, c.group_id);
+  const lessonKnown = (id) => typeof id === 'string' && store.all('lessons').some((l) => l.id === id);
+  // Igual que el disparador de la nube: el mensaje trae CONTENIDO_INAPROPIADO y la app lo traduce a «lenguaje no permitido».
+  const noProfanity = (t) => { if (containsProfanity(t)) throw new RestError(400, 'CONTENIDO_INAPROPIADO: el texto contiene lenguaje no permitido', 'P0001'); return true; };
+  const canComment = (ctx, c) => {
+    if (c.author_id !== ctx.uid || (!staff(ctx) && ctx.role !== 'student')) return false;
+    if (typeof c.author_name !== 'string' || !c.author_name.trim() || c.author_name.length > 120) return false;
+    if (!(staff(ctx) ? ['docente', 'admin', 'coordinador'].includes(c.author_role) : c.author_role === 'estudiante')) return false;
+    if (!Number.isInteger(c.group_id) || !store.all('groups').some((g) => g.id === c.group_id) || !lessonKnown(c.lesson_id)) return false;
+    if (!staff(ctx) && !inGroup(ctx.uid, c.group_id)) return false;
+    if (!text(c.content, 2000) || c.attachment_url != null) return false;
+    if (c.parent_id != null) {
+      const p = store.all('resource_comments').find((x) => x.id === c.parent_id);
+      if (!p || p.lesson_id !== c.lesson_id || p.group_id !== c.group_id) return false;
+    }
+    return noProfanity(c.content);
+  };
+  const canLike = (ctx, l) => l.user_id === ctx.uid && (staff(ctx) || ctx.role === 'student')
+    && (() => { const c = store.all('resource_comments').find((x) => x.id === l.comment_id); return !!c && canSeeComment(ctx, c); })();
+  const canNote = (ctx, n) => ctx.role === 'student' && n.student_id === ctx.uid && lessonKnown(n.lesson_id) && text(n.content, 5000) && noProfanity(n.content);
+
   const readRules = {
+    resource_comments: (ctx, r) => canSeeComment(ctx, r),
+    resource_comment_likes: (ctx, r) => { const c = store.all('resource_comments').find((x) => x.id === r.comment_id); return !!c && canSeeComment(ctx, c); },
+    resource_notes: (ctx, r) => r.student_id === ctx.uid,
     announcements: (ctx, r) => canSeeAnnouncement(ctx, r),
     announcement_reads: (ctx, r) => own(ctx, r.user_id),
     // Públicas para cualquier sesión (select true en la nube).
@@ -150,6 +179,9 @@ export function createPolicy({ store }) {
     canInsert: (ctx, table, row) => (table === 'lesson_completions' && own(ctx, row.student_id) && validCompletion(row))
       || (table === 'announcements' && canSendAnnouncement(ctx, row))
       || (table === 'announcement_reads' && canMarkRead(ctx, row))
+      || (table === 'resource_comments' && canComment(ctx, row))
+      || (table === 'resource_comment_likes' && canLike(ctx, row))
+      || (table === 'resource_notes' && canNote(ctx, row))
       || (table === 'courses' && staff(ctx) && validCourse(ctx, row))
       || (table === 'lessons' && staff(ctx) && validLesson(ctx, row)),
 
@@ -162,6 +194,9 @@ export function createPolicy({ store }) {
 
     // lesson_completions_delete_own_or_admin
     canDelete: (ctx, table, row) => (table === 'lesson_completions' && (own(ctx, row.student_id) || ctx.role === 'admin'))
+      || (table === 'resource_comments' && (row.author_id === ctx.uid || staff(ctx)))
+      || (table === 'resource_comment_likes' && row.user_id === ctx.uid)
+      || (table === 'resource_notes' && row.student_id === ctx.uid)
       // Sin internet solo se borra lo propio; un curso compartido con otras escuelas se borra en línea (se puede dejar de compartir).
       || (table === 'courses' && mayEditCourse(ctx, row) && row.is_shared !== true)
       || (table === 'lessons' && mayEditCourse(ctx, store.all('courses').find((c) => c.id === row.course_id))),
