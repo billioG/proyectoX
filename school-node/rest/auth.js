@@ -3,6 +3,7 @@
 // nube, y la nube no puede fabricar uno para el nodo). La contraseña de la clase se compara contra un verificador con
 // sal que baja la sincronización; la contraseña en claro nunca llega al nodo.
 import crypto from 'node:crypto';
+import bcrypt from 'bcryptjs';
 
 const PBKDF2_ITERATIONS = 150000;
 const ACCESS_MS = 3600_000;
@@ -13,6 +14,10 @@ const MAX_ATTEMPTS = 10; // por IP y por usuario, en la ventana (mismo tope que 
 const MAX_TRACKED = 5000; // intentos y enlaces en memoria: tope duro
 const DUMMY_SALT = '00'.repeat(16);
 const GENERIC_ERROR = 'Usuario o contraseña incorrectos';
+// Hash de mentira (mismo costo que los de la nube) para que un correo que no existe tarde lo mismo que uno que sí.
+let dummyBcrypt = null;
+const DUMMY = () => (dummyBcrypt ||= bcrypt.hashSync('sin-docente', 10));
+const bcryptCompare = (given, hash) => { try { return bcrypt.compareSync(given, hash); } catch { return false; } };
 
 export class AuthError extends Error {
   constructor(status, message) { super(message); this.status = status; }
@@ -29,7 +34,7 @@ const classKeyOf = (s) => `${s.school_code}|${s.grade}|${s.section}`;
 const active = (s) => !!s && s.status !== 'egresado' && s.status !== 'baja';
 
 // `hash` y `maxTracked` se pueden cambiar solo para probar (PBKDF2 real tarda ~100 ms por intento).
-export function createAuth({ store, now = Date.now, hash: hashFn = hashClassPassword, maxTracked = MAX_TRACKED }) {
+export function createAuth({ store, now = Date.now, hash: hashFn = hashClassPassword, maxTracked = MAX_TRACKED, compare = bcryptCompare }) {
   let secret = store.getMeta('jwt_secret');
   if (!secret) { secret = crypto.randomBytes(32).toString('hex'); store.setMeta('jwt_secret', secret); }
 
@@ -103,8 +108,10 @@ export function createAuth({ store, now = Date.now, hash: hashFn = hashClassPass
     return { ok: true, email: `${student.id}@nodo.local`, token_hash: token };
   }
 
-  // Docentes: correo + el PIN que fijaron en línea (la contraseña de su cuenta de la nube nunca llega al nodo). Un correo que no
-  // existe, un PIN malo y un docente que nunca fijó PIN hacen el mismo trabajo y dan el mismo error.
+  // Docentes: correo + la MISMA contraseña de su cuenta. La nube manda al nodo, en cada sincronización, solo la huella bcrypt de los
+  // docentes de esa escuela (nunca la contraseña), así que entran sin internet con lo mismo que usan en línea. Un correo que no
+  // existe, una contraseña mala y un hash dañado hacen el mismo trabajo y dan el mismo error. (Sigue valiendo el PIN anterior si
+  // la nube aún lo manda y no hay huella bcrypt.)
   function teacherLogin({ email, password, ip }) {
     const eh = emailHash(email);
     const ipKey = `ip:${ip || 'unknown'}`, userKey = `mail:${eh.slice(0, 32)}`;
@@ -113,8 +120,11 @@ export function createAuth({ store, now = Date.now, hash: hashFn = hashClassPass
     }
     const login = String(email || '').trim() ? store.teacherLoginByEmailHash(eh) : null;
     const given = String(password || '').slice(0, 200);
-    const hash = hashFn(given, login ? login.pin_salt : DUMMY_SALT);
-    if (!login || !given || !equal(hash, login.pin_hash) || !teacherRow(login.teacher_id)) {
+    let ok = false;
+    if (login?.bcrypt) ok = compare(given, login.bcrypt) === true;
+    else if (login?.pin_hash) ok = equal(hashFn(given, login.pin_salt), login.pin_hash);
+    else compare(given, DUMMY());
+    if (!login || !given || !ok || !teacherRow(login.teacher_id)) {
       miss(ipKey); miss(userKey);
       throw new AuthError(400, 'Invalid login credentials');
     }

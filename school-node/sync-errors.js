@@ -2,7 +2,7 @@
 
 export function friendlySyncError(message) {
   const m = String(message || '');
-  if (/fetch failed|ENOTFOUND|ECONNREFUSED|ECONNRESET|ETIMEDOUT|EAI_AGAIN|network|timeout|aborted/i.test(m)) return 'No hay internet en esta computadora todavía. Conéctala a un internet que funcione y vuelve a intentar.';
+  if (/fetch failed|ENOTFOUND|ECONNREFUSED|ECONNRESET|ETIMEDOUT|EAI_AGAIN|network|timeout|aborted/i.test(m)) return 'Sin internet por ahora. Todo lo que se hizo está guardado y se subirá solo cuando haya conexión (cable o Wi-Fi con internet).';
   if (/token/i.test(m)) return 'La nube no reconoció el token. Revisa que lo copiaste completo o pide uno nuevo al administrador.';
   return m || 'Error desconocido';
 }

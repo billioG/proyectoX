@@ -23,11 +23,15 @@ export function createStore({ db, schema }) {
     CREATE TABLE IF NOT EXISTS rest_teacher_logins (
       email_hash TEXT PRIMARY KEY, teacher_id TEXT NOT NULL, pin_hash TEXT NOT NULL, pin_salt TEXT NOT NULL
     );
+    -- Desde v1.0.199 la entrada del docente es su contraseña normal (bcrypt de la nube); las bases anteriores ganan la columna abajo.
     -- Tokens de renovación de las sesiones del nodo (se guarda solo su huella).
     CREATE TABLE IF NOT EXISTS rest_refresh (
       token_hash TEXT PRIMARY KEY, uid TEXT NOT NULL, created_at INTEGER NOT NULL
     );
   `);
+  if (!db.prepare('PRAGMA table_info(rest_teacher_logins)').all().some((c) => c.name === 'bcrypt')) {
+    db.exec('ALTER TABLE rest_teacher_logins ADD COLUMN bcrypt TEXT');
+  }
 
   const pkOf = (tbl) => {
     const def = schema[tbl];
@@ -53,8 +57,8 @@ export function createStore({ db, schema }) {
     getMeta: db.prepare('SELECT value FROM rest_meta WHERE key = ?'),
     verifier: db.prepare('SELECT class_key, requires_password, salt, hash FROM rest_class_verifiers WHERE class_key = ?'),
     delTeacherLogins: db.prepare('DELETE FROM rest_teacher_logins'),
-    putTeacherLogin: db.prepare('INSERT OR REPLACE INTO rest_teacher_logins (email_hash, teacher_id, pin_hash, pin_salt) VALUES (?, ?, ?, ?)'),
-    getTeacherLogin: db.prepare('SELECT teacher_id, pin_hash, pin_salt FROM rest_teacher_logins WHERE email_hash = ?'),
+    putTeacherLogin: db.prepare('INSERT OR REPLACE INTO rest_teacher_logins (email_hash, teacher_id, pin_hash, pin_salt, bcrypt) VALUES (?, ?, ?, ?, ?)'),
+    getTeacherLogin: db.prepare('SELECT teacher_id, pin_hash, pin_salt, bcrypt FROM rest_teacher_logins WHERE email_hash = ?'),
     countVerifiers: db.prepare('SELECT COUNT(*) AS n FROM rest_class_verifiers'),
     delVerifiers: db.prepare('DELETE FROM rest_class_verifiers'),
     putVerifier: db.prepare('INSERT INTO rest_class_verifiers (class_key, requires_password, salt, hash) VALUES (?, ?, ?, ?)'),
@@ -153,10 +157,10 @@ export function createStore({ db, schema }) {
       q.delVerifiers.run();
       for (const v of list) q.putVerifier.run(v.class_key, v.requires_password ? 1 : 0, v.salt || '', v.hash || '');
     }),
-    /** Reemplaza las entradas de docentes con las que bajó de la nube: [{ teacher_id, email_hash, pin_hash, pin_salt }]. */
+    /** Reemplaza las entradas de docentes con las que bajó de la nube: [{ teacher_id, email_hash, bcrypt }] (o el PIN anterior: pin_hash + pin_salt). */
     setTeacherLogins: (list) => transaction(() => {
       q.delTeacherLogins.run();
-      for (const t of list) q.putTeacherLogin.run(t.email_hash, t.teacher_id, t.pin_hash, t.pin_salt);
+      for (const t of list) q.putTeacherLogin.run(t.email_hash, t.teacher_id, t.pin_hash || '', t.pin_salt || '', t.bcrypt || null);
     }),
     teacherLoginByEmailHash: (h) => q.getTeacherLogin.get(String(h)) || null,
     verifierCount: () => q.countVerifiers.get().n,

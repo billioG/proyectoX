@@ -71,7 +71,7 @@ manda el navegador.
 | `offline-kit.js` | Varias cuentas por tablet, PIN, almacenamiento persistente |
 | `node-mode.js` | Modo nodo escolar anterior (PIN y panel del nodo), disponible en `/?modo=pin` |
 | `node-sync-chip.js` | Aviso «Sincronizado hace X / N cambios por subir» y botón «Sincronizar ahora» (solo sobre el nodo) |
-| `teacher-node-pin.js` | Tarjeta del Perfil del docente para fijar su PIN de entrada al nodo (solo en la nube) |
+| `teacher-node-pin.js` | Ya no se carga (v1.0.200): el docente entra al nodo con su contraseña normal |
 | `notification-center.js` | Refresca los contadores (campana, evaluar, duelos) |
 | `activity-tracker.js` | Tiempo activo (latido cada 30 s, calculado en servidor) |
 

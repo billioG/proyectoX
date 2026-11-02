@@ -130,7 +130,7 @@ test('sin internet y con token equivocado, el mensaje es claro', { skip, timeout
   try {
     const id = offline.add('s1', 'Robot seguidor');
     assert.deepEqual(await offline.sync(), { synced: 0, failed: 1 });
-    assert.match(offline.row(id).last_error, /No hay internet en esta computadora/);
+    assert.match(offline.row(id).last_error, /Sin internet por ahora/);
   } finally { await offline.done(); }
   const wrong = await setup({}, { nodeToken: 'b'.repeat(64) });
   try {

@@ -15,9 +15,10 @@ Cuando el nodo ya **sincronizó una vez** con la nube, tus estudiantes y docente
 - **Estudiantes:** entran con su **usuario y la contraseña de la clase** (o solo con el usuario si esa clase no usa
   contraseña), igual que en línea. No hay lista de usuarios. Ven Inicio, Cursos, Perfil, el cofre diario y la
   **Práctica** del Centro de Juego (con preguntas del banco, sin IA). Completar una lección suma +10 XP al instante.
-- **Docentes:** entran con su **correo y un PIN de 6 números** que fijaron **una vez con internet**, en su Perfil
-  (tarjeta «PIN para entrar sin internet»). Desde ahí **evalúan proyectos** de sus clases (el nodo recalcula el total y la
-  nube lo vuelve a validar) y **envían avisos** a sus grupos. Un docente que nunca fijó su PIN no entra por aquí.
+- **Docentes:** entran con su **correo y la misma contraseña de su cuenta** (sin PIN aparte). En cada sincronización la nube
+  manda al nodo solo la huella cifrada (bcrypt) de la contraseña de los docentes de esa escuela, así que entran sin internet
+  aunque nunca hayan usado esa Raspberry. Si cambian su contraseña en la nube, la nueva llega en la siguiente sincronización.
+  Desde ahí **evalúan proyectos** de sus clases (el nodo recalcula el total y la nube lo vuelve a validar) y **envían avisos**.
 - **Sincronización:** automática cada 10 minutos cuando hay internet, o a mano con el botón **Sincronizar ahora** del
   aviso de abajo a la izquierda, que también muestra «Sincronizado hace X» o «N cambios por subir».
 - **Modo anterior (PIN y panel del nodo):** sigue disponible en **`/?modo=pin`** (o con el enlace «Docente» del aviso):
@@ -252,10 +253,10 @@ Un nodo con **Windows** se actualiza con `actualizar-windows.cmd` (no necesita S
    - `pending.files = 0` → todos los archivos de los cursos ya están en el nodo. **Si es mayor que 0, esos archivos no se
      verán sin internet.** Espera con internet a que llegue a 0.
    - `pending_changes = 0` y `sync_error` vacío → no queda nada por subir.
-5. **Cada docente fija su PIN, con internet,** en su Perfil (tarjeta «PIN para entrar sin internet»), y se sincroniza otra vez
-   para que el nodo lo reciba.
+5. **Sincroniza una vez con internet** para que el nodo reciba a los docentes: ya no hace falta crear ningún PIN, entran con su
+   correo y su contraseña de siempre. (En la nube debe estar corrida `migrations/teacher-node-password.sql`.)
 6. **Desconecta el internet** (deja solo la red de la escuela) y prueba desde una tablet: un estudiante (usuario y contraseña de
-   la clase) con un curso y un video, y un docente (correo y PIN).
+   la clase) con un curso y un video, y un docente (correo y contraseña de su cuenta).
 7. **Fotos de perfil:** se descargan en cada sincronización; aparecen después de la primera sincronización con internet.
 8. **Imprime el cartel** (`http://IP-DEL-NODO/cartel`) desde esa red: si cambias de router, la dirección cambia y hay que
    imprimirlo otra vez.
@@ -327,7 +328,7 @@ detenido o cambia `"hostName"` en uno de los `config.json`.
 | Los **recursos de los cursos** (video, PDF, H5P) no cargan sin internet | Versiones anteriores a **v1.0.198** los pedían a la nube. O los archivos aún no se descargaron. | Actualiza (`bash ~/quetzal/school-node/install.sh --update`). Mira `pending.files` en `api/node/status`: debe ser `0`; si no, sincroniza con internet hasta que llegue a 0. |
 | Al comentar sale «No tienes permiso, avisa al administrador» | Versiones anteriores a v1.0.198 mostraban ese texto. Los comentarios y notas **no existen sin internet**. | Actualiza: ahora dice «Esto no está disponible sin internet». Comenta cuando el nodo tenga internet. Lo mismo con subir proyecto y reaccionar, que de momento solo funcionan en `/?modo=pin`. |
 | La **foto de perfil** no se ve | Las fotos se descargan en la sincronización; sin ella se ve el ícono. | Sincroniza **con internet** (v1.0.198 o posterior) y recarga la app. |
-| El **docente** entra con «credenciales inválidas» | No fijó su PIN, o el nodo todavía no lo recibió. | Debe fijarlo **con internet** en su Perfil (tarjeta «PIN para entrar sin internet»), con **correo y ese PIN** (no la contraseña de su cuenta), y sincronizar. En la nube deben estar corridos `migrations/teacher-node-pin.sql` y desplegado `node-sync` con todos sus archivos. Un administrador que no esté **asignado a una clase de esa escuela** no entra por aquí. Para ver qué recibió el nodo: `cd ~/quetzal/school-node && node -e "const D=require('better-sqlite3');const db=new D('data/node.db',{readonly:true});console.log('entradas de docentes:',db.prepare('select count(*) n from rest_teacher_logins').get().n,'| docentes:',db.prepare('select count(*) n from rest_rows where tbl=?').get('teachers').n)"`. Si «entradas de docentes» es 0, la nube no envió los PIN; si «docentes» es 0, ese docente no tiene clases asignadas en esa escuela. |
+| El **docente** entra con «credenciales inválidas» | Escribió una contraseña distinta a la de su cuenta, o el nodo todavía no recibió su huella. | Debe usar **su correo y la contraseña con que entra a Quetzal en línea**. En la nube debe estar corrida `migrations/teacher-node-password.sql` y desplegado `node-sync` completo. Un docente que no esté **asignado a una clase de esa escuela** no entra. Sincroniza con internet y revisa en la Raspberry: `cd ~/quetzal/school-node && node -e "const D=require('better-sqlite3');const db=new D('data/node.db',{readonly:true});console.log('con contraseña:',db.prepare('select count(*) n from rest_teacher_logins where bcrypt is not null').get().n,'| docentes:',db.prepare('select count(*) n from rest_rows where tbl=?').get('teachers').n)"`. Si «con contraseña» es 0, la nube no mandó las huellas (falta la migración o el despliegue); si «docentes» es 0, ese docente no tiene clases asignadas en esa escuela. |
 | Fecha u hora incorrecta tras un apagón | La Raspberry no tiene reloj propio y sin internet puede desfasarse. | Cuando vuelva el internet se corrige sola. Mientras tanto afecta el día del cofre diario y la fecha de los avisos. |
 
 ## Requisitos
@@ -512,7 +513,7 @@ otra ruta, definir la variable de entorno `QUETZAL_USB_DIR`.
 - **Contraseña de clase:** al nodo solo baja un verificador (hash PBKDF2 con sal), nunca la contraseña. Aun así, el archivo
   de la base del nodo (`data/node.db`) debe quedar bajo llave: con un archivo copiado se podría intentar adivinar una
   contraseña de clase corta sin conexión.
-- **PIN de docente:** se fija en línea (el servidor solo guarda hash y sal) y en el nodo solo vive la huella del correo, no el correo.
+- **Contraseña de docente:** en el nodo solo vive su huella bcrypt (la misma que ya guarda la nube) y la huella del correo, no el correo ni la contraseña.
 - **Sesión del nodo:** un token firmado con un secreto que solo existe en ese nodo; no sirve en la nube. 10 intentos fallidos
   por IP o por usuario en 5 minutos bloquean el ingreso un rato.
 

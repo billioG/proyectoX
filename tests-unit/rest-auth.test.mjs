@@ -197,3 +197,35 @@ test('docente: si lo quitan de la escuela deja de valer su sesión; un docente n
   fails(() => auth.refresh(s.refresh_token), 401);
   assert.throws(() => auth.studentLogin({ username: 'marta@escuela.com', password: '654321', ip: 'q' }), (e) => e.status === 401);
 });
+
+// ---- Docentes: correo + la MISMA contraseña de su cuenta (bcrypt que baja la sincronización) ----
+import bcrypt from '../school-node/node_modules/bcryptjs/index.js';
+
+function setupTeacherPassword() {
+  const base = setup();
+  base.store.put('teachers', { id: 't1', full_name: 'Marta Gómez', role: 'docente' });
+  base.store.put('teachers', { id: 't2', full_name: 'Otra', role: 'docente' });
+  base.store.setTeacherLogins([
+    { teacher_id: 't1', email_hash: emailHash('Marta@Escuela.com'), bcrypt: bcrypt.hashSync('MiClave-Segura9', 4) },
+    { teacher_id: 't2', email_hash: emailHash('otra@escuela.com'), bcrypt: 'esto-no-es-un-hash' },
+  ]);
+  return base;
+}
+
+test('docente: entra con su correo y la contraseña normal de su cuenta, sin PIN', () => {
+  const { auth } = setupTeacherPassword();
+  const s = teacherIn(auth, '  MARTA@escuela.com ', 'MiClave-Segura9');
+  assert.equal(s.user.id, 't1');
+  assert.deepEqual(auth.userFromAccessToken(s.access_token), { uid: 't1', role: 'teacher', classKey: null });
+});
+
+test('docente con contraseña: la contraseña mala, el correo inexistente y un hash dañado dan el mismo error genérico', () => {
+  const { auth } = setupTeacherPassword();
+  const errs = [
+    () => teacherIn(auth, 'marta@escuela.com', 'otra-clave', '1.1.1.1'),
+    () => teacherIn(auth, 'nadie@x.com', 'MiClave-Segura9', '2.2.2.2'),
+    () => teacherIn(auth, 'otra@escuela.com', 'esto-no-es-un-hash', '3.3.3.3'),
+    () => teacherIn(auth, 'marta@escuela.com', '', '4.4.4.4'),
+  ].map((f) => { try { f(); return null; } catch (e) { return [e.status, e.message]; } });
+  for (const e of errs) assert.deepEqual(e, [400, 'Invalid login credentials']);
+});

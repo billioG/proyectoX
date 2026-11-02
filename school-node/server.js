@@ -370,11 +370,9 @@ const api = {
     },
   }),
 
-  // «Sincronizar ahora» para cualquier estudiante con sesión (el docente tiene el suyo en el panel). No martilla a la nube:
-  // si ya se está sincronizando, o se pidió hace menos de 15 s, no arranca otra.
+  // «Sincronizar ahora»: no pide sesión (el botón también está en la pantalla de entrada; sincronizar no expone ni cambia datos
+  // de nadie). No martilla a la nube: si ya se está sincronizando, o se pidió hace menos de 15 s, no arranca otra.
   'POST /api/sync/now': (req, res) => {
-    const who = restLayer.auth.userFromAccessToken((req.headers.authorization || '').replace(/^Bearer\s+/i, ''));
-    if (!who) return sendJson(res, 401, { error: 'Entra con tu usuario para sincronizar.' });
     if (!hasToken()) return sendJson(res, 400, { error: 'Esta escuela todavía no está conectada a la nube.' });
     if (syncing) return sendJson(res, 200, { started: false, syncing: true });
     if (Date.now() - lastSyncRequestAt < 15_000) return sendJson(res, 200, { started: false, throttled: true });

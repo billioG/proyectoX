@@ -57,6 +57,6 @@ test('guardar el token desde el panel del docente', { skip: !sqliteAvailable() &
     }
     assert.equal(info.has_token, true);
     assert.equal(info.syncing, false);
-    assert.match(info.last_error, /No hay internet en esta computadora/);
+    assert.match(info.last_error, /Sin internet por ahora/);
   } finally { await node.stop(); }
 });

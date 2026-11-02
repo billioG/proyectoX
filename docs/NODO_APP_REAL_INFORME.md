@@ -9,7 +9,7 @@ puntos marcados como **estimación** son criterio, no medición.
 
 - El nodo ahora responde con el mismo «idioma» que Supabase (`/rest/v1`, `/auth/v1`, `/functions/v1/student-login`) sobre una
   réplica SQLite de la escuela. La **app real** corre encima sin pantallas copiadas.
-- Funciona sin internet: **login** (estudiante con contraseña de clase, docente con correo y PIN), **Inicio**, **Cursos**,
+- Funciona sin internet: **login** (estudiante con contraseña de clase, docente con su correo y contraseña normal), **Inicio**, **Cursos**,
   **Perfil**, **avance de lecciones con XP**, **cofre diario**, **Práctica** del Centro de Juego (sin IA), **Evaluar proyectos**
   y **Avisos**. Todo se guarda en el nodo y se sube solo cada 10 minutos, o con **Sincronizar ahora**.
 - **Pero hay una regresión que conviene decidir ya:** cuando la app real se activa en el nodo, **dejan de funcionar «Subir

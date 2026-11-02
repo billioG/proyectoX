@@ -94,3 +94,19 @@ test('metadatos: guarda y lee valores (última bajada, etc.)', () => {
   s.setMeta('last_pull', '2026-11-01T10:00:00Z');
   assert.equal(s.getMeta('last_pull'), '2026-11-01T10:00:00Z');
 });
+
+test('una base creada antes de v1.0.199 (sin columna bcrypt) se actualiza sola y guarda la huella bcrypt del docente', async () => {
+  const fs = await import('node:fs'), os = await import('node:os'), path = await import('node:path');
+  const { openDb } = await import('../school-node/db.js');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rest-old-'));
+  const db = openDb(dir);
+  db.exec('CREATE TABLE rest_teacher_logins (email_hash TEXT PRIMARY KEY, teacher_id TEXT NOT NULL, pin_hash TEXT NOT NULL, pin_salt TEXT NOT NULL)');
+  db.prepare('INSERT INTO rest_teacher_logins VALUES (?,?,?,?)').run('h0', 't0', 'a'.repeat(64), 'b'.repeat(32));
+  const { createStore } = await import('../school-node/rest/store.js');
+  const { SCHEMA } = await import('../school-node/rest/schema.js');
+  const store = createStore({ db, schema: SCHEMA });
+  assert.equal(store.teacherLoginByEmailHash('h0').bcrypt, null, 'el PIN anterior sigue ahí');
+  store.setTeacherLogins([{ teacher_id: 't1', email_hash: 'h1', bcrypt: '$2a$10$' + 'x'.repeat(53) }]);
+  assert.equal(store.teacherLoginByEmailHash('h1').bcrypt, '$2a$10$' + 'x'.repeat(53));
+  db.close(); fs.rmSync(dir, { recursive: true, force: true });
+});

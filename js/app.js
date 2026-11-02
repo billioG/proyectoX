@@ -49,7 +49,6 @@ import './attendance.js';
 import './groups.js';
 import './gamification.js';
 import './profile.js';
-import './teacher-node-pin.js';
 import './feed-ui.js';
 import './utils.js';
 

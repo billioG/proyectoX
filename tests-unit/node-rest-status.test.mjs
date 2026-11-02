@@ -34,16 +34,13 @@ test('el estado cuenta lo que falta subir y avisa si hay error', { skip: !sqlite
   assert.equal((await status()).pending_changes, 1);
 });
 
-test('«Sincronizar ahora»: pide sesión, avisa si la escuela no está conectada, y con token intenta y reporta el error sin internet', { skip: !sqliteAvailable() && 'better-sqlite3 no disponible' }, async () => {
+test('«Sincronizar ahora»: no pide sesión (también está en la pantalla de entrada), avisa si la escuela no está conectada, y con token intenta y reporta el error sin internet', { skip: !sqliteAvailable() && 'better-sqlite3 no disponible' }, async () => {
   const node = await startNode({ rest, config: { nodeToken: 'x'.repeat(40), cloudUrl: 'http://127.0.0.1:1' } });
-  assert.equal((await node.api('/api/sync/now', { method: 'POST' })).status, 401);
-  assert.equal((await node.api('/api/sync/now', { method: 'POST', token: 'inventado' })).status, 401);
-  const token = await enter(node);
-  const r = await node.api('/api/sync/now', { method: 'POST', token });
+  const r = await node.api('/api/sync/now', { method: 'POST' });
   assert.deepEqual([r.status, r.data.started], [200, true]);
   const err = await waitFor(async () => { const s = (await node.api('/api/node/status')).data; return s.sync_error && !s.syncing ? s : null; });
   assert.match(err.sync_error, /./);
-  const again = await node.api('/api/sync/now', { method: 'POST', token });
+  const again = await node.api('/api/sync/now', { method: 'POST' });
   assert.equal(again.status, 200);
   assert.equal(again.data.started, false, 'pedirlo otra vez enseguida no martilla a la nube');
 });

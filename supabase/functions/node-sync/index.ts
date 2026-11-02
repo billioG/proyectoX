@@ -555,18 +555,29 @@ Deno.serve(async (req) => {
       console.error('node-sync: no se pudieron armar las tablas de la capa local', e);
     }
 
-    // Entrada de los docentes al nodo: huella del correo + el PIN que fijaron EN LÍNEA (migrations/teacher-node-pin.sql). Aparte del
-    // resto de las tablas: si la migración aún no se corrió, solo faltan estas entradas y el nodo conserva las que ya tenía.
+    // Entrada de los docentes al nodo: huella del correo + la huella bcrypt de la contraseña de su cuenta (migrations/teacher-node-password.sql;
+    // el docente entra sin internet con la misma contraseña de siempre). Si esa migración aún no se corrió, se usa el PIN anterior
+    // (migrations/teacher-node-pin.sql) y, si tampoco, solo faltan estas entradas: el nodo conserva las que ya tenía.
     let teacherLogins: Awaited<ReturnType<typeof buildTeacherLogins>> | undefined;
     if (restTables) {
       try {
         const teacherIds = [...new Set((restTables.teachers || []).map((t: any) => t.id as string))];
         const rows: any[] = [];
         for (const part of chunk(teacherIds)) {
-          const pins = await fetchAll((from, to) => admin.from('teacher_node_pins').select('teacher_id, pin_hash, pin_salt').in('teacher_id', part).order('teacher_id').range(from, to));
           const emails = await fetchAll((from, to) => admin.from('teachers').select('id, email').in('id', part).order('id').range(from, to));
           const emailOf = new Map(emails.map((e: any) => [e.id, e.email]));
-          for (const p of pins) rows.push({ teacher_id: p.teacher_id, email: emailOf.get(p.teacher_id), pin_hash: p.pin_hash, pin_salt: p.pin_salt });
+          const { data: hashes, error: hashErr } = await admin.rpc('node_teacher_password_hashes', { p_ids: part });
+          if (hashErr) console.error('node-sync: sin huellas de contraseña (¿falta migrations/teacher-node-password.sql?)', hashErr.message);
+          const hashOf = new Map((hashes || []).map((h: any) => [h.teacher_id, h]));
+          let pinOf = new Map<string, any>();
+          try {
+            const pins = await fetchAll((from, to) => admin.from('teacher_node_pins').select('teacher_id, pin_hash, pin_salt').in('teacher_id', part).order('teacher_id').range(from, to));
+            pinOf = new Map(pins.map((p: any) => [p.teacher_id, p]));
+          } catch { /* el PIN anterior es opcional */ }
+          for (const id of part) {
+            const h: any = hashOf.get(id), p: any = pinOf.get(id);
+            rows.push({ teacher_id: id, email: h?.email || emailOf.get(id), password_hash: h?.password_hash, pin_hash: p?.pin_hash, pin_salt: p?.pin_salt });
+          }
         }
         teacherLogins = await buildTeacherLogins(rows);
       } catch (e) {

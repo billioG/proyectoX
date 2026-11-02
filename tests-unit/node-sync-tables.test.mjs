@@ -134,3 +134,16 @@ test('las entradas de docentes llevan la huella del correo (igual que la del nod
   assert.deepEqual(out[0], { teacher_id: 't1', email_hash: expected, pin_hash: 'a'.repeat(64), pin_salt: 'b'.repeat(32) });
   assert.doesNotMatch(JSON.stringify(out), /marta|escuela\.com/i);
 });
+
+test('las entradas de docentes llevan la huella bcrypt de su contraseña (sin PIN) y descartan lo que no es un hash válido', { skip }, async () => {
+  const good = '$2a$10$' + 'a'.repeat(53);
+  const out = await mod.buildTeacherLogins([
+    { teacher_id: 't1', email: 'Marta@Escuela.com', password_hash: good },
+    { teacher_id: 't2', email: 'b@x.com', password_hash: 'texto-plano' },
+    { teacher_id: 't3', email: 'c@x.com', password_hash: '' },
+    { teacher_id: 't4', email: 'd@x.com', password_hash: null },
+  ]);
+  const expected = crypto.createHash('sha256').update('marta@escuela.com').digest('hex');
+  assert.deepEqual(out, [{ teacher_id: 't1', email_hash: expected, bcrypt: good }]);
+  assert.doesNotMatch(JSON.stringify(out), /marta|escuela\.com/i);
+});

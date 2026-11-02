@@ -17,7 +17,7 @@ function ago(iso) {
 
 function describe(s) {
   if (s.syncing) return { tone: 'busy', text: 'Sincronizando…' };
-  if (s.sync_error) return { tone: 'warn', text: 'No se pudo sincronizar, se reintenta sola' };
+  if (s.sync_error) return { tone: 'warn', text: 'Sin internet por ahora: todo está guardado y se sube solo' };
   if (s.pending_changes > 0) return { tone: 'warn', text: `${s.pending_changes} ${s.pending_changes === 1 ? 'cambio' : 'cambios'} por subir` };
   if (s.last_sync_at) return { tone: 'ok', text: `Sincronizado ${ago(s.last_sync_at)}` };
   return { tone: 'warn', text: 'Aún sin sincronizar' };

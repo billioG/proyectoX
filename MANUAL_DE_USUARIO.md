@@ -69,8 +69,7 @@ Si tu escuela tiene un **nodo escolar** (una computadora o Raspberry Pi con la a
 *   **Aviso de abajo a la izquierda:** te dice si ya se subió todo a la nube. Se sincroniza solo cuando hay internet; también puedes tocar **Sincronizar ahora**.
 
 ### 👨‍🏫 Docentes
-*   **Crea tu PIN (una sola vez, con internet):** entra a tu **Perfil** y, en la tarjeta **«PIN para entrar sin internet»**, escribe un PIN de 6 números dos veces y guarda. Nadie más puede verlo.
-*   **Entrar al nodo:** con tu **correo** y ese **PIN** (no con la contraseña de tu cuenta).
+*   **Entrar al nodo:** con tu **correo** y **la misma contraseña** con que entras a Quetzal en línea. No hay PIN aparte; el servidor la recibe cifrada cuando se sincroniza.
 *   **Evaluar proyectos y enviar avisos** a tus grupos funcionan igual que con internet. Lo que hagas se sube solo al volver la señal.
 *   **Limitaciones:** no puedes borrar ni editar un aviso sin internet; los avisos a padres y las notificaciones push se envían cuando el nodo se sincroniza con internet.
 *   **¿No fijaste tu PIN?** Entra con el enlace **Docente** del aviso de abajo (`/?modo=pin`) y usa el código de docente del nodo, o pide ayuda a tu administrador.

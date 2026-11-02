@@ -139,12 +139,22 @@ const sha256Hex = async (text: string) => toHex(new Uint8Array(await crypto.subt
  * minúsculas (mismo cálculo que school-node/rest/auth.js emailHash) y el PIN ya hasheado. Sin PIN o sin correo no hay entrada:
  * un docente que nunca fijó su PIN no entra al nodo. El correo en claro no baja.
  */
+const BCRYPT = /^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/;
+
+/**
+ * Entrada de los docentes al nodo: huella SHA-256 del correo + la huella bcrypt de la contraseña de su cuenta (la que ya guarda la
+ * nube; nunca la contraseña). Sigue aceptando el PIN anterior (pin_hash + pin_salt) para quien aún lo tenga y no tenga bcrypt.
+ */
 export async function buildTeacherLogins(rows: Array<Record<string, any>>) {
-  const out: Array<{ teacher_id: string; email_hash: string; pin_hash: string; pin_salt: string }> = [];
+  const out: Array<{ teacher_id: string; email_hash: string; bcrypt?: string; pin_hash?: string; pin_salt?: string }> = [];
   for (const r of rows || []) {
     const email = typeof r.email === 'string' ? r.email.trim().toLowerCase() : '';
-    if (!r.teacher_id || !email || !r.pin_hash || !r.pin_salt) continue;
-    out.push({ teacher_id: r.teacher_id, email_hash: await sha256Hex(email), pin_hash: r.pin_hash, pin_salt: r.pin_salt });
+    if (!r.teacher_id || !email) continue;
+    if (typeof r.password_hash === 'string' && BCRYPT.test(r.password_hash)) {
+      out.push({ teacher_id: r.teacher_id, email_hash: await sha256Hex(email), bcrypt: r.password_hash });
+    } else if (r.pin_hash && r.pin_salt) {
+      out.push({ teacher_id: r.teacher_id, email_hash: await sha256Hex(email), pin_hash: r.pin_hash, pin_salt: r.pin_salt });
+    }
   }
   return out;
 }
