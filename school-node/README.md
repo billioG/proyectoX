@@ -269,6 +269,11 @@ Un nodo con **Windows** se actualiza con `actualizar-windows.cmd` (no necesita S
 
 ## Conectar la Raspberry a Wi-Fi
 
+**Lo más fácil (desde v1.0.206): la página `/wifi`.** En el servidor abre `http://IP-DEL-SERVIDOR/wifi` (o toca **Wi-Fi** en la barra de estado), entra con tu
+correo y contraseña de docente, toca **Buscar redes**, elige la tuya, escribe la clave y **Conectar**. Si la clave es mala lo dice y no guarda nada. Si estás
+usando el servidor por su propio Wi-Fi, al cambiar de red perderás esa página: vuelve a abrirla con la dirección nueva. El instalador deja el país del Wi-Fi
+en GT y lo desbloquea (sin eso las Raspberry nuevas no encienden el Wi-Fi). Lo de abajo es la forma manual por SSH.
+
 Hazlo con el cable todavía conectado y tu sesión SSH abierta, así no pierdes el acceso si algo sale mal.
 
 ```bash

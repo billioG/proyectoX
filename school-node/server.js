@@ -25,6 +25,8 @@ import { createRestLayer } from './rest/index.js';
 import { createPhotos } from './rest/photos.js';
 import { createContentStore, createStorageHandler } from './content-upload.js';
 import { POLYFILLS } from './browser-polyfills.js';
+import { createWifi, createNmcliRunner } from './wifi.js';
+import { wifiPageHtml } from './wifi-page.js';
 
 const NODE_DIR = path.dirname(fileURLToPath(import.meta.url));
 const APP_DIR = path.resolve(NODE_DIR, '..');
@@ -66,6 +68,25 @@ const restStore = restLayer.store;
 const restReady = () => restLayer.ready();
 const restRoutes = restLayer.routes;
 // Archivos de cursos que el docente sube en el nodo (Storage de Supabase emulado); suben a la nube al sincronizar.
+// Wi-Fi del servidor (solo Raspberry Pi / Linux con NetworkManager): el docente la conecta desde /wifi sin SSH.
+const wifi = createWifi({ run: createNmcliRunner({ command: Array.isArray(config.nmcli) && config.nmcli.length ? config.nmcli : ['nmcli'] }), platform: config.wifiPlatform || process.platform });
+const internetReachable = async () => {
+  if (!config.cloudUrl) return null;
+  try { await fetch(config.cloudUrl, { method: 'HEAD', signal: AbortSignal.timeout(4000) }); return true; } catch { return false; }
+};
+// Solo docentes y administradores (sesión de la app, o el panel del docente con su código).
+function networkUser(req, res) {
+  if (teacherFromRequest(req)) return true;
+  const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+  const who = token ? restLayer.auth.userFromAccessToken(token) : null;
+  if (!who) { sendJson(res, 401, { error: 'Entra con tu correo y contraseña de docente.' }); return false; }
+  if (who.role !== 'teacher' && who.role !== 'admin') { sendJson(res, 403, { error: 'Solo los docentes pueden cambiar la Wi-Fi.' }); return false; }
+  return true;
+}
+const wifiRoute = (fn) => async (req, res, url) => {
+  if (!networkUser(req, res)) return;
+  try { sendJson(res, 200, await fn(req, url)); } catch (e) { sendJson(res, e.status || 500, { error: e.status ? e.message : 'No se pudo completar la acción.' }); }
+};
 const contentStore = createContentStore({ db, dir: CONTENT_DIR });
 const storageHandler = createStorageHandler({ store: contentStore, auth: restLayer.auth });
 const photosStore = createPhotos({ db, dir: path.resolve(config.dataDir, 'photos') });
@@ -380,6 +401,11 @@ const api = {
 
   // «Sincronizar ahora»: no pide sesión (el botón también está en la pantalla de entrada; sincronizar no expone ni cambia datos
   // de nadie). No martilla a la nube: si ya se está sincronizando, o se pidió hace menos de 15 s, no arranca otra.
+  'GET /api/wifi/status': wifiRoute(async () => { const s = await wifi.status(); return s.supported ? { ...s, internet: await internetReachable() } : s; }),
+  'GET /api/wifi/scan': wifiRoute(async () => ({ networks: await wifi.scan() })),
+  'POST /api/wifi/connect': wifiRoute(async (req) => { const r = await wifi.connect(await readBody(req)); return { ...r, internet: await internetReachable() }; }),
+  'POST /api/wifi/forget': wifiRoute(async (req) => wifi.forget(await readBody(req))),
+
   'POST /api/sync/now': (req, res) => {
     if (!hasToken()) return sendJson(res, 400, { error: 'Esta escuela todavía no está conectada a la nube.' });
     if (syncing) return sendJson(res, 200, { started: false, syncing: true });
@@ -728,6 +754,10 @@ const server = http.createServer(async (req, res) => {
     const route = projectRoute(req.method, url.pathname) || api[`${req.method} ${url.pathname}`];
     if (route) return await route(req, res, url);
 
+    if (url.pathname === '/wifi') {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+      return res.end(wifiPageHtml());
+    }
     if (url.pathname === '/cartel') {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
       return res.end(cartelHtml());

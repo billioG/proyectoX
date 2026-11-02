@@ -74,6 +74,11 @@ if [ "$NODE_MAJOR" -lt 20 ]; then
   sudo apt-get install -y nodejs
 fi
 
+# ---------- Wi-Fi listo para usarse (la página /wifi del nodo lo necesita) ----------
+# Una Raspberry nueva trae el Wi-Fi bloqueado hasta fijar el país; sin esto «Buscar redes» no encuentra nada. Si no aplica (otro Linux), se ignora.
+if command -v raspi-config >/dev/null 2>&1; then sudo raspi-config nonint do_wifi_country GT >/dev/null 2>&1 || true; fi
+if command -v rfkill >/dev/null 2>&1; then sudo rfkill unblock wifi >/dev/null 2>&1 || true; fi
+
 # ---------- 2. Código ----------
 if [ -d "$APP_DIR/.git" ]; then
   say "Actualizando el código en $APP_DIR"
