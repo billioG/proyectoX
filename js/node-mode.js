@@ -13,7 +13,7 @@ const NODE_CLASS_KEY = 'PX_NODE_CLASS';
 window.detectQuetzalNode = async function detectQuetzalNode() {
   if (CLOUD_HOSTS.includes(location.hostname)) return null;
   // Con la capa local lista la app real corre sobre el nodo: no hace falta la pantalla propia del modo nodo.
-  if (window.QUETZAL_NODE?.rest === true) return null;
+  if (window.QUETZAL_NODE?.rest === true && !/[?&]modo=pin\b/.test(location.search)) return null;
   try {
     const res = await fetch('/api/node/status', { cache: 'no-store', signal: AbortSignal.timeout(2500) });
     if (!res.ok) return null;

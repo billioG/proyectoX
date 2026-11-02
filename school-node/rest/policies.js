@@ -14,6 +14,18 @@ export function createPolicy({ store }) {
     return project.group_id != null && store.all('group_members').some((m) => m.group_id === project.group_id && m.student_id === ctx.uid);
   };
 
+  // Un avance solo vale si la lección existe y es de estudiantes, y los datos tienen sentido (si no, la nube lo rechazaría
+  // y trabaría la sincronización de toda la escuela, y el XP de la lección sería falso).
+  const validCompletion = (row) => {
+    if (typeof row.lesson_id !== 'string' || typeof row.student_id !== 'string') return false;
+    if (!store.all('lessons').some((l) => l.id === row.lesson_id && l.audience === 'estudiante')) return false;
+    if (row.score != null && !(typeof row.score === 'number' && Number.isFinite(row.score) && row.score >= 0 && row.score <= 100)) return false;
+    if (row.status != null && !(typeof row.status === 'string' && row.status.length <= 30)) return false;
+    if (row.completed_at != null && !(typeof row.completed_at === 'string' && row.completed_at.length <= 40 && !Number.isNaN(Date.parse(row.completed_at)))) return false;
+    if (row.raw_data != null && JSON.stringify(row.raw_data).length > 20000) return false;
+    return true;
+  };
+
   const readRules = {
     // Públicas para cualquier sesión (select true en la nube).
     schools: () => true,
@@ -42,10 +54,10 @@ export function createPolicy({ store }) {
     canRead: (ctx, table, row) => (readRules[table] ? readRules[table](ctx, row) === true : false),
 
     // lesson_completions_insert_own
-    canInsert: (ctx, table, row) => table === 'lesson_completions' && own(ctx, row.student_id),
+    canInsert: (ctx, table, row) => table === 'lesson_completions' && own(ctx, row.student_id) && validCompletion(row),
 
     // lesson_completions_update_own (la nueva fila también debe ser propia)
-    canUpdate: (ctx, table, oldRow, newRow) => table === 'lesson_completions' && own(ctx, oldRow.student_id) && own(ctx, newRow.student_id),
+    canUpdate: (ctx, table, oldRow, newRow) => table === 'lesson_completions' && own(ctx, oldRow.student_id) && own(ctx, newRow.student_id) && validCompletion(newRow),
 
     // lesson_completions_delete_own_or_admin
     canDelete: (ctx, table, row) => table === 'lesson_completions' && (own(ctx, row.student_id) || ctx.role === 'admin'),

@@ -48,6 +48,7 @@ test('lo guardado sobrevive a reabrir la base', () => {
 test('una escritura de la app deja su cambio en la bandeja, y si falla no queda nada (ni fila ni bandeja)', () => {
   const s = open();
   s.put('students', { id: 's1', school_code: 'ESC1', grade: 'Primero', section: 'A', full_name: 'Ana' });
+  for (const id of ['l1', 'l2']) s.put('lessons', { id, audience: 'estudiante' });
   run(s, 'POST', '/rest/v1/lesson_completions', ana, { body: { lesson_id: 'l1', student_id: 's1', score: 80, status: 'completed' } });
   assert.equal(s.all('lesson_completions').length, 1);
   const [ev] = s.pending();

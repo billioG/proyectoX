@@ -25,5 +25,12 @@ export function createRestLayer(db, { now = Date.now, random = Math.random, onCh
       onChange(changes);
     },
   });
-  return { store, auth, xp, rpcs, routes };
+  // La app real solo se monta sobre la capa si TODOS los estudiantes activos pueden entrar (su clase tiene contraseña conocida);
+  // si no, los de esa clase se quedarían sin acceso y es mejor el modo anterior (pantalla propia con PIN) para toda la escuela.
+  const ready = () => {
+    if (store.verifierCount() === 0) return false;
+    const active = store.all('students').filter((s) => s.status !== 'egresado' && s.status !== 'baja');
+    return active.length > 0 && active.every((s) => store.classVerifier(`${s.school_code}|${s.grade}|${s.section}`));
+  };
+  return { store, auth, xp, rpcs, routes, ready };
 }

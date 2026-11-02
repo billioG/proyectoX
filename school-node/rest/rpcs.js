@@ -4,6 +4,7 @@ import { RestError } from './query.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const GAMES = ['quiz', 'hangman', 'spelling', 'debug', 'timed_math'];
+const MAX_PENDING_PRACTICE = 500;
 const invalid = (message) => new RestError(400, message, 'P0001');
 const unavailable = (what) => new RestError(400, `${what} aún no está disponible sin internet`, 'P0001');
 
@@ -30,7 +31,14 @@ export function createRpcs({ store, xp }) {
       if (!Number.isInteger(total) || total < 1 || total > 50 || !Number.isInteger(correct) || correct < 0 || correct > total) throw invalid('Resultado no válido');
       if (typeof args.p_client_ref !== 'string' || !UUID.test(args.p_client_ref)) throw invalid('Falta la referencia del registro');
       if (store.hasPendingRpc('log_practice', args.p_client_ref)) return null; // reintento de la app: ya está anotada
-      store.enqueue([{ op: 'log_practice', table: '_rpc', row: { ref: args.p_client_ref, student_id: ctx.uid, args } }]);
+      if (store.pendingRpcCount('log_practice', ctx.uid) >= MAX_PENDING_PRACTICE) return null; // tope (la nube también tiene uno por día)
+      // Solo los campos conocidos y acotados: lo demás no se guarda ni viaja a la nube.
+      const clean = {
+        p_game: args.p_game, p_topic: typeof args.p_topic === 'string' ? args.p_topic.slice(0, 200) : null, p_correct: correct, p_total: total,
+        p_duration_ms: Number.isInteger(args.p_duration_ms) ? args.p_duration_ms : null, p_source: args.p_source === 'bank' ? 'bank' : 'ai',
+        p_client_ref: args.p_client_ref, p_played_at: typeof args.p_played_at === 'string' ? args.p_played_at.slice(0, 40) : null,
+      };
+      store.enqueue([{ op: 'log_practice', table: '_rpc', row: { ref: clean.p_client_ref, student_id: ctx.uid, args: clean } }]);
       return null;
     },
 

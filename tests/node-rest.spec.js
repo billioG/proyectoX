@@ -125,3 +125,12 @@ test('un estudiante no puede leer columnas secretas ni a otros salones por la ca
   });
   expect(out).toEqual({ pin: '42703', secret: '42P01', write: '42501' });
 });
+
+test('con ?modo=pin el nodo abre su modo anterior (pantalla con PIN y panel del docente)', async ({ page }) => {
+  test.skip(!node, skipReason);
+  await page.route(/^https?:\/\/(?!localhost|127\.0\.0\.1)/, r => r.abort('failed'));
+  await page.goto(`${node.base}/?modo=pin`);
+  await page.waitForSelector('#node-login');
+  expect(await page.evaluate(() => window.SUPABASE_URL)).not.toBe(node.base);
+  await expect(page.locator('#node-sync-chip')).toHaveCount(0);
+});

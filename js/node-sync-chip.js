@@ -40,7 +40,7 @@ function start() {
   const chip = document.createElement('div');
   chip.id = 'node-sync-chip';
   chip.setAttribute('role', 'status');
-  chip.innerHTML = '<span data-text></span><button type="button" data-sync>Sincronizar ahora</button>';
+  chip.innerHTML = '<span data-text></span><button type="button" data-sync>Sincronizar ahora</button><a href="/?modo=pin" title="Panel del docente del nodo (PIN, USB, restablecer PIN)" style="color:inherit;font-size:.65rem;font-weight:800;text-decoration:underline;white-space:nowrap">Docente</a>';
   document.body.appendChild(chip);
   const text = chip.querySelector('[data-text]');
   const button = chip.querySelector('[data-sync]');
@@ -91,6 +91,6 @@ function start() {
   window.addEventListener('focus', refresh);
 }
 
-if (window.QUETZAL_NODE?.rest === true) {
+if (window.QUETZAL_NODE?.rest === true && !/[?&]modo=pin\b/.test(location.search)) {
   if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
 }

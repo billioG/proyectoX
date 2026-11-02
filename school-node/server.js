@@ -60,7 +60,7 @@ const restLayer = createRestLayer(db);
 const restStore = restLayer.store;
 // La app real solo se monta sobre la capa local cuando la réplica ya tiene a los estudiantes y las contraseñas de
 // clase; mientras tanto el nodo se comporta como antes (pantalla propia con PIN).
-const restReady = () => restStore.verifierCount() > 0 && restStore.all('students').length > 0;
+const restReady = () => restLayer.ready();
 const restRoutes = restLayer.routes;
 const teacherStore = createTeacherStore(db, { hashPin: (pin, salt) => hashPin(pin, salt), verifySetupCode: (code) => verifyTeacherCode(code) });
 projectStore.cleanup(); // borradores huérfanos de una subida cortada por un reinicio o un apagón

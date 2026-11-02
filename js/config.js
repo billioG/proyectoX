@@ -4,7 +4,8 @@
 
 // Abierta desde un nodo escolar con la capa local lista (window.QUETZAL_NODE.rest, lo define /node-config.js), la app le
 // habla al nodo con el mismo «idioma» de Supabase: las mismas pantallas, sin internet.
-const NODE_REST = typeof window !== 'undefined' && window.QUETZAL_NODE?.rest === true;
+// `?modo=pin` abre el modo anterior del nodo (pantalla con PIN y panel del docente), que sigue disponible.
+const NODE_REST = typeof window !== 'undefined' && window.QUETZAL_NODE?.rest === true && !/[?&]modo=pin\b/.test(window.location.search);
 export const SUPABASE_URL = NODE_REST ? window.location.origin : 'https://vyptkxudkmlpyfosppzh.supabase.co';
 export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5cHRreHVka21scHlmb3NwcHpoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NTExMTIsImV4cCI6MjA4NDMyNzExMn0._tD_y_ZRniaembs5LKSDUmIjvLDmiXwWoq4uVBAqgy4';
 

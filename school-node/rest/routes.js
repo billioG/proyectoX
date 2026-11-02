@@ -9,7 +9,7 @@ import { createPolicy } from './policies.js';
 import { SCHEMA } from './schema.js';
 import { AuthError } from './auth.js';
 
-const MAX_BODY = 1_000_000;
+const MAX_BODY = 200_000;
 
 class BodyError extends Error {
   constructor(status, message) { super(message); this.status = status; }
@@ -71,13 +71,13 @@ export function createRestRoutes({ store, auth, rpcs = {}, onChange = () => {} }
 
     const rpcName = /^\/rest\/v1\/rpc\/([^/?]+)$/.exec(url.pathname)?.[1];
     const ctx = auth.userFromAccessToken(tokenOf(req));
-    if (!ctx && !(rpcName && publicRpcs[rpcName])) return send(res, 401, { code: 'PGRST301', message: 'No autenticado o sesión vencida', details: null, hint: null });
+    if (!ctx && !(rpcName && Object.hasOwn(publicRpcs, rpcName))) return send(res, 401, { code: 'PGRST301', message: 'No autenticado o sesión vencida', details: null, hint: null });
 
     const body = method === 'POST' || method === 'PATCH' ? await readJson(req) : undefined;
     try {
       if (rpcName) {
         const args = body && typeof body === 'object' ? body : {};
-        const fn = publicRpcs[rpcName] || rpcs[rpcName];
+        const fn = Object.hasOwn(publicRpcs, rpcName) ? publicRpcs[rpcName] : Object.hasOwn(rpcs, rpcName) ? rpcs[rpcName] : null;
         if (!fn) return send(res, 404, { code: 'PGRST202', message: `No se encontró la función ${rpcName}`, details: null, hint: null });
         const result = store.transaction(() => fn(args, ctx));
         return send(res, 200, result === undefined ? null : result);

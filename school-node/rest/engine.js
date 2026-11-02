@@ -28,8 +28,24 @@ const order = (a, b) => {
   const x = String(a), y = String(b);
   return x < y ? -1 : x > y ? 1 : 0;
 };
-const likeRegex = (pattern, insensitive) => new RegExp(
-  `^${String(pattern).replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/%/g, '.*').replace(/_/g, '.')}$`, insensitive ? 'is' : 's');
+// like/ilike sin expresiones regulares (un patrón con muchos comodines las vuelve exponenciales): recorrido con un solo
+// retroceso al último %, así el costo es a lo sumo texto × patrón. `%` = cualquier cantidad de caracteres, `_` = uno.
+const MAX_LIKE_PATTERN = 200;
+const MAX_LIKE_TEXT = 10000;
+function likeMatch(text, pattern, insensitive) {
+  if (String(pattern).length > MAX_LIKE_PATTERN) throw err(400, 'PGRST100', 'Patrón demasiado largo');
+  let t = String(text).slice(0, MAX_LIKE_TEXT), p = String(pattern).replace(/%+/g, '%');
+  if (insensitive) { t = t.toLowerCase(); p = p.toLowerCase(); }
+  let ti = 0, pi = 0, star = -1, mark = 0;
+  while (ti < t.length) {
+    if (pi < p.length && p[pi] !== '%' && (p[pi] === '_' || p[pi] === t[ti])) { ti++; pi++; }
+    else if (pi < p.length && p[pi] === '%') { star = pi++; mark = ti; }
+    else if (star !== -1) { pi = star + 1; ti = ++mark; }
+    else return false;
+  }
+  while (pi < p.length && p[pi] === '%') pi++;
+  return pi === p.length;
+}
 const asArray = (v) => {
   if (Array.isArray(v)) return v.map(String);
   if (typeof v === 'string') { try { const p = JSON.parse(v); if (Array.isArray(p)) return p.map(String); } catch { /* texto */ } }
@@ -46,8 +62,8 @@ function leaf(row, f) {
     case 'gte': r = v == null ? null : order(v, f.value) >= 0; break;
     case 'lt': r = v == null ? null : order(v, f.value) < 0; break;
     case 'lte': r = v == null ? null : order(v, f.value) <= 0; break;
-    case 'like': r = v == null ? null : likeRegex(f.value, false).test(String(v)); break;
-    case 'ilike': r = v == null ? null : likeRegex(f.value, true).test(String(v)); break;
+    case 'like': r = v == null ? null : likeMatch(v, f.value, false); break;
+    case 'ilike': r = v == null ? null : likeMatch(v, f.value, true); break;
     case 'in': r = v == null ? null : f.value.some((x) => sameValue(v, x) === true); break;
     case 'is': r = f.value === null ? v == null : (v === f.value || (v != null && String(v) === String(f.value))); break;
     case 'cs': { const a = asArray(v); r = a ? f.value.every((x) => a.includes(String(x))) : null; break; }
@@ -64,7 +80,7 @@ function matches(row, f) {
 
 export function createEngine({ schema, store, policy = {} }) {
   const tableDef = (name) => {
-    const t = schema[name];
+    const t = Object.hasOwn(schema, name) ? schema[name] : null; // nunca nombres heredados (constructor, __proto__...)
     if (!t) throw err(404, '42P01', `relation "public.${name}" does not exist`);
     return t;
   };
@@ -84,9 +100,11 @@ export function createEngine({ schema, store, policy = {} }) {
     }
   }
 
+  const relOf = (t, name) => (t.relations && Object.hasOwn(t.relations, name) ? t.relations[name] : undefined);
+
   /** Valor de una relación para una fila: objeto, lista o null. Solo mira filas que la política deja leer. */
   function related(ctx, t, row, node) {
-    const rel = t.relations?.[node.name];
+    const rel = relOf(t, node.name);
     if (!rel) throw err(400, 'PGRST200', `Could not find a relationship between the tables for ${node.name}`);
     const targets = visible(ctx, rel.table);
     if (rel.type === 'one') {
@@ -107,7 +125,7 @@ export function createEngine({ schema, store, policy = {} }) {
         out[node.alias] = (t.masked || []).includes(node.name) || row[node.name] === undefined ? null : row[node.name];
       }
       else {
-        const rel = t.relations?.[node.name];
+        const rel = relOf(t, node.name);
         const value = related(ctx, t, row, node);
         out[node.alias] = Array.isArray(value)
           ? value.map((v) => project(ctx, rel.table, v, node.select))
@@ -193,9 +211,13 @@ export function createEngine({ schema, store, policy = {} }) {
   }
   const represent = (p, ctx, name, rows) => (p.returnRep ? rows.map((r) => project(ctx, name, r, p.select || [{ type: 'star' }])) : []);
 
+  const MAX_ROWS = 100; // por petición: cada fila cuesta una revisión de únicos, un registro en la bandeja y una fila en la nube
+  const tooMany = (p) => { if (p.rows.length > MAX_ROWS) throw err(400, 'PGRST102', `Máximo ${MAX_ROWS} filas por petición`); };
+
   function insert(p, ctx) {
     const name = p.table, t = tableDef(name);
     if (!t.writable) throw denied(name);
+    tooMany(p);
     const changes = [];
     const rows = p.rows.map((input) => insertRow(ctx, name, t, input, changes));
     return { rows: represent(p, ctx, name, rows), count: null, changes };
@@ -203,6 +225,7 @@ export function createEngine({ schema, store, policy = {} }) {
   function upsert(p, ctx) {
     const name = p.table, t = tableDef(name);
     if (!t.writable) throw denied(name);
+    tooMany(p);
     const target = p.onConflict || [t.pk];
     for (const c of target) checkCol(t, c);
     const changes = [];

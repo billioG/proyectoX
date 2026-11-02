@@ -23,6 +23,7 @@ async function boot() {
   const salt = 'ab'.repeat(8);
   store.setClassVerifiers([{ class_key: 'ESC1|Primero|A', requires_password: true, salt, hash: hashClassPassword('clase123', salt) }]);
   store.put('schools', { id: 1, code: 'ESC1', name: 'Escuela Uno' });
+  for (const id of ['l1', 'l2']) store.put('lessons', { id, audience: 'estudiante' });
   store.put('students', { id: 's1', username: 'ana1', full_name: 'Ana', school_code: 'ESC1', grade: 'Primero', section: 'A', status: 'activo', xp: 10, pin_hash: 'SECRETO' });
   store.put('students', { id: 's2', username: 'beto1', full_name: 'Beto', school_code: 'ESC1', grade: 'Primero', section: 'A', status: 'activo', xp: 20 });
   store.put('students', { id: 's3', username: 'carla1', full_name: 'Carla', school_code: 'ESC1', grade: 'Segundo', section: 'B', status: 'activo', xp: 30 });

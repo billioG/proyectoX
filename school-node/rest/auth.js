@@ -10,6 +10,8 @@ const REFRESH_MS = 30 * 24 * 3600_000;
 const LOGIN_TOKEN_MS = 5 * 60_000;
 const WINDOW_MS = 5 * 60_000;
 const MAX_ATTEMPTS = 10; // por IP y por usuario, en la ventana (mismo tope que student-login en la nube)
+const MAX_TRACKED = 5000; // intentos y enlaces en memoria: tope duro
+const DUMMY_SALT = '00'.repeat(16);
 const GENERIC_ERROR = 'Usuario o contraseña incorrectos';
 
 export class AuthError extends Error {
@@ -25,7 +27,8 @@ const equal = (a, b) => { const x = Buffer.from(String(a)), y = Buffer.from(Stri
 const classKeyOf = (s) => `${s.school_code}|${s.grade}|${s.section}`;
 const active = (s) => !!s && s.status !== 'egresado' && s.status !== 'baja';
 
-export function createAuth({ store, now = Date.now }) {
+// `hash` y `maxTracked` se pueden cambiar solo para probar (PBKDF2 real tarda ~100 ms por intento).
+export function createAuth({ store, now = Date.now, hash: hashFn = hashClassPassword, maxTracked = MAX_TRACKED }) {
   let secret = store.getMeta('jwt_secret');
   if (!secret) { secret = crypto.randomBytes(32).toString('hex'); store.setMeta('jwt_secret', secret); }
 
@@ -54,14 +57,18 @@ export function createAuth({ store, now = Date.now }) {
   const hits = (key) => { const a = attempts.get(key); return a && now() - a.start < WINDOW_MS ? a.n : 0; };
   const miss = (key) => {
     const a = attempts.get(key);
-    if (a && now() - a.start < WINDOW_MS) a.n++; else attempts.set(key, { n: 1, start: now() });
+    if (a && now() - a.start < WINDOW_MS) { a.n++; return; }
+    if (attempts.size >= maxTracked) {
+      for (const [k, v] of attempts) if (now() - v.start >= WINDOW_MS) attempts.delete(k);
+      if (attempts.size >= maxTracked) attempts.clear(); // bajo ataque: se olvida todo, pero la memoria no crece
+    }
+    attempts.set(key, { n: 1, start: now() });
   };
-  if (attempts.size > 5000) attempts.clear();
 
   const loginTokens = new Map(); // huella -> { uid, exp }
 
   function studentLogin({ username, password, ip }) {
-    const user = String(username || '').trim().toLowerCase();
+    const user = String(username || '').trim().toLowerCase().slice(0, 64);
     const ipKey = `ip:${ip || 'unknown'}`, userKey = `user:${user}`;
     if (hits(ipKey) >= MAX_ATTEMPTS || hits(userKey) >= MAX_ATTEMPTS) {
       throw new AuthError(429, 'Demasiados intentos -- espera unos minutos y vuelve a intentar');
@@ -69,13 +76,19 @@ export function createAuth({ store, now = Date.now }) {
     const fail = () => { miss(ipKey); miss(userKey); throw new AuthError(401, GENERIC_ERROR); };
 
     const student = user ? store.all('students').find((s) => s.username === user) : null;
-    if (!active(student)) return fail();
-    const v = store.classVerifier(classKeyOf(student));
-    if (!v) return fail(); // clase que el nodo no conoce: nunca se entra sin contraseña por omisión
-    if (v.requires_password) {
-      if (!password || !equal(hashClassPassword(password, v.salt), v.hash)) return fail();
+    const v = active(student) ? store.classVerifier(classKeyOf(student)) : null;
+    // Un usuario que no existe, o de una clase sin verificador, hace el mismo trabajo (PBKDF2) que uno que sí existe:
+    // el tiempo de respuesta no dice quién existe. Una clase sin contraseña es pública (resolve_login_mode_by_username).
+    if (!v || v.requires_password) {
+      const given = String(password || '').slice(0, 200);
+      const hash = hashFn(given, v ? v.salt : DUMMY_SALT);
+      if (!v || !given || !equal(hash, v.hash)) return fail();
     }
     const token = crypto.randomBytes(32).toString('hex');
+    if (loginTokens.size >= maxTracked) {
+      for (const [k, e] of loginTokens) if (e.exp <= now()) loginTokens.delete(k);
+      for (const k of loginTokens.keys()) { if (loginTokens.size < maxTracked) break; loginTokens.delete(k); } // los más viejos primero
+    }
     loginTokens.set(sha256(token), { uid: student.id, exp: now() + LOGIN_TOKEN_MS });
     attempts.delete(ipKey); attempts.delete(userKey);
     return { ok: true, email: `${student.id}@nodo.local`, token_hash: token };
@@ -87,6 +100,7 @@ export function createAuth({ store, now = Date.now }) {
     const student = studentRow(uid);
     const access_token = sign({ iss: 'quetzal-node', aud: 'authenticated', role: 'authenticated', sub: uid, iat: t, exp });
     const refresh_token = crypto.randomBytes(32).toString('hex');
+    store.pruneRefresh(now() - REFRESH_MS); // los de más de 30 días ya no sirven
     store.saveRefresh(sha256(refresh_token), uid, now());
     return {
       access_token, token_type: 'bearer', expires_in: ACCESS_MS / 1000, expires_at: exp, refresh_token,
@@ -130,5 +144,7 @@ export function createAuth({ store, now = Date.now }) {
     return v ? v.requires_password : true;
   }
 
-  return { studentLogin, verify, refresh, logout, userFromAccessToken, loginModeByUsername, classLoginMode };
+  const stats = () => ({ attempts: attempts.size, loginTokens: loginTokens.size, maxKeyLength: Math.max(0, ...[...attempts.keys()].map((k) => k.length)) });
+
+  return { stats, studentLogin, verify, refresh, logout, userFromAccessToken, loginModeByUsername, classLoginMode };
 }

@@ -31,6 +31,7 @@ import { validateReactionEvent } from './reactions.ts';
 import { buildTeacherList, shapeEvaluations, validateEvaluationEvent } from './evaluations.ts';
 import { buildClassVerifiers, pullTables } from './tables.ts';
 import { validatePracticeEvent } from './practice.ts';
+import { sanitizeCompletions, type CompletionRow } from './completions.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -174,7 +175,18 @@ Deno.serve(async (req) => {
     // ---- PUSH ----
     let appliedCompletions = 0, appliedPins = 0, appliedSessions = 0;
 
-    const completions = (push.completions || []).filter((c: any) => studentIds.has(c.student_id) && c.lesson_id);
+    // Solo avances de lecciones reales de la escuela y de sus estudiantes, sin repetidos: uno inválido o repetido haría fallar
+    // el upsert completo y con él toda la sincronización.
+    const pushedCompletions = Array.isArray(push.completions) ? push.completions : [];
+    let completions: CompletionRow[] = [];
+    if (pushedCompletions.length) {
+      const courseRows = await fetchAll((from, to) => admin.from('courses').select('id').eq('school_code', node.school_code).order('id').range(from, to));
+      const lessonIds = new Set<string>();
+      for (const ids of chunk(courseRows.map((c: any) => c.id))) {
+        for (const l of await fetchAll((from, to) => admin.from('lessons').select('id').in('course_id', ids).order('id').range(from, to))) lessonIds.add(l.id);
+      }
+      completions = sanitizeCompletions(pushedCompletions, { studentIds, lessonIds });
+    }
     if (completions.length) {
       const existing: any[] = [];
       for (const ids of chunk([...new Set(completions.map((c: any) => c.student_id as string))])) {
@@ -191,8 +203,15 @@ Deno.serve(async (req) => {
         return { lesson_id: c.lesson_id, student_id: c.student_id, score, status };
       });
       const { error } = await admin.from('lesson_completions').upsert(rows, { onConflict: 'lesson_id,student_id' });
-      if (error) throw error;
-      appliedCompletions = rows.length;
+      if (!error) appliedCompletions = rows.length;
+      else {
+        // Una fila mala no puede trabar el resto ni la sincronización: se prueba una por una y se sigue.
+        console.error('node-sync: falló el lote de avances, se reintenta fila por fila', error);
+        for (const row of rows) {
+          const one = await admin.from('lesson_completions').upsert([row], { onConflict: 'lesson_id,student_id' });
+          if (one.error) console.error('node-sync: avance descartado', row.lesson_id, one.error.message); else appliedCompletions++;
+        }
+      }
     }
 
     for (const p of (push.pins || [])) {

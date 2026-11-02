@@ -51,6 +51,9 @@ export function createStore({ db, schema }) {
     putVerifier: db.prepare('INSERT INTO rest_class_verifiers (class_key, requires_password, salt, hash) VALUES (?, ?, ?, ?)'),
     putRefresh: db.prepare('INSERT OR REPLACE INTO rest_refresh (token_hash, uid, created_at) VALUES (?, ?, ?)'),
     getRefresh: db.prepare('SELECT uid, created_at FROM rest_refresh WHERE token_hash = ?'),
+    pruneRefresh: db.prepare('DELETE FROM rest_refresh WHERE created_at < ?'),
+    countRefresh: db.prepare('SELECT COUNT(*) AS n FROM rest_refresh'),
+    countRpc: db.prepare("SELECT COUNT(*) AS n FROM rest_outbox WHERE tbl = '_rpc' AND op = ? AND json_extract(row, '$.student_id') = ?"),
     delRefresh: db.prepare('DELETE FROM rest_refresh WHERE token_hash = ?'),
     setMeta: db.prepare('INSERT INTO rest_meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value'),
   };
@@ -140,6 +143,11 @@ export function createStore({ db, schema }) {
     }),
     verifierCount: () => q.countVerifiers.get().n,
     classVerifier: (classKey) => { const r = q.verifier.get(classKey); return r ? { ...r, requires_password: !!r.requires_password } : null; },
+    /** Borra los tokens de renovación creados antes de `before` (ms). */
+    pruneRefresh: (before) => { q.pruneRefresh.run(before); },
+    refreshCount: () => q.countRefresh.get().n,
+    /** Cuántas llamadas pendientes de esta función tiene un estudiante en la bandeja. */
+    pendingRpcCount: (fn, studentId) => q.countRpc.get(fn, studentId).n,
     saveRefresh: (tokenHash, uid, at) => { q.putRefresh.run(tokenHash, uid, at); },
     /** Consume un token de renovación (sirve una sola vez): devuelve { uid, created_at } o null. */
     takeRefresh: (tokenHash) => transaction(() => { const r = q.getRefresh.get(tokenHash); if (r) q.delRefresh.run(tokenHash); return r || null; }),
