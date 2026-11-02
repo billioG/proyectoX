@@ -1,0 +1,3 @@
+# Pega abajo, en una sola línea, el TOKEN de la escuela (lo da el administrador al registrar el nodo).
+# Guarda este archivo como token.txt (sin .ejemplo). Las líneas que empiezan con # se ignoran.
+PEGAR_AQUI_EL_TOKEN

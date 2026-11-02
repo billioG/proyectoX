@@ -39,10 +39,19 @@ export function createRestLayer(db, { now = Date.now, random = Math.random, onCh
   });
   // La app real solo se monta sobre la capa si TODOS los estudiantes activos pueden entrar (su clase tiene contraseña conocida);
   // si no, los de esa clase se quedarían sin acceso y es mejor el modo anterior (pantalla propia con PIN) para toda la escuela.
+  // Clases (con estudiantes activos) que no tienen contraseña de clase conocida: sus estudiantes no podrían entrar.
+  const missingClasses = () => {
+    const missing = new Map();
+    for (const st of store.all('students')) {
+      if (st.status === 'egresado' || st.status === 'baja') continue;
+      if (!store.classVerifier(`${st.school_code}|${st.grade}|${st.section}`)) missing.set(`${st.grade} ${st.section}`, true);
+    }
+    return [...missing.keys()].sort((a, b) => a.localeCompare(b, 'es'));
+  };
   const ready = () => {
     if (store.verifierCount() === 0) return false;
     const active = store.all('students').filter((s) => s.status !== 'egresado' && s.status !== 'baja');
     return active.length > 0 && active.every((s) => store.classVerifier(`${s.school_code}|${s.grade}|${s.section}`));
   };
-  return { store, auth, xp, rpcs, routes, ready };
+  return { store, auth, xp, rpcs, routes, ready, missingClasses };
 }

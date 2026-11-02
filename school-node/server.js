@@ -352,6 +352,8 @@ const api = {
   'GET /api/node/status': (req, res) => sendJson(res, 200, {
     node: true,
     rest: restReady(),
+    // Cuando la app real no se puede activar: qué clases no tienen contraseña (solo grado y sección, nada más).
+    rest_missing: restReady() ? [] : restLayer.missingClasses(),
     name: getMeta(db, 'node_name'),
     school_code: getMeta(db, 'school_code'),
     storage_base: getMeta(db, 'storage_base'),

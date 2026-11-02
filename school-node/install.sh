@@ -12,6 +12,9 @@
 #               ChromeOS no permite (nombre quetzal.local, hotspot, montaje USB).
 #               Se activa solo si detecta ChromeOS. Solo recomendado para pilotos.
 #   --update    solo actualiza el código y reinicia el servicio
+#   --auto      sin preguntas: no pide el token (lo toma de QUETZAL_TOKEN o de --token=XXX), hace la primera
+#               sincronización, comprueba que todo quedó listo y lo dice en español
+#   --token=XXX token del nodo (también: variable QUETZAL_TOKEN)
 #
 # Qué hace: instala Node.js, descarga el código, pide el token del nodo,
 # genera el código de docente, deja la app en http://quetzal.local (puerto
@@ -25,6 +28,8 @@ SERVICE=quetzal-node
 HOTSPOT=0
 UPDATE_ONLY=0
 CHROMEBOOK=0
+AUTO=0
+ARG_TOKEN="${QUETZAL_TOKEN:-}"
 # Crostini (Linux de ChromeOS) se detecta solo.
 if [ -e /dev/.cros_milestone ] || [ -d /mnt/chromeos ]; then CHROMEBOOK=1; fi
 for arg in "$@"; do
@@ -32,6 +37,8 @@ for arg in "$@"; do
     --hotspot) HOTSPOT=1 ;;
     --update) UPDATE_ONLY=1 ;;
     --chromebook) CHROMEBOOK=1 ;;
+    --auto) AUTO=1 ;;
+    --token=*) ARG_TOKEN="${arg#--token=}" ;;
     *) echo "Opción desconocida: $arg"; exit 1 ;;
   esac
 done
@@ -82,15 +89,26 @@ if [ "$UPDATE_ONLY" -eq 1 ]; then
   [ "$CHROMEBOOK" -eq 1 ] || sudo setcap 'cap_net_bind_service=+ep' "$(readlink -f "$(command -v node)")"
   sudo systemctl restart "$SERVICE"
   say "Listo: código actualizado y nodo reiniciado."
+  if [ "$AUTO" -eq 1 ]; then
+    say "Verificación (puede tardar varios minutos)"
+    node "$NODE_DIR/primera-sincronizacion.js" || true
+  fi
   exit 0
 fi
 
 # ---------- 3. Configuración ----------
 if [ ! -f "$NODE_DIR/config.json" ]; then
   say "Configuración del nodo"
-  echo "Pega el TOKEN del nodo (lo da el administrador al registrar el nodo en Quetzal LMS)."
-  echo "Si todavía no lo tienes, déjalo vacío: después lo pegas en Quetzal, botón Docente."
-  read -r -p "Token: " NODE_TOKEN < /dev/tty || NODE_TOKEN=""
+  if [ -n "$ARG_TOKEN" ]; then
+    NODE_TOKEN="$ARG_TOKEN"
+  elif [ "$AUTO" -eq 1 ]; then
+    NODE_TOKEN=""
+    warn "Sin token: se instala igual; pégalo después en Quetzal (botón Docente) o vuelve a ejecutar con QUETZAL_TOKEN."
+  else
+    echo "Pega el TOKEN del nodo (lo da el administrador al registrar el nodo en Quetzal LMS)."
+    echo "Si todavía no lo tienes, déjalo vacío: después lo pegas en Quetzal, botón Docente."
+    read -r -p "Token: " NODE_TOKEN < /dev/tty || NODE_TOKEN=""
+  fi
   # "|| true": con pipefail, tr termina por SIGPIPE cuando head corta.
   TEACHER_CODE="$(LC_ALL=C tr -dc '0-9' < /dev/urandom | head -c 6 || true)"
   PORT=80
@@ -163,6 +181,14 @@ if [ "$HOTSPOT" -eq 1 ]; then
   sudo nmcli connection up quetzal-hotspot
 fi
 
+# ---------- Verificación (con --auto) ----------
+CHECK_RC=-1
+if [ "$AUTO" -eq 1 ]; then
+  say "Primera sincronización y verificación (puede tardar varios minutos)"
+  CHECK_RC=0
+  node "$NODE_DIR/primera-sincronizacion.js" || CHECK_RC=$?
+fi
+
 # ---------- Listo ----------
 IPS="$(hostname -I | tr ' ' '\n' | grep -E '^[0-9]+\.' | head -n 3 | tr '\n' ' ' || true)"
 say "¡Nodo instalado!"
@@ -204,6 +230,21 @@ cat <<EOF
   Red Wi-Fi:             Quetzal-Escuela
   Contraseña:            $WIFI_PASS
   Dirección en esa red:  http://10.42.0.1
+EOF
+fi
+if [ "$CHECK_RC" -eq 0 ]; then
+  printf '\n  \033[1;32mTODO LISTO\033[0m: la aplicación normal está activa y los cursos están en el servidor.\n'
+elif [ "$CHECK_RC" -gt 0 ]; then
+  printf '\n  \033[1;33mFALTA algo\033[0m: lee los mensajes FALTA de arriba y vuelve a ejecutar el instalador cuando lo resuelvas.\n'
+fi
+if [ "$AUTO" -eq 1 ]; then
+cat <<EOF
+
+  Falta hacer a mano (el instalador no puede):
+    1. Reservar la IP de la Raspberry en el router (reserva DHCP).
+    2. Imprimir el cartel con el QR: http://quetzal.local/cartel
+    3. Comprobar en Quetzal que TODAS las clases tengan contraseña de clase.
+    4. Cada docente crea, con internet, su PIN de 6 números en su Perfil.
 EOF
 fi
 cat <<EOF

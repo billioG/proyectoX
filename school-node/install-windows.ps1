@@ -13,7 +13,9 @@
 #   -Update      solo actualiza el código y reinicia el nodo
 #   -Uninstall   quita el arranque automático y la regla del firewall
 #                (los datos quedan en C:\Quetzal\data; agrega -BorrarDatos para borrarlos)
-#   -Token XXX   token del nodo (si no, lo pregunta)
+#   -Token XXX   token del nodo (si no, lo pregunta; también se lee de token.txt junto a este archivo)
+#   -Auto        todo sin preguntas (ver instalar-todo-windows.cmd): instala o actualiza, hace la primera
+#                sincronización, comprueba que todo quedó listo y lo dice en español
 #   -Port N      puerto (por defecto 80; si está ocupado usa 8080)
 #
 # Qué hace: descarga su propio Node.js 22 (portátil, en C:\Quetzal\node),
@@ -25,6 +27,8 @@ param(
   [switch]$Update,
   [switch]$Uninstall,
   [switch]$BorrarDatos,
+  [switch]$Auto,            # sin preguntas: lee el token de token.txt, sincroniza, comprueba, guarda un resumen y abre el cartel
+  [switch]$SinSincronizar,  # con -Auto: no hacer la primera sincronización
   [string]$Token = '',
   [int]$Port = 0
 )
@@ -36,6 +40,7 @@ $NodeDir = Join-Path $AppDir 'school-node'
 $DataDir = Join-Path $Root 'data'
 $LogDir = Join-Path $Root 'logs'
 $ConfigFile = Join-Path $Root 'config.json'
+$ResumenFile = Join-Path $Root 'Resumen-instalacion.txt'
 $Launcher = Join-Path $Root 'iniciar-nodo.cmd'
 $TaskName = 'Quetzal - Nodo escolar'
 $FwRule = 'Quetzal LMS (nodo escolar)'
@@ -43,6 +48,16 @@ $ZipUrl = 'https://codeload.github.com/billioG/proyectoX/zip/refs/heads/main'
 
 function Say($msg) { Write-Host "`n==> $msg" -ForegroundColor Green }
 function Warn($msg) { Write-Host $msg -ForegroundColor Yellow }
+
+# Primera sincronización y verificación (school-node\primera-sincronizacion.js): espera al servidor, sincroniza,
+# espera a que bajen los archivos y dice qué falta. Devuelve 0 = todo listo, 1 = falta algo, 2 = falta el token.
+function Invoke-Verificacion {
+  if ($SinSincronizar) { return $null }
+  Say 'Primera sincronización y verificación (puede tardar varios minutos)'
+  $env:QUETZAL_CONFIG_DIR = $Root
+  & $NodeExe (Join-Path $NodeDir 'primera-sincronizacion.js')
+  return $LASTEXITCODE
+}
 
 # ---------- 0. Permisos de administrador ----------
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
@@ -53,6 +68,8 @@ if (-not $isAdmin) {
   if ($Update) { $argList += '-Update' }
   if ($Uninstall) { $argList += '-Uninstall' }
   if ($BorrarDatos) { $argList += '-BorrarDatos' }
+  if ($Auto) { $argList += '-Auto' }
+  if ($SinSincronizar) { $argList += '-SinSincronizar' }
   if ($Token) { $argList += @('-Token', $Token) }
   if ($Port) { $argList += @('-Port', $Port) }
   Start-Process powershell.exe -Verb RunAs -ArgumentList $argList
@@ -160,7 +177,16 @@ function New-TeacherCode {
 
 if (-not (Test-Path $ConfigFile)) {
   Say 'Configuración del nodo'
+  # El token puede venir de la variable QUETZAL_TOKEN o de un archivo token.txt (junto a este instalador o en C:\Quetzal).
+  if (-not $Token -and $env:QUETZAL_TOKEN) { $Token = $env:QUETZAL_TOKEN }
   if (-not $Token) {
+    foreach ($f in @((Join-Path $PSScriptRoot 'token.txt'), (Join-Path $Root 'token.txt'))) {
+      if (-not (Test-Path $f)) { continue }
+      $line = Get-Content $f -ErrorAction SilentlyContinue | Where-Object { $_.Trim() -and -not $_.TrimStart().StartsWith('#') } | Select-Object -First 1
+      if ($line -and ([string]$line).Trim() -notmatch '^PEGAR') { $Token = ([string]$line).Trim(); Say "Token leído de $f"; break }
+    }
+  }
+  if (-not $Token -and -not $Auto) {
     Write-Host 'Pega el TOKEN del nodo (lo da el administrador al registrar el nodo en Quetzal LMS).'
     Write-Host 'Si todavía no lo tienes, déjalo vacío (presiona Enter): después lo pegas en Quetzal, botón Docente.'
     $Token = Read-Host 'Token'
@@ -236,6 +262,7 @@ try { $ok = (Invoke-WebRequest -Uri "http://localhost$suffix/node-config.js" -Us
 
 if ($Update) {
   Say $(if ($ok) { 'Listo: código actualizado y nodo reiniciado.' } else { "El nodo no respondió. Revisa $LogDir\nodo.log" })
+  if ($Auto -and $ok) { $null = Invoke-Verificacion }
   exit
 }
 
@@ -266,4 +293,31 @@ Write-Host ''
 if (-not $ok) { Warn "Revisa $LogDir\nodo.log para ver el error." }
 Warn 'Importante: pide al técnico que reserve esta IP en el router (reserva DHCP), así la dirección no cambia.'
 if ($cfgNow.nodeToken -like 'PEGAR*') { Warn "Falta el token. Abre 'Quetzal (nodo escolar)' en el escritorio, toca 'Docente', escribe el código de docente y pega el token (con internet en esta computadora)." }
+$check = $null
+if ($Auto -and $ok) { $check = Invoke-Verificacion }
+if ($Auto) {
+  $estado = switch ($check) {
+    0 { 'TODO LISTO: la aplicación normal está activa y los cursos están en el servidor.' }
+    2 { 'FALTA el token de la escuela: pégalo en Quetzal (Docente -> Guardar y sincronizar) o ponlo en token.txt y vuelve a ejecutar el instalador.' }
+    1 { 'FALTA algo: lee los mensajes que empiezan con FALTA en la ventana del instalador y vuelve a ejecutarlo cuando lo resuelvas.' }
+    default { 'No se pudo comprobar: el servidor no respondió. Revisa el registro.' }
+  }
+  $lineas = @(
+    'RESUMEN DE LA INSTALACIÓN DE QUETZAL', ('Fecha: ' + (Get-Date -Format 'yyyy-MM-dd HH:mm')), '',
+    ('Estado: ' + $estado), '',
+    'Dirección para los celulares:', ("  http://$HostName.local$suffix")
+  )
+  foreach ($ip in $ips) { $lineas += "  http://$ip$suffix" }
+  $lineas += @('', "Código de docente: $TeacherCode", '', 'Falta hacer a mano (el instalador no puede):',
+    '  1. Reservar la IP del servidor en el router (reserva DHCP) para que la dirección no cambie.',
+    '  2. Imprimir el cartel con el QR (acceso directo Quetzal - Cartel para estudiantes) y pegarlo en el aula.',
+    '  3. Comprobar en Quetzal que TODAS las clases tengan contraseña de clase.',
+    '  4. Cada docente crea, con internet, su PIN de 6 números en su Perfil.',
+    '', "Estado del servidor: http://localhost$suffix/api/node/status", "Registro: $LogDir\nodo.log")
+  [IO.File]::WriteAllText($ResumenFile, ($lineas -join "`r`n"), (New-Object Text.UTF8Encoding $false))
+  icacls $ResumenFile /inheritance:r /grant:r '*S-1-5-32-544:F' '*S-1-5-18:F' | Out-Null
+  Write-Host ''
+  Write-Host "  $estado" -ForegroundColor $(if ($check -eq 0) { 'Green' } else { 'Yellow' })
+  Write-Host "  Resumen guardado en $ResumenFile (solo lo pueden abrir los administradores)"
+}
 if ($ok) { Start-Process "http://localhost$suffix/cartel" }

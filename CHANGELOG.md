@@ -6,6 +6,8 @@ Al publicar una versión nueva, agrega una línea arriba de todo (ver CONTRIBUTI
 
 ## 2026-11-02
 
+- **Nodo escolar: instalación de un doble clic.** En Windows, `instalar-todo-windows.cmd` instala (o actualiza), lee el token de `token.txt`, hace la primera sincronización, espera a que bajen los cursos, comprueba que la app normal esté activa, guarda un resumen en `C:\Quetzal\Resumen-instalacion.txt` y abre el cartel. En Raspberry, `install.sh --auto` hace lo mismo y `instalar-raspberry-por-ssh.cmd` la instala desde Windows sin monitor ni teclado. Si falta algo (token, clases sin contraseña, sin internet) lo dice en español. El estado del nodo ahora informa qué clases no tienen contraseña (`rest_missing`). (v1.0.199)
+
 - **Nodo escolar: los recursos de los cursos y las fotos de perfil ya cargan sin internet con la app real.** Los videos, PDF, imágenes y paquetes H5P/SCORM de los cursos se piden al nodo (que ya los tiene descargados) y no a la nube, y las fotos de perfil de estudiantes y docentes se descargan al sincronizar. Lo que el nodo no puede hacer sin internet (comentarios, notas, subir proyecto, reaccionar...) ahora avisa «Esto no está disponible sin internet» en vez de «No tienes permiso, avisa al administrador». (v1.0.198)
 
 ## 2026-11-01

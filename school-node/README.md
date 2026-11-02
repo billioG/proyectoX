@@ -63,6 +63,16 @@ trabar el resto de la sincronización.
 > **Sin internet, la app sigue arrancando.** El nodo entrega `index.html` con las librerías de CDN
 > reemplazadas por copias locales de `vendor/cdn/` (`school-node/offline-assets.js`).
 
+## Instalación de un doble clic (lo más automático)
+
+**Windows.** Copia la carpeta `school-node` (o el instalador que te dieron) a la PC, pon el token de la escuela en un archivo `token.txt` junto a `instalar-todo-windows.cmd` (una línea; copia `token.txt.ejemplo`) y dale **doble clic** a `instalar-todo-windows.cmd`. Acepta el permiso de administrador una sola vez. Hace solo: instalar o actualizar, abrir el firewall, arrancar con Windows, evitar que la PC se duerma, **primera sincronización**, esperar a que bajen los cursos, **comprobar que la app normal quedó activa**, guardar `C:\Quetzal\Resumen-instalacion.txt` (dirección, código de docente y pendientes; solo lo abren administradores) y abrir el cartel. Si algo falta lo dice con la palabra **FALTA**. Sin `token.txt` instala igual y avisa.
+
+**Raspberry desde Windows (sin monitor ni teclado).** Con la Raspberry por cable al router y SSH habilitado, dale doble clic a `instalar-raspberry-por-ssh.cmd`: pide el usuario y la contraseña de la Raspberry, entra por SSH, instala con `--auto` y abre el cartel. Parámetros: `-Servidor 192.168.x.x` si `quetzal.local` no responde.
+
+**Raspberry directo.** `curl -fsSL https://raw.githubusercontent.com/billioG/proyectoX/main/school-node/install.sh | QUETZAL_TOKEN='XXXX' bash -s -- --auto`
+
+Lo que **no** puede hacer ningún instalador: reservar la IP en el router, imprimir el cartel, ponerles contraseña a las clases y que cada docente cree su PIN (con internet). Quedan listados en el resumen.
+
 ## Instalación en una computadora con Windows 10/11
 
 ```

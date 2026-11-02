@@ -180,3 +180,12 @@ test('la capa solo se activa si TODAS las clases con estudiantes activos tienen 
   layer.store.put('students', { id: 's9', username: 'zoe9', full_name: 'Zoe', school_code: 'ESC1', grade: 'Segundo', section: 'B', status: 'baja' });
   assert.equal(layer.ready(), true, 'los dados de baja no cuentan');
 });
+
+test('missingClasses dice qué clases dejarían sin acceso a sus estudiantes (y no cuenta a los dados de baja)', () => {
+  const { layer } = boot();
+  assert.deepEqual(layer.missingClasses(), []);
+  layer.store.put('students', { id: 's8', username: 'x8', full_name: 'X', school_code: 'ESC1', grade: 'Segundo', section: 'B', status: 'activo' });
+  layer.store.put('students', { id: 's9', username: 'x9', full_name: 'Y', school_code: 'ESC1', grade: 'Segundo', section: 'B', status: 'activo' });
+  layer.store.put('students', { id: 's7', username: 'x7', full_name: 'Z', school_code: 'ESC1', grade: 'Tercero', section: 'C', status: 'baja' });
+  assert.deepEqual(layer.missingClasses(), ['Segundo B']);
+});

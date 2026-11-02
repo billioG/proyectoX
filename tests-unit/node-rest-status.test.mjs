@@ -55,3 +55,12 @@ test('sin token de escuela el botón lo explica con palabras claras', { skip: !s
   assert.equal(r.status, 400);
   assert.match(r.data.error, /nube/);
 });
+
+test('el estado dice qué clases no tienen contraseña cuando la app real no se puede activar', { skip: !sqliteAvailable() && 'better-sqlite3 no disponible' }, async () => {
+  const node = await startNode({ rest: { ...rest, tables: { ...rest.tables, students: [...rest.tables.students, { id: 's2', username: 'beto1', full_name: 'Beto', school_code: 'ESC1', grade: 'Segundo', section: 'B', status: 'activo' }] } } });
+  const s = (await node.api('/api/node/status')).data;
+  assert.equal(s.rest, false);
+  assert.deepEqual(s.rest_missing, ['Segundo B']);
+  const ok = await startNode({ rest });
+  assert.deepEqual([(await ok.api('/api/node/status')).data.rest, (await ok.api('/api/node/status')).data.rest_missing], [true, []]);
+});
