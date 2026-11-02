@@ -7,6 +7,7 @@
 //   pk, columns: [columnas visibles], masked?: [columnas que la app pide pero NUNCA se sirven: devuelven null y no se filtran], relations: { nombre: { type: 'one'|'many', unique?, table, fk, ref } },
 //   writable?: [columnas escribibles] (si falta, la tabla es de solo lectura), defaults?: { col: () => valor },
 //   unique?: [[col, col], ...]
+//   noUpdate?: true  la tabla se puede insertar pero no editar (la nube no da permiso de UPDATE): editar responde 403
 //   empty?: true  tabla que la app consulta y el nodo no tiene: lecturas siempre vacías, escrituras denegadas
 // }
 // policy = { canRead(ctx, tabla, fila), canInsert(ctx, tabla, fila), canUpdate(ctx, tabla, vieja, nueva), canDelete(ctx, tabla, fila) }
@@ -234,13 +235,14 @@ export function createEngine({ schema, store, policy = {} }) {
       checkWritable(t, name, input);
       const existing = store.all(name).find((r) => target.every((c) => input[c] !== undefined && r[c] === input[c]));
       if (!existing) out.push(insertRow(ctx, name, t, input, changes));
+      else if (t.noUpdate) throw denied(name);
       else if (!p.ignoreDuplicates) { const n = updateRow(ctx, name, t, existing, input, changes); if (n) out.push(n); else throw denied(name); }
     }
     return { rows: represent(p, ctx, name, out), count: null, changes };
   }
   function update(p, ctx) {
     const name = p.table, t = tableDef(name);
-    if (!t.writable) throw denied(name);
+    if (!t.writable || t.noUpdate) throw denied(name);
     checkFilters(t, p.filters);
     checkWritable(t, name, p.patch);
     const changes = [];

@@ -29,7 +29,7 @@ test('las columnas que bajan son exactamente las que el nodo sirve; nada sensibl
       assert.ok(!SENSITIVE.includes(c), `${table}.${c} es sensible`);
     }
   }
-  for (const table of Object.keys(SCHEMA).filter((t) => t !== 'teachers' && !SCHEMA[t].empty)) {
+  for (const table of Object.keys(SCHEMA).filter((t) => !SCHEMA[t].empty)) {
     assert.ok(mod.TABLE_COLUMNS[table], `${table} del esquema del nodo no se baja de la nube`);
   }
 });
@@ -60,6 +60,7 @@ function fakeAdmin(data) {
       select: (c) => { cols = c === '*' ? null : c.split(',').map((x) => x.trim()); return q; },
       eq: (c, v) => { rows = rows.filter((r) => r[c] === v); return q; },
       in: (c, vs) => { rows = rows.filter((r) => vs.includes(r[c])); return q; },
+      gte: (c, v) => { rows = rows.filter((r) => r[c] >= v); return q; },
       order: () => q,
       limit: (n) => { rows = rows.slice(0, n); return q; },
       range: (a, b) => { rows = rows.slice(a, b + 1); return q; },
@@ -80,6 +81,7 @@ test('baja solo lo de la escuela del nodo, con las columnas permitidas y sin dat
       { id: 's9', school_code: 'ESC2', username: 'zoe9', full_name: 'Zoe', xp: 7 },
     ],
     teacher_assignments: [{ id: 1, teacher_id: 't1', school_code: 'ESC1' }, { id: 2, teacher_id: 't2', school_code: 'ESC2' }],
+    teachers: [{ id: 't1', full_name: 'Marta', email: 'marta@escuela.com', role: 'docente', base_salary: 9999 }, { id: 't2', full_name: 'Docente Ajeno', email: 'ajeno@otra.com', role: 'docente' }],
     groups: [{ id: 7, school_code: 'ESC1', name: 'Sol' }, { id: 8, school_code: 'ESC2', name: 'Luna' }],
     group_members: [{ id: 1, group_id: 7, student_id: 's1' }, { id: 2, group_id: 8, student_id: 's9' }],
     projects: [{ id: 1, user_id: 's1', title: 'Robot', upload_ip: '10.0.0.1', client_metadata: { a: 1 } }, { id: 2, user_id: 's9', title: 'Ajeno' }],
@@ -88,6 +90,13 @@ test('baja solo lo de la escuela del nodo, con las columnas permitidas y sin dat
     courses: [{ id: 'c1', school_code: 'ESC1' }, { id: 'c2', school_code: 'ESC2' }],
     lessons: [{ id: 'l1', course_id: 'c1', title: 'Intro' }, { id: 'l2', course_id: 'c2', title: 'Ajena' }],
     lesson_completions: [{ id: 'lc1', lesson_id: 'l1', student_id: 's1' }, { id: 'lc2', lesson_id: 'l2', student_id: 's9' }],
+    announcements: [
+      { id: 'a1', sender_id: 'admin', sender_role: 'admin', audience: 'all', title: 'Para todos', message: 'Hola', created_at: new Date().toISOString() },
+      { id: 'a2', sender_id: 't1', sender_role: 'docente', audience: 'students', school_code: 'ESC1', grade: 'Primero', section: 'A', title: 'De mi clase', message: 'x', created_at: new Date().toISOString() },
+      { id: 'a3', sender_id: 't2', sender_role: 'docente', audience: 'students', school_code: 'ESC2', grade: 'Primero', section: 'A', title: 'AVISO-AJENO', message: 'x', created_at: new Date().toISOString() },
+      { id: 'a4', sender_id: 'admin', sender_role: 'admin', audience: 'all', title: 'VIEJO', message: 'x', created_at: '2020-01-01T00:00:00Z' },
+    ],
+    announcement_reads: [{ id: 1, announcement_id: 'a1', user_id: 's1' }, { id: 2, announcement_id: 'a1', user_id: 's9' }, { id: 3, announcement_id: 'a3', user_id: 's9' }],
     badges: [{ id: 1, code: 'b1', name: 'Insignia' }],
     student_badges: [{ id: 1, student_id: 's1', badge_id: 1 }, { id: 2, student_id: 's9', badge_id: 1 }],
   });
@@ -96,6 +105,9 @@ test('baja solo lo de la escuela del nodo, con las columnas permitidas y sin dat
   assert.deepEqual(ids('schools'), [1]);
   assert.deepEqual(ids('students'), ['s1']);
   assert.deepEqual(ids('teacher_assignments'), [1]);
+  assert.deepEqual(ids('teachers'), ['t1'], 'solo los docentes asignados a esta escuela');
+  assert.deepEqual(ids('announcements').sort(), ['a1', 'a2'], 'solo los que alcanzan a la escuela y de los últimos 90 días');
+  assert.deepEqual(ids('announcement_reads'), [1], 'solo lecturas de gente de la escuela');
   assert.deepEqual(ids('groups'), [7]);
   assert.deepEqual(ids('group_members'), [1]);
   assert.deepEqual(ids('projects'), [1]);
@@ -107,5 +119,17 @@ test('baja solo lo de la escuela del nodo, con las columnas permitidas y sin dat
   assert.deepEqual(ids('student_badges'), [1]);
   assert.deepEqual(ids('badges'), [1]);
   const text = JSON.stringify(t);
-  assert.doesNotMatch(text, /SECRETO|ana@x\.com|10\.0\.0\.1|client_metadata|"phone"|Zoe|Ajeno|Ajena/);
+  assert.doesNotMatch(text, /SECRETO|ana@x\.com|10\.0\.0\.1|client_metadata|"phone"|Zoe|Ajeno|Ajena|marta@escuela|base_salary|9999|AVISO-AJENO|VIEJO/);
+});
+
+test('las entradas de docentes llevan la huella del correo (igual que la del nodo), el PIN hasheado, y nunca el correo en claro', { skip }, async () => {
+  const out = await mod.buildTeacherLogins([
+    { teacher_id: 't1', email: ' Marta@Escuela.com ', pin_hash: 'a'.repeat(64), pin_salt: 'b'.repeat(32) },
+    { teacher_id: 't2', email: 'sinpin@x.com', pin_hash: null, pin_salt: null },
+    { teacher_id: 't3', email: null, pin_hash: 'a'.repeat(64), pin_salt: 'b'.repeat(32) },
+  ]);
+  assert.equal(out.length, 1, 'sin PIN o sin correo no hay entrada');
+  const expected = crypto.createHash('sha256').update('marta@escuela.com').digest('hex');
+  assert.deepEqual(out[0], { teacher_id: 't1', email_hash: expected, pin_hash: 'a'.repeat(64), pin_salt: 'b'.repeat(32) });
+  assert.doesNotMatch(JSON.stringify(out), /marta|escuela\.com/i);
 });

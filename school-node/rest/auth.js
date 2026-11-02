@@ -24,6 +24,7 @@ export const hashClassPassword = (password, saltHex) =>
 const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
 const sha256 = (s) => crypto.createHash('sha256').update(s).digest('hex');
 const equal = (a, b) => { const x = Buffer.from(String(a)), y = Buffer.from(String(b)); return x.length === y.length && crypto.timingSafeEqual(x, y); };
+export const emailHash = (email) => sha256(String(email || '').trim().toLowerCase());
 const classKeyOf = (s) => `${s.school_code}|${s.grade}|${s.section}`;
 const active = (s) => !!s && s.status !== 'egresado' && s.status !== 'baja';
 
@@ -51,6 +52,14 @@ export function createAuth({ store, now = Date.now, hash: hashFn = hashClassPass
   }
 
   const studentRow = (id) => store.all('students').find((s) => s.id === id);
+  const teacherRow = (id) => store.all('teachers').find((t) => t.id === id);
+  // Quién es un uid de este nodo: un estudiante activo, o un docente (o admin) de la escuela. Si ya no está, su sesión no vale.
+  const principalOf = (uid) => {
+    const s = studentRow(uid);
+    if (active(s)) return { uid: s.id, role: 'student', classKey: classKeyOf(s), name: s.full_name };
+    const t = teacherRow(uid);
+    return t ? { uid: t.id, role: t.role === 'admin' ? 'admin' : 'teacher', classKey: null, name: t.full_name } : null;
+  };
 
   // ---- límites de intentos (en memoria: un reinicio del nodo los borra, igual que la ventana de 5 min) ----
   const attempts = new Map(); // 'ip:..' | 'user:..' -> { n, start }
@@ -94,17 +103,36 @@ export function createAuth({ store, now = Date.now, hash: hashFn = hashClassPass
     return { ok: true, email: `${student.id}@nodo.local`, token_hash: token };
   }
 
+  // Docentes: correo + el PIN que fijaron en línea (la contraseña de su cuenta de la nube nunca llega al nodo). Un correo que no
+  // existe, un PIN malo y un docente que nunca fijó PIN hacen el mismo trabajo y dan el mismo error.
+  function teacherLogin({ email, password, ip }) {
+    const eh = emailHash(email);
+    const ipKey = `ip:${ip || 'unknown'}`, userKey = `mail:${eh.slice(0, 32)}`;
+    if (hits(ipKey) >= MAX_ATTEMPTS || hits(userKey) >= MAX_ATTEMPTS) {
+      throw new AuthError(429, 'Demasiados intentos -- espera unos minutos y vuelve a intentar');
+    }
+    const login = String(email || '').trim() ? store.teacherLoginByEmailHash(eh) : null;
+    const given = String(password || '').slice(0, 200);
+    const hash = hashFn(given, login ? login.pin_salt : DUMMY_SALT);
+    if (!login || !given || !equal(hash, login.pin_hash) || !teacherRow(login.teacher_id)) {
+      miss(ipKey); miss(userKey);
+      throw new AuthError(400, 'Invalid login credentials');
+    }
+    attempts.delete(ipKey); attempts.delete(userKey);
+    return session(login.teacher_id);
+  }
+
   function session(uid) {
     const t = Math.floor(now() / 1000);
     const exp = t + ACCESS_MS / 1000;
-    const student = studentRow(uid);
+    const who = principalOf(uid);
     const access_token = sign({ iss: 'quetzal-node', aud: 'authenticated', role: 'authenticated', sub: uid, iat: t, exp });
     const refresh_token = crypto.randomBytes(32).toString('hex');
     store.pruneRefresh(now() - REFRESH_MS); // los de más de 30 días ya no sirven
     store.saveRefresh(sha256(refresh_token), uid, now());
     return {
       access_token, token_type: 'bearer', expires_in: ACCESS_MS / 1000, expires_at: exp, refresh_token,
-      user: { id: uid, aud: 'authenticated', role: 'authenticated', email: `${uid}@nodo.local`, app_metadata: {}, user_metadata: {}, created_at: new Date(0).toISOString(), full_name: student?.full_name },
+      user: { id: uid, aud: 'authenticated', role: 'authenticated', email: `${uid}@nodo.local`, app_metadata: {}, user_metadata: {}, created_at: new Date(0).toISOString(), full_name: who?.name },
     };
   }
 
@@ -118,7 +146,7 @@ export function createAuth({ store, now = Date.now, hash: hashFn = hashClassPass
 
   function refresh(refreshToken) {
     const r = store.takeRefresh(sha256(String(refreshToken || '')));
-    if (!r || now() - r.created_at > REFRESH_MS || !active(studentRow(r.uid))) throw new AuthError(401, 'Sesión vencida');
+    if (!r || now() - r.created_at > REFRESH_MS || !principalOf(r.uid)) throw new AuthError(401, 'Sesión vencida');
     return session(r.uid);
   }
 
@@ -127,9 +155,8 @@ export function createAuth({ store, now = Date.now, hash: hashFn = hashClassPass
   function userFromAccessToken(token) {
     const claims = decode(token);
     if (!claims || claims.role !== 'authenticated') return null;
-    const s = studentRow(claims.sub);
-    if (!active(s)) return null;
-    return { uid: s.id, role: 'student', classKey: classKeyOf(s) };
+    const who = principalOf(claims.sub);
+    return who ? { uid: who.uid, role: who.role, classKey: who.classKey } : null;
   }
 
   // RPC públicas del login. Un usuario que no existe responde igual que uno que sí pide contraseña.
@@ -146,5 +173,5 @@ export function createAuth({ store, now = Date.now, hash: hashFn = hashClassPass
 
   const stats = () => ({ attempts: attempts.size, loginTokens: loginTokens.size, maxKeyLength: Math.max(0, ...[...attempts.keys()].map((k) => k.length)) });
 
-  return { stats, studentLogin, verify, refresh, logout, userFromAccessToken, loginModeByUsername, classLoginMode };
+  return { stats, studentLogin, teacherLogin, verify, refresh, logout, userFromAccessToken, loginModeByUsername, classLoginMode };
 }

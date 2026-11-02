@@ -141,3 +141,59 @@ test('un estudiante que se da de baja deja de poder usar su sesión y renovarla'
   assert.equal(auth.userFromAccessToken(s.access_token), null);
   fails(() => auth.refresh(s.refresh_token), 401);
 });
+
+// ---- Docentes: correo + PIN que fijaron EN LÍNEA ----
+import { emailHash } from '../school-node/rest/auth.js';
+
+function setupTeacher() {
+  const base = setup();
+  const salt = 'cd'.repeat(8);
+  base.store.put('teachers', { id: 't1', full_name: 'Marta Gómez', role: 'docente' });
+  base.store.put('teachers', { id: 't2', full_name: 'Sin PIN', role: 'docente' });
+  base.store.put('teachers', { id: 't3', full_name: 'Admin', role: 'admin' });
+  base.store.setTeacherLogins([
+    { teacher_id: 't1', email_hash: emailHash('Marta@Escuela.com'), pin_hash: hashClassPassword('654321', salt), pin_salt: salt },
+    { teacher_id: 't3', email_hash: emailHash('admin@escuela.com'), pin_hash: hashClassPassword('111111', salt), pin_salt: salt },
+  ]);
+  return base;
+}
+const teacherIn = (auth, email = 'marta@escuela.com', pin = '654321', ip = '10.0.0.9') => auth.teacherLogin({ email, password: pin, ip });
+
+test('docente: entra con su correo (sin importar mayúsculas) y el PIN que fijó en línea; la sesión lo identifica como docente', () => {
+  const { auth } = setupTeacher();
+  const s = teacherIn(auth, '  MARTA@escuela.com ');
+  assert.equal(s.user.id, 't1');
+  assert.deepEqual(auth.userFromAccessToken(s.access_token), { uid: 't1', role: 'teacher', classKey: null });
+  const admin = teacherIn(auth, 'admin@escuela.com', '111111');
+  assert.equal(auth.userFromAccessToken(admin.access_token).role, 'admin');
+  assert.equal(auth.refresh(s.refresh_token).user.id, 't1');
+});
+
+test('docente: correo inexistente, PIN malo y docente que nunca fijó PIN dan el mismo error genérico, y no hay forma de entrar sin PIN', () => {
+  const { auth } = setupTeacher();
+  const errs = [
+    () => teacherIn(auth, 'nadie@x.com'), () => teacherIn(auth, 'marta@escuela.com', '000000', '1.1.1.1'),
+    () => teacherIn(auth, 'sinpin@escuela.com', '654321', '2.2.2.2'), () => teacherIn(auth, 'marta@escuela.com', '', '3.3.3.3'), () => teacherIn(auth, '', '654321', '4.4.4.4'),
+  ].map((f) => { try { f(); return null; } catch (e) { return [e.status, e.message]; } });
+  assert.equal(errs[0][0], 400);
+  for (const e of errs) assert.deepEqual(e, errs[0]);
+  assert.match(errs[0][1], /Invalid login credentials/);
+});
+
+test('docente: límite de intentos por IP y por correo, compartido con el de estudiantes', () => {
+  const { auth } = setupTeacher();
+  for (let i = 0; i < 10; i++) assert.throws(() => teacherIn(auth, 'marta@escuela.com', '00000' + (i % 10), `5.5.5.${i}`), (e) => e.status === 400);
+  assert.throws(() => teacherIn(auth, 'marta@escuela.com', '654321', '5.5.5.99'), (e) => e.status === 429);
+  const ipSpam = setupTeacher().auth;
+  for (let i = 0; i < 10; i++) assert.throws(() => teacherIn(ipSpam, `x${i}@x.com`, '1', '6.6.6.6'), (e) => e.status === 400);
+  assert.throws(() => ipSpam.studentLogin({ username: 'ana1', password: 'clase123', ip: '6.6.6.6' }), (e) => e.status === 429);
+});
+
+test('docente: si lo quitan de la escuela deja de valer su sesión; un docente no entra por el login de estudiantes ni al revés', () => {
+  const { auth, store } = setupTeacher();
+  const s = teacherIn(auth);
+  store.remove('teachers', 't1');
+  assert.equal(auth.userFromAccessToken(s.access_token), null);
+  fails(() => auth.refresh(s.refresh_token), 401);
+  assert.throws(() => auth.studentLogin({ username: 'marta@escuela.com', password: '654321', ip: 'q' }), (e) => e.status === 401);
+});

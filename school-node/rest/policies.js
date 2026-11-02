@@ -26,7 +26,48 @@ export function createPolicy({ store }) {
     return true;
   };
 
+  // ---- Avisos (mismas reglas que can_see_announcement / can_send_announcement de la nube) ----
+  const sameGroup = (g, c) => !!g && g.school_code === c.school_code && g.grade === c.grade && g.section === c.section;
+  const classOf = (ctx) => { const [school_code, grade, section] = String(ctx.classKey || '').split('|'); return { school_code, grade, section }; };
+  const assignmentsOf = (ctx) => store.all('teacher_assignments').filter((a) => a.teacher_id === ctx.uid);
+  const canSeeAnnouncement = (ctx, a) => {
+    if (ctx.role === 'admin' || a.sender_id === ctx.uid) return true;
+    const audience = a.audience ?? 'all';
+    if (ctx.role === 'student') {
+      if (audience !== 'all' && audience !== 'students') return false;
+      const c = classOf(ctx);
+      if (a.school_code != null) return sameGroup(a, c);
+      if (Array.isArray(a.target_groups)) return a.target_groups.some((g) => sameGroup(g, c));
+      if (Array.isArray(a.target_schools)) return a.target_schools.includes(c.school_code);
+      return true;
+    }
+    if (ctx.role === 'teacher') {
+      if (audience !== 'all' && audience !== 'teachers') return false;
+      if (a.school_code != null) return false; // avisos de una clase: son para sus estudiantes
+      const mine = assignmentsOf(ctx);
+      if (Array.isArray(a.target_groups)) return a.target_groups.some((g) => mine.some((m) => sameGroup(g, m)));
+      if (Array.isArray(a.target_schools)) return mine.some((m) => a.target_schools.includes(m.school_code));
+      return true;
+    }
+    return false;
+  };
+  const text = (v, max) => typeof v === 'string' && v.trim().length >= 1 && v.trim().length <= max;
+  // El docente solo envía a estudiantes de SUS grupos: una sola clase, o una lista de grupos; nunca a docentes, a todos ni por escuela.
+  const canSendAnnouncement = (ctx, a) => {
+    if (ctx.role !== 'teacher' || a.sender_id !== ctx.uid || a.sender_role !== 'docente' || a.audience !== 'students' || a.target_schools != null) return false;
+    if (!text(a.title, 150) || !text(a.message, 2000)) return false;
+    const mine = assignmentsOf(ctx);
+    if (a.school_code != null) return a.target_groups == null && mine.some((m) => sameGroup(a, m));
+    const groups = a.target_groups;
+    return Array.isArray(groups) && groups.length >= 1 && groups.length <= 20 && groups.every((g) => g && typeof g === 'object' && mine.some((m) => sameGroup(g, m)));
+  };
+  const validDate = (v) => v == null || (typeof v === 'string' && v.length <= 40 && !Number.isNaN(Date.parse(v)));
+  const canMarkRead = (ctx, r) => own(ctx, r.user_id) && validDate(r.read_at)
+    && (() => { const a = store.all('announcements').find((x) => x.id === r.announcement_id); return !!a && canSeeAnnouncement(ctx, a); })();
+
   const readRules = {
+    announcements: (ctx, r) => canSeeAnnouncement(ctx, r),
+    announcement_reads: (ctx, r) => own(ctx, r.user_id),
     // Públicas para cualquier sesión (select true en la nube).
     schools: () => true,
     teacher_assignments: () => true,
@@ -54,10 +95,13 @@ export function createPolicy({ store }) {
     canRead: (ctx, table, row) => (readRules[table] ? readRules[table](ctx, row) === true : false),
 
     // lesson_completions_insert_own
-    canInsert: (ctx, table, row) => table === 'lesson_completions' && own(ctx, row.student_id) && validCompletion(row),
+    canInsert: (ctx, table, row) => (table === 'lesson_completions' && own(ctx, row.student_id) && validCompletion(row))
+      || (table === 'announcements' && canSendAnnouncement(ctx, row))
+      || (table === 'announcement_reads' && canMarkRead(ctx, row)),
 
     // lesson_completions_update_own (la nueva fila también debe ser propia)
-    canUpdate: (ctx, table, oldRow, newRow) => table === 'lesson_completions' && own(ctx, oldRow.student_id) && own(ctx, newRow.student_id) && validCompletion(newRow),
+    canUpdate: (ctx, table, oldRow, newRow) => (table === 'lesson_completions' && own(ctx, oldRow.student_id) && own(ctx, newRow.student_id) && validCompletion(newRow))
+      || (table === 'announcement_reads' && own(ctx, oldRow.user_id) && canMarkRead(ctx, newRow)),
 
     // lesson_completions_delete_own_or_admin
     canDelete: (ctx, table, row) => table === 'lesson_completions' && (own(ctx, row.student_id) || ctx.role === 'admin'),

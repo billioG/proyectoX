@@ -159,3 +159,12 @@ test('Práctica por HTTP: la app llama /rpc/log_practice y recibe vacío, como c
   assert.equal(bad.status, 400);
   assert.equal((await bad.json()).code, 'P0001');
 });
+
+test('docente: el login diario y el latido responden sin inventar cambios, y el progreso de grupos sale vacío', () => {
+  const { layer } = boot();
+  layer.store.put('teachers', { id: 't1', full_name: 'Marta', role: 'docente', streak: 3, last_login: '2026-11-01' });
+  const t = { uid: 't1', role: 'teacher', classKey: null };
+  assert.deepEqual(layer.rpcs.touch_daily_login({}, t), { streak: 3, changed: false, lastLogin: '2026-11-01' });
+  assert.equal(layer.rpcs.record_active_heartbeat({}, t), null);
+  assert.deepEqual(layer.rpcs.get_groups_progress({ p_days: 30 }, t), []);
+});

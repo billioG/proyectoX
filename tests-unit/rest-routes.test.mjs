@@ -10,7 +10,7 @@ import path from 'node:path';
 import { openDb } from '../school-node/db.js';
 import { SCHEMA } from '../school-node/rest/schema.js';
 import { createStore } from '../school-node/rest/store.js';
-import { createAuth, hashClassPassword } from '../school-node/rest/auth.js';
+import { createAuth, hashClassPassword, emailHash } from '../school-node/rest/auth.js';
 import { createRestRoutes } from '../school-node/rest/routes.js';
 
 const cleanups = [];
@@ -27,6 +27,8 @@ async function boot() {
   store.put('students', { id: 's1', username: 'ana1', full_name: 'Ana', school_code: 'ESC1', grade: 'Primero', section: 'A', status: 'activo', xp: 10, pin_hash: 'SECRETO' });
   store.put('students', { id: 's2', username: 'beto1', full_name: 'Beto', school_code: 'ESC1', grade: 'Primero', section: 'A', status: 'activo', xp: 20 });
   store.put('students', { id: 's3', username: 'carla1', full_name: 'Carla', school_code: 'ESC1', grade: 'Segundo', section: 'B', status: 'activo', xp: 30 });
+  store.put('teachers', { id: 't1', full_name: 'Marta Gómez', role: 'docente', email: 'marta@escuela.com' });
+  store.setTeacherLogins([{ teacher_id: 't1', email_hash: emailHash('marta@escuela.com'), pin_hash: hashClassPassword('654321', salt), pin_salt: salt }]);
   const auth = createAuth({ store });
   const changed = [];
   const routes = createRestRoutes({ store, auth, onChange: () => changed.push(1) });
@@ -172,4 +174,20 @@ test('peticiones mal formadas no tumban el servidor: JSON roto, método raro, ru
   const huge = await call('POST', '/functions/v1/student-login', { body: JSON.stringify({ username: 'x'.repeat(2_000_000) }) }).catch(() => ({ status: 413 }));
   assert.ok([400, 413].includes(huge.status));
   assert.equal((await call('GET', '/rest/v1/students?select=id', { token })).status, 200, 'sigue vivo');
+});
+
+test('docente por HTTP: signInWithPassword con correo y PIN entra; lo malo da 400 con el mensaje de GoTrue; sus datos son los suyos', async () => {
+  const { call } = await boot();
+  const ok = await call('POST', '/auth/v1/token?grant_type=password', { body: { email: 'Marta@Escuela.com', password: '654321' } });
+  assert.equal(ok.status, 200);
+  const session = await ok.json();
+  assert.equal(session.user.id, 't1');
+  const me = await call('GET', '/rest/v1/teachers?select=id,full_name,email&id=eq.t1', { token: session.access_token });
+  assert.deepEqual(await me.json(), [{ id: 't1', full_name: 'Marta Gómez', email: null }]);
+  const students = await (await call('GET', '/rest/v1/students?select=id&order=id.asc', { token: session.access_token })).json();
+  assert.deepEqual(students.map((s) => s.id), ['s1', 's2', 's3'], 'el docente ve a los estudiantes de la escuela');
+  const bad = await call('POST', '/auth/v1/token?grant_type=password', { body: { email: 'marta@escuela.com', password: '000000' } });
+  assert.equal(bad.status, 400);
+  assert.match((await bad.json()).msg, /Invalid login credentials/);
+  assert.equal((await call('POST', '/auth/v1/token?grant_type=otro', { body: {} })).status, 400);
 });

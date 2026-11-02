@@ -29,8 +29,9 @@ import { buildFeedProjects, FEED_LIMIT, nextRoles, validateProjectPush, validate
 import { computeStudentXp, validateXpEvent } from './xp.ts';
 import { validateReactionEvent } from './reactions.ts';
 import { buildTeacherList, shapeEvaluations, validateEvaluationEvent } from './evaluations.ts';
-import { buildClassVerifiers, pullTables } from './tables.ts';
+import { buildClassVerifiers, buildTeacherLogins, pullTables } from './tables.ts';
 import { validatePracticeEvent } from './practice.ts';
+import { validateAnnouncementEvent, validateReadEvent } from './announcements.ts';
 import { sanitizeCompletions, type CompletionRow } from './completions.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -505,6 +506,59 @@ Deno.serve(async (req) => {
       console.error('node-sync: no se pudieron armar las tablas de la capa local', e);
     }
 
+    // ---- Avisos y lecturas hechos en el nodo (el id lo puso el nodo: reintentar no duplica) ----
+    // applied.announcements = ids; applied.announcement_reads = 'aviso|usuario'. Lo rechazado de forma definitiva vuelve en
+    // announcement_errors / announcement_read_errors con permanent: true; un error pasajero se reintenta en el próximo sync.
+    const appliedAnnouncements: string[] = [];
+    const announcementErrors: Array<{ id: string; error: string; permanent: boolean }> = [];
+    const appliedReads: string[] = [];
+    const readErrors: Array<{ key: string; error: string; permanent: boolean }> = [];
+    const pushedAnnouncements: any[] = Array.isArray(push.announcements) ? push.announcements.slice(0, 200) : [];
+    const pushedReads: any[] = Array.isArray(push.announcement_reads) ? push.announcement_reads.slice(0, 500) : [];
+    if (pushedAnnouncements.length || pushedReads.length) {
+      const schoolAssignments = await fetchAll((from, to) => admin.from('teacher_assignments').select('teacher_id, school_code, grade, section').eq('school_code', node.school_code).order('id').range(from, to));
+      const userIds = new Set<string>([...studentIds, ...schoolAssignments.map((a: any) => a.teacher_id as string)]);
+      const annStartedAt = Date.now();
+      for (const raw of pushedAnnouncements) {
+        if (Date.now() - annStartedAt > 30_000) break;
+        const id = String(raw?.id ?? '');
+        const v = validateAnnouncementEvent(raw, { schoolCode: node.school_code, now: Date.now(), assignments: schoolAssignments });
+        if (!v.ok) { announcementErrors.push({ id, error: v.error, permanent: true }); continue; }
+        const { error } = await admin.from('announcements').upsert(v.row, { onConflict: 'id', ignoreDuplicates: true });
+        if (error) { announcementErrors.push({ id, error: error.message, permanent: false }); continue; }
+        appliedAnnouncements.push(id);
+      }
+      for (const raw of pushedReads) {
+        if (Date.now() - annStartedAt > 40_000) break;
+        const key = `${raw?.announcement_id}|${raw?.user_id}`;
+        const v = validateReadEvent(raw, { userIds, now: Date.now() });
+        if (!v.ok) { readErrors.push({ key, error: v.error, permanent: true }); continue; }
+        const { error } = await admin.from('announcement_reads').upsert(v.row, { onConflict: 'announcement_id,user_id', ignoreDuplicates: true });
+        // Un aviso que aún no está en la nube (falló o va en este mismo sync) rompe la clave foránea: se reintenta.
+        if (error) { readErrors.push({ key, error: error.message, permanent: false }); continue; }
+        appliedReads.push(key);
+      }
+    }
+
+    // Entrada de los docentes al nodo: huella del correo + el PIN que fijaron EN LÍNEA (migrations/teacher-node-pin.sql). Aparte del
+    // resto de las tablas: si la migración aún no se corrió, solo faltan estas entradas y el nodo conserva las que ya tenía.
+    let teacherLogins: Awaited<ReturnType<typeof buildTeacherLogins>> | undefined;
+    if (restTables) {
+      try {
+        const teacherIds = [...new Set((restTables.teachers || []).map((t: any) => t.id as string))];
+        const rows: any[] = [];
+        for (const part of chunk(teacherIds)) {
+          const pins = await fetchAll((from, to) => admin.from('teacher_node_pins').select('teacher_id, pin_hash, pin_salt').in('teacher_id', part).order('teacher_id').range(from, to));
+          const emails = await fetchAll((from, to) => admin.from('teachers').select('id, email').in('id', part).order('id').range(from, to));
+          const emailOf = new Map(emails.map((e: any) => [e.id, e.email]));
+          for (const p of pins) rows.push({ teacher_id: p.teacher_id, email: emailOf.get(p.teacher_id), pin_hash: p.pin_hash, pin_salt: p.pin_salt });
+        }
+        teacherLogins = await buildTeacherLogins(rows);
+      } catch (e) {
+        console.error('node-sync: no se pudieron armar las entradas de docentes', e);
+      }
+    }
+
     const serverTime = new Date().toISOString();
     await admin.from('school_nodes').update({
       last_sync_at: serverTime,
@@ -522,17 +576,20 @@ Deno.serve(async (req) => {
       courses,
       completions: allCompletions,
       files,
-      applied: { completions: appliedCompletions, pins: appliedPins, sessions: appliedSessions, projects: appliedProjects, xp_events: appliedXpEvents, reactions: appliedReactions, evaluations: appliedEvaluations, rpc: appliedRpc },
+      applied: { completions: appliedCompletions, pins: appliedPins, sessions: appliedSessions, projects: appliedProjects, xp_events: appliedXpEvents, reactions: appliedReactions, evaluations: appliedEvaluations, rpc: appliedRpc, announcements: appliedAnnouncements, announcement_reads: appliedReads },
       project_errors: projectErrors,
       xp_errors: xpErrors,
       reaction_errors: reactionErrors,
       evaluation_errors: evaluationErrors,
       rpc_errors: rpcErrors,
+      announcement_errors: announcementErrors,
+      announcement_read_errors: readErrors,
       teachers: teacherList,
       evaluations: feedEvaluations,
       reactions: feedReactions,
       tables: restTables,
       class_verifiers: classVerifiers,
+      teacher_logins: teacherLogins,
     };
 
     if (!usb) return reply(pull);

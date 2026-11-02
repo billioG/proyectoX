@@ -2,7 +2,7 @@
 // SERVICE WORKER - PROJECTX PWA
 // ================================================
 
-const CACHE_NAME = 'projectx-v1.0.196';
+const CACHE_NAME = 'projectx-v1.0.197';
 // Caché de archivos de lecciones (video/PDF/imagen/paquetes SCORM-H5P) --
 // separada de CACHE_NAME a propósito: CACHE_NAME se recrea y se BORRA
 // entera en cada deploy (bump de versión) para forzar JS/CSS frescos, pero
@@ -55,7 +55,7 @@ const LAZY_MODULES = [
 const EAGER_MODULES = [
   'js/main.js', 'js/auth.js', 'js/sync-manager.js', 'js/config.js',
   'js/data/badges.js', 'js/badges.js', 'js/data/quotes.js', 'js/data/challenges.js',
-  'js/data/student-challenges.js', 'js/kolibri-sync.js', 'js/offline-kit.js', 'js/node-mode.js', 'js/node-sync-chip.js', 'js/notification-center.js',
+  'js/data/student-challenges.js', 'js/kolibri-sync.js', 'js/offline-kit.js', 'js/node-mode.js', 'js/node-sync-chip.js', 'js/teacher-node-pin.js', 'js/notification-center.js',
   'js/test-accounts-filter.js', 'js/onboarding.js', 'js/birthday-logic.js',
   'js/teacher-rocks.js', 'js/admin-rocks.js', 'js/rocks-notifications.js',
   'js/model-viewer.js', 'js/reactions.js', 'js/project-modals.js', 'js/ai-service.js', 'js/mascot-widget.js',

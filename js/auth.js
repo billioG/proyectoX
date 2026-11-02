@@ -296,6 +296,8 @@ function showLoginScreen() {
 // (navigator.onLine dice true y el login online no responde).
 function renderOfflineEntryButton() {
   document.getElementById('btn-offline-entry')?.remove();
+  // Sobre el nodo no aplica: la tablet ya está dentro de la red de la escuela y entra con su usuario y contraseña.
+  if (window.IS_NODE_REST) return;
   if (!window.listOfflineAccounts?.().length) return;
   const loginBtn = document.getElementById('btn-login');
   if (!loginBtn) return;
@@ -378,7 +380,7 @@ export async function handleLogin() {
     // Sin internet (o WiFi sin salida): ofrecer entrar con una cuenta
     // guardada en vez de un error de red que el alumno no entiende.
     const isNetwork = !navigator.onLine || err instanceof TypeError || /fetch|network/i.test(err.message || '');
-    if (isNetwork && window.listOfflineAccounts?.().length) {
+    if (isNetwork && !window.IS_NODE_REST && window.listOfflineAccounts?.().length) {
       showToast('<i class="fas fa-wifi"></i> No hay internet -- elige tu cuenta para entrar sin conexión', 'info');
       window.openOfflineAccountPicker();
       return;

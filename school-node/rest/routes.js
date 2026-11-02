@@ -119,8 +119,12 @@ export function createRestRoutes({ store, auth, rpcs = {}, onChange = () => {} }
       if (route === 'POST /auth/v1/token') {
         const grant = url.searchParams.get('grant_type');
         if (grant === 'refresh_token') return send(res, 200, auth.refresh(((await readJson(req)) || {}).refresh_token));
-        // Docentes (correo + clave personal del nodo): todavía no.
-        return send(res, 400, { code: 400, error_code: 'unsupported_grant_type', msg: 'Este tipo de ingreso aún no está disponible sin internet', message: 'Este tipo de ingreso aún no está disponible sin internet', error: 'unsupported_grant_type', error_description: 'Este tipo de ingreso aún no está disponible sin internet' });
+        // Docentes: correo + el PIN que fijaron en línea (supabase-js signInWithPassword).
+        if (grant === 'password') {
+          const body = (await readJson(req)) || {};
+          return send(res, 200, auth.teacherLogin({ email: body.email, password: body.password, ip: clientIp(req) }));
+        }
+        return send(res, 400, { code: 400, error_code: 'unsupported_grant_type', msg: 'Tipo de ingreso no soportado', message: 'Tipo de ingreso no soportado', error: 'unsupported_grant_type', error_description: 'Tipo de ingreso no soportado' });
       }
       if (route === 'GET /auth/v1/user') {
         const ctx = auth.userFromAccessToken(tokenOf(req));

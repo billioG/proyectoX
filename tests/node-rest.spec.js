@@ -10,13 +10,17 @@ let skipReason = '';
 test.beforeAll(async () => {
   const helper = await import('../tests-unit/helpers/start-node.mjs');
   if (!helper.sqliteAvailable()) { skipReason = 'better-sqlite3 no está instalado para este Node'; return; }
-  const { hashClassPassword } = await import('../school-node/rest/auth.js');
+  const { hashClassPassword, emailHash } = await import('../school-node/rest/auth.js');
   const salt = 'ab'.repeat(8);
   node = await helper.startNode({
     rest: {
+      teacher_logins: [{ teacher_id: 't1', email_hash: emailHash('marta@escuela.com'), pin_hash: hashClassPassword('654321', salt), pin_salt: salt }],
       class_verifiers: [{ class_key: 'ESC1|Primero|A', requires_password: true, salt, hash: hashClassPassword('clase123', salt) }],
       tables: {
         schools: [{ id: 1, code: 'ESC1', name: 'Escuela Piloto' }],
+        teachers: [{ id: 't1', full_name: 'Marta Gómez', role: 'docente' }],
+        teacher_assignments: [{ id: 1, teacher_id: 't1', school_code: 'ESC1', grade: 'Primero', section: 'A' }],
+        groups: [{ id: 7, name: 'Equipo Sol', school_code: 'ESC1', grade: 'Primero', section: 'A' }],
         students: [
           { id: 's1', username: 'ana1', full_name: 'Ana López', school_code: 'ESC1', grade: 'Primero', section: 'A', status: 'activo', xp: 1240, gems: 30, streak: 6, role: 'estudiante' },
           { id: 's2', username: 'beto1', full_name: 'Beto Ruiz', school_code: 'ESC1', grade: 'Primero', section: 'A', status: 'activo', xp: 800, gems: 10, streak: 2, role: 'estudiante' },
@@ -133,4 +137,58 @@ test('con ?modo=pin el nodo abre su modo anterior (pantalla con PIN y panel del 
   await page.waitForSelector('#node-login');
   expect(await page.evaluate(() => window.SUPABASE_URL)).not.toBe(node.base);
   await expect(page.locator('#node-sync-chip')).toHaveCount(0);
+});
+
+test('el docente entra con su correo y PIN, evalúa un proyecto y avisa a su clase; la estudiante ve el aviso', async ({ page }) => {
+  test.skip(!node, skipReason);
+  const errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await open(page);
+  await login(page, 'marta@escuela.com', '654321');
+  await expect(page.getByText('Marta Gómez').first()).toBeVisible();
+  await expect(page.locator('#btn-offline-entry')).toHaveCount(0);
+
+  // Evaluar: solo ve los proyectos de su clase y los guarda con el total recalculado por el nodo.
+  await page.evaluate(() => window.nav('evaluate'));
+  await expect(page.locator('#eval-projects-container')).toContainText('1 PROYECTOS');
+  const saved = await page.evaluate(async () => {
+    const { error } = await window._supabase.rpc('sync_save_evaluation', { p_evaluation: { project_id: 101, teacher_id: 't1', total_score: 5, creativity_score: 18, clarity_score: 17, functionality_score: 16, teamwork_score: 15, social_impact_score: 14, feedback: 'Muy bien' } });
+    const { data } = await window._supabase.from('evaluations').select('total_score').eq('project_id', 101).single();
+    return { error: error?.message ?? null, total: data?.total_score };
+  });
+  expect(saved).toEqual({ error: null, total: 80 });
+  const other = await page.evaluate(async () => (await window._supabase.rpc('sync_save_evaluation', { p_evaluation: { project_id: 999, teacher_id: 't1', creativity_score: 1, clarity_score: 1, functionality_score: 1, teamwork_score: 1, social_impact_score: 1 } })).error?.message);
+  expect(other).toMatch(/Proyecto/);
+
+  // Avisos con el formulario real.
+  // El formulario se vuelve a dibujar mientras carga: todo se hace dentro de la página, buscando cada campo justo antes de usarlo.
+  await page.evaluate(async () => {
+    const until = async (fn) => { for (let i = 0; i < 80; i++) { const v = fn(); if (v) return v; await new Promise((r) => setTimeout(r, 100)); } throw new Error('el formulario de avisos no cargó'); };
+    await window.openAnnouncementsInbox();
+    await new Promise((r) => setTimeout(r, 1500)); // la bandeja termina de dibujarse antes de abrir el formulario
+    await window.openSendAnnouncementModal();
+    await until(() => document.querySelectorAll('#send-announcement-modal input[type=checkbox]').length >= 2 && document.getElementById('ann-title'));
+    await new Promise((r) => setTimeout(r, 1500));
+    (await until(() => document.querySelectorAll('#send-announcement-modal input[type=checkbox]')[1])).click();
+    (await until(() => document.getElementById('ann-title'))).value = 'Traer el robot el lunes';
+    (await until(() => document.getElementById('ann-message'))).value = 'Recuerden traer el robot armado.';
+    await window.sendAnnouncement();
+  });
+  await expect(page.getByText('Aviso enviado').first()).toBeVisible();
+  await expect(page.locator('#node-sync-chip')).toContainText(/por subir/);
+
+  // La estudiante de esa clase lo ve; un docente no puede entrar con un PIN equivocado.
+  // Al cerrar sesión la app recarga sola: no se espera la respuesta, se espera a que vuelva el formulario.
+  const reloaded = page.waitForEvent('load');
+  await page.evaluate(() => { localStorage.clear(); window._supabase.auth.signOut(); });
+  await reloaded;
+  await page.waitForSelector('#login-username');
+  await login(page, 'marta@escuela.com', '000000');
+  await expect(page.getByText('Invalid login credentials').first()).toBeVisible();
+  await login(page, 'ana1', 'clase123');
+  await expect(page.getByText('Ana López').first()).toBeVisible();
+  await closeOverlays(page);
+  const inbox = await page.evaluate(async () => { await window.openAnnouncementsInbox(); return document.getElementById('announcements-inbox-modal')?.innerText || ''; });
+  expect(inbox).toContain('Traer el robot el lunes');
+  expect(errors).toEqual([]);
 });

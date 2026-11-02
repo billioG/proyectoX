@@ -19,6 +19,10 @@ export function createStore({ db, schema }) {
     CREATE TABLE IF NOT EXISTS rest_class_verifiers (
       class_key TEXT PRIMARY KEY, requires_password INTEGER NOT NULL, salt TEXT NOT NULL, hash TEXT NOT NULL
     );
+    -- Entrada de los docentes: huella del correo + PIN (hash con sal) que fijaron EN LÍNEA. Nunca se sirve a la app.
+    CREATE TABLE IF NOT EXISTS rest_teacher_logins (
+      email_hash TEXT PRIMARY KEY, teacher_id TEXT NOT NULL, pin_hash TEXT NOT NULL, pin_salt TEXT NOT NULL
+    );
     -- Tokens de renovación de las sesiones del nodo (se guarda solo su huella).
     CREATE TABLE IF NOT EXISTS rest_refresh (
       token_hash TEXT PRIMARY KEY, uid TEXT NOT NULL, created_at INTEGER NOT NULL
@@ -39,6 +43,8 @@ export function createStore({ db, schema }) {
     delTable: db.prepare('DELETE FROM rest_rows WHERE tbl = ?'),
     enqueue: db.prepare('INSERT INTO rest_outbox (tbl, op, pk, row, created_at) VALUES (?, ?, ?, ?, ?)'),
     pending: db.prepare('SELECT seq, tbl, op, pk, row, created_at, attempts, last_error FROM rest_outbox ORDER BY seq'),
+    delRpc: db.prepare("DELETE FROM rest_outbox WHERE tbl = '_rpc' AND op = ? AND pk = ?"),
+    rpcRefs: db.prepare("SELECT pk FROM rest_outbox WHERE tbl = '_rpc' AND op = ?"),
     hasRpc: db.prepare("SELECT 1 FROM rest_outbox WHERE tbl = '_rpc' AND op = ? AND pk = ?"),
     pendingPks: db.prepare('SELECT DISTINCT pk FROM rest_outbox WHERE tbl = ?'),
     count: db.prepare('SELECT COUNT(*) AS n FROM rest_outbox'),
@@ -46,6 +52,9 @@ export function createStore({ db, schema }) {
     fail: db.prepare('UPDATE rest_outbox SET attempts = attempts + 1, last_error = ? WHERE seq = ?'),
     getMeta: db.prepare('SELECT value FROM rest_meta WHERE key = ?'),
     verifier: db.prepare('SELECT class_key, requires_password, salt, hash FROM rest_class_verifiers WHERE class_key = ?'),
+    delTeacherLogins: db.prepare('DELETE FROM rest_teacher_logins'),
+    putTeacherLogin: db.prepare('INSERT OR REPLACE INTO rest_teacher_logins (email_hash, teacher_id, pin_hash, pin_salt) VALUES (?, ?, ?, ?)'),
+    getTeacherLogin: db.prepare('SELECT teacher_id, pin_hash, pin_salt FROM rest_teacher_logins WHERE email_hash = ?'),
     countVerifiers: db.prepare('SELECT COUNT(*) AS n FROM rest_class_verifiers'),
     delVerifiers: db.prepare('DELETE FROM rest_class_verifiers'),
     putVerifier: db.prepare('INSERT INTO rest_class_verifiers (class_key, requires_password, salt, hash) VALUES (?, ?, ?, ?)'),
@@ -119,20 +128,23 @@ export function createStore({ db, schema }) {
     pending: () => q.pending.all().map((r) => ({ seq: r.seq, table: r.tbl, op: r.op, pk: r.pk, row: JSON.parse(r.row), created_at: r.created_at, attempts: r.attempts, last_error: r.last_error })),
     pendingCount: () => q.count.get().n,
     /** ¿Ya hay en la bandeja esta función con esta referencia? (para no anotar dos veces un reintento de la app) */
+    /** Pone una llamada a función en la bandeja reemplazando la pendiente con la misma referencia (la última gana). */
+    replacePendingRpc: (fn, ref, row) => transaction(() => { q.delRpc.run(fn, key(ref)); enqueue([{ op: fn, table: RPC, row: { ref, ...row } }]); }),
+    pendingRpcRefs: (fn) => new Set(q.rpcRefs.all(fn).map((r) => r.pk)),
     hasPendingRpc: (fn, ref) => !!q.hasRpc.get(fn, key(ref)),
     ack: (seqs) => transaction(() => { for (const s of seqs) q.ack.run(s); }),
     fail: (seq, message) => { q.fail.run(String(message).slice(0, 500), seq); },
 
     /** Reemplaza la base de una tabla con lo que bajó de la nube, respetando las filas con cambios pendientes de subir. */
-    replaceBase(tbl, incoming) {
+    replaceBase(tbl, incoming, { keep = () => false } = {}) {
       const pk = pkOf(tbl);
       transaction(() => {
         const pendingKeys = new Set(q.pendingPks.all(tbl).map((p) => p.pk));
-        const keep = new Map(load(tbl).filter((r) => pendingKeys.has(key(r[pk]))).map((r) => [key(r[pk]), r]));
+        const kept = new Map(load(tbl).filter((r) => pendingKeys.has(key(r[pk])) || keep(r)).map((r) => [key(r[pk]), r]));
         q.delTable.run(tbl);
         cache.delete(tbl);
-        for (const row of incoming) put(tbl, keep.get(key(row[pk])) || row);
-        for (const [k, row] of keep) if (!incoming.some((r) => key(r[pk]) === k)) put(tbl, row);
+        for (const row of incoming) put(tbl, kept.get(key(row[pk])) || row);
+        for (const [k, row] of kept) if (!incoming.some((r) => key(r[pk]) === k)) put(tbl, row);
       });
     },
 
@@ -141,6 +153,12 @@ export function createStore({ db, schema }) {
       q.delVerifiers.run();
       for (const v of list) q.putVerifier.run(v.class_key, v.requires_password ? 1 : 0, v.salt || '', v.hash || '');
     }),
+    /** Reemplaza las entradas de docentes con las que bajó de la nube: [{ teacher_id, email_hash, pin_hash, pin_salt }]. */
+    setTeacherLogins: (list) => transaction(() => {
+      q.delTeacherLogins.run();
+      for (const t of list) q.putTeacherLogin.run(t.email_hash, t.teacher_id, t.pin_hash, t.pin_salt);
+    }),
+    teacherLoginByEmailHash: (h) => q.getTeacherLogin.get(String(h)) || null,
     verifierCount: () => q.countVerifiers.get().n,
     classVerifier: (classKey) => { const r = q.verifier.get(classKey); return r ? { ...r, requires_password: !!r.requires_password } : null; },
     /** Borra los tokens de renovación creados antes de `before` (ms). */

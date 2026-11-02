@@ -132,8 +132,6 @@ export const SCHEMA = {
     },
   }),
 
-  announcements: emptyTable(),
-  announcement_reads: emptyTable(),
   surveys: emptyTable(),
   resource_comments: emptyTable(),
   comment_notifications: emptyTable(),
@@ -144,4 +142,30 @@ export const SCHEMA = {
   student_spelling_duels: emptyTable(),
   project_reaction_notifications: emptyTable(),
   student_challenges: emptyTable(),
+  attendance: emptyTable(),
+  exams: emptyTable(),
+  exam_results: emptyTable(),
+  teacher_rocks: emptyTable(),
+  teacher_rock_completions: emptyTable(),
+  ai_evaluations: emptyTable(),
+  ai_code_evaluations: emptyTable(),
+
+  // Avisos: los envía el docente a sus grupos (reglas en policies.js, las mismas de can_send_announcement) y los ven según
+  // can_see_announcement. id y fecha las pone el nodo (el id viaja a la nube, que lo usa para no duplicar).
+  announcements: table({
+    pk: 'id',
+    noUpdate: true,
+    columns: ['id', 'sender_id', 'sender_role', 'audience', 'school_code', 'grade', 'section', 'target_schools', 'target_groups', 'title', 'message', 'created_at'],
+    writable: ['sender_id', 'sender_role', 'audience', 'school_code', 'grade', 'section', 'target_schools', 'target_groups', 'title', 'message'],
+    defaults: { id: () => globalThis.crypto.randomUUID(), created_at: () => new Date().toISOString() },
+    relations: {},
+  }),
+  announcement_reads: table({
+    pk: 'id',
+    columns: ['id', 'announcement_id', 'user_id', 'read_at'],
+    writable: ['announcement_id', 'user_id', 'read_at'],
+    unique: [['announcement_id', 'user_id']],
+    defaults: { id: () => globalThis.crypto.randomUUID(), read_at: () => new Date().toISOString() },
+    relations: { announcements: { type: 'one', table: 'announcements', fk: 'announcement_id', ref: 'id' } },
+  }),
 };

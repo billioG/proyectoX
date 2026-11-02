@@ -12,7 +12,7 @@ export function createRestLayer(db, { now = Date.now, random = Math.random, onCh
   const xp = createRestXp({ db, store, now, random });
   store.setView('students', () => xp.overlay());
   const auth = createAuth({ store, now });
-  const rpcs = createRpcs({ store, xp });
+  const rpcs = createRpcs({ store, xp, now });
   const routes = createRestRoutes({
     store, auth, rpcs,
     // Una lección que se completa por primera vez paga XP (en la nube lo hace un disparador de lesson_completions).

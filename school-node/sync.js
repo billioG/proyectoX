@@ -23,6 +23,8 @@ export function buildPush(db) {
     completions: [...db.prepare('SELECT lesson_id, student_id, score, status, updated_at FROM completions WHERE dirty = 1').all(), ...rest.completions],
     rest_seqs: rest.seqs,
     rpc: rest.rpc,
+    announcements: rest.announcements,
+    announcement_reads: rest.announcement_reads,
     pins: db.prepare('SELECT id AS student_id, pin_hash, pin_salt, pin_updated_at FROM students WHERE pin_dirty = 1').all(),
     sessions: db.prepare('SELECT id, student_id, device, entered_at FROM session_logs WHERE dirty = 1').all(),
     // Cofres diarios sorteados aquí: la nube los valida (un cofre por día, solo premios válidos) y los aplica.
@@ -30,7 +32,7 @@ export function buildPush(db) {
     // Reacción FINAL de cada estudiante a un proyecto (null = la quitó): la nube la aplica sin duplicar votos.
     reactions: createReactionStore(db).pending(),
     // Evaluaciones de proyectos hechas por docentes en el nodo: la nube valida y RECALCULA el total.
-    evaluations: createEvaluationStore(db).pending(),
+    evaluations: [...createEvaluationStore(db).pending(), ...rest.evaluations],
   };
 }
 
