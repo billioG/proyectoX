@@ -123,6 +123,8 @@ export function createStore({ db, schema }) {
       const view = views.get(tbl);
       return view ? rows.map(view()) : rows;
     },
+    /** Las filas SIN la vista (lo que realmente guarda la réplica): para cuentas que ya aplican su propia corrección. */
+    raw: (tbl) => load(tbl),
     /** Registra cómo ver una tabla: `makeMapper()` se llama en cada lectura y devuelve (fila) => fila vista. */
     setView: (tbl, makeMapper) => { views.set(tbl, makeMapper); },
     put,

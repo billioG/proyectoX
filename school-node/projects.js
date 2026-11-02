@@ -122,6 +122,26 @@ export function createProjectStore(db, { dataDir, limits = PROJECT_LIMITS, freeD
       'SELECT g.id, g.name FROM group_members m JOIN groups g ON g.id = m.group_id WHERE m.student_id = ? ORDER BY g.name',
     ).all(studentId).map(g => ({ ...g })),
 
+    /**
+     * Proyecto que la app real (supabase-js) subió con su propio archivo (project-files.js): entra directo como «pendiente» y sube a la nube por
+     * el camino de siempre. El archivo se enlaza (sin duplicar espacio en la tarjeta SD); `input.group_id` ya lo comprobó la capa local.
+     */
+    registerUploaded(studentId, input, sourceFile, meta = {}) {
+      const v = validateProjectDraft({ ...input, filename: `archivo.${input.ext}` }, { memberGroupIds: input.group_id != null ? [input.group_id] : [], maxBytes: limits.maxBytes });
+      if (!v.ok) throw new ProjectError(400, v.error);
+      const waiting = db.prepare(`SELECT COUNT(*) n FROM projects WHERE student_id = ? AND status IN ${ACTIVE}`).get(studentId).n;
+      if (waiting >= limits.maxPendingPerStudent) throw new ProjectError(409, `Ya tienes ${limits.maxPendingPerStudent} proyectos esperando para subirse.`);
+      const id = crypto.randomUUID();
+      const { value } = v;
+      const dest = safe(`${id}.${value.ext}`);
+      try { fs.linkSync(sourceFile, dest); } catch { fs.copyFileSync(sourceFile, dest); }
+      db.prepare(`INSERT INTO projects (id, student_id, group_id, title, description, bimestre, kind, ext, mime, file_size, upload_ip, user_agent, status, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)`)
+        .run(id, studentId, value.group_id, value.title, value.description, value.bimestre, value.kind, value.ext, value.mime, value.size,
+          String(meta.ip ?? '').slice(0, 64), String(meta.userAgent ?? '').slice(0, 200), iso());
+      return { id };
+    },
+
     // Borradores huérfanos (> 1 h) y archivos ya subidos hace más de keepSyncedDays: se libera el disco,
     // pero el proyecto ya subido sigue en "Mis proyectos". Un proyecto pendiente nunca se borra solo.
     cleanup() {

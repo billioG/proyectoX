@@ -2,6 +2,7 @@
 // Las que cambian datos del estudiante no tocan la réplica: anotan lo pendiente (xp.js) y la nube lo valida al sincronizar.
 import { RestError } from './query.js';
 import { createProgress } from './progress.js';
+import { REACTIONS } from '../reactions.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const GAMES = ['quiz', 'hangman', 'spelling', 'debug', 'timed_math'];
@@ -10,7 +11,7 @@ const CRITERIA = ['creativity', 'clarity', 'functionality', 'teamwork', 'social_
 const invalid = (message) => new RestError(400, message, 'P0001');
 const unavailable = (what) => new RestError(400, `${what} aún no está disponible sin internet`, 'P0001');
 
-export function createRpcs({ store, xp, now = Date.now }) {
+export function createRpcs({ store, xp, now = Date.now, reactions = null }) {
   const progress = createProgress({ store, now });
   const studentOnly = (ctx, what) => { if (ctx?.role !== 'student') throw unavailable(what); };
 
@@ -23,6 +24,36 @@ export function createRpcs({ store, xp, now = Date.now }) {
       if (ctx?.role !== 'student' && ctx?.role !== 'teacher') throw unavailable('La racha diaria');
       const row = store.all(ctx.role === 'student' ? 'students' : 'teachers').find((s) => s.id === ctx.uid);
       return { streak: row?.streak || 0, changed: false, lastLogin: row?.last_login ?? null };
+    },
+
+    // Reacciones a proyectos (estudiantes): una por estudiante y proyecto, como con internet. Se ven al instante; la nube las cuenta al sincronizar
+    // (el almacén de reacciones del nodo, reactions.js, guarda solo la reacción FINAL de cada par, así reenviar no suma dos veces).
+    react_to_project: (args, ctx) => {
+      if (ctx?.role !== 'student' || !reactions) throw invalid('Solo estudiantes pueden reaccionar');
+      const id = args?.p_project_id;
+      const project = Number.isInteger(id) ? store.raw('projects').find((p) => p.id === id) : null; // sin la vista: adjustVotes ya corrige
+      if (!project) throw invalid('Proyecto no encontrado');
+      if (id >= 1_500_000_000) throw unavailable('Reaccionar a un proyecto que aún no se publica en la nube');
+      if (!REACTIONS.includes(args?.p_reaction)) throw invalid('Reacción no válida');
+      const { mine } = reactions.react(ctx.uid, id, args.p_reaction);
+      const likeId = `${ctx.uid}:${id}`;
+      const mineRow = store.all('project_likes').find((l) => l.project_id === id && l.user_id === ctx.uid);
+      if (mine === null) { if (mineRow) store.remove('project_likes', mineRow.id); }
+      else store.put('project_likes', { ...(mineRow || { id: likeId, project_id: id, user_id: ctx.uid, created_at: new Date(now()).toISOString() }), reaction: mine });
+      return { mine, votes: reactions.adjustVotes(id, project.votes) };
+    },
+    get_project_reactions: (args, ctx) => {
+      const id = args?.p_project_id;
+      if (!reactions || !Number.isInteger(id)) throw invalid('Proyecto no encontrado');
+      const counts = Object.fromEntries(REACTIONS.map((r) => [r, 0]));
+      // La nube + lo pendiente de este nodo: el estado final de cada par (estudiante, proyecto) reemplaza al de la nube.
+      const pending = new Map(reactions.pending().filter((p) => Number(p.project_id) === id).map((p) => [p.student_id, p.reaction]));
+      for (const l of store.all('project_likes')) {
+        if (l.project_id !== id || pending.has(l.user_id) || !(l.reaction in counts)) continue;
+        counts[l.reaction]++;
+      }
+      for (const r of pending.values()) if (r && r in counts) counts[r]++;
+      return { counts, mine: ctx?.role === 'student' ? reactions.effective(ctx.uid, id) : null };
     },
 
     // Progreso de práctica (pantalla de Progreso del docente y «Mi progreso» del estudiante): se calcula aquí con lo que bajó de la nube y lo pendiente.

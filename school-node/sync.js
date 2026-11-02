@@ -236,7 +236,7 @@ export function applyPull(db, data, pushed = {}) {
   });
   apply();
   // Después de la transacción: si algo fallara, la caché de la capa local no queda a medias.
-  applyRestPull(restStoreFor(db, REST_SCHEMA), data, pushed);
+  applyRestPull(restStoreFor(db, REST_SCHEMA), data, pushed, { pendingReactions: new Set(createReactionStore(db).pending().map((r) => `${r.student_id}|${r.project_id}`)) });
 }
 
 // Descarga los archivos que faltan o cambiaron (6 en paralelo).

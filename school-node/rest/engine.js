@@ -8,6 +8,8 @@
 //   writable?: [columnas escribibles] (si falta, la tabla es de solo lectura), defaults?: { col: () => valor },
 //   unique?: [[col, col], ...]
 //   noUpdate?: true  la tabla se puede insertar pero no editar (la nube no da permiso de UPDATE): editar responde 403
+//   ignore?: [columnas que la app manda al insertar y el nodo descarta en silencio]
+//   noPush?: true  los cambios no van a la bandeja de salida (otro módulo los sube)
 //   hidden?: true  tabla interna: se guarda en la réplica (para cálculos del nodo) pero para el navegador NO existe (404)
 //   empty?: true  tabla que la app consulta y el nodo no tiene: lecturas siempre vacías, escrituras denegadas
 // }
@@ -197,8 +199,10 @@ export function createEngine({ schema, store, policy = {} }) {
     return rows.find((r) => r !== except && sets.some((cols) => cols.every((c) => candidate[c] !== undefined && candidate[c] !== null && r[c] === candidate[c])));
   };
   function insertRow(ctx, name, t, input, changes) {
-    checkWritable(t, name, input);
-    const row = { ...input };
+    const clean = { ...input };
+    for (const c of t.ignore || []) delete clean[c]; // lo que la app manda y el nodo no guarda
+    checkWritable(t, name, clean);
+    const row = { ...clean };
     for (const c of Object.keys(t.coerce || {})) if (typeof row[c] === 'string' && /^\d+$/.test(row[c])) row[c] = Number(row[c]);
     for (const [c, fn] of Object.entries(t.defaults || {})) if (row[c] === undefined) row[c] = fn(row);
     for (const c of t.columns) if (row[c] === undefined) row[c] = null;

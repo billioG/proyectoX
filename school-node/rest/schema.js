@@ -73,9 +73,17 @@ export const SCHEMA = {
     },
   }),
 
+  // Proyectos: el estudiante sube el suyo con la app real. La fila local sale ya (id de un rango reservado) y NO viaja por la bandeja: el archivo y los
+  // datos pasan al almacén de proyectos del nodo (projects.js), que los sube a la nube por el camino ya probado. Al sincronizar, la bajada
+  // trae el proyecto con su id de la nube y reemplaza a esta fila. `ignore`: lo que la app manda y el nodo no guarda (IP, metadatos, miniatura).
   projects: table({
     pk: 'id',
+    noPush: true,
     columns: ['id', 'user_id', 'group_id', 'title', 'description', 'video_url', 'score', 'votes', 'created_at', 'bimestre'],
+    writable: ['user_id', 'group_id', 'title', 'description', 'video_url', 'bimestre'],
+    ignore: ['upload_ip', 'client_metadata', 'thumbnail_url', 'kind'],
+    coerce: { group_id: 'integer', bimestre: 'integer' },
+    defaults: { id: () => 1_500_000_000 + Math.floor(Math.random() * 500_000_000), votes: () => 0, created_at: () => new Date().toISOString() },
     relations: {
       students: { type: 'one', table: 'students', fk: 'user_id', ref: 'id' },
       groups: { type: 'one', table: 'groups', fk: 'group_id', ref: 'id' },

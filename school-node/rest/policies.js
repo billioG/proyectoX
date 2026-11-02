@@ -4,8 +4,10 @@
 
 import { RestError } from './query.js';
 import { containsProfanity } from './profanity.js';
+import { PROJECT_LIMITS, validateProjectDraft } from '../project-rules.js';
 
-export function createPolicy({ store }) {
+// `projects` (opcional): { upload(nombre) -> { owner, used } | null, pendingCount(estudiante) } del almacén de proyectos del nodo.
+export function createPolicy({ store, projects = null }) {
   const staff = (ctx) => ctx.role === 'teacher' || ctx.role === 'admin';
   const own = (ctx, id) => id === ctx.uid;
   const classKeyOf = (s) => `${s.school_code}|${s.grade}|${s.section}`;
@@ -166,6 +168,21 @@ export function createPolicy({ store }) {
     return staff(ctx) && !!g && myClass(ctx, g) && !!st && sameGroup(st, g) && memberOk(m);
   };
 
+  // ---- Proyecto del estudiante (mismas reglas que el flujo del nodo y que js/project-modals.js; la nube las vuelve a validar al sincronizar) ----
+  const uploadNameOf = (url) => {
+    try { return /^\/storage\/v1\/object\/public\/project-videos\/([^/]+)$/.exec(new URL(url, 'http://nodo.local').pathname)?.[1] ?? null; } catch { return null; }
+  };
+  const canSubmitProject = (ctx, p) => {
+    if (ctx.role !== 'student' || p.user_id !== ctx.uid || !projects || typeof p.video_url !== 'string') return false;
+    const memberGroupIds = store.all('group_members').filter((m) => m.student_id === ctx.uid).map((m) => m.group_id);
+    const v = validateProjectDraft({ title: p.title, description: p.description, bimestre: p.bimestre, group_id: p.group_id, filename: 'archivo.mp4', size: 1 }, { memberGroupIds });
+    if (!v.ok) throw new RestError(400, v.error, 'P0001');
+    const up = projects.upload(uploadNameOf(p.video_url) || '');
+    if (!up || up.owner !== ctx.uid || up.used) throw new RestError(400, 'El archivo del proyecto no se subió en este servidor o ya se usó. Súbelo de nuevo.', 'P0001');
+    if (projects.pendingCount(ctx.uid) >= PROJECT_LIMITS.maxPendingPerStudent) throw new RestError(409, `Ya tienes ${PROJECT_LIMITS.maxPendingPerStudent} proyectos esperando para subirse. Espera a que se sincronicen.`, 'P0001');
+    return true;
+  };
+
   const readRules = {
     attendance: (ctx, r) => ctx.role === 'admin' || r.teacher_id === ctx.uid,
     resource_comments: (ctx, r) => canSeeComment(ctx, r),
@@ -204,6 +221,7 @@ export function createPolicy({ store }) {
       || (table === 'announcements' && canSendAnnouncement(ctx, row))
       || (table === 'announcement_reads' && canMarkRead(ctx, row))
       || (table === 'attendance' && validAttendance(ctx, row))
+      || (table === 'projects' && canSubmitProject(ctx, row))
       || (table === 'groups' && staff(ctx) && text(row.name, 80) && typeof row.school_code === 'string' && myClass(ctx, row) && row.created_by == null)
       || (table === 'group_members' && canAddMember(ctx, row))
       || (table === 'resource_comments' && canComment(ctx, row))

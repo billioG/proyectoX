@@ -10,7 +10,7 @@ const MAX_HEADER_BYTES = 8192;
  * @param stream async iterable de Buffers (el pedido HTTP)
  * @param contentType cabecera Content-Type completa (lleva el borde)
  * @param opts { maxBytes, sink: { write(chunk): void | Promise } }
- * @returns { size } bytes del archivo
+ * @returns { size, contentType } bytes del archivo y el Content-Type que le puso el navegador (vacío si no trae)
  */
 export async function readMultipartFile(stream, contentType, { maxBytes, sink }) {
   const m = /^multipart\/form-data\s*;.*boundary=(?:"([^"]+)"|([^;\s]+))/i.exec(String(contentType || ''));
@@ -18,7 +18,7 @@ export async function readMultipartFile(stream, contentType, { maxBytes, sink })
   const delim = Buffer.from(`\r\n--${m[1] || m[2]}`);
   let buf = Buffer.from('\r\n'); // el primer borde no lleva salto de línea delante: se lo ponemos
   let state = 'preamble'; // preamble -> after -> headers -> body -> after ... -> done
-  let size = 0, sawFile = false, isFile = false, fieldBytes = 0;
+  let size = 0, sawFile = false, isFile = false, fieldBytes = 0, fileType = '';
 
   const emit = async (chunk) => {
     if (!chunk.length) return;
@@ -50,7 +50,9 @@ export async function readMultipartFile(stream, contentType, { maxBytes, sink })
       } else if (state === 'headers') {
         const i = buf.indexOf('\r\n\r\n');
         if (i < 0) { if (buf.length > MAX_HEADER_BYTES) throw fail(400, 'Cuerpo multipart dañado.'); break; }
-        isFile = /filename=/i.test(buf.subarray(0, i).toString('latin1'));
+        const head = buf.subarray(0, i).toString('latin1');
+        isFile = /filename=/i.test(head);
+        if (isFile) fileType = (/^content-type:\s*([^\r\n;]+)/im.exec(head)?.[1] || '').trim().toLowerCase();
         fieldBytes = 0;
         buf = buf.subarray(i + 4);
         if (isFile) {
@@ -74,5 +76,5 @@ export async function readMultipartFile(stream, contentType, { maxBytes, sink })
   }
   if (state !== 'done') throw fail(400, 'El archivo llegó incompleto.');
   if (!sawFile || size === 0) throw fail(400, 'El archivo está vacío.');
-  return { size };
+  return { size, contentType: fileType };
 }

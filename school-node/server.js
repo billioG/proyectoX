@@ -24,6 +24,7 @@ import { friendlySyncError } from './sync-errors.js';
 import { createRestLayer } from './rest/index.js';
 import { createPhotos } from './rest/photos.js';
 import { createContentStore, createStorageHandler } from './content-upload.js';
+import { createProjectFiles, createProjectFilesHandler, projectFileKind } from './project-files.js';
 import { POLYFILLS } from './browser-polyfills.js';
 import { createWifi, createNmcliRunner } from './wifi.js';
 import { wifiPageHtml } from './wifi-page.js';
@@ -61,7 +62,28 @@ function verifyTeacherCode(code) {
 }
 // hashPin y safeEqual se declaran más abajo: se llaman a través de funciones para no leerlos antes de tiempo.
 // Capa local compatible con Supabase (/rest/v1, /auth/v1, /functions/v1/student-login): réplica de la nube en SQLite.
-const restLayer = createRestLayer(db);
+// Proyectos que el estudiante sube con la app real: el archivo llega por el Storage emulado (project-files.js) y al insertar la fila pasa al
+// almacén de proyectos, que lo sube a la nube. La capa local solo necesita saber qué se subió, cuántos esperan y cómo registrarlo.
+const projectFiles = createProjectFiles({ db, dir: path.resolve(config.dataDir, 'project-uploads') });
+const uploadNameOf = (url) => { try { return /^\/storage\/v1\/object\/public\/project-videos\/([^/]+)$/.exec(new URL(url, 'http://nodo.local').pathname)?.[1] ?? ''; } catch { return ''; } };
+let restLayer = null;
+const restProjects = {
+  upload: (name) => projectFiles.record(name),
+  pendingCount: (uid) => db.prepare("SELECT COUNT(*) n FROM projects WHERE student_id = ? AND status IN ('uploading', 'pending')").get(uid).n,
+  register: (row) => {
+    const name = uploadNameOf(row.video_url);
+    try {
+      const rec = projectFiles.record(name);
+      const { ext } = projectFileKind(name, rec.mime);
+      projectStore.registerUploaded(row.user_id, { title: row.title, description: row.description, bimestre: row.bimestre, group_id: row.group_id, ext, size: rec.size }, projectFiles.filePath(name));
+      projectFiles.markUsed(name);
+    } catch (e) {
+      console.error('No se pudo registrar el proyecto subido con la app:', e.message);
+      restLayer?.store.remove('projects', row.id); // sin archivo registrado no hay proyecto que mostrar
+    }
+  },
+};
+restLayer = createRestLayer(db, { projects: restProjects });
 const restStore = restLayer.store;
 // La app real solo se monta sobre la capa local cuando la réplica ya tiene a los estudiantes y las contraseñas de
 // clase; mientras tanto el nodo se comporta como antes (pantalla propia con PIN).
@@ -89,10 +111,12 @@ const wifiRoute = (fn) => async (req, res, url) => {
 };
 const contentStore = createContentStore({ db, dir: CONTENT_DIR });
 const storageHandler = createStorageHandler({ store: contentStore, auth: restLayer.auth });
+const projectFilesHandler = createProjectFilesHandler({ store: projectFiles, auth: restLayer.auth, reserveBytes: (projectLimits.minFreeDiskMB ?? 2048) * 1024 * 1024 });
 const photosStore = createPhotos({ db, dir: path.resolve(config.dataDir, 'photos') });
 const teacherStore = createTeacherStore(db, { hashPin: (pin, salt) => hashPin(pin, salt), verifySetupCode: (code) => verifyTeacherCode(code) });
 projectStore.cleanup(); // borradores huérfanos de una subida cortada por un reinicio o un apagón
 setInterval(() => projectStore.cleanup(), 3600_000).unref();
+setInterval(() => projectFiles.cleanup(), 3600_000).unref();
 
 // Mismos parámetros que js/offline-kit.js: el hash del PIN sirve igual en
 // el nodo, en la nube y en las tablets.
@@ -750,6 +774,7 @@ const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, 'http://node');
     if (await restRoutes.handle(req, res, url)) return;
+    if (await projectFilesHandler.handle(req, res, url)) return;
     if (await storageHandler.handle(req, res, url)) return;
     const route = projectRoute(req.method, url.pathname) || api[`${req.method} ${url.pathname}`];
     if (route) return await route(req, res, url);

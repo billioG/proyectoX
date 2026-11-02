@@ -50,8 +50,8 @@ function readJson(req) {
 const tokenOf = (req) => (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
 const clientIp = (req) => req.socket?.remoteAddress || 'unknown';
 
-export function createRestRoutes({ store, auth, rpcs = {}, onChange = () => {} }) {
-  const engine = createEngine({ schema: SCHEMA, store, policy: createPolicy({ store }) });
+export function createRestRoutes({ store, auth, rpcs = {}, onChange = () => {}, projects = null }) {
+  const engine = createEngine({ schema: SCHEMA, store, policy: createPolicy({ store, projects }) });
 
   // Funciones públicas del login (no necesitan sesión). Un usuario inexistente responde como uno que sí pide contraseña.
   const publicRpcs = {
@@ -90,7 +90,7 @@ export function createRestRoutes({ store, auth, rpcs = {}, onChange = () => {} }
         if (parsed.single === 'object' && parsed.returnRep && parsed.kind !== 'select' && (!Array.isArray(r.rows) || r.rows.length !== 1)) {
           throw new RestError(406, 'JSON object requested, multiple (or no) rows returned', 'PGRST116');
         }
-        store.enqueue(r.changes);
+        store.enqueue(r.changes.filter((c) => !SCHEMA[c.table]?.noPush));
         return r;
       });
       if (out.changes?.length) onChange(out.changes, ctx);

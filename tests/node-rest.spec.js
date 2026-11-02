@@ -305,3 +305,31 @@ test('el docente arma un equipo y ve el progreso de su clase sin internet con el
   expect(r).toEqual({ ge: null, me: null, members: ['Ana López', 'Beto Ruiz'], groups: [['Primero', 'A', 2]], pe: null, oe: null, size: 2, denied: true });
   expect(errors).toEqual([]);
 });
+
+test('la estudiante sube un proyecto (como la cola de la app: archivo a Storage y luego la fila) y reacciona a otro, sin internet', async ({ page }) => {
+  test.skip(!node, skipReason);
+  const errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await open(page);
+  await login(page, 'ana1', 'clase123');
+  await page.waitForFunction(() => window.currentUser?.id === 's1');
+  const r = await page.evaluate(async () => {
+    const sb = window._supabase;
+    const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}`;   // igual que js/sync-manager.js
+    const blob = new Blob([new Uint8Array(120000).fill(3)], { type: 'video/mp4' });
+    const up = await sb.storage.from('project-videos').upload(fileName, blob, undefined);
+    const { data: { publicUrl } } = sb.storage.from('project-videos').getPublicUrl(fileName);
+    const ins = await sb.from('projects').insert({
+      user_id: window.currentUser.id, group_id: null, title: 'Proyecto sin internet', bimestre: 2,
+      description: 'Un video que se grabó en el aula y se sube al servidor de la escuela sin necesidad de internet.',
+      video_url: publicUrl, upload_ip: '10.0.0.7',
+    });
+    const served = await fetch(publicUrl);
+    const mine = await sb.from('projects').select('id, title').eq('user_id', window.currentUser.id);
+    const react = await sb.rpc('react_to_project', { p_project_id: 101, p_reaction: 'like' });
+    const info = await sb.rpc('get_project_reactions', { p_project_id: 101 });
+    return { up: up.error?.message ?? null, ins: ins.error?.message ?? null, served: served.status, mine: mine.data.map((p) => p.title), reacted: react.data?.mine, votes: react.data?.votes, counts: info.data?.counts?.like, err: react.error?.message ?? null };
+  });
+  expect(r).toEqual({ up: null, ins: null, served: 200, mine: ['Proyecto sin internet'], reacted: 'like', votes: 4, counts: 1, err: null });
+  expect(errors).toEqual([]);
+});

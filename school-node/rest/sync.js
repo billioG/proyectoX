@@ -58,7 +58,7 @@ export function restPush(store, { gate = () => true, toCloudUrl = (u) => u } = {
 }
 
 /** Confirma lo que se subió y reemplaza la réplica con lo que bajó. Una nube anterior que no manda `tables` no borra nada. */
-export function applyRestPull(store, data, pushed = {}) {
+export function applyRestPull(store, data, pushed = {}, { pendingReactions = new Set() } = {}) {
   if (Array.isArray(pushed.rest_seqs) && pushed.rest_seqs.length) store.ack(pushed.rest_seqs);
   // Funciones: solo lo que la nube aplicó, o rechazó de forma definitiva. Un error pasajero, o una nube anterior que no
   // responde applied.rpc, lo deja para el próximo sync.
@@ -110,6 +110,8 @@ export function applyRestPull(store, data, pushed = {}) {
       evaluations: (row) => pendingEvals.has(String(row.project_id)),
       announcements: (row) => justAnnouncements.has(row.id),
       announcement_reads: (row) => justReads.has(`${row.announcement_id}|${row.user_id}`),
+      // Una reacción hecha aquí que todavía no se sube no la pisa la bajada (la nube aún no la conoce).
+      project_likes: (row) => pendingReactions.has(`${row.user_id}|${row.project_id}`),
     };
     store.transaction(() => {
       for (const [table, rows] of Object.entries(data.tables)) {

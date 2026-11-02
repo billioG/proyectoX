@@ -7,8 +7,10 @@ import { createRestXp } from './xp.js';
 import { createRpcs } from './rpcs.js';
 import { createRestRoutes } from './routes.js';
 import { createPhotos } from './photos.js';
+import { createReactionStore } from '../reactions.js';
 
-export function createRestLayer(db, { now = Date.now, random = Math.random, onChange = () => {} } = {}) {
+// `projects`: { upload, pendingCount, register } del almacén de proyectos del nodo (server.js): el estudiante sube su proyecto con la app real.
+export function createRestLayer(db, { now = Date.now, random = Math.random, onChange = () => {}, projects = null } = {}) {
   const store = restStoreFor(db, SCHEMA);
   const xp = createRestXp({ db, store, now, random });
   // Fotos de perfil ya descargadas: salen con la dirección local (si no, la de la nube, que sin internet no carga).
@@ -30,12 +32,19 @@ export function createRestLayer(db, { now = Date.now, random = Math.random, onCh
     };
   });
   const auth = createAuth({ store, now });
-  const rpcs = createRpcs({ store, xp, now });
+  const reactions = createReactionStore(db, { now });
+  // Votos de cada proyecto con las reacciones pendientes de este nodo (para que todos vean el mismo número).
+  store.setView('projects', () => {
+    const pending = new Set(reactions.pending().map((r) => Number(r.project_id)));
+    return pending.size ? (row) => (pending.has(Number(row.id)) ? { ...row, votes: reactions.adjustVotes(row.id, row.votes) } : row) : (row) => row;
+  });
+  const rpcs = createRpcs({ store, xp, now, reactions });
   const routes = createRestRoutes({
-    store, auth, rpcs,
+    store, auth, rpcs, projects,
     // Una lección que se completa por primera vez paga XP (en la nube lo hace un disparador de lesson_completions).
     onChange: (changes = []) => {
       for (const c of changes) {
+        if (c.table === 'projects' && c.op === 'insert' && projects) { projects.register(c.row); continue; } // el archivo y los datos pasan al almacén de proyectos
         if (c.table !== 'lesson_completions' || c.op === 'delete' || c.row.status !== 'completed') continue;
         if (c.op === 'update' && c.old?.status === 'completed') continue;
         xp.recordLesson(c.row.student_id, c.row.lesson_id);
