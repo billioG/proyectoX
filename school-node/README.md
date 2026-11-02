@@ -251,6 +251,20 @@ otra ruta, definir la variable de entorno `QUETZAL_USB_DIR`.
   rechaza si quedaría menos libre), `keepSyncedProjectDays` (7: se borra la copia local de lo ya subido).
 - Aún no incluye: fotos como proyecto, aprobación previa del docente ni subida por USB.
 
+### Docentes: PIN personal y evaluar proyectos
+
+- El pull baja los docentes de la escuela con sus clases asignadas (sin correos ni contraseñas). En «Soy docente»
+  cada uno entra con su **PIN de 6 números**, guardado solo en el nodo (hash y sal); la primera vez lo crea con el
+  código de docente del nodo (`teacherCode`). 5 intentos fallidos bloquean 5 minutos. Quien administra el nodo
+  puede restablecer el PIN de un docente en el panel de administración (código compartido).
+- El docente ve solo los proyectos de sus clases (de la nube y los guardados en el nodo) y evalúa con los 5 criterios
+  de 0 a 20. La evaluación pendiente (`evaluations_local`) se manda al sincronizar; la nube exige docente asignado,
+  proyecto de la escuela del nodo, notas enteras y recalcula el total. Solo se borra cuando la nube la confirma o la
+  rechaza de forma definitiva. El estudiante ve nota y observación al instante en su Inicio.
+- El video guardado en el nodo se ve desde la pantalla del docente (`GET /api/teacher/project-file/:id`, con `Range`).
+- Hace falta, en este orden: ejecutar `migrations/node-evaluations.sql` en Supabase, volver a publicar `node-sync`
+  (subiendo también `evaluations.ts`) y actualizar el nodo. Con la función anterior el nodo conserva lo evaluado.
+
 ### Reacciones a proyectos
 
 - En el Inicio, cada tarjeta de la nube tiene el botón de reacción con las cinco reacciones de la app (una por

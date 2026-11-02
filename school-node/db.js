@@ -70,6 +70,25 @@ export function openDb(dataDir) {
     CREATE TABLE IF NOT EXISTS group_members (id INTEGER PRIMARY KEY, group_id INTEGER, student_id TEXT, role TEXT);
     CREATE INDEX IF NOT EXISTS group_members_student_idx ON group_members (student_id);
 
+    -- Docentes de la escuela (los baja el pull, sin PIN) y su PIN PERSONAL, que vive solo en este nodo.
+    CREATE TABLE IF NOT EXISTS teachers (
+      id TEXT PRIMARY KEY, full_name TEXT, assignments TEXT NOT NULL DEFAULT '[]',
+      pin_hash TEXT, pin_salt TEXT, pin_updated_at TEXT,
+      failed_attempts INTEGER NOT NULL DEFAULT 0, locked_until INTEGER NOT NULL DEFAULT 0
+    );
+    -- Evaluaciones de los proyectos del Inicio que bajó el pull, y la evaluación FINAL pendiente de cada proyecto
+    -- hecha en este nodo (project_key = 'c:<id nube>' o 'l:<uuid del nodo>').
+    CREATE TABLE IF NOT EXISTS cloud_evaluations (
+      project_id INTEGER PRIMARY KEY, teacher_id TEXT, total_score INTEGER,
+      creativity_score INTEGER, clarity_score INTEGER, functionality_score INTEGER, teamwork_score INTEGER, social_impact_score INTEGER,
+      feedback TEXT
+    );
+    CREATE TABLE IF NOT EXISTS evaluations_local (
+      project_key TEXT PRIMARY KEY, project_id INTEGER, node_ref TEXT, teacher_id TEXT NOT NULL, total_score INTEGER NOT NULL,
+      creativity_score INTEGER NOT NULL, clarity_score INTEGER NOT NULL, functionality_score INTEGER NOT NULL,
+      teamwork_score INTEGER NOT NULL, social_impact_score INTEGER NOT NULL, feedback TEXT, updated_at TEXT NOT NULL
+    );
+
     -- Reacciones a proyectos: la base que baja el pull (la reacción de cada estudiante) y la reacción FINAL pendiente
     -- de cada par estudiante-proyecto (reaction NULL = la quitó).
     CREATE TABLE IF NOT EXISTS cloud_reactions (

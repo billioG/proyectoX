@@ -180,6 +180,10 @@ Detalle en el dossier: https://claude.ai/artifact/BoLjSgRTYwfesywaZaxvEq
 - [x] Reacciones a proyectos sin internet en el nodo (5 reacciones, una por proyecto, la nube cuenta los votos): v1.0.194.
 - [ ] **Probar las reacciones con la nube real**: ejecutar `migrations/node-reactions.sql`, volver a publicar `node-sync` (con `reactions.ts`), reaccionar en un nodo, sincronizar y comprobar que el voto sube una sola vez y que llega el aviso al dueño; el SQL sí se probó en PostgreSQL real, la consulta de `index.ts` no.
 - [ ] Notificación push de reacciones desde el nodo (hoy solo el aviso de la campana al sincronizar).
+- [x] Evaluar proyectos sin internet con PIN personal del docente: v1.0.195.
+- [ ] **Probar la evaluación con la nube real**: ejecutar `migrations/node-evaluations.sql`, volver a publicar `node-sync` (con `evaluations.ts`), crear el PIN de un docente, evaluar un proyecto, sincronizar y comprobar la nota y la observación en la nube; el SQL sí se probó en PostgreSQL real, la consulta de `index.ts` no.
+- [ ] Panel del docente sin internet: **avisos** a la clase y **crear cursos y lecciones** (siguientes entregas).
+- [ ] Insignias por nota y aviso al estudiante cuando se evalúa desde el nodo (hoy solo con internet).
 - [ ] Fotos como proyecto (en la nube y en el nodo a la vez): hoy un proyecto es video o modelo 3D.
 - [ ] Aprobación del docente antes de publicar los proyectos del nodo (hoy se publican solos, igual que en la nube).
 - [ ] Subir proyectos por memoria USB en escuelas que nunca tienen internet.
