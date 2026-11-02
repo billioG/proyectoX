@@ -147,3 +147,18 @@ test('pin_updated_at se acepta (la app lo pide) pero siempre vale null', () => {
   const r = run(s, 'GET', '/rest/v1/students?select=id,pin_updated_at&id=eq.s1', ana);
   assert.deepEqual(r.rows[0], { id: 's1', pin_updated_at: null });
 });
+
+test('lo que el nodo no puede hacer sin internet lo dice en español claro (no «no tienes permiso», que confunde y manda a avisar al administrador)', () => {
+  const s = makeStore();
+  const unavailable = (e) => e.status >= 400 && /sin internet/i.test(e.message) && !/permission denied|does not exist|permiso|administrador/i.test(e.message);
+  // Escribir en una tabla vacía (comentarios, notas), en una que no se escribe (proyectos) y en una que el nodo no tiene.
+  assert.throws(() => run(s, 'POST', '/rest/v1/resource_comments', ana, { body: { content: 'hola' } }), unavailable);
+  assert.throws(() => run(s, 'POST', '/rest/v1/projects', ana, { body: { user_id: 's1', title: 'x' } }), unavailable);
+  assert.throws(() => run(s, 'POST', '/rest/v1/resource_notes', ana, { body: { content: 'hola' } }), unavailable);
+  assert.throws(() => run(s, 'GET', '/rest/v1/class_weekly_topics?select=*', ana), unavailable);
+  // Los códigos siguen siendo los de la nube (la app y las pruebas se apoyan en ellos).
+  fails(() => run(s, 'POST', '/rest/v1/projects', ana, { body: { user_id: 's1', title: 'x' } }), 403, '42501');
+  fails(() => run(s, 'GET', '/rest/v1/xp_events?select=*', ana), 404, '42P01');
+  // Un rechazo de verdad por reglas de acceso (escribir lo de otro) sigue siendo un rechazo de permisos.
+  assert.throws(() => run(s, 'POST', '/rest/v1/lesson_completions', ana, { body: { lesson_id: 'l1', student_id: 's2', status: 'completed' } }), (e) => /permission denied/.test(e.message));
+});

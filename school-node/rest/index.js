@@ -6,11 +6,23 @@ import { createAuth } from './auth.js';
 import { createRestXp } from './xp.js';
 import { createRpcs } from './rpcs.js';
 import { createRestRoutes } from './routes.js';
+import { createPhotos } from './photos.js';
 
 export function createRestLayer(db, { now = Date.now, random = Math.random, onChange = () => {} } = {}) {
   const store = restStoreFor(db, SCHEMA);
   const xp = createRestXp({ db, store, now, random });
-  store.setView('students', () => xp.overlay());
+  // Fotos de perfil ya descargadas: salen con la dirección local (si no, la de la nube, que sin internet no carga).
+  const photos = createPhotos({ db });
+  store.setView('students', () => { const xpRow = xp.overlay(); const photo = photos.mapper(); return (row) => photo(xpRow(row)); });
+  store.setView('teachers', () => photos.mapper());
+  // Los archivos de los cursos ya están en el nodo (data/content): la dirección de la nube (storage_base) se cambia por la local.
+  // Sin esto la app pediría los videos y PDF a la nube y sin internet no cargarían.
+  const storageBase = db.prepare("SELECT value FROM meta WHERE key = 'storage_base'");
+  store.setView('lessons', () => {
+    const base = storageBase.get()?.value;
+    if (!base) return (row) => row;
+    return (row) => (typeof row.content_url === 'string' && row.content_url.startsWith(base) ? { ...row, content_url: `/content/${row.content_url.slice(base.length)}` } : row);
+  });
   const auth = createAuth({ store, now });
   const rpcs = createRpcs({ store, xp, now });
   const routes = createRestRoutes({

@@ -26,6 +26,11 @@ Cuando el nodo ya **sincronizó una vez** con la nube, tus estudiantes y docente
   contraseña de clase conocida**. Si alguna clase no la tiene, el nodo se queda en el modo anterior para que nadie pierda
   el acceso. Antes de la primera sincronización también funciona el modo anterior.
 
+**Archivos y fotos:** los videos, PDF, imágenes y paquetes H5P/SCORM de los cursos se sirven desde el propio nodo (carpeta
+`data/content`, que baja la sincronización): hasta que `pending.files` de `/api/node/status` llegue a 0, esos archivos aún
+no están y no se verán sin internet. Las **fotos de perfil** se descargan al sincronizar (`data/photos`). Si una foto aún
+no se descargó, se ve el ícono de siempre.
+
 **Lo que no funciona sin internet:** la IA (evaluar con IA, generar preguntas), retos 1v1, mascota, anuncios push, avisos
 a padres, encuestas, asistencia y exámenes. Esas pantallas salen vacías, sin errores. La **racha diaria** no sube sin internet
 (la calcula la nube al sincronizar). Un docente no puede borrar ni editar un aviso sin internet.

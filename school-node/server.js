@@ -22,6 +22,7 @@ import { createEvaluationStore, EvaluationError } from './evaluations.js';
 import { createTeacherStore, TeacherAuthError } from './teachers.js';
 import { friendlySyncError } from './sync-errors.js';
 import { createRestLayer } from './rest/index.js';
+import { createPhotos } from './rest/photos.js';
 
 const NODE_DIR = path.dirname(fileURLToPath(import.meta.url));
 const APP_DIR = path.resolve(NODE_DIR, '..');
@@ -62,6 +63,7 @@ const restStore = restLayer.store;
 // clase; mientras tanto el nodo se comporta como antes (pantalla propia con PIN).
 const restReady = () => restLayer.ready();
 const restRoutes = restLayer.routes;
+const photosStore = createPhotos({ db, dir: path.resolve(config.dataDir, 'photos') });
 const teacherStore = createTeacherStore(db, { hashPin: (pin, salt) => hashPin(pin, salt), verifySetupCode: (code) => verifyTeacherCode(code) });
 projectStore.cleanup(); // borradores huérfanos de una subida cortada por un reinicio o un apagón
 setInterval(() => projectStore.cleanup(), 3600_000).unref();
@@ -724,6 +726,20 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/node-config.js') {
       res.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-store' });
       return res.end(nodeConfigScript());
+    }
+    // La app arma las direcciones de los archivos con las rutas de Storage de Supabase (getPublicUrl) y el paquete SCORM/H5P con
+    // la función serve-scorm-entry: sobre el nodo se sirven desde el espejo local de los cursos (solo el bucket de cursos).
+    const storageFile = /^\/storage\/v1\/object\/public\/course-content\/(.+)$/.exec(url.pathname);
+    if (storageFile || url.pathname === '/functions/v1/serve-scorm-entry') {
+      let rel = null;
+      try { rel = storageFile ? decodeURIComponent(storageFile[1]) : url.searchParams.get('path'); } catch { rel = null; }
+      if (!rel) { res.writeHead(404); return res.end('No encontrado'); }
+      return serveFile(req, res, CONTENT_DIR, rel);
+    }
+    const photoName = /^\/photos\/([^/]+)$/.exec(url.pathname)?.[1];
+    if (photoName) {
+      if (!photosStore.isServableName(photoName)) { res.writeHead(404); return res.end('No encontrado'); }
+      return serveFile(req, res, path.resolve(config.dataDir, 'photos'), photoName);
     }
     if (url.pathname.startsWith('/content/')) {
       return serveFile(req, res, CONTENT_DIR, decodeURIComponent(url.pathname.slice('/content/'.length)));

@@ -4,7 +4,7 @@
 //   /functions/v1/student-login                (el login de estudiantes)
 // `handle(req, res, url)` devuelve true si la ruta era suya.
 import { parseRequest, RestError } from './query.js';
-import { createEngine } from './engine.js';
+import { createEngine, NOT_OFFLINE } from './engine.js';
 import { createPolicy } from './policies.js';
 import { SCHEMA } from './schema.js';
 import { AuthError } from './auth.js';
@@ -78,7 +78,7 @@ export function createRestRoutes({ store, auth, rpcs = {}, onChange = () => {} }
       if (rpcName) {
         const args = body && typeof body === 'object' ? body : {};
         const fn = Object.hasOwn(publicRpcs, rpcName) ? publicRpcs[rpcName] : Object.hasOwn(rpcs, rpcName) ? rpcs[rpcName] : null;
-        if (!fn) return send(res, 404, { code: 'PGRST202', message: `No se encontró la función ${rpcName}`, details: null, hint: null });
+        if (!fn) return send(res, 404, { code: 'PGRST202', message: NOT_OFFLINE, details: null, hint: null });
         const result = store.transaction(() => fn(args, ctx));
         return send(res, 200, result === undefined ? null : result);
       }

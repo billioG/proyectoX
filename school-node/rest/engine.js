@@ -15,6 +15,10 @@
 import { RestError } from './query.js';
 
 const err = (status, code, message) => new RestError(status, message, code);
+// Lo que el nodo no tiene o no puede hacer sin internet se dice claro (la app mostraría «No tienes permiso, avisa al administrador»
+// si el texto dijera «permission denied»). Los códigos siguen siendo los de la nube.
+export const NOT_OFFLINE = 'Esto no está disponible sin internet. Hazlo cuando el nodo tenga conexión a la nube.';
+const unavailable = () => err(403, '42501', NOT_OFFLINE);
 const denied = (table) => err(403, '42501', `permission denied for table ${table}`);
 
 // ---- Comparaciones (tres valores: true / false / null como en SQL) ----
@@ -82,7 +86,7 @@ function matches(row, f) {
 export function createEngine({ schema, store, policy = {} }) {
   const tableDef = (name) => {
     const t = Object.hasOwn(schema, name) ? schema[name] : null; // nunca nombres heredados (constructor, __proto__...)
-    if (!t) throw err(404, '42P01', `relation "public.${name}" does not exist`);
+    if (!t) throw err(404, '42P01', NOT_OFFLINE);
     return t;
   };
   const checkCol = (t, name) => { if (!t.columns.includes(name)) throw err(400, '42703', `column ${name} does not exist`); };
@@ -217,7 +221,7 @@ export function createEngine({ schema, store, policy = {} }) {
 
   function insert(p, ctx) {
     const name = p.table, t = tableDef(name);
-    if (!t.writable) throw denied(name);
+    if (!t.writable) throw unavailable();
     tooMany(p);
     const changes = [];
     const rows = p.rows.map((input) => insertRow(ctx, name, t, input, changes));
@@ -225,7 +229,7 @@ export function createEngine({ schema, store, policy = {} }) {
   }
   function upsert(p, ctx) {
     const name = p.table, t = tableDef(name);
-    if (!t.writable) throw denied(name);
+    if (!t.writable) throw unavailable();
     tooMany(p);
     const target = p.onConflict || [t.pk];
     for (const c of target) checkCol(t, c);
@@ -242,7 +246,8 @@ export function createEngine({ schema, store, policy = {} }) {
   }
   function update(p, ctx) {
     const name = p.table, t = tableDef(name);
-    if (!t.writable || t.noUpdate) throw denied(name);
+    if (!t.writable) throw unavailable();
+    if (t.noUpdate) throw denied(name);
     checkFilters(t, p.filters);
     checkWritable(t, name, p.patch);
     const changes = [];
@@ -255,7 +260,7 @@ export function createEngine({ schema, store, policy = {} }) {
   }
   function remove(p, ctx) {
     const name = p.table, t = tableDef(name);
-    if (!t.writable) throw denied(name);
+    if (!t.writable) throw unavailable();
     checkFilters(t, p.filters);
     const changes = [];
     const done = [];

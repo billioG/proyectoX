@@ -191,3 +191,13 @@ test('docente por HTTP: signInWithPassword con correo y PIN entra; lo malo da 40
   assert.match((await bad.json()).msg, /Invalid login credentials/);
   assert.equal((await call('POST', '/auth/v1/token?grant_type=otro', { body: {} })).status, 400);
 });
+
+test('una función que el nodo no tiene responde en español claro, con el código de la nube', async () => {
+  const { call, login } = await boot();
+  const { access_token: token } = await login();
+  const r = await call('POST', '/rest/v1/rpc/react_to_project', { token, body: { p_project_id: 1 } });
+  assert.equal(r.status, 404);
+  const body = await r.json();
+  assert.equal(body.code, 'PGRST202');
+  assert.match(body.message, /sin internet/i);
+});

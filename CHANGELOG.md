@@ -4,6 +4,10 @@ Cambios publicados en Quetzal LMS, del más reciente al más antiguo. Cada líne
 
 Al publicar una versión nueva, agrega una línea arriba de todo (ver CONTRIBUTING.md).
 
+## 2026-11-02
+
+- **Nodo escolar: los recursos de los cursos y las fotos de perfil ya cargan sin internet con la app real.** Los videos, PDF, imágenes y paquetes H5P/SCORM de los cursos se piden al nodo (que ya los tiene descargados) y no a la nube, y las fotos de perfil de estudiantes y docentes se descargan al sincronizar. Lo que el nodo no puede hacer sin internet (comentarios, notas, subir proyecto, reaccionar...) ahora avisa «Esto no está disponible sin internet» en vez de «No tienes permiso, avisa al administrador». (v1.0.198)
+
 ## 2026-11-01
 
 - **Nodo escolar: el docente también trabaja sin internet con la app real.** Fija una sola vez, **con internet**, su «PIN para entrar sin internet» en su Perfil (6 números; se guarda cifrado y nadie más lo ve). En el nodo entra con su **correo y ese PIN**, y desde ahí **evalúa proyectos** de sus clases (el nodo recalcula el total y la nube lo valida al sincronizar) y **envía avisos** a sus grupos, que sus estudiantes ven en su bandeja. Todo se sube solo cuando hay internet o con **Sincronizar ahora**. También se oculta «Entrar sin internet» dentro del nodo, y un docente que nunca fijó su PIN sigue entrando por `/?modo=pin`. (v1.0.197)

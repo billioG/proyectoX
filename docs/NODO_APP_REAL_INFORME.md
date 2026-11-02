@@ -80,6 +80,9 @@ Todo lo de la columna «Verificado» se probó en el navegador contra un nodo de
 | Avisos (docente envía, estudiante ve y marca leído) | Sí | pantalla |
 | Aviso de sincronización y botón «Sincronizar ahora» | Sí | pantalla |
 | Ranking | Sí (con la lista de la clase) | consulta |
+| Recursos de los cursos (video, PDF, imagen, H5P/SCORM) | Sí, desde v1.0.198 (se sirven desde el espejo del nodo) | pruebas + prueba real en escuela |
+| Fotos de perfil | Sí, desde v1.0.198 (se descargan al sincronizar) | pruebas |
+| Comentarios y notas de las lecciones | No: avisa «Esto no está disponible sin internet» | consulta |
 | **Subir proyecto (video / modelo 3D)** | **No** (permiso denegado; solo en `/?modo=pin`) | consulta |
 | **Reaccionar a un proyecto** | **No** (`react_to_project` no emulada; solo en `/?modo=pin`) | consulta |
 | Mi progreso por competencia | No (`get_my_progress`) | consulta |

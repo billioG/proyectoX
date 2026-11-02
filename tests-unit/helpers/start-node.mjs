@@ -81,6 +81,17 @@ export async function startNode(opts = {}) {
       VALUES (@id, @user_id, @group_id, @title, @description, @bimestre, @score, @votes, @created_at, @author_name, @group_name, @grade, @section, @kind, @feedback)`)
       .run({ group_id: null, description: 'Un robot.', bimestre: 1, score: 0, votes: 0, created_at: '2026-10-30T10:00:00Z', author_name: p.user_id, group_name: null, grade: 'Primero', section: 'A', kind: 'video', feedback: null, ...p });
   }
+  for (const [k, v] of Object.entries(opts.meta || {})) seed.prepare('INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)').run(k, String(v));
+  for (const [rel, text] of Object.entries(opts.dataFiles || {})) {
+    const file = path.join(dataDir, rel);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, text);
+  }
+  for (const [rel, text] of Object.entries(opts.contentFiles || {})) {
+    const file = path.join(dataDir, 'content', rel);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, text);
+  }
   if (opts.rest) {
     // Réplica de la capa local compatible con Supabase: { tables, class_verifiers }, como lo baja la nube.
     const { restStoreFor } = await import('../../school-node/rest/store.js');
