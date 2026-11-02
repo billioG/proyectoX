@@ -6,6 +6,8 @@ Al publicar una versión nueva, agrega una línea arriba de todo (ver CONTRIBUTI
 
 ## 2026-11-02
 
+- **Nodo escolar: la lista de cursos del docente ya carga sin internet.** Faltaba la relación curso → autor en la capa local, y el Inicio/Recursos del docente fallaba con «Bad Request». (v1.0.201)
+
 - **Nodo escolar: el docente entra sin internet con su misma contraseña (se acabó el PIN).** La nube manda al nodo, al sincronizar, solo la huella cifrada de la contraseña de los docentes de esa escuela; el docente escribe su correo y la contraseña de siempre, con o sin internet, aunque nunca haya usado esa Raspberry. Se quita la tarjeta «PIN para entrar sin internet» del Perfil. **Sincronizar ahora** ya funciona desde la pantalla de entrada (sin iniciar sesión), y cuando no hay internet el nodo dice «Sin internet por ahora: todo está guardado y se sube solo». Requiere correr `migrations/teacher-node-password.sql` y volver a desplegar `node-sync`. (v1.0.200)
 
 - **Nodo escolar: instalación de un doble clic.** En Windows, `instalar-todo-windows.cmd` instala (o actualiza), lee el token de `token.txt`, hace la primera sincronización, espera a que bajen los cursos, comprueba que la app normal esté activa, guarda un resumen en `C:\Quetzal\Resumen-instalacion.txt` y abre el cartel. En Raspberry, `install.sh --auto` hace lo mismo y `instalar-raspberry-por-ssh.cmd` la instala desde Windows sin monitor ni teclado. Si falta algo (token, clases sin contraseña, sin internet) lo dice en español. El estado del nodo ahora informa qué clases no tienen contraseña (`rest_missing`). (v1.0.199)

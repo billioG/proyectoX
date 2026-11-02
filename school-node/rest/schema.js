@@ -95,6 +95,7 @@ export const SCHEMA = {
     relations: {
       lessons: { type: 'many', table: 'lessons', fk: 'course_id', ref: 'id' },
       schools: { type: 'one', table: 'schools', fk: 'school_code', ref: 'code' },
+      teachers: { type: 'one', table: 'teachers', fk: 'created_by', ref: 'id' },
     },
   }),
 
