@@ -6,13 +6,14 @@
 import { SCHEMA } from './schema.js';
 
 /** Lo pendiente de la bandeja, listo para el push. `seqs` = todo lo que este push cubre (incluso lo que no viaja). */
-export function restPush(store) {
+export function restPush(store, { gate = () => true, toCloudUrl = (u) => u } = {}) {
   const completions = [];
   const seqs = [];
   const rpc = [];
   const evaluations = [];
   const announcements = [];
   const reads = new Map(); // 'aviso|usuario' -> lectura (una sola por par: la última)
+  const content = []; // cursos y recursos hechos en el nodo, EN ORDEN (la nube los confirma por seq)
   for (const e of store.pending()) {
     // Funciones de la app (Práctica): la nube confirma cada una por su seq; mientras no, siguen en la bandeja.
     // Evaluaciones de proyectos: viajan en el formato que la nube ya valida (push.evaluations), con su seq como clave.
@@ -23,6 +24,13 @@ export function restPush(store) {
     if (e.table === '_rpc') { rpc.push({ seq: e.seq, fn: e.op, student_id: e.row.student_id, args: e.row.args }); continue; }
     // Avisos y lecturas: la nube confirma cada uno (por id, o por aviso|usuario); mientras no, siguen en la bandeja.
     if (e.table === 'announcements') { announcements.push({ ...e.row, seq: e.seq }); continue; }
+    // Cursos y recursos: el curso viaja siempre; un recurso solo cuando sus archivos ya llegaron a la nube (gate). La nube confirma por seq.
+    if (e.table === 'courses' || e.table === 'lessons') {
+      if (e.table === 'lessons' && !gate(e.pk)) continue;
+      const row = e.table === 'lessons' && typeof e.row?.content_url === 'string' ? { ...e.row, content_url: toCloudUrl(e.row.content_url) } : e.row;
+      content.push({ seq: e.seq, tbl: e.table, op: e.op, pk: e.pk, row });
+      continue;
+    }
     if (e.table === 'announcement_reads') {
       const k = `${e.row.announcement_id}|${e.row.user_id}`;
       reads.set(k, { announcement_id: e.row.announcement_id, user_id: e.row.user_id, read_at: e.row.read_at, seqs: [...(reads.get(k)?.seqs || []), e.seq] });
@@ -34,7 +42,7 @@ export function restPush(store) {
       completions.push({ lesson_id: e.row.lesson_id, student_id: e.row.student_id, score: e.row.score ?? null, status: e.row.status ?? 'completed' });
     }
   }
-  return { completions, seqs, rpc, evaluations, announcements, announcement_reads: [...reads.values()] };
+  return { completions, seqs, rpc, evaluations, announcements, announcement_reads: [...reads.values()], content };
 }
 
 /** Confirma lo que se subió y reemplaza la réplica con lo que bajó. Una nube anterior que no manda `tables` no borra nada. */
@@ -57,6 +65,21 @@ export function applyRestPull(store, data, pushed = {}) {
     ...(pushed.announcements || []).filter((a) => doneAnn.has(a.id)).map((a) => a.seq),
     ...(pushed.announcement_reads || []).filter((r) => doneRead.has(`${r.announcement_id}|${r.user_id}`)).flatMap((r) => r.seqs),
   ]);
+  // Cursos y recursos: la nube confirma por seq (applied.content) o rechaza para siempre (content_errors). Una nube anterior que no
+  // conoce push.content no responde applied.content: se deja en la bandeja y se avisa por qué.
+  if (Array.isArray(pushed.content) && pushed.content.length) {
+    const sent = new Set(pushed.content.map((o) => o.seq));
+    if (!Array.isArray(data.applied?.content)) {
+      for (const seq of sent) store.fail(seq, 'La nube todavía no acepta cursos hechos en el nodo: pide al administrador actualizar la función node-sync.');
+    } else {
+      const done = new Set(data.applied.content);
+      for (const e of Array.isArray(data.content_errors) ? data.content_errors : []) {
+        if (!e || !sent.has(e.seq)) continue;
+        if (e.permanent === true) done.add(e.seq); else store.fail(e.seq, e.error || 'La nube no pudo guardarlo; se reintenta.');
+      }
+      store.ack([...done].filter((seq) => sent.has(seq)));
+    }
+  }
   // Evaluaciones: la nube confirma cada una por su clave (applied.evaluations) o la rechaza para siempre (evaluation_errors).
   const sentEvals = (pushed.evaluations || []).map((e) => e?.key).filter((k) => typeof k === 'string' && /^rest:\d+$/.test(k));
   if (sentEvals.length) {

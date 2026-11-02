@@ -33,6 +33,7 @@ import { buildClassVerifiers, buildTeacherLogins, pullTables } from './tables.ts
 import { validatePracticeEvent } from './practice.ts';
 import { classifyRead, isUuid, validateAnnouncementEvent, validateReadEvent } from './announcements.ts';
 import { sanitizeCompletions, type CompletionRow } from './completions.ts';
+import { planContentOps, validateContentUploadRequest, validateObjectPath } from './content.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -152,6 +153,22 @@ Deno.serve(async (req) => {
     const v = validateUploadRequest(body);
     if (!v.ok) return reply({ error: v.error }, 400);
     const { data, error } = await admin.storage.from(PROJECT_BUCKET).createSignedUploadUrl(v.path);
+    if (error || !data) return reply({ error: `No se pudo preparar la subida: ${error?.message || 'sin respuesta'}` }, 500);
+    return reply({ path: v.path, signed_url: data.signedUrl });
+  }
+
+  // Permiso de subida de UN archivo de un curso que un docente creó en el nodo: URL firmada de un solo archivo en el bucket de cursos,
+  // con la misma ruta que ya tiene en el nodo (lessons/<id de la lección>/...), para que la dirección pública sea la misma.
+  if (!usb && body?.action === 'content_upload_url') {
+    const rel = validateObjectPath(body.path);
+    let lessonSchool: string | null | undefined;
+    if (rel) {
+      const { data: l } = await admin.from('lessons').select('school_code').eq('id', rel.split('/')[1].toLowerCase()).maybeSingle();
+      lessonSchool = l ? (l.school_code ?? '') : undefined;
+    }
+    const v = validateContentUploadRequest(body, { schoolCode: node.school_code, lessonSchool: () => lessonSchool });
+    if (!v.ok) return reply({ error: v.error }, 400);
+    const { data, error } = await admin.storage.from(BUCKET).createSignedUploadUrl(v.path, { upsert: true });
     if (error || !data) return reply({ error: `No se pudo preparar la subida: ${error?.message || 'sin respuesta'}` }, 500);
     return reply({ path: v.path, signed_url: data.signedUrl });
   }
@@ -539,6 +556,52 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ---- Cursos y recursos que un docente creó en el nodo (push.content: cambios EN ORDEN; los archivos ya subieron por content_upload_url) ----
+    // Se aplican ANTES de armar la bajada para que lo recién subido ya venga en la misma respuesta. applied.content = seq confirmados;
+    // content_errors = rechazos (permanent: true = definitivo; si no, el nodo reintenta). Borrar una lección borra su carpeta de archivos.
+    const appliedContent: number[] = [];
+    const contentErrors: Array<{ seq: number; error: string; permanent: boolean }> = [];
+    const pushedContent: any[] = Array.isArray(push.content) ? push.content.slice(0, 300) : [];
+    if (pushedContent.length && !usb) {
+      try {
+        const schoolAssignments = await fetchAll((from, to) => admin.from('teacher_assignments').select('teacher_id, school_code, grade, section').eq('school_code', node.school_code).order('id').range(from, to));
+        const { data: admins } = await admin.from('teachers').select('id').eq('role', 'admin');
+        const ids = (key: string) => [...new Set(pushedContent.map((o) => (o?.tbl === key ? o?.pk : null)).filter(isUuid))] as string[];
+        const courses = new Map<string, any>();
+        const lessons = new Map<string, any>();
+        for (const part of chunk(ids('courses'))) for (const c of await fetchAll((from, to) => admin.from('courses').select('id, school_code, created_by, is_shared').in('id', part).order('id').range(from, to))) courses.set(c.id, c);
+        for (const part of chunk(ids('lessons'))) for (const l of await fetchAll((from, to) => admin.from('lessons').select('id, school_code, course_id, created_by').in('id', part).order('id').range(from, to))) lessons.set(l.id, l);
+        // Cursos a los que apuntan los recursos del lote y todavía no se cargaron.
+        const missing = [...new Set(pushedContent.filter((o) => o?.tbl === 'lessons' && isUuid(o?.row?.course_id) && !courses.has(o.row.course_id)).map((o) => o.row.course_id))] as string[];
+        for (const part of chunk(missing)) for (const c of await fetchAll((from, to) => admin.from('courses').select('id, school_code, created_by, is_shared').in('id', part).order('id').range(from, to))) courses.set(c.id, c);
+        const plan = planContentOps(pushedContent, {
+          schoolCode: node.school_code, storageBase: `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/`, cloudUrl: SUPABASE_URL, assignments: schoolAssignments,
+          adminIds: new Set((admins || []).map((a: any) => a.id as string)),
+          courses: new Map([...courses].map(([k, c]) => [k, { school_code: c.school_code, created_by: c.created_by, is_shared: !!c.is_shared }])),
+          lessons: new Map([...lessons].map(([k, l]) => [k, { school_code: l.school_code, course_id: l.course_id, created_by: l.created_by }])),
+        });
+        const failed = new Set<number>();
+        for (const r of plan.results) if (!r.ok) contentErrors.push({ seq: r.seq, error: r.error, permanent: true });
+        const startedAt = Date.now();
+        for (const a of plan.actions) {
+          if (Date.now() - startedAt > 40_000) { failed.add(a.seq); continue; }
+          let error: { message: string } | null = null;
+          if (a.kind === 'upsert') ({ error } = await admin.from(a.table).upsert(a.row, { onConflict: 'id' }));
+          else {
+            if (a.table === 'lessons' && a.removeFiles) {
+              try { const { data: files } = await admin.storage.from(BUCKET).list(a.removeFiles, { limit: 1000 }); if (files?.length) await admin.storage.from(BUCKET).remove(files.filter((f: any) => f.id).map((f: any) => `${a.removeFiles}/${f.name}`)); } catch { /* los archivos sueltos no frenan el borrado */ }
+            }
+            ({ error } = await admin.from(a.table).delete().eq('id', a.id));
+          }
+          if (error) { contentErrors.push({ seq: a.seq, error: error.message, permanent: false }); failed.add(a.seq); }
+        }
+        for (const r of plan.results) if (r.ok && !failed.has(r.seq)) appliedContent.push(r.seq);
+      } catch (e) {
+        appliedContent.length = 0; contentErrors.length = 0;
+        console.error('node-sync: no se pudieron aplicar los cursos y recursos', e);
+      }
+    }
+
     // Tablas para la capa local compatible con Supabase del nodo (la app real corre sobre ellas sin internet) y los
     // verificadores de contraseña de clase para el login. Si falla, el pull sigue sin ellas y el nodo conserva lo que tenía.
     let restTables: Record<string, any[]> | undefined;
@@ -602,7 +665,7 @@ Deno.serve(async (req) => {
       courses,
       completions: allCompletions,
       files,
-      applied: { completions: appliedCompletions, pins: appliedPins, sessions: appliedSessions, projects: appliedProjects, xp_events: appliedXpEvents, reactions: appliedReactions, evaluations: appliedEvaluations, rpc: appliedRpc, announcements: appliedAnnouncements, announcement_reads: appliedReads },
+      applied: { completions: appliedCompletions, pins: appliedPins, sessions: appliedSessions, projects: appliedProjects, xp_events: appliedXpEvents, reactions: appliedReactions, evaluations: appliedEvaluations, rpc: appliedRpc, announcements: appliedAnnouncements, announcement_reads: appliedReads, content: appliedContent },
       project_errors: projectErrors,
       xp_errors: xpErrors,
       reaction_errors: reactionErrors,
@@ -610,6 +673,7 @@ Deno.serve(async (req) => {
       rpc_errors: rpcErrors,
       announcement_errors: announcementErrors,
       announcement_read_errors: readErrors,
+      content_errors: contentErrors,
       teachers: teacherList,
       evaluations: feedEvaluations,
       reactions: feedReactions,

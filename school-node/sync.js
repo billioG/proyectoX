@@ -15,17 +15,23 @@ import { restStoreFor } from './rest/store.js';
 import { createPhotos } from './rest/photos.js';
 import { restPush, applyRestPull } from './rest/sync.js';
 import { SCHEMA as REST_SCHEMA } from './rest/schema.js';
+import { createContentStore } from './content-upload.js';
+import { uploadContentFiles, toCloudUrl } from './content-sync.js';
 
 // Lo pendiente de subir a la nube (lo usa también la sincronización por USB).
-export function buildPush(db) {
+export function buildPush(db, { cloudUrl = '' } = {}) {
   // Avances de lecciones que la app real guardó en la capa local: viajan junto a los del nodo.
-  const rest = restPush(restStoreFor(db, REST_SCHEMA));
+  // Cursos y recursos que el docente creó aquí: un recurso solo viaja cuando sus archivos ya están en la nube.
+  const storageBase = getMeta(db, 'storage_base') || '';
+  const blocked = createContentStore({ db, dir: '.' }).blockedLessonIds();
+  const rest = restPush(restStoreFor(db, REST_SCHEMA), { gate: (lessonId) => !blocked.has(String(lessonId).toLowerCase()), toCloudUrl: (u) => toCloudUrl(u, { storageBase, cloudUrl }) });
   return {
     completions: [...db.prepare('SELECT lesson_id, student_id, score, status, updated_at FROM completions WHERE dirty = 1').all(), ...rest.completions],
     rest_seqs: rest.seqs,
     rpc: rest.rpc,
     announcements: rest.announcements,
     announcement_reads: rest.announcement_reads,
+    content: rest.content,
     pins: db.prepare('SELECT id AS student_id, pin_hash, pin_salt, pin_updated_at FROM students WHERE pin_dirty = 1').all(),
     sessions: db.prepare('SELECT id, student_id, device, entered_at FROM session_logs WHERE dirty = 1').all(),
     // Cofres diarios sorteados aquí: la nube los valida (un cofre por día, solo premios válidos) y los aplica.
@@ -38,7 +44,14 @@ export function buildPush(db) {
 }
 
 export async function runSync(db, config, log = console.log) {
-  const push = buildPush(db);
+  // Primero los archivos de los recursos que el docente subió aquí; las filas viajan solo con los recursos ya completos.
+  try {
+    const files = await uploadContentFiles(db, config, { log });
+    if (files.uploaded || files.failed || files.rejected) log(`📤 Archivos de cursos: ${files.uploaded} subidos, ${files.rejected} rechazados, ${files.failed} se reintentan.`);
+  } catch (e) {
+    log('⚠️ Archivos de cursos: no se pudo intentar la subida:', e.message);
+  }
+  const push = buildPush(db, { cloudUrl: config.cloudUrl });
 
   const res = await fetch(`${config.cloudUrl}/functions/v1/node-sync`, {
     method: 'POST',
@@ -235,6 +248,7 @@ async function downloadFiles(db, config, log) {
 
   const contentDir = path.resolve(config.dataDir, 'content');
   const markDone = db.prepare('UPDATE files SET downloaded = 1 WHERE path = ?');
+  const ownUpload = db.prepare('SELECT 1 AS yes FROM content_uploads WHERE path = ? AND uploaded = 1');
   let cursor = 0, ok = 0, failed = 0;
 
   async function worker() {
@@ -243,6 +257,8 @@ async function downloadFiles(db, config, log) {
       const dest = path.resolve(contentDir, rel);
       if (!dest.startsWith(contentDir + path.sep)) { failed++; continue; }
       try {
+        // Un recurso que el docente subió en este nodo ya está aquí: no se vuelve a bajar de la nube.
+        if (ownUpload.get(rel) && fs.existsSync(dest)) { markDone.run(rel); ok++; continue; }
         const res = await fetch(base + rel.split('/').map(encodeURIComponent).join('/'), { signal: AbortSignal.timeout(120000) });
         if (!res.ok) throw new Error(String(res.status));
         fs.mkdirSync(path.dirname(dest), { recursive: true });

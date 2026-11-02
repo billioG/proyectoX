@@ -92,6 +92,11 @@ export const SCHEMA = {
     pk: 'id',
     columns: ['id', 'title', 'description', 'school_code', 'grade', 'section', 'created_by', 'is_shared', 'tags', 'created_at', 'weight',
       'bimestre', 'tinkercad_class_url', 'cnb_area', 'weights_approved_at', 'weights_approved_by'],
+    // El docente crea y edita SUS cursos sin internet (sube a la nube al sincronizar). Borrar un curso borra sus recursos aquí; la nube
+    // hace lo mismo con su clave foránea. Las aprobaciones de ponderación (weights_approved_*) son solo de la nube.
+    writable: ['title', 'description', 'school_code', 'grade', 'section', 'created_by', 'is_shared', 'tags', 'weight', 'bimestre', 'tinkercad_class_url', 'cnb_area'],
+    defaults: { id: () => globalThis.crypto.randomUUID(), created_at: () => new Date().toISOString(), is_shared: () => false },
+    cascade: [{ table: 'lessons', fk: 'course_id' }],
     relations: {
       lessons: { type: 'many', table: 'lessons', fk: 'course_id', ref: 'id' },
       schools: { type: 'one', table: 'schools', fk: 'school_code', ref: 'code' },
@@ -103,6 +108,10 @@ export const SCHEMA = {
     pk: 'id',
     columns: ['id', 'title', 'description', 'content_type', 'content_url', 'school_code', 'grade', 'section', 'created_by', 'created_at',
       'content_path', 'is_shared', 'tags', 'course_id', 'order_index', 'quiz_data', 'audience', 'grade_points', 'counts_for_grade'],
+    // `id` lo pone el navegador (la ruta de sus archivos lleva ese id), igual que en la nube.
+    writable: ['id', 'title', 'description', 'content_type', 'content_url', 'content_path', 'school_code', 'grade', 'section', 'created_by', 'is_shared',
+      'tags', 'course_id', 'order_index', 'quiz_data', 'audience', 'grade_points', 'counts_for_grade'],
+    defaults: { id: () => globalThis.crypto.randomUUID(), created_at: () => new Date().toISOString(), is_shared: () => false },
     relations: { courses: { type: 'one', table: 'courses', fk: 'course_id', ref: 'id' } },
   }),
 

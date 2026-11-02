@@ -267,6 +267,11 @@ export function createEngine({ schema, store, policy = {} }) {
     for (const row of visible(ctx, name).filter((r) => p.filters.every((f) => matches(r, f)))) {
       if (!policy.canDelete || policy.canDelete(ctx, name, row) !== true) continue;
       store.remove(name, row[t.pk]);
+      // Los hijos que la nube borra en cascada (clave foránea) se quitan también aquí; no viajan: la nube hace lo mismo sola.
+      for (const c of t.cascade || []) {
+        const child = tableDef(c.table);
+        for (const kid of store.all(c.table).filter((r) => r[c.fk] === row[t.pk])) store.remove(c.table, kid[child.pk]);
+      }
       changes.push({ op: 'delete', table: name, row });
       done.push(row);
     }

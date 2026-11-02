@@ -20,8 +20,14 @@ export function createRestLayer(db, { now = Date.now, random = Math.random, onCh
   const storageBase = db.prepare("SELECT value FROM meta WHERE key = 'storage_base'");
   store.setView('lessons', () => {
     const base = storageBase.get()?.value;
-    if (!base) return (row) => row;
-    return (row) => (typeof row.content_url === 'string' && row.content_url.startsWith(base) ? { ...row, content_url: `/content/${row.content_url.slice(base.length)}` } : row);
+    return (row) => {
+      const url = row.content_url;
+      if (typeof url !== 'string') return row;
+      // Lo que bajó de la nube (storage_base) y lo que el docente subió aquí (la dirección del nodo, con el nombre o la IP que usó).
+      if (base && url.startsWith(base)) return { ...row, content_url: `/content/${url.slice(base.length)}` };
+      const m = /^https?:\/\/[^/]+\/storage\/v1\/object\/public\/course-content\/(lessons\/.+)$/.exec(url);
+      return m ? { ...row, content_url: `/content/${m[1]}` } : row;
+    };
   });
   const auth = createAuth({ store, now });
   const rpcs = createRpcs({ store, xp, now });

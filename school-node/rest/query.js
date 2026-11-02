@@ -157,6 +157,7 @@ export function parseRequest({ method, url, headers = {}, body }) {
   }
 
   const out = { table: name, filters, ...meta };
+  out.single = String(h.accept || '').includes('application/vnd.pgrst.object+json') ? 'object' : null; // .single() también en insert/update/delete
   const M = String(method).toUpperCase();
   if (M === 'GET' || M === 'HEAD') {
     out.kind = 'select';

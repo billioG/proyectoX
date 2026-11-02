@@ -72,6 +72,48 @@ export function createPolicy({ store }) {
   const canMarkRead = (ctx, r) => own(ctx, r.user_id) && validDate(r.read_at)
     && (() => { const a = store.all('announcements').find((x) => x.id === r.announcement_id); return !!a && canSeeAnnouncement(ctx, a); })();
 
+  // ---- Cursos y recursos que el docente crea sin internet (la nube los valida otra vez al sincronizar) ----
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const LESSON_TYPES = ['video', 'pdf', 'image', 'scorm', 'h5p', 'html5', 'quiz', 'tinkercad'];
+  const nullOr = (v, ok) => v == null || ok(v);
+  const str = (v, max) => typeof v === 'string' && v.length <= max;
+  const int = (v, lo, hi) => Number.isInteger(v) && v >= lo && v <= hi;
+  const tagsOk = (v) => Array.isArray(v) && v.length <= 30 && v.every((t) => str(t, 50));
+  const httpsUrl = (v) => str(v, 1000) && /^https:\/\/[^\s]+$/i.test(v) && !/[\u0000-\u001F\u007F]/.test(v);
+  const myClass = (ctx, c) => ctx.role === 'admin' || assignmentsOf(ctx).some((m) => sameGroup(c, m));
+  const mayEditCourse = (ctx, course) => !!course && staff(ctx) && (ctx.role === 'admin' || course.created_by === ctx.uid);
+
+  const validCourse = (ctx, c) => c.created_by === ctx.uid && text(c.title, 200)
+    && nullOr(c.description, (v) => str(v, 2000)) && str(c.school_code, 60) && str(c.grade, 60) && str(c.section, 60) && myClass(ctx, c)
+    && typeof c.is_shared === 'boolean' && nullOr(c.tags, tagsOk) && nullOr(c.weight, (v) => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 100)
+    && nullOr(c.bimestre, (v) => int(v, 1, 4)) && nullOr(c.tinkercad_class_url, httpsUrl) && nullOr(c.cnb_area, (v) => str(v, 80));
+
+  // La dirección de un recurso subido aquí: la de Storage (o el visor SCORM) con la ruta lessons/<id de la lección>/...; o un https externo.
+  const ownFile = (id) => (v) => {
+    let u; try { u = new URL(v, 'http://nodo.local'); } catch { return false; }
+    const prefix = `lessons/${id}`;
+    if (u.pathname.startsWith('/content/')) { const rel = decodeURIComponent(u.pathname.slice('/content/'.length)); return rel === prefix || rel.startsWith(`${prefix}/`); }
+    if (u.pathname.startsWith('/storage/v1/object/public/course-content/')) {
+      const rel = decodeURIComponent(u.pathname.slice('/storage/v1/object/public/course-content/'.length));
+      return rel === prefix || rel.startsWith(`${prefix}/`);
+    }
+    if (u.pathname === '/functions/v1/serve-scorm-entry') { const rel = u.searchParams.get('path') || ''; return rel === prefix || rel.startsWith(`${prefix}/`); }
+    return false;
+  };
+  const validLesson = (ctx, l) => {
+    const course = store.all('courses').find((c) => c.id === l.course_id);
+    return typeof l.id === 'string' && UUID.test(l.id) && mayEditCourse(ctx, course) && l.created_by === ctx.uid
+      && l.school_code === course.school_code && l.grade === course.grade && l.section === course.section
+      && LESSON_TYPES.includes(l.content_type) && text(l.title, 200) && nullOr(l.description, (v) => str(v, 2000))
+      && (l.audience === 'estudiante' || l.audience === 'docente') && int(l.order_index, 0, 100000) && nullOr(l.tags, tagsOk)
+      && typeof l.is_shared === 'boolean' && nullOr(l.counts_for_grade, (v) => typeof v === 'boolean')
+      && nullOr(l.grade_points, (v) => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 100)
+      && nullOr(l.content_path, (v) => v === `lessons/${l.id}`)
+      && (l.content_type === 'quiz'
+        ? l.content_url == null && Array.isArray(l.quiz_data) && l.quiz_data.length >= 1 && l.quiz_data.length <= 200 && JSON.stringify(l.quiz_data).length <= 300000
+        : l.quiz_data == null && typeof l.content_url === 'string' && (httpsUrl(l.content_url) || (str(l.content_url, 1000) && ownFile(l.id)(l.content_url))));
+  };
+
   const readRules = {
     announcements: (ctx, r) => canSeeAnnouncement(ctx, r),
     announcement_reads: (ctx, r) => own(ctx, r.user_id),
@@ -104,13 +146,21 @@ export function createPolicy({ store }) {
     // lesson_completions_insert_own
     canInsert: (ctx, table, row) => (table === 'lesson_completions' && own(ctx, row.student_id) && validCompletion(row))
       || (table === 'announcements' && canSendAnnouncement(ctx, row))
-      || (table === 'announcement_reads' && canMarkRead(ctx, row)),
+      || (table === 'announcement_reads' && canMarkRead(ctx, row))
+      || (table === 'courses' && staff(ctx) && validCourse(ctx, row))
+      || (table === 'lessons' && staff(ctx) && validLesson(ctx, row)),
 
     // lesson_completions_update_own (la nueva fila también debe ser propia)
     canUpdate: (ctx, table, oldRow, newRow) => (table === 'lesson_completions' && own(ctx, oldRow.student_id) && own(ctx, newRow.student_id) && validCompletion(newRow))
-      || (table === 'announcement_reads' && own(ctx, oldRow.user_id) && canMarkRead(ctx, newRow)),
+      || (table === 'announcement_reads' && own(ctx, oldRow.user_id) && canMarkRead(ctx, newRow))
+      || (table === 'courses' && mayEditCourse(ctx, oldRow) && newRow.created_by === oldRow.created_by && validCourse({ ...ctx, uid: oldRow.created_by }, newRow))
+      || (table === 'lessons' && staff(ctx) && newRow.id === oldRow.id && newRow.course_id === oldRow.course_id && newRow.created_by === oldRow.created_by
+        && mayEditCourse(ctx, store.all('courses').find((c) => c.id === oldRow.course_id)) && validLesson({ ...ctx, uid: oldRow.created_by }, newRow)),
 
     // lesson_completions_delete_own_or_admin
-    canDelete: (ctx, table, row) => table === 'lesson_completions' && (own(ctx, row.student_id) || ctx.role === 'admin'),
+    canDelete: (ctx, table, row) => (table === 'lesson_completions' && (own(ctx, row.student_id) || ctx.role === 'admin'))
+      // Sin internet solo se borra lo propio; un curso compartido con otras escuelas se borra en línea (se puede dejar de compartir).
+      || (table === 'courses' && mayEditCourse(ctx, row) && row.is_shared !== true)
+      || (table === 'lessons' && mayEditCourse(ctx, store.all('courses').find((c) => c.id === row.course_id))),
   };
 }

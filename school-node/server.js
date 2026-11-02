@@ -23,6 +23,7 @@ import { createTeacherStore, TeacherAuthError } from './teachers.js';
 import { friendlySyncError } from './sync-errors.js';
 import { createRestLayer } from './rest/index.js';
 import { createPhotos } from './rest/photos.js';
+import { createContentStore, createStorageHandler } from './content-upload.js';
 
 const NODE_DIR = path.dirname(fileURLToPath(import.meta.url));
 const APP_DIR = path.resolve(NODE_DIR, '..');
@@ -63,6 +64,9 @@ const restStore = restLayer.store;
 // clase; mientras tanto el nodo se comporta como antes (pantalla propia con PIN).
 const restReady = () => restLayer.ready();
 const restRoutes = restLayer.routes;
+// Archivos de cursos que el docente sube en el nodo (Storage de Supabase emulado); suben a la nube al sincronizar.
+const contentStore = createContentStore({ db, dir: CONTENT_DIR });
+const storageHandler = createStorageHandler({ store: contentStore, auth: restLayer.auth });
 const photosStore = createPhotos({ db, dir: path.resolve(config.dataDir, 'photos') });
 const teacherStore = createTeacherStore(db, { hashPin: (pin, salt) => hashPin(pin, salt), verifySetupCode: (code) => verifyTeacherCode(code) });
 projectStore.cleanup(); // borradores huérfanos de una subida cortada por un reinicio o un apagón
@@ -367,6 +371,9 @@ const api = {
     pending: {
       completions: db.prepare('SELECT COUNT(*) n FROM completions WHERE dirty = 1').get().n,
       files: db.prepare('SELECT COUNT(*) n FROM files WHERE downloaded = 0').get().n,
+      // Archivos de cursos que el docente subió aquí y faltan por llegar a la nube, y los que la nube rechazó (con el motivo).
+      uploads: contentStore.pendingCount(),
+      uploads_rejected: contentStore.rejected().map((r) => ({ path: r.path, error: r.error })),
     },
   }),
 
@@ -716,6 +723,7 @@ const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, 'http://node');
     if (await restRoutes.handle(req, res, url)) return;
+    if (await storageHandler.handle(req, res, url)) return;
     const route = projectRoute(req.method, url.pathname) || api[`${req.method} ${url.pathname}`];
     if (route) return await route(req, res, url);
 

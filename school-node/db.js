@@ -46,6 +46,12 @@ export function openDb(dataDir) {
       dirty INTEGER NOT NULL DEFAULT 1
     );
 
+    -- Archivos de cursos que el docente subió en este nodo (content-upload.js); suben a la nube al sincronizar.
+    CREATE TABLE IF NOT EXISTS content_uploads (
+      path TEXT PRIMARY KEY, owner TEXT NOT NULL, size INTEGER NOT NULL, created_at INTEGER NOT NULL,
+      uploaded INTEGER NOT NULL DEFAULT 0, error TEXT
+    );
+
     CREATE TABLE IF NOT EXISTS files (
       path TEXT PRIMARY KEY, etag TEXT, size INTEGER, downloaded INTEGER NOT NULL DEFAULT 0
     );

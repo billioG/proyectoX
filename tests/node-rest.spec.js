@@ -192,3 +192,48 @@ test('el docente entra con su correo y PIN, evalúa un proyecto y avisa a su cla
   expect(inbox).toContain('Traer el robot el lunes');
   expect(errors).toEqual([]);
 });
+
+test('el docente crea un curso con un PDF sin internet con el cliente real de la app; la estudiante lo ve y el nodo lo deja por subir', async ({ page }) => {
+  test.skip(!node, skipReason);
+  const errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await open(page);
+  await login(page, 'marta@escuela.com', '654321');
+  await page.waitForFunction(() => window.currentUser?.id === 't1');
+
+  const made = await page.evaluate(async () => {
+    const sb = window._supabase;
+    const { data: course, error: ce } = await sb.from('courses').insert({ title: 'Curso sin internet', description: 'Hecho en el aula', tags: [], bimestre: 1, weight: 20, cnb_area: 'Tecnología',
+      school_code: 'ESC1', grade: 'Primero', section: 'A', created_by: window.currentUser.id }).select().single();
+    if (ce) return { step: 'curso', error: ce.message };
+    const id = crypto.randomUUID();
+    const bytes = new Uint8Array(150000).fill(7);
+    const blob = new Blob([bytes], { type: 'application/pdf' });
+    const { error: ue } = await sb.storage.from('course-content').upload(`lessons/${id}/Guia-clase.pdf`, blob, { upsert: true, contentType: 'application/pdf' });
+    if (ue) return { step: 'subida', error: ue.message };
+    const { data: { publicUrl } } = sb.storage.from('course-content').getPublicUrl(`lessons/${id}/Guia-clase.pdf`);
+    const { error: le } = await sb.from('lessons').insert({ id, title: 'Guía de la clase', content_type: 'pdf', content_url: publicUrl, content_path: `lessons/${id}`, quiz_data: null, course_id: course.id,
+      order_index: 0, audience: 'estudiante', school_code: 'ESC1', grade: 'Primero', section: 'A', created_by: window.currentUser.id });
+    if (le) return { step: 'recurso', error: le.message };
+    const served = await fetch(publicUrl);
+    return { id, publicUrl, status: served.status, size: (await served.arrayBuffer()).byteLength };
+  });
+  expect(made.error).toBeUndefined();
+  expect(made.status).toBe(200);
+  expect(made.size).toBe(150000);
+  expect(made.publicUrl).toContain(node.base);
+
+  const reloaded = page.waitForEvent('load');
+  await page.evaluate(() => { localStorage.clear(); window._supabase.auth.signOut(); });
+  await reloaded;
+  await page.waitForSelector('#login-username');
+  await login(page, 'ana1', 'clase123');
+  await page.waitForFunction(() => window.currentUser?.id === 's1');
+  const seen = await page.evaluate(async () => { const { data } = await window._supabase.from('lessons').select('title, content_url').eq('title', 'Guía de la clase'); return data; });
+  expect(seen).toHaveLength(1);
+  expect(seen[0].content_url).toMatch(/^\/content\/lessons\/[0-9a-f-]{36}\/Guia-clase\.pdf$/);
+  const status = await (await fetch(node.base + '/api/node/status')).json();
+  expect(status.pending.uploads).toBe(1);
+  expect(status.pending_changes).toBeGreaterThanOrEqual(2);
+  expect(errors).toEqual([]);
+});

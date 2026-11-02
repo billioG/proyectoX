@@ -69,6 +69,7 @@ Si tu escuela tiene un **nodo escolar** (una computadora o Raspberry Pi con la a
 *   **Aviso de abajo a la izquierda:** te dice si ya se subió todo a la nube. Se sincroniza solo cuando hay internet; también puedes tocar **Sincronizar ahora**.
 
 ### 👨‍🏫 Docentes
+*   **Crear clases sin internet:** en el servidor escolar usa **Cursos → Nuevo curso → Agregar recurso**, igual que en línea. Sube tus videos, PDF o paquetes (hasta 150 MB cada archivo); tus estudiantes los ven al momento y todo se sube solo a la nube cuando el servidor tenga internet. Con **Compartir** el curso va a la Biblioteca Compartida.
 *   **Entrar al nodo:** con tu **correo** y **la misma contraseña** con que entras a Quetzal en línea. No hay PIN aparte; el servidor la recibe cifrada cuando se sincroniza.
 *   **Evaluar proyectos y enviar avisos** a tus grupos funcionan igual que con internet. Lo que hagas se sube solo al volver la señal.
 *   **Limitaciones:** no puedes borrar ni editar un aviso sin internet; los avisos a padres y las notificaciones push se envían cuando el nodo se sincroniza con internet.

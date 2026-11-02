@@ -18,7 +18,15 @@ function ago(iso) {
 function describe(s) {
   if (s.syncing) return { tone: 'busy', text: 'Sincronizando…' };
   if (s.sync_error) return { tone: 'warn', text: 'Sin internet por ahora: todo está guardado y se sube solo' };
-  if (s.pending_changes > 0) return { tone: 'warn', text: `${s.pending_changes} ${s.pending_changes === 1 ? 'cambio' : 'cambios'} por subir` };
+  const rejected = s.pending?.uploads_rejected?.length || 0;
+  if (rejected > 0) return { tone: 'warn', text: `La nube rechazó ${rejected} ${rejected === 1 ? 'archivo' : 'archivos'} de tus cursos: ${s.pending.uploads_rejected[0].error}` };
+  const files = s.pending?.uploads || 0;
+  if (s.pending_changes > 0 || files > 0) {
+    const parts = [];
+    if (s.pending_changes > 0) parts.push(`${s.pending_changes} ${s.pending_changes === 1 ? 'cambio' : 'cambios'}`);
+    if (files > 0) parts.push(`${files} ${files === 1 ? 'archivo' : 'archivos'}`);
+    return { tone: 'warn', text: `${parts.join(' y ')} por subir` };
+  }
   if (s.last_sync_at) return { tone: 'ok', text: `Sincronizado ${ago(s.last_sync_at)}` };
   return { tone: 'warn', text: 'Aún sin sincronizar' };
 }

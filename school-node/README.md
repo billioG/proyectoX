@@ -18,7 +18,12 @@ Cuando el nodo ya **sincronizó una vez** con la nube, tus estudiantes y docente
 - **Docentes:** entran con su **correo y la misma contraseña de su cuenta** (sin PIN aparte). En cada sincronización la nube
   manda al nodo solo la huella cifrada (bcrypt) de la contraseña de los docentes de esa escuela, así que entran sin internet
   aunque nunca hayan usado esa Raspberry. Si cambian su contraseña en la nube, la nueva llega en la siguiente sincronización.
-  Desde ahí **evalúan proyectos** de sus clases (el nodo recalcula el total y la nube lo vuelve a validar) y **envían avisos**.
+  Desde ahí **evalúan proyectos** de sus clases (el nodo recalcula el total y la nube lo vuelve a validar), **envían avisos** y
+  **crean cursos y recursos** (videos, PDF, imágenes, paquetes SCORM/H5P/HTML5, enlaces y cuestionarios) con la misma pantalla de
+  siempre: los archivos se guardan en la Raspberry y los estudiantes los ven al instante. Al sincronizar con internet suben a la nube
+  (primero los archivos, directo a Storage con una URL firmada; después el curso y sus recursos) y quedan con la misma dirección.
+  «Compartir» manda el curso a la Biblioteca Compartida. Límites: 150 MB por archivo, solo sus propios cursos, y un curso compartido
+  se borra en línea (sin internet solo se puede dejar de compartir). Si la nube rechaza un archivo, la barra de estado lo dice y por qué.
 - **Sincronización:** automática cada 10 minutos cuando hay internet, o a mano con el botón **Sincronizar ahora** del
   aviso de abajo a la izquierda, que también muestra «Sincronizado hace X» o «N cambios por subir».
 - **Modo anterior (PIN y panel del nodo):** sigue disponible en **`/?modo=pin`** (o con el enlace «Docente» del aviso):
