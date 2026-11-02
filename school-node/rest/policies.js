@@ -198,7 +198,14 @@ export function createPolicy({ store, projects = null }) {
       && (r.scanned_by == null || r.scanned_by === ctx.uid);
   };
 
+  // ---- Permisos de asistencia (en la nube: el docente inserta los suyos, siempre pendientes) ----
+  const canRequestWaiver = (ctx, w) => ctx.role === 'teacher' && w.teacher_id === ctx.uid && w.status === 'pending' && text(w.reason, 1000)
+    && typeof w.school_code === 'string' && assignmentsOf(ctx).some((m) => m.school_code === w.school_code) && w.admin_comment == null
+    && (w.grade == null ? w.section == null : typeof w.grade === 'string' && typeof w.section === 'string' && myClass(ctx, w))
+    && typeof w.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(w.date) && Math.abs(Date.parse(`${w.date}T00:00:00Z`) - Date.now()) <= 45 * dayMs;
+
   const readRules = {
+    attendance_waivers: (ctx, r) => ctx.role === 'admin' || r.teacher_id === ctx.uid,
     exams: (ctx, r) => ctx.role === 'admin' || (ctx.role === 'teacher' && r.teacher_id === ctx.uid),
     exam_results: (ctx, r) => (staff(ctx) ? examOwner(ctx, examById(r.exam_id)) : r.student_id === ctx.uid),
     attendance: (ctx, r) => ctx.role === 'admin' || r.teacher_id === ctx.uid,
@@ -238,6 +245,7 @@ export function createPolicy({ store, projects = null }) {
       || (table === 'announcements' && canSendAnnouncement(ctx, row))
       || (table === 'announcement_reads' && canMarkRead(ctx, row))
       || (table === 'attendance' && validAttendance(ctx, row))
+      || (table === 'attendance_waivers' && canRequestWaiver(ctx, row))
       || (table === 'exams' && staff(ctx) && examOk(ctx, row))
       || (table === 'exam_results' && resultOk(ctx, row))
       || (table === 'projects' && canSubmitProject(ctx, row))

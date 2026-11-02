@@ -29,7 +29,7 @@ export function restPush(store, { gate = () => true, toCloudUrl = (u) => u } = {
     if (e.table === 'announcements') { announcements.push({ ...e.row, seq: e.seq }); continue; }
     // Cursos y recursos: el curso viaja siempre; un recurso solo cuando sus archivos ya llegaron a la nube (gate). La nube confirma por seq.
     // Comentarios, «me gusta» y notas de los recursos: viajan en el mismo orden; esperan si su recurso (o el comentario) aún no subió.
-    if (e.table === 'exams' || e.table === 'exam_results' || e.table === 'groups' || e.table === 'group_members' || e.table === 'attendance' || e.table === 'resource_comments' || e.table === 'resource_comment_likes' || e.table === 'resource_notes') {
+    if (e.table === 'attendance_waivers' || e.table === 'exams' || e.table === 'exam_results' || e.table === 'groups' || e.table === 'group_members' || e.table === 'attendance' || e.table === 'resource_comments' || e.table === 'resource_comment_likes' || e.table === 'resource_notes') {
       const lessonId = e.table === 'resource_comment_likes' ? waiting.commentLesson.get(e.row.comment_id) ?? lessonOfComment(e.row.comment_id) : e.row.lesson_id;
       if (e.table === 'resource_comments') waiting.commentLesson.set(e.pk, e.row.lesson_id);
       if (lessonId != null && (waiting.lessons.has(lessonId) || (e.row.parent_id != null && waiting.comments.has(e.row.parent_id)))) { waiting.comments.add(e.pk); continue; }

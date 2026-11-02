@@ -173,6 +173,16 @@ export const SCHEMA = {
   ai_evaluations: emptyTable(),
   ai_code_evaluations: emptyTable(),
 
+  // Permisos de asistencia: el docente los pide (siempre «pendientes»; el administrador los aprueba en línea). No se editan ni se borran sin internet.
+  attendance_waivers: table({
+    pk: 'id',
+    noUpdate: true,
+    columns: ['id', 'teacher_id', 'date', 'reason', 'status', 'admin_comment', 'created_at', 'school_code', 'grade', 'section', 'updated_at'],
+    writable: ['teacher_id', 'date', 'reason', 'status', 'school_code', 'grade', 'section'],
+    defaults: { id: () => globalThis.crypto.randomUUID(), status: () => 'pending', created_at: () => new Date().toISOString(), updated_at: () => new Date().toISOString() },
+    relations: {},
+  }),
+
   // Exámenes con hoja de respuestas (migrations/exams.sql): el docente crea el examen con su clave y califica escaneando. La clave solo la ve su
   // docente; el estudiante ve sus notas. id y fecha las pone el nodo (el id viaja a la nube); la nota es única por examen y estudiante.
   exams: table({

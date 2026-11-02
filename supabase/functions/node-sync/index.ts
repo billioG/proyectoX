@@ -38,6 +38,7 @@ import { isSocialTable, planSocialOps } from './social.ts';
 import { isAttendanceTable, planAttendanceOps } from './attendance.ts';
 import { isGroupTable, planGroupOps } from './groups.ts';
 import { isExamTable, planExamOps } from './exams.ts';
+import { isWaiverTable, planWaiverOps } from './waivers.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -578,7 +579,7 @@ Deno.serve(async (req) => {
         // Cursos a los que apuntan los recursos del lote y todavía no se cargaron.
         const missing = [...new Set(pushedContent.filter((o) => o?.tbl === 'lessons' && isUuid(o?.row?.course_id) && !courses.has(o.row.course_id)).map((o) => o.row.course_id))] as string[];
         for (const part of chunk(missing)) for (const c of await fetchAll((from, to) => admin.from('courses').select('id, school_code, created_by, is_shared').in('id', part).order('id').range(from, to))) courses.set(c.id, c);
-        const plan = planContentOps(pushedContent.filter((o) => !isSocialTable(o?.tbl) && !isAttendanceTable(o?.tbl) && !isGroupTable(o?.tbl) && !isExamTable(o?.tbl)), {
+        const plan = planContentOps(pushedContent.filter((o) => !isSocialTable(o?.tbl) && !isAttendanceTable(o?.tbl) && !isGroupTable(o?.tbl) && !isExamTable(o?.tbl) && !isWaiverTable(o?.tbl)), {
           schoolCode: node.school_code, storageBase: `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/`, cloudUrl: SUPABASE_URL, assignments: schoolAssignments,
           adminIds: new Set((admins || []).map((a: any) => a.id as string)),
           courses: new Map([...courses].map(([k, c]) => [k, { school_code: c.school_code, created_by: c.created_by, is_shared: !!c.is_shared }])),
@@ -671,6 +672,20 @@ Deno.serve(async (req) => {
             if (error) { contentErrors.push({ seq: a.seq, error: error.message, permanent: false }); failedEx.add(a.seq); }
           }
           for (const r of ex.results) if (r.ok && !failedEx.has(r.seq)) appliedContent.push(r.seq);
+        }
+
+        // Permisos de asistencia pedidos en el nodo: siempre pendientes; no se repiten si ya existen (el administrador pudo haberlos aprobado).
+        const waiverOps = pushedContent.filter((o) => isWaiverTable(o?.tbl));
+        if (waiverOps.length) {
+          const wv = planWaiverOps(waiverOps, { schoolCode: node.school_code, now: Date.now(), assignments: schoolAssignments, adminIds: new Set((admins || []).map((a: any) => a.id as string)) });
+          const failedWv = new Set<number>();
+          for (const r of wv.results) if (!r.ok) contentErrors.push({ seq: r.seq, error: r.error, permanent: true });
+          for (const a of wv.actions) {
+            if (Date.now() - startedAt > 40_000) { failedWv.add(a.seq); continue; }
+            const { error } = await admin.from('attendance_waivers').upsert(a.row, { onConflict: 'id', ignoreDuplicates: true });
+            if (error) { contentErrors.push({ seq: a.seq, error: error.message, permanent: false }); failedWv.add(a.seq); }
+          }
+          for (const r of wv.results) if (r.ok && !failedWv.has(r.seq)) appliedContent.push(r.seq);
         }
 
         // Asistencia pasada en el nodo: un registro por estudiante y día (upsert), con las reglas de la nube.
