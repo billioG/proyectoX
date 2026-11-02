@@ -37,6 +37,7 @@ import { planContentOps, validateContentUploadRequest, validateObjectPath } from
 import { isSocialTable, planSocialOps } from './social.ts';
 import { isAttendanceTable, planAttendanceOps } from './attendance.ts';
 import { isGroupTable, planGroupOps } from './groups.ts';
+import { isExamTable, planExamOps } from './exams.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -577,7 +578,7 @@ Deno.serve(async (req) => {
         // Cursos a los que apuntan los recursos del lote y todavía no se cargaron.
         const missing = [...new Set(pushedContent.filter((o) => o?.tbl === 'lessons' && isUuid(o?.row?.course_id) && !courses.has(o.row.course_id)).map((o) => o.row.course_id))] as string[];
         for (const part of chunk(missing)) for (const c of await fetchAll((from, to) => admin.from('courses').select('id, school_code, created_by, is_shared').in('id', part).order('id').range(from, to))) courses.set(c.id, c);
-        const plan = planContentOps(pushedContent.filter((o) => !isSocialTable(o?.tbl) && !isAttendanceTable(o?.tbl) && !isGroupTable(o?.tbl)), {
+        const plan = planContentOps(pushedContent.filter((o) => !isSocialTable(o?.tbl) && !isAttendanceTable(o?.tbl) && !isGroupTable(o?.tbl) && !isExamTable(o?.tbl)), {
           schoolCode: node.school_code, storageBase: `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/`, cloudUrl: SUPABASE_URL, assignments: schoolAssignments,
           adminIds: new Set((admins || []).map((a: any) => a.id as string)),
           courses: new Map([...courses].map(([k, c]) => [k, { school_code: c.school_code, created_by: c.created_by, is_shared: !!c.is_shared }])),
@@ -648,6 +649,28 @@ Deno.serve(async (req) => {
             if (error) { contentErrors.push({ seq: a.seq, error: error.message, permanent: false }); failedSocial.add(a.seq); }
           }
           for (const r of social.results) if (r.ok && !failedSocial.has(r.seq)) appliedContent.push(r.seq);
+        }
+
+        // Exámenes y notas hechos en el nodo (la clave de respuestas solo la ve su docente; aquí se valida otra vez).
+        const examOps = pushedContent.filter((o) => isExamTable(o?.tbl));
+        if (examOps.length) {
+          const eids = [...new Set(examOps.flatMap((o) => [o?.tbl === 'exams' ? o?.pk : null, o?.tbl === 'exam_results' ? o?.row?.exam_id : null]).filter(isUuid))] as string[];
+          const examsMap = new Map<string, { school_code: string; teacher_id: string; grade: string; section: string; question_count: number }>();
+          for (const part of chunk(eids)) for (const e of await fetchAll((from, to) => admin.from('exams').select('id, school_code, teacher_id, grade, section, question_count').in('id', part).order('id').range(from, to))) examsMap.set(e.id, { school_code: e.school_code, teacher_id: e.teacher_id, grade: e.grade, section: e.section, question_count: e.question_count });
+          const ex = planExamOps(examOps, {
+            schoolCode: node.school_code, assignments: schoolAssignments, adminIds: new Set((admins || []).map((a: any) => a.id as string)),
+            students: new Map(students.map((s: any) => [s.id as string, { grade: s.grade as string, section: s.section as string }])), exams: examsMap,
+          });
+          const failedEx = new Set<number>();
+          for (const r of ex.results) if (!r.ok) contentErrors.push({ seq: r.seq, error: r.error, permanent: true });
+          for (const a of ex.actions) {
+            if (Date.now() - startedAt > 40_000) { failedEx.add(a.seq); continue; }
+            let error: { message: string } | null = null;
+            if (a.kind === 'upsert') ({ error } = await admin.from(a.table).upsert(a.row, { onConflict: a.onConflict }));
+            else { let q = admin.from(a.table).delete(); for (const [k, v] of Object.entries(a.match)) q = q.eq(k, v as any); ({ error } = await q); }
+            if (error) { contentErrors.push({ seq: a.seq, error: error.message, permanent: false }); failedEx.add(a.seq); }
+          }
+          for (const r of ex.results) if (r.ok && !failedEx.has(r.seq)) appliedContent.push(r.seq);
         }
 
         // Asistencia pasada en el nodo: un registro por estudiante y día (upsert), con las reglas de la nube.

@@ -30,6 +30,9 @@ export const TABLE_COLUMNS: Record<string, string[]> = {
   lesson_completions: ['id', 'lesson_id', 'student_id', 'completed_at', 'score', 'status', 'raw_data'],
   announcements: ANNOUNCEMENT_COLUMNS,
   announcement_reads: ['id', 'announcement_id', 'user_id', 'read_at'],
+  exams: ['id', 'teacher_id', 'school_code', 'grade', 'section', 'title', 'bimestre', 'question_count', 'answer_key', 'points', 'created_at'],
+  exam_results: ['id', 'exam_id', 'student_id', 'answers', 'correct', 'wrong', 'blank', 'score', 'scanned_by', 'scanned_at'],
+  practice_results: ['id', 'student_id', 'game', 'competency', 'topic', 'correct', 'total', 'score', 'played_at'],
   attendance: ['id', 'student_id', 'teacher_id', 'school_code', 'grade', 'section', 'date', 'time', 'status', 'created_at'],
   resource_comments: ['id', 'lesson_id', 'group_id', 'parent_id', 'author_id', 'author_name', 'author_role', 'content', 'attachment_url', 'created_at'],
   resource_comment_likes: ['comment_id', 'user_id', 'created_at'],
@@ -108,6 +111,15 @@ export async function pullTables(
   for (const part of chunk(out.resource_comments.map((c) => c.id))) {
     const likes = await fetchAll((from, to) => admin.from('resource_comment_likes').select(list('resource_comment_likes')).in('comment_id', part).order('comment_id').order('user_id').range(from, to));
     out.resource_comment_likes.push(...likes.map((l: any) => ({ ...l, id: `${l.comment_id}:${l.user_id}` })));
+  }
+  // Exámenes de la escuela (con su clave: la capa local solo se la muestra a su docente) y sus notas.
+  out.exams = await bySchool('exams', 'school_code');
+  out.exam_results = await byIds('exam_results', 'exam_id', out.exams.map((e) => e.id));
+  // Práctica de los últimos 60 días de los estudiantes de la escuela: solo para calcular el progreso en el nodo (nadie la lee directo).
+  const practiceSince = new Date(Date.now() - 60 * 24 * 3600_000).toISOString();
+  out.practice_results = [];
+  for (const part of chunk(students)) {
+    out.practice_results.push(...await fetchAll((from, to) => admin.from('practice_results').select(list('practice_results')).in('student_id', part).gte('played_at', practiceSince).order('id').range(from, to)));
   }
   // Asistencia de los últimos 120 días de la escuela (cada docente ve solo la suya: lo decide la capa local).
   const attSince = new Date(Date.now() - 120 * 24 * 3600_000).toISOString().slice(0, 10);

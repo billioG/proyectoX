@@ -183,7 +183,24 @@ export function createPolicy({ store, projects = null }) {
     return true;
   };
 
+  // ---- Exámenes (migrations/exams.sql): el docente maneja los suyos; el estudiante solo ve sus notas, nunca la clave ----
+  const examOwner = (ctx, e) => !!e && staff(ctx) && (ctx.role === 'admin' || e.teacher_id === ctx.uid);
+  const examOk = (ctx, e) => typeof e.teacher_id === 'string' && (ctx.role === 'admin' || (e.teacher_id === ctx.uid && myClass(ctx, e)))
+    && typeof e.school_code === 'string' && typeof e.grade === 'string' && typeof e.section === 'string' && text(e.title, 120)
+    && int(e.bimestre, 1, 4) && int(e.question_count, 1, 100) && typeof e.answer_key === 'string' && /^[A-E]+$/.test(e.answer_key) && e.answer_key.length === e.question_count
+    && typeof e.points === 'number' && e.points > 0 && e.points <= 1000;
+  const examById = (id) => store.all('exams').find((e) => e.id === id);
+  const resultOk = (ctx, r) => {
+    const e = examById(r.exam_id);
+    const st = store.all('students').find((s) => s.id === r.student_id);
+    return examOwner(ctx, e) && !!st && sameGroup(st, e) && typeof r.answers === 'string' && r.answers.length === e.question_count && /^[A-E*-]+$/.test(r.answers)
+      && int(r.correct, 0, 1000) && int(r.wrong, 0, 1000) && int(r.blank, 0, 1000) && typeof r.score === 'number' && Number.isFinite(r.score) && r.score >= 0 && r.score <= 100000
+      && (r.scanned_by == null || r.scanned_by === ctx.uid);
+  };
+
   const readRules = {
+    exams: (ctx, r) => ctx.role === 'admin' || (ctx.role === 'teacher' && r.teacher_id === ctx.uid),
+    exam_results: (ctx, r) => (staff(ctx) ? examOwner(ctx, examById(r.exam_id)) : r.student_id === ctx.uid),
     attendance: (ctx, r) => ctx.role === 'admin' || r.teacher_id === ctx.uid,
     resource_comments: (ctx, r) => canSeeComment(ctx, r),
     resource_comment_likes: (ctx, r) => { const c = store.all('resource_comments').find((x) => x.id === r.comment_id); return !!c && canSeeComment(ctx, c); },
@@ -221,6 +238,8 @@ export function createPolicy({ store, projects = null }) {
       || (table === 'announcements' && canSendAnnouncement(ctx, row))
       || (table === 'announcement_reads' && canMarkRead(ctx, row))
       || (table === 'attendance' && validAttendance(ctx, row))
+      || (table === 'exams' && staff(ctx) && examOk(ctx, row))
+      || (table === 'exam_results' && resultOk(ctx, row))
       || (table === 'projects' && canSubmitProject(ctx, row))
       || (table === 'groups' && staff(ctx) && text(row.name, 80) && typeof row.school_code === 'string' && myClass(ctx, row) && row.created_by == null)
       || (table === 'group_members' && canAddMember(ctx, row))
@@ -235,6 +254,8 @@ export function createPolicy({ store, projects = null }) {
       || (table === 'announcement_reads' && own(ctx, oldRow.user_id) && canMarkRead(ctx, newRow))
       || (table === 'groups' && staff(ctx) && myClass(ctx, oldRow) && newRow.school_code === oldRow.school_code && newRow.grade === oldRow.grade && newRow.section === oldRow.section && text(newRow.name, 80))
       || (table === 'group_members' && newRow.group_id === oldRow.group_id && newRow.student_id === oldRow.student_id && canAddMember(ctx, newRow))
+      || (table === 'exams' && examOwner(ctx, oldRow) && newRow.teacher_id === oldRow.teacher_id && examOk(ctx, newRow))
+      || (table === 'exam_results' && newRow.exam_id === oldRow.exam_id && newRow.student_id === oldRow.student_id && resultOk(ctx, newRow))
       || (table === 'attendance' && oldRow.teacher_id === ctx.uid && newRow.student_id === oldRow.student_id && newRow.date === oldRow.date && validAttendance(ctx, newRow))
       || (table === 'courses' && mayEditCourse(ctx, oldRow) && newRow.created_by === oldRow.created_by && validCourse({ ...ctx, uid: oldRow.created_by }, newRow))
       || (table === 'lessons' && staff(ctx) && newRow.id === oldRow.id && newRow.course_id === oldRow.course_id && newRow.created_by === oldRow.created_by
@@ -242,6 +263,8 @@ export function createPolicy({ store, projects = null }) {
 
     // lesson_completions_delete_own_or_admin
     canDelete: (ctx, table, row) => (table === 'lesson_completions' && (own(ctx, row.student_id) || ctx.role === 'admin'))
+      || (table === 'exams' && examOwner(ctx, row))
+      || (table === 'exam_results' && examOwner(ctx, examById(row.exam_id)))
       || (table === 'groups' && staff(ctx) && myClass(ctx, row))
       || (table === 'group_members' && staff(ctx) && !!groupOf(row.group_id) && myClass(ctx, groupOf(row.group_id)))
       || (table === 'resource_comments' && (row.author_id === ctx.uid || staff(ctx)))

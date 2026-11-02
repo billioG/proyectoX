@@ -26,6 +26,15 @@ export function createRpcs({ store, xp, now = Date.now, reactions = null }) {
       return { streak: row?.streak || 0, changed: false, lastLogin: row?.last_login ?? null };
     },
 
+    // Mis notas de exámenes (el estudiante): el examen sin su clave y mi resultado.
+    my_exam_results: (args, ctx) => {
+      if (ctx?.role !== 'student') return [];
+      const exams = new Map(store.all('exams').map((e) => [e.id, e]));
+      return store.all('exam_results').filter((r) => r.student_id === ctx.uid && exams.has(r.exam_id))
+        .sort((a, b) => String(b.scanned_at).localeCompare(String(a.scanned_at)))
+        .map((r) => { const e = exams.get(r.exam_id); return { exam_id: e.id, title: e.title, bimestre: e.bimestre, points: e.points, score: r.score, correct: r.correct, wrong: r.wrong, blank: r.blank, question_count: e.question_count, scanned_at: r.scanned_at }; });
+    },
+
     // Reacciones a proyectos (estudiantes): una por estudiante y proyecto, como con internet. Se ven al instante; la nube las cuenta al sincronizar
     // (el almacén de reacciones del nodo, reactions.js, guarda solo la reacción FINAL de cada par, así reenviar no suma dos veces).
     react_to_project: (args, ctx) => {

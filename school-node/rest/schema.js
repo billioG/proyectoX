@@ -168,12 +168,29 @@ export const SCHEMA = {
   student_spelling_duels: emptyTable(),
   project_reaction_notifications: emptyTable(),
   student_challenges: emptyTable(),
-  exams: emptyTable(),
-  exam_results: emptyTable(),
   teacher_rocks: emptyTable(),
   teacher_rock_completions: emptyTable(),
   ai_evaluations: emptyTable(),
   ai_code_evaluations: emptyTable(),
+
+  // Exámenes con hoja de respuestas (migrations/exams.sql): el docente crea el examen con su clave y califica escaneando. La clave solo la ve su
+  // docente; el estudiante ve sus notas. id y fecha las pone el nodo (el id viaja a la nube); la nota es única por examen y estudiante.
+  exams: table({
+    pk: 'id',
+    columns: ['id', 'teacher_id', 'school_code', 'grade', 'section', 'title', 'bimestre', 'question_count', 'answer_key', 'points', 'created_at'],
+    writable: ['teacher_id', 'school_code', 'grade', 'section', 'title', 'bimestre', 'question_count', 'answer_key', 'points'],
+    defaults: { id: () => globalThis.crypto.randomUUID(), created_at: () => new Date().toISOString(), bimestre: () => 1, points: () => 10 },
+    cascade: [{ table: 'exam_results', fk: 'exam_id' }],
+    relations: { exam_results: { type: 'many', table: 'exam_results', fk: 'exam_id', ref: 'id' } },
+  }),
+  exam_results: table({
+    pk: 'id',
+    columns: ['id', 'exam_id', 'student_id', 'answers', 'correct', 'wrong', 'blank', 'score', 'scanned_by', 'scanned_at'],
+    writable: ['exam_id', 'student_id', 'answers', 'correct', 'wrong', 'blank', 'score', 'scanned_by'],
+    unique: [['exam_id', 'student_id']],
+    defaults: { id: () => globalThis.crypto.randomUUID(), scanned_at: () => new Date().toISOString() },
+    relations: { exams: { type: 'one', table: 'exams', fk: 'exam_id', ref: 'id' } },
+  }),
 
   // Práctica ya guardada en la nube: INTERNA (nadie la lee directo; en la nube tampoco). Solo alimenta get_*_progress (progress.js).
   practice_results: table({

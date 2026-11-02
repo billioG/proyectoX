@@ -135,6 +135,8 @@ export function createEngine({ schema, store, policy = {} }) {
       else {
         const rel = relOf(t, node.name);
         const value = related(ctx, t, row, node);
+        // `relación(count)` (PostgREST): cuántas filas relacionadas hay, como [{ count: n }].
+        if (Array.isArray(value) && node.select.length === 1 && node.select[0].type === 'col' && node.select[0].name === 'count') { out[node.alias] = [{ count: value.length }]; continue; }
         out[node.alias] = Array.isArray(value)
           ? value.map((v) => project(ctx, rel.table, v, node.select))
           : value ? project(ctx, rel.table, value, node.select) : null;
