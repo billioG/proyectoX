@@ -218,12 +218,107 @@ primera sincronización o si alguna clase no tiene contraseña de clase (el nodo
 > **No uses `node sync.js` a mano con el nodo encendido** para sincronizar: es otro proceso y el servidor seguiría
 > mostrando los datos anteriores hasta reiniciarlo (`sudo systemctl restart quetzal-node`). Usa el botón **Sincronizar ahora**.
 
+**Ojo con dónde ejecutas cada cosa:** `ssh ...` se ejecuta en **tu computadora**; todo lo que sigue (`bash ~/quetzal/...`,
+`curl ...`, `sudo ...`) se ejecuta **dentro de la Raspberry**, ya conectado. Si falla algo al conectar (huella cambiada,
+«Connection refused», no sabes la IP), ver «Solución de problemas» más abajo.
+
 **Antes de actualizar, en la nube** (una vez por versión, si la nota de versión lo pide): ejecutar las migraciones nuevas en
 el SQL Editor de Supabase y volver a desplegar la función `node-sync` con **todos** sus archivos
 (`index.ts`, `tables.ts`, `practice.ts`, `completions.ts`, `announcements.ts`, `evaluations.ts`, `projects.ts`, `xp.ts`,
 `reactions.ts`) y **Verify JWT en OFF**. Ver `docs/MIGRATIONS.md`.
 
 Un nodo con **Windows** se actualiza con `actualizar-windows.cmd` (no necesita SSH).
+
+## Instalar una escuela nueva: orden recomendado
+
+1. **Con internet.** Conecta la Raspberry (o la PC con Windows) a una red **con salida a internet** y haz la instalación
+   (Windows: `instalar-windows.cmd`; Raspberry: el comando de «Instalación en Raspberry Pi», por SSH si no tienes pantalla).
+2. **Reserva una IP fija** para el nodo en el router (ver «No sé la IP del nodo»).
+3. **Primera sincronización, con internet.** Entra a `http://IP-DEL-NODO/?modo=pin` → **Docente** → código de docente →
+   **Sincronizar ahora**. Espera a que termine.
+4. **Comprueba que bajó todo:** abre `http://IP-DEL-NODO/api/node/status` en el navegador y mira:
+   - `"rest": true` → la app real ya está activa. Si es `false`, todavía no sincronizó, o alguna clase no tiene contraseña de
+     clase (ver «Cuándo se activa»).
+   - `pending.files = 0` → todos los archivos de los cursos ya están en el nodo. **Si es mayor que 0, esos archivos no se
+     verán sin internet.** Espera con internet a que llegue a 0.
+   - `pending_changes = 0` y `sync_error` vacío → no queda nada por subir.
+5. **Cada docente fija su PIN, con internet,** en su Perfil (tarjeta «PIN para entrar sin internet»), y se sincroniza otra vez
+   para que el nodo lo reciba.
+6. **Desconecta el internet** (deja solo la red de la escuela) y prueba desde una tablet: un estudiante (usuario y contraseña de
+   la clase) con un curso y un video, y un docente (correo y PIN).
+7. **Fotos de perfil:** se descargan en cada sincronización; aparecen después de la primera sincronización con internet.
+8. **Imprime el cartel** (`http://IP-DEL-NODO/cartel`) desde esa red: si cambias de router, la dirección cambia y hay que
+   imprimirlo otra vez.
+
+## Conectar la Raspberry a Wi-Fi
+
+Hazlo con el cable todavía conectado y tu sesión SSH abierta, así no pierdes el acceso si algo sale mal.
+
+```bash
+sudo raspi-config nonint do_wifi_country GT      # el país del Wi-Fi (sin esto puede quedar bloqueado)
+sudo rfkill unblock wifi
+nmcli -v                                         # si muestra versión, usa NetworkManager (Raspberry Pi OS reciente)
+sudo nmcli device wifi rescan
+sudo nmcli device wifi list                      # debe aparecer el nombre (SSID) de tu red
+sudo nmcli device wifi connect "NOMBRE_DEL_WIFI" password "CLAVE_DEL_WIFI"
+```
+
+Si el último comando falla con **`802-11-wireless-security.key-mgmt: property is missing`**, no es la clave: `nmcli` no pudo
+saber el tipo de seguridad (lista desactualizada o red que no ve). Crea la conexión diciéndole el tipo:
+
+```bash
+sudo nmcli connection add type wifi ifname wlan0 con-name "NOMBRE_DEL_WIFI" ssid "NOMBRE_DEL_WIFI" wifi-sec.key-mgmt wpa-psk wifi-sec.psk "CLAVE_DEL_WIFI"
+sudo nmcli connection up "NOMBRE_DEL_WIFI"
+```
+
+Para una red **oculta** agrega `802-11-wireless.hidden yes` al primer comando. Si `nmcli` no existe (versión antigua),
+usa `sudo raspi-config` → *System Options* → *Wireless LAN*.
+
+Comprueba con `nmcli device status` (`wlan0` debe decir `connected`) y `hostname -I` (verás una IP por cada conexión).
+
+Para saber:
+- **La IP del Wi-Fi no es la del cable.** Cada interfaz tiene su propia IP y su propia **MAC**: si reservaste una IP fija para
+  el cable, reserva otra con la MAC del Wi-Fi (`ip link show wlan0`).
+- **Banda:** una Raspberry Pi 4 usa 2,4 y 5 GHz; un Pi 3 o Zero solo 2,4 GHz. Con un hotspot de celular usa 2,4 GHz.
+- **Cada router tiene su propia red.** Al cambiar de router la IP cambia (por ejemplo de `192.168.0.x` a `192.168.3.x`).
+  Las direcciones que terminan en `.1` (como `192.168.3.1`) suelen ser **el router**, no la Raspberry.
+- **Sin router en la escuela:** el instalador puede crear su propia red «Quetzal-Escuela» con `--hotspot`.
+
+## Detener o desactivar el nodo en Windows
+
+Abre PowerShell **como administrador** (el nodo corre como la tarea programada «Quetzal - Nodo escolar»):
+
+```powershell
+Stop-ScheduledTask -TaskName "Quetzal - Nodo escolar"        # detenerlo ahora (vuelve al reiniciar la PC)
+Disable-ScheduledTask -TaskName "Quetzal - Nodo escolar"     # que no arranque más al prender la PC
+Enable-ScheduledTask -TaskName "Quetzal - Nodo escolar"      # volver a permitirlo
+Start-ScheduledTask -TaskName "Quetzal - Nodo escolar"       # arrancarlo
+```
+
+Para comprobar que quedó detenido: `Invoke-RestMethod http://localhost/api/node/status` debe fallar con «No es posible conectar
+con el servidor remoto». **Antes de detenerlo** mira `pending_changes`: si es mayor que 0, sincroniza primero. Quitarlo del todo:
+`desinstalar-windows.cmd` (conserva `C:\Quetzal\data`).
+
+Si en la misma red hay **dos nodos** (una PC con Windows y una Raspberry), los dos intentan llamarse `quetzal.local`: deja uno
+detenido o cambia `"hostName"` en uno de los `config.json`.
+
+## Solución de problemas
+
+| Lo que ves | Qué pasa | Qué hacer |
+|---|---|---|
+| `ssh`: **REMOTE HOST IDENTIFICATION HAS CHANGED** | Windows recuerda la huella de otra máquina que antes tenía esa IP (o la Raspberry se reinstaló). | Comprueba que es tu nodo: abre `http://IP/api/node/status` y mira en el router que la MAC y el nombre son los de la Raspberry (MAC que empiece por `B8:27:EB`, `DC:A6:32`, `E4:5F:01`, `D8:3A:DD` o `2C:CF:67`). Si coinciden, `ssh-keygen -R IP` y vuelve a conectar (`yes`). Si no coinciden, **no entres**: esa IP la tomó otro equipo. |
+| `ssh`: **Connection refused** (puerto 22) | Ese equipo no tiene SSH encendido. Un nodo en **Windows** tampoco lo tiene. | Windows: se actualiza con `actualizar-windows.cmd`, sin SSH. Raspberry **sin monitor ni teclado**: saca la tarjeta SD, y en la unidad `bootfs` crea un archivo vacío llamado exactamente `ssh`; al encender, SSH queda activo. |
+| Al ejecutar `bash ~/quetzal/...` en PowerShell sale «WSL ... execvpe(/bin/bash) failed» | Ejecutaste el comando **en tu computadora Windows**, no en la Raspberry. | Primero entra con `ssh quetzal@IP`; los comandos de `install.sh` se ejecutan **ya dentro** de la Raspberry. |
+| No sé la IP del nodo | Cambió al cambiar de router, o tomó otra. | `ping quetzal.local` (muestra la IP), `arp -a`, o la lista de dispositivos/DHCP del router (nombre `quetzal` o `raspberrypi`). `http://IP/cartel` muestra la dirección y un QR. **Reserva una IP fija** para la MAC del nodo en el router (reserva DHCP / «IP estática») y desactiva el «aislamiento de clientes» (AP isolation), o las tablets no lo ven. |
+| `nmcli`: `key-mgmt: property is missing` | `nmcli` no pudo saber el tipo de seguridad de la red. | Ver «Conectar la Raspberry a Wi-Fi» (crear la conexión indicando `wpa-psk`). |
+| **No puedo entrar por SSH usando el Wi-Fi** | Tu PC está en otra red que la IP del Wi-Fi de la Raspberry, o el router/hotspot tiene **aislamiento de clientes** (los equipos no se ven entre sí). | Conecta tu PC a **la misma red** y prueba `ping IP-DEL-WIFI`. Si no responde estando en la misma red, desactiva el aislamiento. Para administrar, usa el cable cuando puedas; el Wi-Fi es para las tablets. `quetzal.local` solo se resuelve dentro de la misma red. |
+| **Sincronizar dice «no hay conexión a internet»** teniendo cable y Wi-Fi conectados | La Raspberry manda el internet por la conexión que **no tiene salida**. | `ip route` (la línea `default via ... dev ...` con menor `metric` es la que usa) y `ping -c 2 -I eth0 8.8.8.8` / `ping -c 2 -I wlan0 8.8.8.8` (el que responde tiene internet). Deja **una sola conexión** con internet para sincronizar (`sudo nmcli connection down "Wired connection 1"`), o sube la prioridad de la buena (`sudo nmcli connection modify "NOMBRE" ipv4.route-metric 700`). Si el `ping` a `8.8.8.8` funciona pero `github.com` no, es el DNS: `sudo nmcli connection modify "NOMBRE" ipv4.dns "8.8.8.8 1.1.1.1" ipv4.ignore-auto-dns yes` y `sudo nmcli connection up "NOMBRE"`. |
+| `api/node/status` dice `"rest": false` | Aún no sincronizó, o alguna clase de estudiantes activos **no tiene contraseña de clase**. | Sincroniza con internet. Si sigue en `false`, revisa en la app (admin/docente) que **todas** las clases tengan contraseña de clase: mientras una no la tenga, el nodo usa el modo anterior (PIN) para toda la escuela. |
+| Los **recursos de los cursos** (video, PDF, H5P) no cargan sin internet | Versiones anteriores a **v1.0.198** los pedían a la nube. O los archivos aún no se descargaron. | Actualiza (`bash ~/quetzal/school-node/install.sh --update`). Mira `pending.files` en `api/node/status`: debe ser `0`; si no, sincroniza con internet hasta que llegue a 0. |
+| Al comentar sale «No tienes permiso, avisa al administrador» | Versiones anteriores a v1.0.198 mostraban ese texto. Los comentarios y notas **no existen sin internet**. | Actualiza: ahora dice «Esto no está disponible sin internet». Comenta cuando el nodo tenga internet. Lo mismo con subir proyecto y reaccionar, que de momento solo funcionan en `/?modo=pin`. |
+| La **foto de perfil** no se ve | Las fotos se descargan en la sincronización; sin ella se ve el ícono. | Sincroniza **con internet** (v1.0.198 o posterior) y recarga la app. |
+| El **docente** entra con «credenciales inválidas» | No fijó su PIN, o el nodo todavía no lo recibió. | Debe fijarlo **con internet** en su Perfil (tarjeta «PIN para entrar sin internet»), con **correo y ese PIN** (no la contraseña de su cuenta), y sincronizar. En la nube deben estar corridos `migrations/teacher-node-pin.sql` y desplegado `node-sync` con todos sus archivos. Un administrador que no esté **asignado a una clase de esa escuela** no entra por aquí. Para ver qué recibió el nodo: `cd ~/quetzal/school-node && node -e "const D=require('better-sqlite3');const db=new D('data/node.db',{readonly:true});console.log('entradas de docentes:',db.prepare('select count(*) n from rest_teacher_logins').get().n,'| docentes:',db.prepare('select count(*) n from rest_rows where tbl=?').get('teachers').n)"`. Si «entradas de docentes» es 0, la nube no envió los PIN; si «docentes» es 0, ese docente no tiene clases asignadas en esa escuela. |
+| Fecha u hora incorrecta tras un apagón | La Raspberry no tiene reloj propio y sin internet puede desfasarse. | Cuando vuelva el internet se corrige sola. Mientras tanto afecta el día del cofre diario y la fecha de los avisos. |
 
 ## Requisitos
 

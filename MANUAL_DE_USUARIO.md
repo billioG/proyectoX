@@ -65,6 +65,7 @@ Si tu escuela tiene un **nodo escolar** (una computadora o Raspberry Pi con la a
 *   **Entrar:** con tu **usuario** y la **contraseña de tu clase**, igual que con internet.
 *   **Qué puedes hacer:** ver Inicio, Cursos y tu Perfil, completar lecciones (+10 XP al instante), abrir tu **cofre diario** y jugar la **Práctica** del Centro de Juego.
 *   **Qué no hay sin internet:** retos contra compañeros, asistente con IA y notificaciones. Esas pantallas salen vacías.
+*   **Los cursos y las fotos:** los videos y PDF salen del nodo; las **fotos de perfil** aparecen después de que el nodo se sincronice con internet al menos una vez.
 *   **Aviso de abajo a la izquierda:** te dice si ya se subió todo a la nube. Se sincroniza solo cuando hay internet; también puedes tocar **Sincronizar ahora**.
 
 ### 👨‍🏫 Docentes
