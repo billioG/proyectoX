@@ -205,6 +205,9 @@ export function createPolicy({ store, projects = null }) {
     && typeof w.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(w.date) && Math.abs(Date.parse(`${w.date}T00:00:00Z`) - Date.now()) <= 45 * dayMs;
 
   const readRules = {
+    student_companions: (ctx, r) => r.student_id === ctx.uid,
+    student_cosmetics: (ctx, r) => r.student_id === ctx.uid,
+    cosmetic_items: () => true,
     attendance_waivers: (ctx, r) => ctx.role === 'admin' || r.teacher_id === ctx.uid,
     exams: (ctx, r) => ctx.role === 'admin' || (ctx.role === 'teacher' && r.teacher_id === ctx.uid),
     exam_results: (ctx, r) => (staff(ctx) ? examOwner(ctx, examById(r.exam_id)) : r.student_id === ctx.uid),

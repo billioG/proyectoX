@@ -11,7 +11,7 @@ const CRITERIA = ['creativity', 'clarity', 'functionality', 'teamwork', 'social_
 const invalid = (message) => new RestError(400, message, 'P0001');
 const unavailable = (what) => new RestError(400, `${what} aún no está disponible sin internet`, 'P0001');
 
-export function createRpcs({ store, xp, now = Date.now, reactions = null }) {
+export function createRpcs({ store, xp, now = Date.now, reactions = null, companion = null }) {
   const progress = createProgress({ store, now });
   const studentOnly = (ctx, what) => { if (ctx?.role !== 'student') throw unavailable(what); };
 
@@ -25,6 +25,13 @@ export function createRpcs({ store, xp, now = Date.now, reactions = null }) {
       const row = store.all(ctx.role === 'student' ? 'students' : 'teachers').find((s) => s.id === ctx.uid);
       return { streak: row?.streak || 0, changed: false, lastLogin: row?.last_login ?? null };
     },
+
+    // Mascota: mismas reglas y mensajes que la nube; se ve al instante y la nube la aplica al sincronizar (companion.js).
+    choose_companion: (args, ctx) => companion.perform('choose_companion', args, ctx),
+    buy_companion_egg: (args, ctx) => companion.perform('buy_companion_egg', args, ctx),
+    set_active_companion: (args, ctx) => companion.perform('set_active_companion', args, ctx),
+    buy_cosmetic: (args, ctx) => companion.perform('buy_cosmetic', args, ctx),
+    equip_cosmetic: (args, ctx) => companion.perform('equip_cosmetic', args, ctx),
 
     // Mis notas de exámenes (el estudiante): el examen sin su clave y mi resultado.
     my_exam_results: (args, ctx) => {

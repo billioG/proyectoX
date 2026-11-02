@@ -30,6 +30,9 @@ export const TABLE_COLUMNS: Record<string, string[]> = {
   lesson_completions: ['id', 'lesson_id', 'student_id', 'completed_at', 'score', 'status', 'raw_data'],
   announcements: ANNOUNCEMENT_COLUMNS,
   announcement_reads: ['id', 'announcement_id', 'user_id', 'read_at'],
+  student_companions: ['id', 'student_id', 'species', 'obtained_at'],
+  student_cosmetics: ['id', 'student_id', 'item_id', 'acquired_at'],
+  cosmetic_items: ['id', 'slot', 'name', 'price', 'min_stage', 'sort'],
   attendance_waivers: ['id', 'teacher_id', 'date', 'reason', 'status', 'admin_comment', 'created_at', 'school_code', 'grade', 'section', 'updated_at'],
   exams: ['id', 'teacher_id', 'school_code', 'grade', 'section', 'title', 'bimestre', 'question_count', 'answer_key', 'points', 'created_at'],
   exam_results: ['id', 'exam_id', 'student_id', 'answers', 'correct', 'wrong', 'blank', 'score', 'scanned_by', 'scanned_at'],
@@ -112,6 +115,17 @@ export async function pullTables(
   for (const part of chunk(out.resource_comments.map((c) => c.id))) {
     const likes = await fetchAll((from, to) => admin.from('resource_comment_likes').select(list('resource_comment_likes')).in('comment_id', part).order('comment_id').order('user_id').range(from, to));
     out.resource_comment_likes.push(...likes.map((l: any) => ({ ...l, id: `${l.comment_id}:${l.user_id}` })));
+  }
+  // Mascotas y accesorios de los estudiantes de la escuela, y el catálogo de accesorios (precios y etapas viven solo en la nube). La clave
+  // de las dos tablas de estudiantes es compuesta; el nodo usa «estudiante:especie» como id.
+  out.cosmetic_items = await fetchAll((from, to) => admin.from('cosmetic_items').select(list('cosmetic_items')).order('id').range(from, to));
+  out.student_companions = [];
+  out.student_cosmetics = [];
+  for (const part of chunk(students)) {
+    const comps = await fetchAll((from, to) => admin.from('student_companions').select('student_id, species, obtained_at').in('student_id', part).order('student_id').order('species').range(from, to));
+    out.student_companions.push(...comps.map((c: any) => ({ ...c, id: `${c.student_id}:${c.species}` })));
+    const cos = await fetchAll((from, to) => admin.from('student_cosmetics').select('student_id, item_id, acquired_at').in('student_id', part).order('student_id').order('item_id').range(from, to));
+    out.student_cosmetics.push(...cos.map((c: any) => ({ ...c, id: `${c.student_id}:${c.item_id}` })));
   }
   // Permisos de asistencia de la escuela de los últimos 120 días (su estado cambia cuando el administrador los aprueba en línea).
   out.attendance_waivers = await fetchAll((from, to) => admin.from('attendance_waivers').select(list('attendance_waivers')).eq('school_code', school).gte('date', new Date(Date.now() - 120 * 24 * 3600_000).toISOString().slice(0, 10)).order('id').range(from, to));

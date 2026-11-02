@@ -39,6 +39,7 @@ import { isAttendanceTable, planAttendanceOps } from './attendance.ts';
 import { isGroupTable, planGroupOps } from './groups.ts';
 import { isExamTable, planExamOps } from './exams.ts';
 import { isWaiverTable, planWaiverOps } from './waivers.ts';
+import { isCompanionFn, validateCompanionEvent } from './companion.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -504,6 +505,16 @@ Deno.serve(async (req) => {
       if (Date.now() - rpcStartedAt > 40_000) break;
       const seq = Number(raw?.seq);
       if (!Number.isInteger(seq)) continue;
+      // Mascota: la forma se valida aquí y las reglas del juego (gemas, etapas...) las aplica apply_node_companion (migrations/node-companion.sql).
+      // Un error de regla (SQLSTATE P0001) es definitivo: el nodo lo descarta y el estado de la nube manda en la siguiente bajada.
+      if (isCompanionFn(raw?.fn)) {
+        const cv = validateCompanionEvent(raw, { studentIds });
+        if (!cv.ok) { rpcErrors.push({ seq, error: cv.error, permanent: true }); continue; }
+        const { error } = await admin.rpc('apply_node_companion', cv.call);
+        if (error) { rpcErrors.push({ seq, error: error.message, permanent: error.code === 'P0001' }); continue; }
+        appliedRpc.push(seq);
+        continue;
+      }
       if (raw?.fn !== 'log_practice') { rpcErrors.push({ seq, error: 'Función no soportada', permanent: true }); continue; }
       const v = validatePracticeEvent(raw, { studentIds, now: Date.now() });
       if (!v.ok) { rpcErrors.push({ seq, error: v.error, permanent: true }); continue; }

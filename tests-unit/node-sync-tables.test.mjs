@@ -98,6 +98,9 @@ test('baja solo lo de la escuela del nodo, con las columnas permitidas y sin dat
       { id: 'a4', sender_id: 'admin', sender_role: 'admin', audience: 'all', title: 'VIEJO', message: 'x', created_at: '2020-01-01T00:00:00Z' },
     ],
     announcement_reads: [{ id: 1, announcement_id: 'a1', user_id: 's1' }, { id: 2, announcement_id: 'a1', user_id: 's9' }, { id: 3, announcement_id: 'a3', user_id: 's9' }],
+    cosmetic_items: [{ id: 'gorra', slot: 'head', name: 'Gorra', price: 150, min_stage: 1, sort: 20 }],
+    student_companions: [{ student_id: 's1', species: 'jaguar', obtained_at: '2026-10-01' }, { student_id: 's9', species: 'MASCOTA-AJENA', obtained_at: '2026-10-01' }],
+    student_cosmetics: [{ student_id: 's1', item_id: 'gorra', acquired_at: '2026-10-02' }, { student_id: 's9', item_id: 'COSMETICO-AJENO', acquired_at: '2026-10-02' }],
     attendance_waivers: [{ id: 'w1', teacher_id: 't1', school_code: 'ESC1', date: new Date().toISOString().slice(0, 10), reason: 'ok', status: 'pending' }, { id: 'w2', teacher_id: 't2', school_code: 'ESC2', date: new Date().toISOString().slice(0, 10), reason: 'PERMISO-AJENO', status: 'pending' }],
     exams: [{ id: 'e1', school_code: 'ESC1', title: 'Mate', answer_key: 'ABC' }, { id: 'e2', school_code: 'ESC2', title: 'EXAMEN-AJENO', answer_key: 'AAA' }],
     exam_results: [{ id: 'r1', exam_id: 'e1', student_id: 's1', answers: 'ABC' }, { id: 'r2', exam_id: 'e2', student_id: 's9', answers: 'NOTA-EXAMEN-AJENA' }],
@@ -127,6 +130,9 @@ test('baja solo lo de la escuela del nodo, con las columnas permitidas y sin dat
   assert.deepEqual(ids('lesson_completions'), ['lc1']);
   assert.deepEqual(ids('student_badges'), [1]);
   assert.deepEqual(ids('badges'), [1]);
+  assert.deepEqual(ids('cosmetic_items'), ['gorra']);
+  assert.deepEqual(ids('student_companions'), ['s1:jaguar'], 'el id es estudiante:especie y solo de la escuela');
+  assert.deepEqual(ids('student_cosmetics'), ['s1:gorra']);
   assert.deepEqual(ids('attendance_waivers'), ['w1'], 'solo los de la escuela');
   assert.deepEqual(ids('exams'), ['e1'], 'solo los exámenes de la escuela');
   assert.deepEqual(ids('exam_results'), ['r1'], 'solo las notas de esos exámenes');
@@ -136,7 +142,7 @@ test('baja solo lo de la escuela del nodo, con las columnas permitidas y sin dat
   assert.deepEqual(ids('resource_comment_likes'), ['k1:s1'], 'el id del «me gusta» es comentario:usuario');
   assert.deepEqual(ids('resource_notes'), ['n1'], 'solo las notas de estudiantes de la escuela'); 
   const text = JSON.stringify(t);
-  assert.doesNotMatch(text, /SECRETO|ana@x\.com|10\.0\.0\.1|client_metadata|"phone"|Zoe|Ajeno|Ajena|marta@escuela|base_salary|9999|AVISO-AJENO|VIEJO|GRUPO-DE-OTRA-ESCUELA|GRUPO-AJENO|NOTA-AJENA|EXAMEN-AJENO|NOTA-EXAMEN-AJENA|PERMISO-AJENO/);
+  assert.doesNotMatch(text, /SECRETO|ana@x\.com|10\.0\.0\.1|client_metadata|"phone"|Zoe|Ajeno|Ajena|marta@escuela|base_salary|9999|AVISO-AJENO|VIEJO|GRUPO-DE-OTRA-ESCUELA|GRUPO-AJENO|NOTA-AJENA|EXAMEN-AJENO|NOTA-EXAMEN-AJENA|PERMISO-AJENO|MASCOTA-AJENA|COSMETICO-AJENO/);
 });
 
 test('las entradas de docentes llevan la huella del correo (igual que la del nodo), el PIN hasheado, y nunca el correo en claro', { skip }, async () => {

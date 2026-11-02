@@ -121,7 +121,9 @@ export function createStore({ db, schema }) {
     all: (tbl) => {
       const rows = load(tbl);
       const view = views.get(tbl);
-      return view ? rows.map(view()) : rows;
+      if (!view) return rows;
+      const m = view();
+      return typeof m === 'function' ? rows.map(m) : rows.map(m.map).concat(m.extra()); // la vista puede devolver { map, extra } para sumar filas
     },
     /** Las filas SIN la vista (lo que realmente guarda la réplica): para cuentas que ya aplican su propia corrección. */
     raw: (tbl) => load(tbl),

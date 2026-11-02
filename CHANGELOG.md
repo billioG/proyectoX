@@ -6,6 +6,7 @@ Al publicar una versión nueva, agrega una línea arriba de todo (ver CONTRIBUTI
 
 ## 2026-11-02
 
+- **Nodo escolar: la mascota funciona sin internet.** El estudiante elige su primera mascota, compra huevos con gemas, cambia de compañero y compra y se pone accesorios; las gemas se descuentan al instante y la nube aplica cada acción al sincronizar con las mismas reglas (si ya no es válida, manda el estado de la nube). **Requiere correr `migrations/node-companion.sql`** (archivo `6-ejecutar-node-companion.sql`) y volver a desplegar `node-sync` (ahora con `companion.ts`, 16 archivos). El chat de la mascota con IA, la tienda de temporada y el pase de temporada siguen necesitando internet. (v1.0.211)
 - **Nodo escolar: los permisos de asistencia se piden sin internet.** El docente solicita su permiso (de una clase o de toda la escuela) y queda pendiente; el administrador lo aprueba en línea y el estado baja al servidor en la siguiente sincronización. Requiere volver a desplegar `node-sync` (ahora con `waivers.ts`, 15 archivos). (v1.0.210)
 
 - **Nodo escolar: los exámenes con hoja de respuestas funcionan sin internet.** El docente crea el examen con su clave, califica escaneando las hojas y consulta las notas; el estudiante ve solo su nota (nunca la clave). Mismas reglas que la nube y todo se sube al sincronizar. Requiere volver a desplegar `node-sync` (ahora con `exams.ts`, 14 archivos). (v1.0.209)

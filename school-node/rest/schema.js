@@ -173,6 +173,24 @@ export const SCHEMA = {
   ai_evaluations: emptyTable(),
   ai_code_evaluations: emptyTable(),
 
+  // Mascota (compañero): solo lectura para la app; se cambia con las funciones choose_companion, buy_companion_egg, etc. (companion.js).
+  // En la nube la clave de estas dos es compuesta; aquí el id es «estudiante:especie» / «estudiante:accesorio» (la bajada lo arma igual).
+  student_companions: table({
+    pk: 'id',
+    columns: ['id', 'student_id', 'species', 'obtained_at'],
+    relations: {},
+  }),
+  student_cosmetics: table({
+    pk: 'id',
+    columns: ['id', 'student_id', 'item_id', 'acquired_at'],
+    relations: {},
+  }),
+  cosmetic_items: table({
+    pk: 'id',
+    columns: ['id', 'slot', 'name', 'price', 'min_stage', 'sort'],
+    relations: {},
+  }),
+
   // Permisos de asistencia: el docente los pide (siempre «pendientes»; el administrador los aprueba en línea). No se editan ni se borran sin internet.
   attendance_waivers: table({
     pk: 'id',
