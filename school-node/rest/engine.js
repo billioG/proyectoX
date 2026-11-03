@@ -108,11 +108,16 @@ export function createEngine({ schema, store, policy = {} }) {
     }
   }
 
-  const relOf = (t, name) => (t.relations && Object.hasOwn(t.relations, name) ? t.relations[name] : undefined);
+  // `tabla!columna` (PostgREST): cuando hay varias claves hacia la misma tabla (retador y rival), se elige por la columna; la clave del esquema es «tabla!columna».
+  const relOf = (t, name, hint = null) => {
+    if (!t.relations) return undefined;
+    if (hint && Object.hasOwn(t.relations, `${name}!${hint}`)) return t.relations[`${name}!${hint}`];
+    return Object.hasOwn(t.relations, name) ? t.relations[name] : undefined;
+  };
 
   /** Valor de una relación para una fila: objeto, lista o null. Solo mira filas que la política deja leer. */
   function related(ctx, t, row, node) {
-    const rel = relOf(t, node.name);
+    const rel = relOf(t, node.name, node.hint);
     if (!rel) throw err(400, 'PGRST200', `Could not find a relationship between the tables for ${node.name}`);
     const targets = visible(ctx, rel.table);
     if (rel.type === 'one') {
@@ -133,7 +138,7 @@ export function createEngine({ schema, store, policy = {} }) {
         out[node.alias] = (t.masked || []).includes(node.name) || row[node.name] === undefined ? null : row[node.name];
       }
       else {
-        const rel = relOf(t, node.name);
+        const rel = relOf(t, node.name, node.hint);
         const value = related(ctx, t, row, node);
         // `relación(count)` (PostgREST): cuántas filas relacionadas hay, como [{ count: n }].
         if (Array.isArray(value) && node.select.length === 1 && node.select[0].type === 'col' && node.select[0].name === 'count') { out[node.alias] = [{ count: value.length }]; continue; }

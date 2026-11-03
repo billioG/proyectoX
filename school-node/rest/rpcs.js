@@ -11,7 +11,7 @@ const CRITERIA = ['creativity', 'clarity', 'functionality', 'teamwork', 'social_
 const invalid = (message) => new RestError(400, message, 'P0001');
 const unavailable = (what) => new RestError(400, `${what} aún no está disponible sin internet`, 'P0001');
 
-export function createRpcs({ store, xp, now = Date.now, reactions = null, companion = null }) {
+export function createRpcs({ store, xp, now = Date.now, reactions = null, companion = null, duels = null }) {
   const progress = createProgress({ store, now });
   const studentOnly = (ctx, what) => { if (ctx?.role !== 'student') throw unavailable(what); };
 
@@ -32,6 +32,11 @@ export function createRpcs({ store, xp, now = Date.now, reactions = null, compan
     set_active_companion: (args, ctx) => companion.perform('set_active_companion', args, ctx),
     buy_cosmetic: (args, ctx) => companion.perform('buy_cosmetic', args, ctx),
     equip_cosmetic: (args, ctx) => companion.perform('equip_cosmetic', args, ctx),
+
+    // Retos Contrarreloj (duels.js): los de quiz, ortografía y depuración usan IA para crear el contenido y solo funcionan con internet.
+    accept_timed_math_duel: (args, ctx) => duels.accept(args, ctx),
+    start_timed_math_duel: (args, ctx) => duels.start(args, ctx),
+    submit_timed_math_result: (args, ctx) => duels.submit(args, ctx),
 
     // Mis notas de exámenes (el estudiante): el examen sin su clave y mi resultado.
     my_exam_results: (args, ctx) => {

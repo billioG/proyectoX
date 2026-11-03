@@ -41,6 +41,8 @@ export const TABLE_COLUMNS: Record<string, string[]> = {
   resource_comments: ['id', 'lesson_id', 'group_id', 'parent_id', 'author_id', 'author_name', 'author_role', 'content', 'attachment_url', 'created_at'],
   resource_comment_likes: ['comment_id', 'user_id', 'created_at'],
   resource_notes: ['id', 'lesson_id', 'student_id', 'content', 'updated_at', 'created_at'],
+  student_timed_math_duels: ['id', 'challenger_id', 'opponent_id', 'wager_gems', 'problem_count', 'status', 'winner_id', 'created_at', 'resolved_at'],
+  student_timed_math_results: ['id', 'duel_id', 'student_id', 'score', 'time_ms', 'completed_at'],
   badges: ['id', 'code', 'name', 'description', 'icon', 'category', 'criteria_type', 'criteria_value', 'created_at'],
   student_badges: ['id', 'student_id', 'badge_id', 'earned_at', 'celebrated'],
 };
@@ -142,6 +144,24 @@ export async function pullTables(
   const attSince = new Date(Date.now() - 120 * 24 * 3600_000).toISOString().slice(0, 10);
   out.attendance = await fetchAll((from, to) => admin.from('attendance').select(list('attendance')).eq('school_code', school).gte('date', attSince).order('id').range(from, to));
   out.resource_notes = await byIds('resource_notes', 'student_id', students);
+
+  // Retos Contrarreloj de los últimos 30 días de los estudiantes de la escuela. Los problemas y las horas de arranque (columnas internas: la app
+  // no las lee en la nube) bajan al nodo para poder jugar sin internet; la capa local no las muestra al navegador. El resultado no tiene id en
+  // la nube (clave compuesta): el nodo usa «duelo:estudiante».
+  const duelsSince = new Date(Date.now() - 30 * 24 * 3600_000).toISOString();
+  const duelCols = `${list('student_timed_math_duels')}, problems, problems_b, challenger_started_at, opponent_started_at`;
+  const duels = new Map<string, any>();
+  for (const column of ['challenger_id', 'opponent_id']) {
+    for (const part of chunk(students)) {
+      for (const d of await fetchAll((from, to) => admin.from('student_timed_math_duels').select(duelCols).in(column, part).gte('created_at', duelsSince).order('id').range(from, to))) duels.set(d.id, d);
+    }
+  }
+  out.student_timed_math_duels = [...duels.values()];
+  out.student_timed_math_results = [];
+  for (const part of chunk(out.student_timed_math_duels.map((d) => d.id))) {
+    const rs = await fetchAll((from, to) => admin.from('student_timed_math_results').select('duel_id, student_id, score, time_ms, completed_at').in('duel_id', part).order('duel_id').order('student_id').range(from, to));
+    out.student_timed_math_results.push(...rs.map((r: any) => ({ ...r, id: `${r.duel_id}:${r.student_id}` })));
+  }
 
   out.badges = await fetchAll((from, to) => admin.from('badges').select(list('badges')).order('id').range(from, to));
   out.student_badges = await byIds('student_badges', 'student_id', students);

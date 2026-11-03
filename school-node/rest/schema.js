@@ -163,7 +163,6 @@ export const SCHEMA = {
   comment_notifications: emptyTable(),
   student_duels: emptyTable(),
   student_hangman_duels: emptyTable(),
-  student_timed_math_duels: emptyTable(),
   student_debug_duels: emptyTable(),
   student_spelling_duels: emptyTable(),
   project_reaction_notifications: emptyTable(),
@@ -218,6 +217,26 @@ export const SCHEMA = {
     unique: [['exam_id', 'student_id']],
     defaults: { id: () => globalThis.crypto.randomUUID(), scanned_at: () => new Date().toISOString() },
     relations: { exams: { type: 'one', table: 'exams', fk: 'exam_id', ref: 'id' } },
+  }),
+
+  // Retos «Contrarreloj» entre estudiantes (duels.js). El reto lo crea la app con insert (retador, rival y apuesta); aceptar, jugar y enviar son
+  // funciones. Los problemas, las horas de arranque y cómo se liquidó se guardan en la fila pero NO son columnas: el navegador no las ve.
+  // La fila no va por la bandeja normal: sube como una «foto» del duelo (_rpc timed_math_duel).
+  student_timed_math_duels: table({
+    pk: 'id',
+    noPush: true,
+    columns: ['id', 'challenger_id', 'opponent_id', 'wager_gems', 'problem_count', 'status', 'winner_id', 'created_at', 'resolved_at'],
+    writable: ['challenger_id', 'opponent_id', 'wager_gems', 'status'],
+    defaults: { id: () => globalThis.crypto.randomUUID(), status: () => 'pending', problem_count: () => 10, winner_id: () => null, created_at: () => new Date().toISOString() },
+    relations: {
+      'students!challenger_id': { type: 'one', table: 'students', fk: 'challenger_id', ref: 'id' },
+      'students!opponent_id': { type: 'one', table: 'students', fk: 'opponent_id', ref: 'id' },
+    },
+  }),
+  student_timed_math_results: table({
+    pk: 'id',
+    columns: ['id', 'duel_id', 'student_id', 'score', 'time_ms', 'completed_at'],
+    relations: {},
   }),
 
   // Práctica ya guardada en la nube: INTERNA (nadie la lee directo; en la nube tampoco). Solo alimenta get_*_progress (progress.js).

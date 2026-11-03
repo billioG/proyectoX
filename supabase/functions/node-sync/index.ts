@@ -40,6 +40,7 @@ import { isGroupTable, planGroupOps } from './groups.ts';
 import { isExamTable, planExamOps } from './exams.ts';
 import { isWaiverTable, planWaiverOps } from './waivers.ts';
 import { isCompanionFn, validateCompanionEvent } from './companion.ts';
+import { isTimedMathFn, validateTimedMathEvent } from './timedmath.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -511,6 +512,15 @@ Deno.serve(async (req) => {
         const cv = validateCompanionEvent(raw, { studentIds });
         if (!cv.ok) { rpcErrors.push({ seq, error: cv.error, permanent: true }); continue; }
         const { error } = await admin.rpc('apply_node_companion', cv.call);
+        if (error) { rpcErrors.push({ seq, error: error.message, permanent: error.code === 'P0001' }); continue; }
+        appliedRpc.push(seq);
+        continue;
+      }
+      // Contrarreloj: la foto del duelo se valida aquí y apply_node_timed_math_duel (migrations/node-timed-math-duel.sql) recalcula los puntajes; el disparador de siempre liquida.
+      if (isTimedMathFn(raw?.fn)) {
+        const tv = validateTimedMathEvent(raw, { studentIds });
+        if (!tv.ok) { rpcErrors.push({ seq, error: tv.error, permanent: true }); continue; }
+        const { error } = await admin.rpc('apply_node_timed_math_duel', { p_snapshot: tv.snapshot });
         if (error) { rpcErrors.push({ seq, error: error.message, permanent: error.code === 'P0001' }); continue; }
         appliedRpc.push(seq);
         continue;

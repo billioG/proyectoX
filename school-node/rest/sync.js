@@ -106,7 +106,11 @@ export function applyRestPull(store, data, pushed = {}, { pendingReactions = new
     // en la sincronización siguiente ya viene de la nube y se reemplaza por su versión.
     const justAnnouncements = new Set(Array.isArray(data.applied?.announcements) ? data.applied.announcements : []);
     const justReads = new Set(Array.isArray(data.applied?.announcement_reads) ? data.applied.announcement_reads : []);
+    // Un duelo jugado aquí y aún sin confirmar (su foto sigue en la bandeja) no lo pisa la bajada.
+    const pendingDuels = store.pendingRpcRefs('timed_math_duel');
     const keepFor = {
+      student_timed_math_duels: (row) => pendingDuels.has(String(row.id)),
+      student_timed_math_results: (row) => pendingDuels.has(String(row.duel_id)),
       evaluations: (row) => pendingEvals.has(String(row.project_id)),
       announcements: (row) => justAnnouncements.has(row.id),
       announcement_reads: (row) => justReads.has(`${row.announcement_id}|${row.user_id}`),

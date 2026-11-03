@@ -130,7 +130,7 @@ test('proyectos y escritura: solo lectura en la prueba de concepto (nada de inse
 test('lo que la app pide al entrar y el nodo no tiene (anuncios, duelos, comentarios...) responde vacío, sin errores, y no se puede escribir', () => {
   const s = makeStore();
   for (const t of ['surveys', 'teacher_rocks', 'comment_notifications', 'student_duels', 'student_hangman_duels',
-    'student_timed_math_duels', 'student_debug_duels', 'student_spelling_duels', 'project_reaction_notifications', 'student_challenges',
+    'student_debug_duels', 'student_spelling_duels', 'project_reaction_notifications', 'student_challenges',
     'ai_evaluations', 'teacher_rock_completions', 'ai_code_evaluations']) {
     const r = run(s, 'GET', `/rest/v1/${t}?select=id,wager_gems,challenger:students!challenger_id(full_name)&opponent_id=eq.s1&status=eq.pending`, ana);
     assert.deepEqual(r.rows, [], t);
