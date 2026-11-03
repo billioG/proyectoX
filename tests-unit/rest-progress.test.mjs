@@ -8,7 +8,7 @@ const NOW = Date.parse('2026-11-04T15:00:00Z'); // miércoles
 const iso = (daysAgo, hour = 10) => new Date(NOW - daysAgo * 86400_000 + (hour - 15) * 3600_000).toISOString();
 const play = (student, competency, score, daysAgo) => ({ id: `${student}${competency}${daysAgo}${score}`, student_id: student, competency, score, played_at: iso(daysAgo) });
 
-function setup({ results = [], pending = [] } = {}) {
+function setup({ results = [], pending = [], retos = [], extra = {}, pendingDuels = {} } = {}) {
   const data = {
     students: [
       { id: 's1', full_name: 'Ana', school_code: 'ESC1', grade: 'Primero', section: 'A', status: 'activo' },
@@ -19,8 +19,10 @@ function setup({ results = [], pending = [] } = {}) {
     teacher_assignments: [{ teacher_id: 't1', school_code: 'ESC1', grade: 'Primero', section: 'A' }, { teacher_id: 't2', school_code: 'ESC1', grade: 'Segundo', section: 'B' }],
     schools: [{ code: 'ESC1', name: 'Escuela Uno' }],
     practice_results: results,
+    reto_plays: retos,
+    ...extra,
   };
-  return createProgress({ store: { all: (t) => data[t] || [], pending: () => pending }, now: () => NOW });
+  return createProgress({ store: { all: (t) => data[t] || [], raw: (t) => data[t] || [], pending: () => pending, pendingRpcRefs: (fn) => new Set(pendingDuels[fn] || []) }, now: () => NOW });
 }
 const T1 = { uid: 't1', role: 'teacher' };
 
@@ -84,4 +86,27 @@ test('mi progreso: por competencia con su serie semanal, racha de días seguidos
   assert.equal(lectura.weekly.at(-1).week, '2026-11-02', 'semanas desde el lunes');
   assert.equal(lectura.weekly.at(-1).n, 3);
   assert.equal(setup().getMyProgress({}, { uid: 's1', role: 'student' }).streak_days, 0);
+});
+
+test('los retos cuentan como en la nube: reto_n, competencias, alumnos con actividad; la racha y las prácticas solo cuentan práctica', () => {
+  const reto = (student, competency, ok, daysAgo, game = 'quiz') => ({ id: `${game}:${student}:${daysAgo}`, student_id: student, game, competency, ok, played_at: iso(daysAgo) });
+  const p = setup({ results: [play('s1', 'lectura', 1, 2)], retos: [reto('s1', 'lectura', 0.5, 3), reto('s2', 'matematica', 1, 1, 'timed_math'), reto('s2', 'lenguaje', 0, 2, 'hangman'), reto('s4', 'lectura', 1, 1)] });
+  const r = p.getGroupProgress({ p_school: 'ESC1', p_grade: 'Primero', p_section: 'A', p_days: 30 }, T1);
+  assert.deepEqual([r.active_students, r.practicing_students, r.practice_n, r.reto_n], [2, 1, 1, 3]);
+  assert.deepEqual(r.competencies.map((c) => [c.competency, c.plays, c.pct, c.students]), [['lectura', 2, 75, 1], ['matematica', 1, 100, 1], ['pensamiento', 0, null, 0], ['lenguaje', 1, 0, 1]]);
+  assert.deepEqual(r.students.map((s) => [s.full_name, s.practice_n, s.reto_n]).sort(), [['Ana', 1, 1], ['Beto', 0, 2]]);
+  assert.deepEqual(p.getGroupsProgress({ p_days: 30 }, T1).map((g) => [g.active, g.practicing, g.practice_n, g.reto_n]), [[2, 1, 1, 3]]);
+  const mine = p.getMyProgress({ p_weeks: 8 }, { uid: 's2', role: 'student' });
+  assert.deepEqual([mine.practice_total, mine.reto_total, mine.streak_days, mine.practice_7d, mine.last_practice_at], [0, 2, 0, 0, null]);
+});
+
+test('un duelo jugado aquí y aún sin subir cuenta una vez; cuando la nube lo confirma ya viene en reto_plays y no se cuenta doble', () => {
+  const duels = { student_timed_math_duels: [{ id: 'd1', problem_count: 10 }], student_timed_math_results: [{ id: 'd1:s1', duel_id: 'd1', student_id: 's1', score: 8, completed_at: iso(0) }],
+    student_hangman_duels: [{ id: 'h1' }], student_hangman_results: [{ id: 'h1:s2', duel_id: 'h1', student_id: 's2', solved: true, completed_at: iso(0) }] };
+  const args = { p_school: 'ESC1', p_grade: 'Primero', p_section: 'A', p_days: 30 };
+  const pending = setup({ extra: duels, pendingDuels: { timed_math_duel: ['d1'], hangman_duel: ['h1'] } }).getGroupProgress(args, T1);
+  assert.equal(pending.reto_n, 2);
+  assert.deepEqual(pending.competencies.map((c) => [c.competency, c.pct]), [['lectura', null], ['matematica', 80], ['pensamiento', null], ['lenguaje', 100]]);
+  const confirmed = setup({ extra: duels, retos: [{ id: 'timed_math:d1:s1', student_id: 's1', game: 'timed_math', competency: 'matematica', ok: 0.8, played_at: iso(0) }] }).getGroupProgress(args, T1);
+  assert.equal(confirmed.reto_n, 1, 'sin bandeja pendiente solo cuenta lo que bajó de la nube');
 });

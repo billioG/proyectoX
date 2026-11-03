@@ -48,7 +48,7 @@ function start() {
   const chip = document.createElement('div');
   chip.id = 'node-sync-chip';
   chip.setAttribute('role', 'status');
-  chip.innerHTML = '<span data-text></span><button type="button" data-sync>Sincronizar ahora</button><a href="/wifi" title="Conectar el servidor a una Wi-Fi (docentes)" style="color:inherit;font-size:.65rem;font-weight:800;text-decoration:underline">Wi-Fi</a><a href="/?modo=pin" title="Panel del docente del nodo (PIN, USB, restablecer PIN)" style="color:inherit;font-size:.65rem;font-weight:800;text-decoration:underline;white-space:nowrap">Docente</a>';
+  chip.innerHTML = '<span data-text></span><button type="button" data-sync>Sincronizar ahora</button><a href="/wifi" title="Conectar el servidor a una Wi-Fi (docentes)" style="color:inherit;font-size:.65rem;font-weight:800;text-decoration:underline">Wi-Fi</a>';
   document.body.appendChild(chip);
   const text = chip.querySelector('[data-text]');
   const button = chip.querySelector('[data-sync]');

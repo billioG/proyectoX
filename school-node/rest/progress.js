@@ -1,7 +1,7 @@
 // Progreso de práctica (lectura, matemática, pensamiento, lenguaje) calculado EN EL NODO con las mismas cuentas que las funciones de la nube
 // get_my_progress / get_group_progress / get_groups_progress (migrations/practice-progress.sql). Usa lo que bajó de la nube
 // (`practice_results`, internas: la app no las lee directo) más la práctica que los estudiantes hicieron aquí y todavía no sube.
-// Los retos entre estudiantes no existen sin internet: reto_n vale 0.
+// Los retos (kind 'reto') bajan de la nube ya calculados en `reto_plays` (internos) y se suman los jugados aquí que la nube aún no confirma (Contrarreloj y Ahorcado).
 import { RestError } from './query.js';
 
 const COMPETENCIES = ['lectura', 'matematica', 'pensamiento', 'lenguaje'];
@@ -23,13 +23,32 @@ export function createProgress({ store, now = Date.now }) {
     const out = [];
     for (const r of store.all('practice_results')) {
       const t = Date.parse(r.played_at);
-      if (ids.has(r.student_id) && t >= sinceMs && r.competency) out.push({ student_id: r.student_id, competency: r.competency, ok: Number(r.score), t });
+      if (ids.has(r.student_id) && t >= sinceMs && r.competency) out.push({ student_id: r.student_id, kind: 'practice', competency: r.competency, ok: Number(r.score), t });
     }
     for (const e of store.pending()) {
       if (e.table !== '_rpc' || e.op !== 'log_practice' || !ids.has(e.row?.student_id)) continue;
       const a = e.row.args || {};
       const t = Date.parse(a.p_played_at) || e.created_at;
-      if (t >= sinceMs && GAME_COMPETENCY[a.p_game] && a.p_total > 0) out.push({ student_id: e.row.student_id, competency: GAME_COMPETENCY[a.p_game], ok: a.p_correct / a.p_total, t });
+      if (t >= sinceMs && GAME_COMPETENCY[a.p_game] && a.p_total > 0) out.push({ student_id: e.row.student_id, kind: 'practice', competency: GAME_COMPETENCY[a.p_game], ok: a.p_correct / a.p_total, t });
+    }
+    // Retos: los que ya tiene la nube, y los jugados aquí cuyo duelo todavía está en la bandeja (si no, se contarían dos veces).
+    for (const r of store.all('reto_plays')) {
+      const t = Date.parse(r.played_at);
+      if (ids.has(r.student_id) && t >= sinceMs && r.competency) out.push({ student_id: r.student_id, kind: 'reto', competency: r.competency, ok: Number(r.ok), t });
+    }
+    const pendingTm = store.pendingRpcRefs?.('timed_math_duel') ?? new Set(), pendingHg = store.pendingRpcRefs?.('hangman_duel') ?? new Set();
+    if (pendingTm.size) {
+      const sizes = new Map(store.raw('student_timed_math_duels').map((d) => [d.id, Number(d.problem_count) || 10]));
+      for (const r of store.raw('student_timed_math_results')) {
+        const t = Date.parse(r.completed_at);
+        if (pendingTm.has(String(r.duel_id)) && ids.has(r.student_id) && t >= sinceMs) out.push({ student_id: r.student_id, kind: 'reto', competency: 'matematica', ok: Math.min(1, r.score / sizes.get(r.duel_id)), t });
+      }
+    }
+    if (pendingHg.size) {
+      for (const r of store.raw('student_hangman_results')) {
+        const t = Date.parse(r.completed_at);
+        if (pendingHg.has(String(r.duel_id)) && ids.has(r.student_id) && t >= sinceMs) out.push({ student_id: r.student_id, kind: 'reto', competency: 'lenguaje', ok: r.solved ? 1 : 0, t });
+      }
     }
     return out;
   }
@@ -38,6 +57,8 @@ export function createProgress({ store, now = Date.now }) {
   const canView = (ctx, school, grade, section) => ctx.role === 'admin'
     || store.all('teacher_assignments').some((a) => a.teacher_id === ctx.uid && a.school_code === school && a.grade === grade && a.section === section);
   const byComp = (list, c) => list.filter((p) => p.competency === c);
+  const practiceOf = (list) => list.filter((p) => p.kind === 'practice');
+  const retoOf = (list) => list.filter((p) => p.kind === 'reto');
 
   return {
     /** Progreso de UN grupo (pantalla de Progreso del docente). */
@@ -53,17 +74,17 @@ export function createProgress({ store, now = Date.now }) {
       const perStudent = students.map((s) => {
         const mine = cur.filter((p) => p.student_id === s.id);
         const last = mine.length ? Math.max(...mine.map((p) => p.t)) : null;
-        const everyOwn = all.filter((p) => p.student_id === s.id);
+        const everyOwn = practiceOf(all.filter((p) => p.student_id === s.id));
         return {
-          student_id: s.id, full_name: s.full_name, practice_n: mine.length, reto_n: 0, last_activity: last === null ? null : iso(last), pct: pct(mine.map((p) => p.ok)),
+          student_id: s.id, full_name: s.full_name, practice_n: practiceOf(mine).length, reto_n: retoOf(mine).length, last_activity: last === null ? null : iso(last), pct: pct(mine.map((p) => p.ok)),
           lectura: pct(byComp(mine, 'lectura').map((p) => p.ok)), matematica: pct(byComp(mine, 'matematica').map((p) => p.ok)),
           pensamiento: pct(byComp(mine, 'pensamiento').map((p) => p.ok)), lenguaje: pct(byComp(mine, 'lenguaje').map((p) => p.ok)),
           pct_prev: pct(prev.filter((p) => p.student_id === s.id).map((p) => p.ok)), last_practice: everyOwn.length ? iso(Math.max(...everyOwn.map((p) => p.t))) : null,
         };
       }).sort((a, b) => (a.last_activity === b.last_activity ? String(a.full_name).localeCompare(String(b.full_name), 'es') : a.last_activity === null ? 1 : b.last_activity === null ? -1 : a.last_activity < b.last_activity ? 1 : -1));
       return {
-        days, class_size: students.length, active_students: new Set(cur.map((p) => p.student_id)).size, practicing_students: new Set(cur.map((p) => p.student_id)).size,
-        practice_n: cur.length, reto_n: 0,
+        days, class_size: students.length, active_students: new Set(cur.map((p) => p.student_id)).size, practicing_students: new Set(practiceOf(cur).map((p) => p.student_id)).size,
+        practice_n: practiceOf(cur).length, reto_n: retoOf(cur).length,
         competencies: COMPETENCIES.map((c) => ({
           competency: c, plays: byComp(cur, c).length, pct: pct(byComp(cur, c).map((p) => p.ok)), pct_prev: pct(byComp(prev, c).map((p) => p.ok)),
           students: new Set(byComp(cur, c).map((p) => p.student_id)).size,
@@ -88,8 +109,8 @@ export function createProgress({ store, now = Date.now }) {
         const mine = plays(ids, since);
         const active = new Set(mine.map((p) => p.student_id)).size;
         return {
-          school_code: g.school_code, school_name: schools.get(g.school_code) || g.school_code, grade: g.grade, section: g.section, students: ids.length, active, practicing: active,
-          practice_n: mine.length, reto_n: 0, lectura: pct(byComp(mine, 'lectura').map((p) => p.ok)), matematica: pct(byComp(mine, 'matematica').map((p) => p.ok)),
+          school_code: g.school_code, school_name: schools.get(g.school_code) || g.school_code, grade: g.grade, section: g.section, students: ids.length, active, practicing: new Set(practiceOf(mine).map((p) => p.student_id)).size,
+          practice_n: practiceOf(mine).length, reto_n: retoOf(mine).length, lectura: pct(byComp(mine, 'lectura').map((p) => p.ok)), matematica: pct(byComp(mine, 'matematica').map((p) => p.ok)),
           pensamiento: pct(byComp(mine, 'pensamiento').map((p) => p.ok)), lenguaje: pct(byComp(mine, 'lenguaje').map((p) => p.ok)),
         };
       }).sort((a, b) => String(a.school_name).localeCompare(String(b.school_name), 'es') || String(a.grade).localeCompare(String(b.grade), 'es') || String(a.section).localeCompare(String(b.section), 'es'));
@@ -101,7 +122,7 @@ export function createProgress({ store, now = Date.now }) {
       const weeks = clamp(args?.p_weeks ?? 8, 2, 26, 8);
       const week0 = weekStart(now()) - (weeks - 1) * 7 * DAY;
       const mine = plays([ctx.uid], week0);
-      const dates = new Set(plays([ctx.uid], now() - 400 * DAY).map((p) => day(p.t)));
+      const dates = new Set(practiceOf(plays([ctx.uid], now() - 400 * DAY)).map((p) => day(p.t)));
       let streak = 0, d = dayStart(now());
       if (!dates.has(day(d))) d -= DAY;
       while (streak < 365 && dates.has(day(d))) { streak++; d -= DAY; }
@@ -111,15 +132,15 @@ export function createProgress({ store, now = Date.now }) {
       const comps = COMPETENCIES.map((c) => {
         const own = byComp(mine, c);
         return {
-          competency: c, practice_n: own.length, reto_n: 0, pct: pct(own.map((p) => p.ok)),
+          competency: c, practice_n: practiceOf(own).length, reto_n: retoOf(own).length, pct: pct(own.map((p) => p.ok)),
           pct_recent: pct(own.filter((p) => p.t >= recent).map((p) => p.ok)), pct_prev: pct(own.filter((p) => p.t < recent && p.t >= older).map((p) => p.ok)),
           weekly: weekList.map((w) => { const inWeek = own.filter((p) => weekStart(p.t) === w); return { week: day(w), n: inWeek.length, pct: pct(inWeek.map((p) => p.ok)) }; }),
         };
       });
       const weakest = comps.filter((c) => c.practice_n + c.reto_n >= 3).sort((a, b) => (a.pct === null ? 1 : b.pct === null ? -1 : a.pct - b.pct) || (b.practice_n - a.practice_n))[0]?.competency ?? null;
       return {
-        competencies: comps, streak_days: streak, practice_7d: mine.filter((p) => p.t >= now() - 7 * DAY).length, practice_total: mine.length, reto_total: 0,
-        last_practice_at: mine.length ? iso(Math.max(...mine.map((p) => p.t))) : null, weakest,
+        competencies: comps, streak_days: streak, practice_7d: practiceOf(mine).filter((p) => p.t >= now() - 7 * DAY).length, practice_total: practiceOf(mine).length, reto_total: retoOf(mine).length,
+        last_practice_at: practiceOf(mine).length ? iso(Math.max(...practiceOf(mine).map((p) => p.t))) : null, weakest,
       };
     },
   };

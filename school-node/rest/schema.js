@@ -264,6 +264,14 @@ export const SCHEMA = {
     relations: {},
   }),
 
+  // Retos ya jugados (los cinco juegos) de los estudiantes de la escuela, uno por fila y ya con el porcentaje de aciertos: INTERNOS, solo alimentan el progreso.
+  reto_plays: table({
+    pk: 'id',
+    hidden: true,
+    columns: ['id', 'student_id', 'game', 'competency', 'ok', 'played_at'],
+    relations: {},
+  }),
+
   // Práctica ya guardada en la nube: INTERNA (nadie la lee directo; en la nube tampoco). Solo alimenta get_*_progress (progress.js).
   practice_results: table({
     pk: 'id',

@@ -36,6 +36,7 @@ export const TABLE_COLUMNS: Record<string, string[]> = {
   attendance_waivers: ['id', 'teacher_id', 'date', 'reason', 'status', 'admin_comment', 'created_at', 'school_code', 'grade', 'section', 'updated_at'],
   exams: ['id', 'teacher_id', 'school_code', 'grade', 'section', 'title', 'bimestre', 'question_count', 'answer_key', 'points', 'created_at'],
   exam_results: ['id', 'exam_id', 'student_id', 'answers', 'correct', 'wrong', 'blank', 'score', 'scanned_by', 'scanned_at'],
+  reto_plays: ['id', 'student_id', 'game', 'competency', 'ok', 'played_at'],
   practice_results: ['id', 'student_id', 'game', 'competency', 'topic', 'correct', 'total', 'score', 'played_at'],
   attendance: ['id', 'student_id', 'teacher_id', 'school_code', 'grade', 'section', 'date', 'time', 'status', 'created_at'],
   resource_comments: ['id', 'lesson_id', 'group_id', 'parent_id', 'author_id', 'author_name', 'author_role', 'content', 'attachment_url', 'created_at'],
@@ -142,6 +143,26 @@ export async function pullTables(
   out.practice_results = [];
   for (const part of chunk(students)) {
     out.practice_results.push(...await fetchAll((from, to) => admin.from('practice_results').select(list('practice_results')).in('student_id', part).gte('played_at', practiceSince).order('id').range(from, to)));
+  }
+  // Retos jugados (los cinco juegos) de los últimos 60 días, uno por fila y con el porcentaje de aciertos ya calculado (como _student_plays de la nube): el nodo los suma
+  // a la práctica para que el Progreso del docente muestre lo mismo que en línea. Nadie los lee directo.
+  const RETO_SOURCES: Array<{ table: string; game: string; competency: string; embed: string; ok: (r: any) => number | null }> = [
+    { table: 'student_duel_answers', game: 'quiz', competency: 'lectura', embed: 'student_duels(question_count)', ok: (r) => (r.student_duels?.question_count > 0 ? Math.min(1, r.score / r.student_duels.question_count) : null) },
+    { table: 'student_hangman_results', game: 'hangman', competency: 'lenguaje', embed: '', ok: (r) => (r.solved ? 1 : 0) },
+    { table: 'student_spelling_results', game: 'spelling', competency: 'lenguaje', embed: '', ok: (r) => (r.correct ? 1 : 0) },
+    { table: 'student_debug_results', game: 'debug', competency: 'pensamiento', embed: '', ok: (r) => (r.correct ? 1 : 0) },
+    { table: 'student_timed_math_results', game: 'timed_math', competency: 'matematica', embed: 'student_timed_math_duels(problem_count)', ok: (r) => (r.student_timed_math_duels?.problem_count > 0 ? Math.min(1, r.score / r.student_timed_math_duels.problem_count) : null) },
+  ];
+  out.reto_plays = [];
+  for (const src of RETO_SOURCES) {
+    const cols = ['duel_id', 'student_id', src.game === 'quiz' || src.game === 'timed_math' ? 'score' : src.game === 'hangman' ? 'solved' : 'correct', 'completed_at', src.embed].filter(Boolean).join(', ');
+    for (const part of chunk(students)) {
+      const rows = await fetchAll((from, to) => admin.from(src.table).select(cols).in('student_id', part).gte('completed_at', practiceSince).order('duel_id').order('student_id').range(from, to));
+      for (const r of rows) {
+        const ok = src.ok(r);
+        if (ok !== null) out.reto_plays.push({ id: `${src.game}:${r.duel_id}:${r.student_id}`, student_id: r.student_id, game: src.game, competency: src.competency, ok, played_at: r.completed_at });
+      }
+    }
   }
   // Asistencia de los últimos 120 días de la escuela (cada docente ve solo la suya: lo decide la capa local).
   const attSince = new Date(Date.now() - 120 * 24 * 3600_000).toISOString().slice(0, 10);
