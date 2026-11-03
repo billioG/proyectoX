@@ -37,6 +37,8 @@ Cuando el nodo ya **sincronizó una vez** con la nube, tus estudiantes y docente
   contraseña de clase conocida**. Si alguna clase no la tiene, el nodo se queda en el modo anterior para que nadie pierda
   el acceso. Antes de la primera sincronización también funciona el modo anterior.
 
+**Una Raspberry por escuela:** cada servidor queda atado a UNA escuela por su token y su base de datos se reemplaza con los datos de esa escuela al sincronizar. Un docente que trabaja en dos escuelas necesita un servidor para cada una; no se debe cambiar el token de un servidor para usarlo en otra escuela (se perdería lo hecho sin internet que no se haya sincronizado).
+
 **Archivos y fotos:** los videos, PDF, imágenes y paquetes H5P/SCORM de los cursos se sirven desde el propio nodo (carpeta
 `data/content`, que baja la sincronización): hasta que `pending.files` de `/api/node/status` llegue a 0, esos archivos aún
 no están y no se verán sin internet. Las **fotos de perfil** se descargan al sincronizar (`data/photos`). Si una foto aún
