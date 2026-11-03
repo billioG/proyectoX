@@ -61,7 +61,8 @@ test('el paquete SCORM/H5P: la función serve-scorm-entry de la nube también re
   const r = await fetch(`${node.base}/functions/v1/serve-scorm-entry?path=${encodeURIComponent('scorm/index.html')}`);
   assert.equal(r.status, 200);
   assert.match(r.headers.get('content-type'), /text\/html/);
-  assert.equal(await r.text(), '<html>SCORM</html>');
+  // Como la función de la nube, el HTML de entrada sale con un <base href> hacia la carpeta del paquete (el iframe usa srcdoc y sus css/js son relativos).
+  assert.equal(await r.text(), `<base href="http://${new URL(node.base).host}/storage/v1/object/public/course-content/scorm/"><html>SCORM</html>`);
   assert.equal((await fetch(`${node.base}/functions/v1/serve-scorm-entry?path=${encodeURIComponent('../config.json')}`)).status, 404);
   assert.equal((await fetch(`${node.base}/functions/v1/serve-scorm-entry`)).status, 404);
 });

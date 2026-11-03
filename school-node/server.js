@@ -173,6 +173,20 @@ function serveFile(req, res, baseDir, rel) {
   fs.createReadStream(file).pipe(res);
 }
 
+// Punto de entrada de un paquete SCORM/HTML5: como la función serve-scorm-entry de la nube, entrega el HTML con un <base href> hacia la carpeta del paquete
+// (la app lo mete en un iframe con srcdoc, y sin el <base> sus css/js relativos se buscarían en la raíz del servidor).
+function serveScormEntry(res, rel, host) {
+  const file = path.resolve(CONTENT_DIR, rel);
+  if (!file.startsWith(CONTENT_DIR + path.sep) || !fs.existsSync(file) || !fs.statSync(file).isFile()) { res.writeHead(404); return res.end('No encontrado'); }
+  const folder = rel.slice(0, rel.lastIndexOf('/') + 1).split('/').map((x) => encodeURIComponent(x)).join('/');
+  const baseTag = `<base href="http://${host}/storage/v1/object/public/course-content/${folder}">`;
+  let html = fs.readFileSync(file, 'utf8');
+  html = /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, (m) => m + baseTag) : baseTag + html;
+  const body = Buffer.from(html, 'utf8');
+  res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Content-Length': body.length, 'Cache-Control': 'no-cache' });
+  res.end(body);
+}
+
 // index.html se entrega con las librerías de CDN cambiadas por las copias locales
 // (vendor/cdn/), para que la app arranque sin internet. Ver offline-assets.js.
 let indexCache = { mtimeMs: 0, html: '' };
@@ -776,6 +790,11 @@ const server = http.createServer(async (req, res) => {
     if (await restRoutes.handle(req, res, url)) return;
     if (await projectFilesHandler.handle(req, res, url)) return;
     if (await storageHandler.handle(req, res, url)) return;
+    // Subidas a otros depósitos de Supabase (foto de perfil, adjuntos de comentarios...): sin internet no se pueden guardar. El aviso de la app muestra este texto.
+    if (/^\/storage\/v1\/object\/(?!public\/|list\/|course-content\/|project-videos\/)[^/]+\//.test(url.pathname) && ['POST', 'PUT', 'DELETE'].includes(req.method)) {
+      req.resume();
+      return sendJson(res, 400, { statusCode: '400', error: 'sin_internet', message: 'Esto necesita internet: hazlo cuando el servidor de la escuela tenga conexión a la nube.' });
+    }
     const route = projectRoute(req.method, url.pathname) || api[`${req.method} ${url.pathname}`];
     if (route) return await route(req, res, url);
 
@@ -798,6 +817,7 @@ const server = http.createServer(async (req, res) => {
       let rel = null;
       try { rel = storageFile ? decodeURIComponent(storageFile[1]) : url.searchParams.get('path'); } catch { rel = null; }
       if (!rel) { res.writeHead(404); return res.end('No encontrado'); }
+      if (!storageFile) return serveScormEntry(res, rel, req.headers.host);
       return serveFile(req, res, CONTENT_DIR, rel);
     }
     const photoName = /^\/photos\/([^/]+)$/.exec(url.pathname)?.[1];

@@ -35,6 +35,9 @@ export function createRestLayer(db, { now = Date.now, random = Math.random, onCh
     return (row) => {
       const url = row.content_url;
       if (typeof url !== 'string') return row;
+      // Paquetes SCORM/HTML5: la app pide la dirección de la función de la nube (serve-scorm-entry) con fetch(); sin internet se pide al propio nodo.
+      const entry = /^https?:\/\/[^/]+\/functions\/v1\/serve-scorm-entry\?(.+)$/.exec(url);
+      if (entry) return { ...row, content_url: `/functions/v1/serve-scorm-entry?${entry[1]}` };
       // Lo que bajó de la nube (storage_base) y lo que el docente subió aquí (la dirección del nodo, con el nombre o la IP que usó).
       if (base && url.startsWith(base)) return { ...row, content_url: `/content/${url.slice(base.length)}` };
       const m = /^https?:\/\/[^/]+\/storage\/v1\/object\/public\/course-content\/(lessons\/.+)$/.exec(url);
