@@ -133,3 +133,36 @@ export function validatePracticeEvent(
     },
   };
 }
+
+// ============================================================
+// Foto de perfil cambiada en el nodo sin internet
+// ============================================================
+// La imagen sube a Storage con una URL firmada (acción profile_photo_upload_url) y después el nodo manda la función claim_first_profile_photo_reward con el NOMBRE de la imagen;
+// la nube arma la dirección pública ella misma y la aplica con apply_node_profile_photo (migrations/node-profile-photo.sql). `member` = el usuario es un estudiante de la escuela
+// del nodo o un docente asignado a ella (lo averigua index.ts con la base).
+export const PROFILE_PHOTO_FN = 'claim_first_profile_photo_reward';
+export const PROFILE_PHOTO_BUCKET = 'profile-photos';
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+
+export const isProfilePhotoFn = (fn: unknown): boolean => fn === PROFILE_PHOTO_FN;
+
+/** `<id del usuario>_<hora>.<extensión>`, el nombre que arma la app; el id es un UUID y el prefijo tiene que ser el del propio usuario. */
+export function validProfilePhotoName(name: unknown, userId: unknown): boolean {
+  if (typeof name !== 'string' || typeof userId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) return false;
+  return new RegExp('^' + userId + '_\\d{9,15}\\.(png|jpe?g|webp|gif)$', 'i').test(name);
+}
+
+export function validateProfilePhotoRequest(body: any, ctx: { member: boolean }): { ok: true; path: string } | { ok: false; error: string } {
+  if (!body || !validProfilePhotoName(body.name, body.user_id)) return { ok: false, error: 'El nombre de la foto no es válido' };
+  if (!ctx.member) return { ok: false, error: 'Ese usuario no es de la escuela de este nodo' };
+  if (!Number.isInteger(body.size) || body.size < 1 || body.size > MAX_PHOTO_BYTES) return { ok: false, error: 'La foto no debe superar 5MB' };
+  return { ok: true, path: body.name };
+}
+
+export function validateProfilePhotoEvent(raw: any, ctx: { member: boolean }): { ok: true; call: { p_user: string; p_name: string } } | { ok: false; error: string } {
+  if (!raw || raw.fn !== PROFILE_PHOTO_FN) return { ok: false, error: 'Acción no soportada' };
+  const name = raw.args?.p_name;
+  if (!validProfilePhotoName(name, raw.student_id)) return { ok: false, error: 'El nombre de la foto no es válido' };
+  if (!ctx.member) return { ok: false, error: 'Ese usuario no es de la escuela de este nodo' };
+  return { ok: true, call: { p_user: raw.student_id, p_name: name } };
+}

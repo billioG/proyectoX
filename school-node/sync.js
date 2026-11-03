@@ -17,6 +17,7 @@ import { restPush, applyRestPull } from './rest/sync.js';
 import { SCHEMA as REST_SCHEMA } from './rest/schema.js';
 import { createContentStore } from './content-upload.js';
 import { uploadContentFiles, toCloudUrl } from './content-sync.js';
+import { createProfilePhotoStore, uploadProfilePhotos } from './profile-photos.js';
 
 // Lo pendiente de subir a la nube (lo usa también la sincronización por USB).
 export function buildPush(db, { cloudUrl = '' } = {}) {
@@ -24,7 +25,9 @@ export function buildPush(db, { cloudUrl = '' } = {}) {
   // Cursos y recursos que el docente creó aquí: un recurso solo viaja cuando sus archivos ya están en la nube.
   const storageBase = getMeta(db, 'storage_base') || '';
   const blocked = createContentStore({ db, dir: '.' }).blockedLessonIds();
-  const rest = restPush(restStoreFor(db, REST_SCHEMA), { gate: (lessonId) => !blocked.has(String(lessonId).toLowerCase()), toCloudUrl: (u) => toCloudUrl(u, { storageBase, cloudUrl }) });
+  const photoStore = createProfilePhotoStore({ db, dir: '.' });
+  const photoState = (name) => { const r = photoStore.record(name); return !r || r.status === 'rejected' ? 'drop' : r.status === 'uploaded' ? 'ready' : 'wait'; };
+  const rest = restPush(restStoreFor(db, REST_SCHEMA), { photoState, gate: (lessonId) => !blocked.has(String(lessonId).toLowerCase()), toCloudUrl: (u) => toCloudUrl(u, { storageBase, cloudUrl }) });
   return {
     completions: [...db.prepare('SELECT lesson_id, student_id, score, status, updated_at FROM completions WHERE dirty = 1').all(), ...rest.completions],
     rest_seqs: rest.seqs,
@@ -50,6 +53,13 @@ export async function runSync(db, config, log = console.log) {
     if (files.uploaded || files.failed || files.rejected) log(`📤 Archivos de cursos: ${files.uploaded} subidos, ${files.rejected} rechazados, ${files.failed} se reintentan.`);
   } catch (e) {
     log('⚠️ Archivos de cursos: no se pudo intentar la subida:', e.message);
+  }
+  // Fotos de perfil cambiadas aquí: la imagen sube primero; el cambio y el premio viajan en esta misma sincronización cuando ya llegó.
+  try {
+    const ph = await uploadProfilePhotos(db, config, { log });
+    if (ph.uploaded || ph.failed || ph.rejected) log(`📤 Fotos de perfil: ${ph.uploaded} subidas, ${ph.rejected} rechazadas, ${ph.failed} se reintentan.`);
+  } catch (e) {
+    log('⚠️ Fotos de perfil: no se pudo intentar la subida:', e.message);
   }
   const push = buildPush(db, { cloudUrl: config.cloudUrl });
 

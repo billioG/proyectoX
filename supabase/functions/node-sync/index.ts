@@ -39,7 +39,7 @@ import { isAttendanceTable, planAttendanceOps } from './attendance.ts';
 import { isGroupTable, planGroupOps } from './groups.ts';
 import { isExamTable, planExamOps } from './exams.ts';
 import { isWaiverTable, planWaiverOps } from './waivers.ts';
-import { isCompanionFn, validateCompanionEvent } from './validators.ts';
+import { isCompanionFn, validateCompanionEvent, isProfilePhotoFn, validateProfilePhotoEvent, validateProfilePhotoRequest, PROFILE_PHOTO_BUCKET } from './validators.ts';
 import { isTimedMathFn, validateTimedMathEvent } from './duels.ts';
 import { isHangmanFn, validateHangmanEvent } from './duels.ts';
 
@@ -177,6 +177,23 @@ Deno.serve(async (req) => {
     const v = validateContentUploadRequest(body, { schoolCode: node.school_code, lessonSchool: () => lessonSchool });
     if (!v.ok) return reply({ error: v.error }, 400);
     const { data, error } = await admin.storage.from(BUCKET).createSignedUploadUrl(v.path, { upsert: true });
+    if (error || !data) return reply({ error: `No se pudo preparar la subida: ${error?.message || 'sin respuesta'}` }, 500);
+    return reply({ path: v.path, signed_url: data.signedUrl });
+  }
+
+  // Foto de perfil cambiada en el nodo: URL firmada de un solo archivo en el depósito de fotos, con el nombre que armó la app (<id>_<hora>.<ext>).
+  // Solo para un estudiante de la escuela del nodo o un docente asignado a ella.
+  const isSchoolMember = async (userId: string): Promise<boolean> => {
+    if (typeof userId !== 'string' || !/^[0-9a-f-]{36}$/i.test(userId)) return false;
+    const { data: st } = await admin.from('students').select('id').eq('id', userId).eq('school_code', node.school_code).maybeSingle();
+    if (st) return true;
+    const { data: ta } = await admin.from('teacher_assignments').select('id').eq('teacher_id', userId).eq('school_code', node.school_code).limit(1);
+    return !!ta?.length;
+  };
+  if (!usb && body?.action === 'profile_photo_upload_url') {
+    const v = validateProfilePhotoRequest(body, { member: await isSchoolMember(body?.user_id) });
+    if (!v.ok) return reply({ error: v.error }, 400);
+    const { data, error } = await admin.storage.from(PROFILE_PHOTO_BUCKET).createSignedUploadUrl(v.path, { upsert: true });
     if (error || !data) return reply({ error: `No se pudo preparar la subida: ${error?.message || 'sin respuesta'}` }, 500);
     return reply({ path: v.path, signed_url: data.signedUrl });
   }
@@ -513,6 +530,15 @@ Deno.serve(async (req) => {
         const cv = validateCompanionEvent(raw, { studentIds });
         if (!cv.ok) { rpcErrors.push({ seq, error: cv.error, permanent: true }); continue; }
         const { error } = await admin.rpc('apply_node_companion', cv.call);
+        if (error) { rpcErrors.push({ seq, error: error.message, permanent: error.code === 'P0001' }); continue; }
+        appliedRpc.push(seq);
+        continue;
+      }
+      // Foto de perfil: la imagen ya está en Storage; aquí se arma su dirección pública y apply_node_profile_photo (migrations/node-profile-photo.sql) la aplica y da el premio de la primera foto.
+      if (isProfilePhotoFn(raw?.fn)) {
+        const pv = validateProfilePhotoEvent(raw, { member: studentIds.has(raw?.student_id) || await isSchoolMember(raw?.student_id) });
+        if (!pv.ok) { rpcErrors.push({ seq, error: pv.error, permanent: true }); continue; }
+        const { error } = await admin.rpc('apply_node_profile_photo', { p_user: pv.call.p_user, p_url: `${SUPABASE_URL}/storage/v1/object/public/${PROFILE_PHOTO_BUCKET}/${pv.call.p_name}` });
         if (error) { rpcErrors.push({ seq, error: error.message, permanent: error.code === 'P0001' }); continue; }
         appliedRpc.push(seq);
         continue;

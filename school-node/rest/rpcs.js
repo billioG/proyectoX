@@ -11,7 +11,7 @@ const CRITERIA = ['creativity', 'clarity', 'functionality', 'teamwork', 'social_
 const invalid = (message) => new RestError(400, message, 'P0001');
 const unavailable = (what) => new RestError(400, `${what} aún no está disponible sin internet`, 'P0001');
 
-export function createRpcs({ store, xp, now = Date.now, reactions = null, companion = null, duels = null, hangman = null }) {
+export function createRpcs({ store, xp, now = Date.now, reactions = null, companion = null, duels = null, hangman = null, profilePhoto = null }) {
   const progress = createProgress({ store, now });
   const studentOnly = (ctx, what) => { if (ctx?.role !== 'student') throw unavailable(what); };
 
@@ -44,6 +44,12 @@ export function createRpcs({ store, xp, now = Date.now, reactions = null, compan
     check_hangman_letter: (args, ctx) => hangman.check(args, ctx),
     submit_hangman_result: (args, ctx) => hangman.submit(args, ctx),
     get_duel_fact: (args, ctx) => hangman.fact(args, ctx),
+
+    // Cambiar la foto de perfil (la imagen ya está guardada en el servidor, profile-photos.js): se ve al instante y la nube lo aplica al sincronizar.
+    claim_first_profile_photo_reward: (args, ctx) => {
+      if (!profilePhoto) throw unavailable('Cambiar la foto de perfil');
+      return profilePhoto.claim(args, ctx);
+    },
 
     // Mis notas de exámenes (el estudiante): el examen sin su clave y mi resultado.
     my_exam_results: (args, ctx) => {

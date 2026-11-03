@@ -24,6 +24,7 @@ import { friendlySyncError } from './sync-errors.js';
 import { createRestLayer } from './rest/index.js';
 import { createPhotos } from './rest/photos.js';
 import { createContentStore, createStorageHandler } from './content-upload.js';
+import { createProfilePhotoStore, createProfilePhotoHandler } from './profile-photos.js';
 import { createProjectFiles, createProjectFilesHandler, projectFileKind } from './project-files.js';
 import { POLYFILLS } from './browser-polyfills.js';
 import { createWifi, createNmcliRunner } from './wifi.js';
@@ -83,7 +84,8 @@ const restProjects = {
     }
   },
 };
-restLayer = createRestLayer(db, { projects: restProjects });
+const profilePhotoStore = createProfilePhotoStore({ db, dir: path.resolve(config.dataDir, 'profile-photos') });
+restLayer = createRestLayer(db, { projects: restProjects, profilePhotos: profilePhotoStore });
 const restStore = restLayer.store;
 // La app real solo se monta sobre la capa local cuando la réplica ya tiene a los estudiantes y las contraseñas de
 // clase; mientras tanto el nodo se comporta como antes (pantalla propia con PIN).
@@ -111,6 +113,7 @@ const wifiRoute = (fn) => async (req, res, url) => {
 };
 const contentStore = createContentStore({ db, dir: CONTENT_DIR });
 const storageHandler = createStorageHandler({ store: contentStore, auth: restLayer.auth });
+const profilePhotoHandler = createProfilePhotoHandler({ store: profilePhotoStore, auth: restLayer.auth });
 const projectFilesHandler = createProjectFilesHandler({ store: projectFiles, auth: restLayer.auth, reserveBytes: (projectLimits.minFreeDiskMB ?? 2048) * 1024 * 1024 });
 const photosStore = createPhotos({ db, dir: path.resolve(config.dataDir, 'photos') });
 const teacherStore = createTeacherStore(db, { hashPin: (pin, salt) => hashPin(pin, salt), verifySetupCode: (code) => verifyTeacherCode(code) });
@@ -432,7 +435,7 @@ const api = {
       completions: db.prepare('SELECT COUNT(*) n FROM completions WHERE dirty = 1').get().n,
       files: db.prepare('SELECT COUNT(*) n FROM files WHERE downloaded = 0').get().n,
       // Archivos de cursos que el docente subió aquí y faltan por llegar a la nube, y los que la nube rechazó (con el motivo).
-      uploads: contentStore.pendingCount(),
+      uploads: contentStore.pendingCount() + profilePhotoStore.pendingCount(),
       uploads_rejected: contentStore.rejected().map((r) => ({ path: r.path, error: r.error })),
     },
   }),
@@ -790,8 +793,9 @@ const server = http.createServer(async (req, res) => {
     if (await restRoutes.handle(req, res, url)) return;
     if (await projectFilesHandler.handle(req, res, url)) return;
     if (await storageHandler.handle(req, res, url)) return;
+    if (await profilePhotoHandler.handle(req, res, url)) return; // foto de perfil: subir y ver (profile-photos.js)
     // Subidas a otros depósitos de Supabase (foto de perfil, adjuntos de comentarios...): sin internet no se pueden guardar. El aviso de la app muestra este texto.
-    if (/^\/storage\/v1\/object\/(?!public\/|list\/|course-content\/|project-videos\/)[^/]+\//.test(url.pathname) && ['POST', 'PUT', 'DELETE'].includes(req.method)) {
+    if (/^\/storage\/v1\/object\/(?!public\/|list\/|course-content\/|project-videos\/|profile-photos\/)[^/]+\//.test(url.pathname) && ['POST', 'PUT', 'DELETE'].includes(req.method)) {
       req.resume();
       return sendJson(res, 400, { statusCode: '400', error: 'sin_internet', message: 'Esto necesita internet: hazlo cuando el servidor de la escuela tenga conexión a la nube.' });
     }

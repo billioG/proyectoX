@@ -66,12 +66,12 @@ test('la lección SCORM apunta al nodo y el HTML de entrada sale con su <base hr
   assert.equal((await fetch(`${node.base}/functions/v1/serve-scorm-entry`)).status, 404);
 });
 
-test('subir a un depósito que el nodo no tiene (foto de perfil) responde un aviso claro, no «Not Found»; los depósitos de siempre no cambian', { skip, timeout: 60000 }, async () => {
+test('subir a un depósito que el nodo no tiene (adjuntos de comentarios) responde un aviso claro, no «Not Found»; los depósitos de siempre no cambian', { skip, timeout: 60000 }, async () => {
   const node = await startNode({ rest });
   const l = await node.api('/functions/v1/student-login', { method: 'POST', body: { username: 'ana1', password: 'clase123' } });
   const token = (await node.api('/auth/v1/verify', { method: 'POST', body: { type: 'magiclink', token_hash: l.data.token_hash } })).data.access_token;
   const fd = new FormData(); fd.append('cacheControl', '3600'); fd.append('', new File([Buffer.alloc(100, 1)], 'foto.png'));
-  const r = await fetch(`${node.base}/storage/v1/object/profile-photos/s1_123.png`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd });
+  const r = await fetch(`${node.base}/storage/v1/object/comment-attachments/s1_123.png`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd });
   assert.equal(r.status, 400);
   assert.match((await r.json()).message, /necesita internet/);
   // Course-content sigue por su manejador (un estudiante recibe su propio rechazo, no este aviso).

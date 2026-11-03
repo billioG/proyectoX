@@ -11,9 +11,10 @@ import { createReactionStore } from '../reactions.js';
 import { createCompanion } from './companion.js';
 import { createDuels, DUEL_TABLE } from './duels.js';
 import { createHangman, HANGMAN_TABLE } from './hangman.js';
+import { createProfilePhoto } from './profile-photo.js';
 
 // `projects`: { upload, pendingCount, register } del almacén de proyectos del nodo (server.js): el estudiante sube su proyecto con la app real.
-export function createRestLayer(db, { now = Date.now, random = Math.random, onChange = () => {}, projects = null } = {}) {
+export function createRestLayer(db, { now = Date.now, random = Math.random, onChange = () => {}, projects = null, profilePhotos = null } = {}) {
   const store = restStoreFor(db, SCHEMA);
   const xp = createRestXp({ db, store, now, random });
   // Fotos de perfil ya descargadas: salen con la dirección local (si no, la de la nube, que sin internet no carga).
@@ -23,10 +24,13 @@ export function createRestLayer(db, { now = Date.now, random = Math.random, onCh
   // Retos Contrarreloj: lo ganado o perdido en duelos jugados aquí y aún sin confirmar la nube (duels.js).
   const duels = createDuels({ store, xp, now, random });
   const hangman = createHangman({ store, duels, now, random });
-  store.setView('students', () => { const xpRow = xp.overlay(); const comp = companion.overlayStudents(); const duel = duels.overlayStudents(); const photo = photos.mapper(); return (row) => photo(duel(comp(xpRow(row)))); });
+  // Foto de perfil cambiada aquí y aún sin confirmar la nube (profile-photo.js); null si el servidor no guarda fotos.
+  const profilePhoto = profilePhotos ? createProfilePhoto({ store, photoStore: profilePhotos }) : null;
+  const noPhoto = () => (row) => row;
+  store.setView('students', () => { const xpRow = xp.overlay(); const comp = companion.overlayStudents(); const duel = duels.overlayStudents(); const photo = photos.mapper(); const mine = (profilePhoto?.overlay ?? noPhoto)(); return (row) => mine(photo(duel(comp(xpRow(row))))); });
   store.setView('student_companions', () => ({ map: (r) => r, extra: () => companion.extraCompanions() }));
   store.setView('student_cosmetics', () => ({ map: (r) => r, extra: () => companion.extraCosmetics() }));
-  store.setView('teachers', () => photos.mapper());
+  store.setView('teachers', () => { const photo = photos.mapper(); const mine = (profilePhoto?.overlay ?? noPhoto)(); return (row) => mine(photo(row)); });
   // Los archivos de los cursos ya están en el nodo (data/content): la dirección de la nube (storage_base) se cambia por la local.
   // Sin esto la app pediría los videos y PDF a la nube y sin internet no cargarían.
   const storageBase = db.prepare("SELECT value FROM meta WHERE key = 'storage_base'");
@@ -51,7 +55,7 @@ export function createRestLayer(db, { now = Date.now, random = Math.random, onCh
     const pending = new Set(reactions.pending().map((r) => Number(r.project_id)));
     return pending.size ? (row) => (pending.has(Number(row.id)) ? { ...row, votes: reactions.adjustVotes(row.id, row.votes) } : row) : (row) => row;
   });
-  const rpcs = createRpcs({ store, xp, now, reactions, companion, duels, hangman });
+  const rpcs = createRpcs({ store, xp, now, reactions, companion, duels, hangman, profilePhoto });
   const routes = createRestRoutes({
     store, auth, rpcs, projects,
     // Una lección que se completa por primera vez paga XP (en la nube lo hace un disparador de lesson_completions).

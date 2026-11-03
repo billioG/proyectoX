@@ -6,7 +6,7 @@
 import { SCHEMA } from './schema.js';
 
 /** Lo pendiente de la bandeja, listo para el push. `seqs` = todo lo que este push cubre (incluso lo que no viaja). */
-export function restPush(store, { gate = () => true, toCloudUrl = (u) => u } = {}) {
+export function restPush(store, { gate = () => true, toCloudUrl = (u) => u, photoState = () => 'ready' } = {}) {
   const completions = [];
   const seqs = [];
   const rpc = [];
@@ -23,6 +23,12 @@ export function restPush(store, { gate = () => true, toCloudUrl = (u) => u } = {
     if (e.table === '_rpc' && e.op === 'sync_save_evaluation') {
       evaluations.push({ key: `rest:${e.seq}`, teacher_id: e.row.teacher_id, project_id: e.row.args.project_id, node_ref: null, ...Object.fromEntries(Object.entries(e.row.args).filter(([k]) => k.endsWith('_score'))), feedback: e.row.args.feedback });
       continue;
+    }
+    // Cambio de foto de perfil: viaja cuando la imagen ya llegó a la nube; si la nube la rechazó para siempre, el cambio se descarta.
+    if (e.table === '_rpc' && e.op === 'claim_first_profile_photo_reward') {
+      const st = photoState(e.row?.args?.p_name);
+      if (st === 'wait') continue;
+      if (st === 'drop') { seqs.push(e.seq); continue; }
     }
     if (e.table === '_rpc') { rpc.push({ seq: e.seq, fn: e.op, student_id: e.row.student_id, args: e.row.args }); continue; }
     // Avisos y lecturas: la nube confirma cada uno (por id, o por aviso|usuario); mientras no, siguen en la bandeja.
