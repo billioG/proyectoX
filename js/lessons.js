@@ -879,6 +879,7 @@ window.previewCourseResource = function previewCourseResource(lessonId) {
     </div>
   `;
   document.body.appendChild(modal);
+  window.addResourceFullscreenButton?.(modal.querySelector('.overflow-y-auto'), lesson.content_type);
   window.loadTeacherResourceComments(lessonId);
 
   if (lesson.content_type === 'scorm' || lesson.content_type === 'html5') {
@@ -2515,6 +2516,7 @@ window.selectCourseResource = function selectCourseResource(index) {
 
   const viewerEl = document.getElementById('course-player-viewer');
   if (viewerEl) viewerEl.innerHTML = mediaHtml + '<div id="resource-social-panel" class="mt-6 border-t border-slate-100 dark:border-slate-800 pt-5"></div>';
+  window.addResourceFullscreenButton?.(viewerEl, lesson.content_type);
   window.loadResourceSocialPanel(lesson.id);
 
   const footerEl = document.getElementById('course-player-footer');
@@ -3602,3 +3604,93 @@ window.confirmCuadroFinal = async function confirmCuadroFinal() {
     btn.innerHTML = '<i class="fas fa-print"></i> Generar';
   }
 }
+
+// ---- Pantalla completa para los recursos (video, PDF, imagen, SCORM, HTML5, H5P) ----
+// El visor comparte la pantalla con el panel de comentarios y las notas, y a veces la información se ve saturada: un botón sobre el recurso lo pasa a pantalla
+// completa. Usa la API del navegador y, donde no existe (iPhone/iPad no la dan para iframes), un modo que cubre toda la ventana, con botón para salir.
+// No mueve el recurso de lugar (un iframe movido se recargaría), solo le cambia el estilo.
+;(function () {
+  if (window.addResourceFullscreenButton) return;
+  const style = document.createElement('style');
+  style.textContent = `
+    .px-fs-bar { display:flex; justify-content:flex-end; margin-bottom:.5rem; }
+    .px-fs-btn { display:inline-flex; align-items:center; gap:.4rem; height:2.25rem; padding:0 .8rem; border-radius:.75rem; border:0; cursor:pointer; font-size:.65rem; font-weight:800; text-transform:uppercase; letter-spacing:.05em; background:rgba(100,116,139,.15); color:#64748b; }
+    .px-fs-btn:hover { color:#6366f1; }
+    .px-fs-target:fullscreen { width:100% !important; height:100% !important; max-width:none !important; max-height:none !important; border-radius:0 !important; background:#0b1020; overflow:auto; }
+    .px-fs-target:-webkit-full-screen { width:100% !important; height:100% !important; max-width:none !important; max-height:none !important; border-radius:0 !important; background:#0b1020; overflow:auto; }
+    img.px-fs-target:fullscreen { object-fit:contain; }
+    .px-fs-fake { position:fixed !important; inset:0 !important; border:0 !important; padding:0 !important; box-sizing:border-box !important; z-index:9998 !important; width:100vw !important; height:100vh !important; height:100dvh !important; max-width:none !important; max-height:none !important; border-radius:0 !important; background:#0b1020; margin:0 !important; overflow:auto; }
+    img.px-fs-fake { object-fit:contain; }
+    #px-fs-exit { margin:0; inset:auto; position:fixed; top:max(.75rem, env(safe-area-inset-top)); right:.75rem; z-index:9999; height:2.5rem; padding:0 1rem; border-radius:9999px; border:0; font-weight:800; font-size:.7rem; text-transform:uppercase; letter-spacing:.05em; background:rgba(15,23,42,.85); color:#fff; cursor:pointer; box-shadow:0 4px 18px rgba(0,0,0,.4); }
+  `;
+  document.head.appendChild(style);
+
+  // Un ancestro con transform, filter o backdrop-filter (las animaciones y vidrios de los modales) vuelve «fixed» relativo a él y no cubriría la ventana: mientras dura
+  // el modo se neutralizan con estilos en línea !important (no pierden contra ninguna hoja de estilos) y al salir se devuelven como estaban.
+  const NEUTRAL = ['transform', 'filter', 'backdrop-filter', '-webkit-backdrop-filter', 'perspective', 'contain', 'will-change', 'container-type', 'content-visibility', 'translate', 'scale', 'rotate', 'clip-path', 'animation'];
+  let fakeEl = null;
+  let fakeAncestors = []; // [{ el, saved: [[prop, valor, prioridad]] }]
+  const exitFake = () => {
+    if (!fakeEl) return;
+    if (fakeEl.hasAttribute('popover')) { try { fakeEl.hidePopover(); } catch { /* ya cerrado */ } fakeEl.removeAttribute('popover'); }
+    fakeEl.classList.remove('px-fs-fake');
+    fakeAncestors.forEach(({ el: a, saved, classes }) => { saved.forEach(([prop, value, priority]) => (value ? a.style.setProperty(prop, value, priority) : a.style.removeProperty(prop))); classes.forEach((c) => a.classList.add(c)); });
+    fakeAncestors = [];
+    fakeEl = null;
+    document.getElementById('px-fs-exit')?.remove();
+    document.documentElement.style.overflow = '';
+  };
+  const enterFake = (el) => {
+    exitFake();
+    fakeEl = el;
+    // Capa superior del navegador (API popover): ignora transformaciones, vidrios y recortes de los ancestros, así que el recurso cubre de verdad toda la ventana.
+    let topLayer = false;
+    if (typeof el.showPopover === 'function') {
+      try { el.setAttribute('popover', 'manual'); el.showPopover(); topLayer = true; } catch { el.removeAttribute('popover'); }
+    }
+    // Reserva para navegadores sin esa API: se neutralizan los ancestros que cambian el bloque de referencia de «fixed».
+    if (!topLayer) {
+      for (let a = el.parentElement; a && a !== document.documentElement; a = a.parentElement) {
+        fakeAncestors.push({ el: a, classes: [], saved: NEUTRAL.map((prop) => [prop, a.style.getPropertyValue(prop), a.style.getPropertyPriority(prop)]) });
+        NEUTRAL.forEach((prop) => a.style.setProperty(prop, prop === 'will-change' ? 'auto' : prop === 'content-visibility' ? 'visible' : 'none', 'important'));
+        const glass = (getComputedStyle(a).backdropFilter || 'none') !== 'none' ? [...a.classList].filter((c) => /^(glass|backdrop|filter|blur)/.test(c)) : [];
+        glass.forEach((c) => a.classList.remove(c));
+        fakeAncestors[fakeAncestors.length - 1].classes = glass;
+      }
+    }
+    el.classList.add('px-fs-fake');
+    document.documentElement.style.overflow = 'hidden';
+    const b = document.createElement('button');
+    b.id = 'px-fs-exit';
+    b.type = 'button';
+    b.innerHTML = '<i class="fas fa-compress"></i> Salir';
+    b.onclick = exitFake;
+    document.body.appendChild(b);
+    if (topLayer && typeof b.showPopover === 'function') { b.setAttribute('popover', 'manual'); try { b.showPopover(); } catch { b.removeAttribute('popover'); } }
+  };
+  // Esc sale del modo que cubre la ventana SIN cerrar además el reproductor del curso (por eso se atiende en la fase de captura y se detiene ahí).
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && fakeEl) { e.stopImmediatePropagation(); e.preventDefault(); exitFake(); } }, true);
+
+  window.togglePxFullscreen = function togglePxFullscreen(el) {
+    if (!el) return;
+    if (fakeEl) return exitFake();
+    const current = document.fullscreenElement || document.webkitFullscreenElement;
+    if (current) return (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+    const request = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (!request || document.fullscreenEnabled === false) return enterFake(el);
+    Promise.resolve(request.call(el)).catch(() => enterFake(el));
+  };
+
+  window.addResourceFullscreenButton = function addResourceFullscreenButton(container, contentType) {
+    if (!container || contentType === 'quiz' || contentType === 'tinkercad') return;
+    container.querySelector('.px-fs-bar')?.remove();
+    const target = container.querySelector('iframe, video, img, #h5p-container, #h5p-preview-container');
+    if (!target) return;
+    target.classList.add('px-fs-target');
+    const bar = document.createElement('div');
+    bar.className = 'px-fs-bar';
+    bar.innerHTML = '<button type="button" class="px-fs-btn" title="Ver el recurso en toda la pantalla"><i class="fas fa-expand"></i> Pantalla completa</button>';
+    bar.firstElementChild.onclick = () => window.togglePxFullscreen(target);
+    target.parentNode.insertBefore(bar, target);
+  };
+})();
