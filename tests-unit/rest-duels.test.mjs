@@ -187,3 +187,21 @@ test('la lista de duelos con los datos del rival (relaciones por columna) y el e
   assert.deepEqual(d, { status: 'completed', winner_id: null }, 'mismo puntaje y mismo tiempo: empate');
   assert.deepEqual(await h.me(a, 's1'), { gems: 100, xp: 55 }, 'sin ganador no se mueven gemas; todos ganan 5 XP');
 });
+
+test('el tope de la apuesta cuenta los duelos anteriores aún sin sincronizar: quien ya perdió gemas no paga más de las que le quedan', async () => {
+  const h = await boot();
+  const a = await h.student('ana1'), b = await h.student('beto1');
+  const play = async (wager) => {
+    const id = (await h.challenge(a, { challenger_id: 's1', opponent_id: 's2', wager_gems: wager })).data.id;
+    await h.rpc(b, 'accept_timed_math_duel', { p_duel_id: id });
+    await h.rpc(a, 'start_timed_math_duel', { p_duel_id: id }); await h.rpc(b, 'start_timed_math_duel', { p_duel_id: id });
+    h.tick(10_000);
+    await h.rpc(a, 'submit_timed_math_result', { p_duel_id: id, p_answers: solve(h, id, 'challenger') });
+    await h.rpc(b, 'submit_timed_math_result', { p_duel_id: id, p_answers: [] });
+  };
+  await play(25); // Beto: 30 -> 5
+  assert.deepEqual(await h.me(b, 's2'), { gems: 5, xp: 15 });
+  await play(60); // solo puede perder las 5 que le quedan, no 30
+  assert.deepEqual(await h.me(b, 's2'), { gems: 0, xp: 20 });
+  assert.deepEqual(await h.me(a, 's1'), { gems: 130, xp: 90 });
+});

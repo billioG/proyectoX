@@ -177,8 +177,8 @@ export function createStorageHandler({ store, auth, now = Date.now }) {
       store.commit(rel, tmp, user.uid, size, now());
       sendJson(res, 200, { Key: `course-content/${rel}`, Id: crypto.createHash('sha1').update(rel).digest('hex') });
     } catch (e) {
-      if (out) out.destroy();
-      await new Promise((r) => setTimeout(r, 0));
+      // Se espera a que el archivo se cierre de verdad (en Windows, borrarlo con el manejador abierto falla y dejaba un .part suelto).
+      if (out && !out.closed) await new Promise((r) => { const t = setTimeout(r, 1000); out.once('close', () => { clearTimeout(t); r(); }); out.destroy(); });
       try { fs.rmSync(tmp, { force: true }); } catch { /* Windows aún lo tiene abierto: queda un .part suelto */ }
       storageError(res, e.status || 500, e.status ? e.message : 'No se pudo guardar el archivo en la computadora de la escuela.');
       req.resume();

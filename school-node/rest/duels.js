@@ -109,7 +109,8 @@ export function createDuels({ store, xp, now = Date.now, random = Math.random })
   const iso = () => new Date(now()).toISOString();
   const rawDuel = (id) => store.raw(DUEL_TABLE).find((d) => d.id === id) ?? null;
   const resultsOf = (id) => store.raw(RESULT_TABLE).filter((r) => r.duel_id === id);
-  const studentOf = (uid) => { const raw = store.raw('students').find((s) => s.id === uid); return raw ? xp.overlay()(raw) : null; };
+  // Con TODO lo pendiente aplicado (otros duelos aún sin sincronizar, mascota, XP): el tope de la apuesta es lo que de verdad tiene quien pierde.
+  const studentOf = (uid) => store.all('students').find((s) => s.id === uid) ?? null;
   const sameSchool = (a, b) => !!a && !!b && a.school_code === b.school_code;
 
   /** La foto que viaja a la nube: el duelo, sus problemas, las respuestas jugadas y cómo se liquidó aquí. */
