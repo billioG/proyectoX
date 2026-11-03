@@ -108,8 +108,9 @@ function parseGroup(text) {
 }
 
 function parseOrder(text) {
-  return String(text).split(',').filter(Boolean).map((part) => {
-    const [col, ...mods] = part.split('.');
+  // PostgREST acepta espacios tras la coma (la app pide order('school_code, grade, name')): se recortan.
+  return String(text).split(',').map((p) => p.trim()).filter(Boolean).map((part) => {
+    const [col, ...mods] = part.split('.').map((x) => x.trim());
     const dir = mods.includes('desc') ? 'desc' : 'asc';
     const nulls = mods.includes('nullsfirst') ? 'first' : mods.includes('nullslast') ? 'last' : null;
     return { col, dir, nulls };

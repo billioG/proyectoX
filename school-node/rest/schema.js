@@ -56,6 +56,7 @@ export const SCHEMA = {
     cascade: [{ table: 'group_members', fk: 'group_id' }],
     relations: {
       group_members: { type: 'many', table: 'group_members', fk: 'group_id', ref: 'id' },
+      projects: { type: 'many', table: 'projects', fk: 'group_id', ref: 'id' },
       schools: { type: 'one', table: 'schools', fk: 'school_code', ref: 'code' },
     },
   }),
