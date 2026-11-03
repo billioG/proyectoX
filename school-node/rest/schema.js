@@ -162,7 +162,6 @@ export const SCHEMA = {
   surveys: emptyTable(),
   comment_notifications: emptyTable(),
   student_duels: emptyTable(),
-  student_hangman_duels: emptyTable(),
   student_debug_duels: emptyTable(),
   student_spelling_duels: emptyTable(),
   project_reaction_notifications: emptyTable(),
@@ -236,6 +235,31 @@ export const SCHEMA = {
   student_timed_math_results: table({
     pk: 'id',
     columns: ['id', 'duel_id', 'student_id', 'score', 'time_ms', 'completed_at'],
+    relations: {},
+  }),
+
+  // Ahorcado 1 contra 1 (hangman.js): como Contrarreloj, la palabra, la pista y las horas de arranque quedan fuera de las columnas visibles.
+  student_hangman_duels: table({
+    pk: 'id',
+    noPush: true,
+    columns: ['id', 'challenger_id', 'opponent_id', 'wager_gems', 'topic', 'status', 'winner_id', 'created_at', 'resolved_at'],
+    writable: ['challenger_id', 'opponent_id', 'wager_gems', 'topic', 'status'],
+    defaults: { id: () => globalThis.crypto.randomUUID(), status: () => 'pending', winner_id: () => null, created_at: () => new Date().toISOString() },
+    relations: {
+      'students!challenger_id': { type: 'one', table: 'students', fk: 'challenger_id', ref: 'id' },
+      'students!opponent_id': { type: 'one', table: 'students', fk: 'opponent_id', ref: 'id' },
+    },
+  }),
+  student_hangman_results: table({
+    pk: 'id',
+    columns: ['id', 'duel_id', 'student_id', 'solved', 'wrong_guesses', 'time_ms', 'completed_at'],
+    relations: {},
+  }),
+  // Banco fijo de palabras del Ahorcado: INTERNO (en la nube tampoco lo lee la app; delataría la palabra).
+  hangman_word_bank: table({
+    pk: 'id',
+    hidden: true,
+    columns: ['id', 'category', 'word', 'hint', 'fact'],
     relations: {},
   }),
 

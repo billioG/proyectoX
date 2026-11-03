@@ -41,6 +41,7 @@ import { isExamTable, planExamOps } from './exams.ts';
 import { isWaiverTable, planWaiverOps } from './waivers.ts';
 import { isCompanionFn, validateCompanionEvent } from './companion.ts';
 import { isTimedMathFn, validateTimedMathEvent } from './timedmath.ts';
+import { isHangmanFn, validateHangmanEvent } from './hangman.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -521,6 +522,15 @@ Deno.serve(async (req) => {
         const tv = validateTimedMathEvent(raw, { studentIds });
         if (!tv.ok) { rpcErrors.push({ seq, error: tv.error, permanent: true }); continue; }
         const { error } = await admin.rpc('apply_node_timed_math_duel', { p_snapshot: tv.snapshot });
+        if (error) { rpcErrors.push({ seq, error: error.message, permanent: error.code === 'P0001' }); continue; }
+        appliedRpc.push(seq);
+        continue;
+      }
+      // Ahorcado: igual, la foto del duelo; apply_node_hangman_duel (migrations/node-hangman-duel.sql) comprueba las palabras del banco y recalcula.
+      if (isHangmanFn(raw?.fn)) {
+        const hv = validateHangmanEvent(raw, { studentIds });
+        if (!hv.ok) { rpcErrors.push({ seq, error: hv.error, permanent: true }); continue; }
+        const { error } = await admin.rpc('apply_node_hangman_duel', { p_snapshot: hv.snapshot });
         if (error) { rpcErrors.push({ seq, error: error.message, permanent: error.code === 'P0001' }); continue; }
         appliedRpc.push(seq);
         continue;

@@ -208,19 +208,24 @@ export function createPolicy({ store, projects = null }) {
   const MAX_PENDING_DUELS = 30;
   const duelOf = (id) => store.raw('student_timed_math_duels').find((d) => d.id === id);
   const inDuel = (uid, d) => !!d && (d.challenger_id === uid || d.opponent_id === uid);
-  const canChallenge = (ctx, d) => {
-    if (ctx.role !== 'student' || d.challenger_id !== ctx.uid || d.opponent_id === ctx.uid || d.status !== 'pending' || d.winner_id != null || d.problem_count !== 10) return false;
+  const canChallenge = (ctx, d, fn = 'timed_math_duel') => {
+    if (ctx.role !== 'student' || d.challenger_id !== ctx.uid || d.opponent_id === ctx.uid || d.status !== 'pending' || d.winner_id != null) return false;
+    if (fn === 'timed_math_duel' ? d.problem_count !== 10 : (typeof d.topic !== 'string' || d.topic.length > 80)) return false;
+    // Ahorcado: solo los temas con banco fijo; los que genera la IA necesitan internet.
+    if (fn === 'hangman_duel' && !store.raw('hangman_word_bank').some((w) => w.category === d.topic)) throw new RestError(400, 'Este tema necesita internet (la palabra la genera la IA). Elige un tema de Ambiente y ODS.', 'P0001');
     const me = store.all('students').find((s) => s.id === ctx.uid);
     const rival = store.raw('students').find((s) => s.id === d.opponent_id);
     if (!me || !rival || rival.school_code !== me.school_code || rival.status === 'egresado' || rival.status === 'baja') return false;
     if (!Number.isInteger(d.wager_gems) || d.wager_gems < 0 || d.wager_gems > (Number(me.gems) || 0)) return false;
-    if (store.pendingRpcCount('timed_math_duel', ctx.uid) >= MAX_PENDING_DUELS) throw new RestError(409, 'Tienes muchos retos esperando para subirse: conéctate a internet para sincronizar', 'P0001');
+    if (store.pendingRpcCount(fn, ctx.uid) >= MAX_PENDING_DUELS) throw new RestError(409, 'Tienes muchos retos esperando para subirse: conéctate a internet para sincronizar', 'P0001');
     return true;
   };
-  const canChangeDuel = (ctx, o, n) => ctx.role === 'student' && o.status === 'pending' && ['challenger_id', 'opponent_id', 'wager_gems'].every((c) => n[c] === o[c])
+  const canChangeDuel = (ctx, o, n) => ctx.role === 'student' && o.status === 'pending' && ['challenger_id', 'opponent_id', 'wager_gems', 'topic'].every((c) => n[c] === o[c])
     && ((n.status === 'cancelled' && o.challenger_id === ctx.uid) || (n.status === 'rejected' && o.opponent_id === ctx.uid));
 
   const readRules = {
+    student_hangman_duels: (ctx, r) => inDuel(ctx.uid, r),
+    student_hangman_results: (ctx, r) => r.student_id === ctx.uid || inDuel(ctx.uid, store.raw('student_hangman_duels').find((d) => d.id === r.duel_id)),
     student_timed_math_duels: (ctx, r) => inDuel(ctx.uid, r),
     student_timed_math_results: (ctx, r) => r.student_id === ctx.uid || inDuel(ctx.uid, duelOf(r.duel_id)),
     student_companions: (ctx, r) => r.student_id === ctx.uid,
@@ -268,6 +273,7 @@ export function createPolicy({ store, projects = null }) {
       || (table === 'attendance' && validAttendance(ctx, row))
       || (table === 'attendance_waivers' && canRequestWaiver(ctx, row))
       || (table === 'student_timed_math_duels' && canChallenge(ctx, row))
+      || (table === 'student_hangman_duels' && canChallenge(ctx, row, 'hangman_duel'))
       || (table === 'exams' && staff(ctx) && examOk(ctx, row))
       || (table === 'exam_results' && resultOk(ctx, row))
       || (table === 'projects' && canSubmitProject(ctx, row))
@@ -282,7 +288,7 @@ export function createPolicy({ store, projects = null }) {
     // lesson_completions_update_own (la nueva fila también debe ser propia)
     canUpdate: (ctx, table, oldRow, newRow) => (table === 'lesson_completions' && own(ctx, oldRow.student_id) && own(ctx, newRow.student_id) && validCompletion(newRow))
       || (table === 'announcement_reads' && own(ctx, oldRow.user_id) && canMarkRead(ctx, newRow))
-      || (table === 'student_timed_math_duels' && canChangeDuel(ctx, oldRow, newRow))
+      || ((table === 'student_timed_math_duels' || table === 'student_hangman_duels') && canChangeDuel(ctx, oldRow, newRow))
       || (table === 'groups' && staff(ctx) && myClass(ctx, oldRow) && newRow.school_code === oldRow.school_code && newRow.grade === oldRow.grade && newRow.section === oldRow.section && text(newRow.name, 80))
       || (table === 'group_members' && newRow.group_id === oldRow.group_id && newRow.student_id === oldRow.student_id && canAddMember(ctx, newRow))
       || (table === 'exams' && examOwner(ctx, oldRow) && newRow.teacher_id === oldRow.teacher_id && examOk(ctx, newRow))

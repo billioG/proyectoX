@@ -9,6 +9,8 @@ import { RestError } from './query.js';
 export const DUEL_TABLE = 'student_timed_math_duels';
 export const RESULT_TABLE = 'student_timed_math_results';
 export const DUEL_FN = 'timed_math_duel';
+export const HANGMAN_FN = 'hangman_duel';
+export const DUEL_FNS = [DUEL_FN, HANGMAN_FN];
 export const PROBLEM_COUNT = 10;
 export const XP_PARTICIPATION = 5;
 export const XP_WIN = 15;
@@ -135,12 +137,8 @@ export function createDuels({ store, xp, now = Date.now, random = Math.random })
   };
   const asStudent = (ctx) => { if (ctx?.role !== 'student') throw bad('Solo los estudiantes juegan retos'); return ctx.uid; };
 
-  /** Reparte el resultado cuando jugaron los dos: ganador por puntaje y luego por tiempo; empate sin ganador. */
-  function settle(d) {
-    const [r1, r2] = [resultsOf(d.id).find((r) => r.student_id === d.challenger_id), resultsOf(d.id).find((r) => r.student_id === d.opponent_id)];
-    let winner = null;
-    if (r1.score !== r2.score) winner = r1.score > r2.score ? d.challenger_id : d.opponent_id;
-    else if (r1.time_ms !== r2.time_ms) winner = r1.time_ms < r2.time_ms ? d.challenger_id : d.opponent_id;
+  /** Reparte el resultado cuando jugaron los dos: ganador (ya decidido), gemas hasta lo que tenga quien pierde, XP 5 a ambos y 15 al ganador. */
+  function finish(table, d, winner) {
     const gemsDelta = {};
     if (winner && d.wager_gems > 0) {
       const loserId = winner === d.challenger_id ? d.opponent_id : d.challenger_id;
@@ -149,10 +147,19 @@ export function createDuels({ store, xp, now = Date.now, random = Math.random })
     }
     const xpDelta = { [d.challenger_id]: XP_PARTICIPATION, [d.opponent_id]: XP_PARTICIPATION };
     if (winner) xpDelta[winner] += XP_WIN;
-    store.put(DUEL_TABLE, { ...d, status: 'completed', winner_id: winner, resolved_at: iso(), settle: { gems: gemsDelta, xp: xpDelta } });
+    store.put(table, { ...d, status: 'completed', winner_id: winner, resolved_at: iso(), settle: { gems: gemsDelta, xp: xpDelta } });
+  }
+  /** Contrarreloj: gana el de más aciertos y, si empatan, el más rápido; empate total sin ganador. */
+  function settle(d) {
+    const [r1, r2] = [resultsOf(d.id).find((r) => r.student_id === d.challenger_id), resultsOf(d.id).find((r) => r.student_id === d.opponent_id)];
+    let winner = null;
+    if (r1.score !== r2.score) winner = r1.score > r2.score ? d.challenger_id : d.opponent_id;
+    else if (r1.time_ms !== r2.time_ms) winner = r1.time_ms < r2.time_ms ? d.challenger_id : d.opponent_id;
+    finish(DUEL_TABLE, d, winner);
   }
 
   return {
+    finish, studentOf, iso,
     queue,
     /** Después de insertar o cambiar el estado desde la app (REST): la foto se actualiza en la bandeja. */
     onDuelChange: (row) => { if (row?.id) queue(row.id); },
@@ -212,7 +219,7 @@ export function createDuels({ store, xp, now = Date.now, random = Math.random })
     overlayStudents() {
       const deltas = new Map();
       for (const e of store.pending()) {
-        if (e.table !== '_rpc' || e.op !== DUEL_FN || !e.row?.args?.settle) continue;
+        if (e.table !== '_rpc' || !DUEL_FNS.includes(e.op) || !e.row?.args?.settle) continue;
         const { gems = {}, xp: xps = {} } = e.row.args.settle;
         for (const [id, g] of Object.entries(gems)) deltas.set(id, { gems: (deltas.get(id)?.gems || 0) + g, xp: deltas.get(id)?.xp || 0 });
         for (const [id, x] of Object.entries(xps)) deltas.set(id, { gems: deltas.get(id)?.gems || 0, xp: (deltas.get(id)?.xp || 0) + x });

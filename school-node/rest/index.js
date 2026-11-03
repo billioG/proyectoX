@@ -10,6 +10,7 @@ import { createPhotos } from './photos.js';
 import { createReactionStore } from '../reactions.js';
 import { createCompanion } from './companion.js';
 import { createDuels, DUEL_TABLE } from './duels.js';
+import { createHangman, HANGMAN_TABLE } from './hangman.js';
 
 // `projects`: { upload, pendingCount, register } del almacén de proyectos del nodo (server.js): el estudiante sube su proyecto con la app real.
 export function createRestLayer(db, { now = Date.now, random = Math.random, onChange = () => {}, projects = null } = {}) {
@@ -21,6 +22,7 @@ export function createRestLayer(db, { now = Date.now, random = Math.random, onCh
   const companion = createCompanion({ store, xp });
   // Retos Contrarreloj: lo ganado o perdido en duelos jugados aquí y aún sin confirmar la nube (duels.js).
   const duels = createDuels({ store, xp, now, random });
+  const hangman = createHangman({ store, duels, now, random });
   store.setView('students', () => { const xpRow = xp.overlay(); const comp = companion.overlayStudents(); const duel = duels.overlayStudents(); const photo = photos.mapper(); return (row) => photo(duel(comp(xpRow(row)))); });
   store.setView('student_companions', () => ({ map: (r) => r, extra: () => companion.extraCompanions() }));
   store.setView('student_cosmetics', () => ({ map: (r) => r, extra: () => companion.extraCosmetics() }));
@@ -46,12 +48,13 @@ export function createRestLayer(db, { now = Date.now, random = Math.random, onCh
     const pending = new Set(reactions.pending().map((r) => Number(r.project_id)));
     return pending.size ? (row) => (pending.has(Number(row.id)) ? { ...row, votes: reactions.adjustVotes(row.id, row.votes) } : row) : (row) => row;
   });
-  const rpcs = createRpcs({ store, xp, now, reactions, companion, duels });
+  const rpcs = createRpcs({ store, xp, now, reactions, companion, duels, hangman });
   const routes = createRestRoutes({
     store, auth, rpcs, projects,
     // Una lección que se completa por primera vez paga XP (en la nube lo hace un disparador de lesson_completions).
     onChange: (changes = []) => {
       for (const c of changes) {
+        if (c.table === HANGMAN_TABLE) { hangman.onDuelChange(c.row); continue; }
         if (c.table === DUEL_TABLE) { duels.onDuelChange(c.row); continue; } // el reto (o su cambio de estado) sube como una foto del duelo
         if (c.table === 'projects' && c.op === 'insert' && projects) { projects.register(c.row); continue; } // el archivo y los datos pasan al almacén de proyectos
         if (c.table !== 'lesson_completions' || c.op === 'delete' || c.row.status !== 'completed') continue;

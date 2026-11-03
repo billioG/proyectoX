@@ -11,7 +11,7 @@ const CRITERIA = ['creativity', 'clarity', 'functionality', 'teamwork', 'social_
 const invalid = (message) => new RestError(400, message, 'P0001');
 const unavailable = (what) => new RestError(400, `${what} aún no está disponible sin internet`, 'P0001');
 
-export function createRpcs({ store, xp, now = Date.now, reactions = null, companion = null, duels = null }) {
+export function createRpcs({ store, xp, now = Date.now, reactions = null, companion = null, duels = null, hangman = null }) {
   const progress = createProgress({ store, now });
   const studentOnly = (ctx, what) => { if (ctx?.role !== 'student') throw unavailable(what); };
 
@@ -37,6 +37,13 @@ export function createRpcs({ store, xp, now = Date.now, reactions = null, compan
     accept_timed_math_duel: (args, ctx) => duels.accept(args, ctx),
     start_timed_math_duel: (args, ctx) => duels.start(args, ctx),
     submit_timed_math_result: (args, ctx) => duels.submit(args, ctx),
+
+    // Ahorcado: el tema tiene que ser del banco fijo; la palabra de cada jugador no sale del nodo.
+    assign_hangman_bank_word: (args, ctx) => hangman.assign(args, ctx),
+    start_hangman_duel: (args, ctx) => hangman.start(args, ctx),
+    check_hangman_letter: (args, ctx) => hangman.check(args, ctx),
+    submit_hangman_result: (args, ctx) => hangman.submit(args, ctx),
+    get_duel_fact: (args, ctx) => hangman.fact(args, ctx),
 
     // Mis notas de exámenes (el estudiante): el examen sin su clave y mi resultado.
     my_exam_results: (args, ctx) => {

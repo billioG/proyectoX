@@ -43,6 +43,9 @@ export const TABLE_COLUMNS: Record<string, string[]> = {
   resource_notes: ['id', 'lesson_id', 'student_id', 'content', 'updated_at', 'created_at'],
   student_timed_math_duels: ['id', 'challenger_id', 'opponent_id', 'wager_gems', 'problem_count', 'status', 'winner_id', 'created_at', 'resolved_at'],
   student_timed_math_results: ['id', 'duel_id', 'student_id', 'score', 'time_ms', 'completed_at'],
+  student_hangman_duels: ['id', 'challenger_id', 'opponent_id', 'wager_gems', 'topic', 'status', 'winner_id', 'created_at', 'resolved_at'],
+  student_hangman_results: ['id', 'duel_id', 'student_id', 'solved', 'wrong_guesses', 'time_ms', 'completed_at'],
+  hangman_word_bank: ['id', 'category', 'word', 'hint', 'fact'],
   badges: ['id', 'code', 'name', 'description', 'icon', 'category', 'criteria_type', 'criteria_value', 'created_at'],
   student_badges: ['id', 'student_id', 'badge_id', 'earned_at', 'celebrated'],
 };
@@ -162,6 +165,23 @@ export async function pullTables(
     const rs = await fetchAll((from, to) => admin.from('student_timed_math_results').select('duel_id, student_id, score, time_ms, completed_at').in('duel_id', part).order('duel_id').order('student_id').range(from, to));
     out.student_timed_math_results.push(...rs.map((r: any) => ({ ...r, id: `${r.duel_id}:${r.student_id}` })));
   }
+
+  // Ahorcado: lo mismo (palabras y pistas de cada jugador bajan para jugar sin internet) y el banco fijo de palabras, que la app nunca lee directo.
+  const hangmanCols = `${list('student_hangman_duels')}, word, hint, word_b, hint_b, challenger_started_at, opponent_started_at`;
+  const hangmanDuels = new Map<string, any>();
+  for (const column of ['challenger_id', 'opponent_id']) {
+    for (const part of chunk(students)) {
+      for (const d of await fetchAll((from, to) => admin.from('student_hangman_duels').select(hangmanCols).in(column, part).gte('created_at', duelsSince).order('id').range(from, to))) hangmanDuels.set(d.id, d);
+    }
+  }
+  out.student_hangman_duels = [...hangmanDuels.values()];
+  out.student_hangman_results = [];
+  for (const part of chunk(out.student_hangman_duels.map((d) => d.id))) {
+    const rs = await fetchAll((from, to) => admin.from('student_hangman_results').select('duel_id, student_id, solved, wrong_guesses, time_ms, completed_at').in('duel_id', part).order('duel_id').order('student_id').range(from, to));
+    out.student_hangman_results.push(...rs.map((r: any) => ({ ...r, id: `${r.duel_id}:${r.student_id}` })));
+  }
+  // El banco trae el «¿Sabías que?» de cada palabra; en la nube se lo devuelve la función get_duel_fact solo después de jugar, y aquí lo hace el nodo.
+  out.hangman_word_bank = await fetchAll((from, to) => admin.from('hangman_word_bank').select(list('hangman_word_bank')).order('id').range(from, to));
 
   out.badges = await fetchAll((from, to) => admin.from('badges').select(list('badges')).order('id').range(from, to));
   out.student_badges = await byIds('student_badges', 'student_id', students);
