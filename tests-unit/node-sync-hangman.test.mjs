@@ -1,13 +1,13 @@
-// Ahorcado que sube un nodo (supabase/functions/node-sync/hangman.ts): solo se valida la forma de la foto; la nube comprueba las palabras y recalcula.
+// Ahorcado que sube un nodo (supabase/functions/node-sync/duels.ts): solo se valida la forma de la foto; la nube comprueba las palabras y recalcula.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
 let mod = null;
 let skip = false;
 try {
-  mod = await import('../supabase/functions/node-sync/hangman.ts');
+  mod = await import('../supabase/functions/node-sync/duels.ts');
 } catch (e) {
-  if (e?.code === 'ERR_MODULE_NOT_FOUND' && /hangman\.ts/.test(String(e.message))) {
+  if (e?.code === 'ERR_MODULE_NOT_FOUND' && /duels\.ts/.test(String(e.message))) {
     if (Number(process.versions.node.split('.')[0]) >= 22) throw e;
   }
   skip = 'esta versión de Node no importa TypeScript (usa Node 22)';

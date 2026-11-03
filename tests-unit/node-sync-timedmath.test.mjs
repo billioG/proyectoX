@@ -1,13 +1,13 @@
-// Retos Contrarreloj que sube un nodo (supabase/functions/node-sync/timedmath.ts): solo se valida la forma de la foto; la nube recalcula los puntajes.
+// Retos Contrarreloj que sube un nodo (supabase/functions/node-sync/duels.ts): solo se valida la forma de la foto; la nube recalcula los puntajes.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
 let mod = null;
 let skip = false;
 try {
-  mod = await import('../supabase/functions/node-sync/timedmath.ts');
+  mod = await import('../supabase/functions/node-sync/duels.ts');
 } catch (e) {
-  if (e?.code === 'ERR_MODULE_NOT_FOUND' && /timedmath\.ts/.test(String(e.message))) {
+  if (e?.code === 'ERR_MODULE_NOT_FOUND' && /duels\.ts/.test(String(e.message))) {
     if (Number(process.versions.node.split('.')[0]) >= 22) throw e;
   }
   skip = 'esta versión de Node no importa TypeScript (usa Node 22)';

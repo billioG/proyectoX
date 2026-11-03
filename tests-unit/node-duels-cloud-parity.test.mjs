@@ -14,8 +14,8 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
 let timed = null, hangman = null, skip = pgSkip;
 try {
-  timed = await import('../supabase/functions/node-sync/timedmath.ts');
-  hangman = await import('../supabase/functions/node-sync/hangman.ts');
+  timed = await import('../supabase/functions/node-sync/duels.ts');
+  hangman = await import('../supabase/functions/node-sync/duels.ts');
 } catch { skip = skip || 'esta versión de Node no importa TypeScript (usa Node 22)'; }
 let pg = null;
 after(() => pg?.stop());

@@ -1,4 +1,4 @@
-// Lógica pura de las reacciones que sube un nodo (supabase/functions/node-sync/reactions.ts).
+// Lógica pura de las reacciones que sube un nodo (supabase/functions/node-sync/validators.ts).
 // TypeScript sin sintaxis no borrable: Node 22 lo importa directo. Con Node 20 se omite.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -6,9 +6,9 @@ import assert from 'node:assert/strict';
 let mod = null;
 let skip = false;
 try {
-  mod = await import('../supabase/functions/node-sync/reactions.ts');
+  mod = await import('../supabase/functions/node-sync/validators.ts');
 } catch (e) {
-  if (e?.code === 'ERR_MODULE_NOT_FOUND' && /reactions\.ts/.test(String(e.message))) {
+  if (e?.code === 'ERR_MODULE_NOT_FOUND' && /validators\.ts/.test(String(e.message))) {
     if (Number(process.versions.node.split('.')[0]) >= 22) throw e; // en Node 22 falta el archivo: fallo real
   }
   skip = 'esta versión de Node no importa TypeScript (usa Node 22)';

@@ -27,21 +27,21 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { buildFeedProjects, FEED_LIMIT, nextRoles, validateProjectPush, validateUploadRequest } from './projects.ts';
 import { computeStudentXp, validateXpEvent } from './xp.ts';
-import { validateReactionEvent } from './reactions.ts';
+import { validateReactionEvent } from './validators.ts';
 import { buildTeacherList, shapeEvaluations, validateEvaluationEvent } from './evaluations.ts';
 import { buildClassVerifiers, buildTeacherLogins, pullTables } from './tables.ts';
-import { validatePracticeEvent } from './practice.ts';
+import { validatePracticeEvent } from './validators.ts';
 import { classifyRead, isUuid, validateAnnouncementEvent, validateReadEvent } from './announcements.ts';
-import { sanitizeCompletions, type CompletionRow } from './completions.ts';
+import { sanitizeCompletions, type CompletionRow } from './validators.ts';
 import { planContentOps, validateContentUploadRequest, validateObjectPath } from './content.ts';
 import { isSocialTable, planSocialOps } from './social.ts';
 import { isAttendanceTable, planAttendanceOps } from './attendance.ts';
 import { isGroupTable, planGroupOps } from './groups.ts';
 import { isExamTable, planExamOps } from './exams.ts';
 import { isWaiverTable, planWaiverOps } from './waivers.ts';
-import { isCompanionFn, validateCompanionEvent } from './companion.ts';
-import { isTimedMathFn, validateTimedMathEvent } from './timedmath.ts';
-import { isHangmanFn, validateHangmanEvent } from './hangman.ts';
+import { isCompanionFn, validateCompanionEvent } from './validators.ts';
+import { isTimedMathFn, validateTimedMathEvent } from './duels.ts';
+import { isHangmanFn, validateHangmanEvent } from './duels.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;

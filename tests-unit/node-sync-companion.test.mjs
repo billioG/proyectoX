@@ -1,13 +1,13 @@
-// Acciones de mascota que sube un nodo (supabase/functions/node-sync/companion.ts): solo se valida la forma; las reglas las aplica la función SQL.
+// Acciones de mascota que sube un nodo (supabase/functions/node-sync/validators.ts): solo se valida la forma; las reglas las aplica la función SQL.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
 let mod = null;
 let skip = false;
 try {
-  mod = await import('../supabase/functions/node-sync/companion.ts');
+  mod = await import('../supabase/functions/node-sync/validators.ts');
 } catch (e) {
-  if (e?.code === 'ERR_MODULE_NOT_FOUND' && /companion\.ts/.test(String(e.message))) {
+  if (e?.code === 'ERR_MODULE_NOT_FOUND' && /validators\.ts/.test(String(e.message))) {
     if (Number(process.versions.node.split('.')[0]) >= 22) throw e;
   }
   skip = 'esta versión de Node no importa TypeScript (usa Node 22)';
