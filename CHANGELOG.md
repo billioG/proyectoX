@@ -4,6 +4,10 @@ Cambios publicados en Quetzal LMS, del más reciente al más antiguo. Cada líne
 
 Al publicar una versión nueva, agrega una línea arriba de todo (ver CONTRIBUTING.md).
 
+## 2026-11-05
+
+- **Torneos entre establecimientos: ya aparecen los equipos de otras escuelas.** La pantalla decía «Todavía no hay equipos» (en la tabla de posiciones y al tocar «Retar») aunque sí existían, porque pedía los equipos junto con el nombre de la escuela y `tournament_teams.school_code` no tiene llave foránea hacia `schools`, así que la consulta fallaba. Ahora busca los nombres de escuela por separado y, si algo falla de verdad, muestra el error real. (v1.0.224)
+
 ## 2026-11-02
 
 - **Sincronizar la Raspberry desde la plataforma en línea, sin saber su dirección IP.** Nueva pantalla «Servidor de la escuela» (docente) y «Servidores y sincronización» (administrador): muestra si la Raspberry está en línea, cuántos cambios tiene por subir, en qué paso va y cuándo sincronizó por última vez, y el botón «Sincronizar ahora». El servidor avisa a la nube cada 30 segundos (con internet) y atiende el pedido en su siguiente aviso. El docente solo entra desde su computadora con internet, conecta la Raspberry por cable al router y, si quiere, toca el botón; ya no tiene que escribir la IP de la Raspberry. **Requiere correr `migrations/node-remote-sync.sql`** (archivo `11-ejecutar-node-remote-sync.sql`) y volver a desplegar `node-sync` (cambian `index.ts` y `validators.ts`; siguen siendo 14 archivos). (v1.0.223)

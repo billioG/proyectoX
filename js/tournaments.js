@@ -9,6 +9,25 @@
 window._tournamentSeason = null;
 window._tournamentMyTeam = null;
 
+/**
+ * Trae equipos y les pega el nombre del establecimiento SIN usar el embed `schools(name)`:
+ * tournament_teams.school_code no tiene llave foránea hacia schools, así que PostgREST rechaza el embed
+ * (PGRST200), la consulta devuelve data=null y la pantalla decía «no hay equipos» aunque sí los hay.
+ */
+async function fetchTournamentTeams(build) {
+  const _supabase = window._supabase;
+  const { data, error } = await build(_supabase.from('tournament_teams').select('id, name, school_code, captain_id, season_id'));
+  if (error) return { teams: null, error };
+  const teams = data || [];
+  const codes = [...new Set(teams.map(t => t.school_code).filter(Boolean))];
+  const names = new Map();
+  if (codes.length) {
+    const { data: schools } = await _supabase.from('schools').select('code, name').in('code', codes);
+    (schools || []).forEach(s => names.set(s.code, s.name));
+  }
+  return { teams: teams.map(t => ({ ...t, schools: { name: names.get(t.school_code) || t.school_code } })), error: null };
+}
+
 window.loadTournamentsSection = async function loadTournamentsSection() {
   const container = document.getElementById('tournaments-section');
   if (!container || window.userRole !== 'estudiante') {
@@ -83,9 +102,9 @@ window.renderTournamentMatches = async function renderTournamentMatches() {
   if (!matches?.length) { el.innerHTML = ''; return; }
 
   const otherTeamIds = [...new Set(matches.flatMap(m => [m.team_a_id, m.team_b_id]).filter(id => id !== teamId))];
-  const { data: otherTeams } = otherTeamIds.length
-    ? await _supabase.from('tournament_teams').select('id, name, school_code, schools(name)').in('id', otherTeamIds)
-    : { data: [] };
+  const { teams: otherTeams } = otherTeamIds.length
+    ? await fetchTournamentTeams(q => q.in('id', otherTeamIds))
+    : { teams: [] };
   const teamMap = new Map((otherTeams || []).map(t => [t.id, t]));
 
   const isCaptain = window._tournamentMyTeam.captain_id === window.currentUser.id;
@@ -145,7 +164,8 @@ window.renderTournamentStandings = async function renderTournamentStandings(seas
     : (await _supabase.from('tournament_seasons').select('*').eq('id', seasonId).single()).data;
   if (!season) { el.innerHTML = ''; return; }
 
-  const { data: teams } = await _supabase.from('tournament_teams').select('id, name, school_code, schools(name)').eq('season_id', seasonId);
+  const { teams, error: teamsError } = await fetchTournamentTeams(q => q.eq('season_id', seasonId));
+  if (teamsError) { el.innerHTML = '<p class="text-slate-400 text-xs text-center py-6">No se pudo cargar la tabla de posiciones. Intenta de nuevo.</p>'; return; }
   if (!teams?.length) { el.innerHTML = '<p class="text-slate-400 text-xs text-center py-6">Todavía no hay equipos inscritos en esta temporada.</p>'; return; }
 
   const { data: matches } = await _supabase.from('tournament_matches')
@@ -333,10 +353,14 @@ window.openChallengeTeamModal = async function openChallengeTeamModal() {
   const season = window._tournamentSeason;
   const myTeam = window._tournamentMyTeam;
 
-  const { data: teams } = await _supabase.from('tournament_teams')
-    .select('id, name, school_code, schools(name)').eq('season_id', season.id).neq('school_code', myTeam.school_code);
+  // El equipo propio llega por la membresía sin school_code: se busca aparte para saber de qué establecimiento es.
+  const { teams: mine } = await fetchTournamentTeams(q => q.eq('id', myTeam.id));
+  const mySchool = mine?.[0]?.school_code || window.userData?.school_code;
+  const { teams: all, error: teamsError } = await fetchTournamentTeams(q => q.eq('season_id', season.id));
+  if (teamsError) return window.showToast('<i class="fas fa-circle-xmark"></i> No se pudieron cargar los equipos: ' + teamsError.message, 'error');
+  const teams = (all || []).filter(t => t.school_code !== mySchool);
 
-  if (!teams?.length) return window.showToast('<i class="fas fa-circle-xmark"></i> Todavía no hay equipos de otros establecimientos en esta temporada', 'error');
+  if (!teams.length) return window.showToast('<i class="fas fa-circle-xmark"></i> Todavía no hay equipos de otros establecimientos en esta temporada', 'error');
 
   const modal = document.createElement('div');
   modal.className = 'fixed inset-0 z-[210] flex items-center justify-center p-6 bg-slate-950/90 backdrop-blur-sm animate-fadeIn';
