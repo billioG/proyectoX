@@ -189,6 +189,18 @@ curl -fsSL https://raw.githubusercontent.com/billioG/proyectoX/main/school-node/
 
 Actualizar el código más adelante: `bash ~/quetzal/school-node/install.sh --update`
 
+Antes de instalar, `bash install.sh --check` **solo revisa** si la computadora sirve (sistema de 64 bits, 2 GB libres,
+memoria, internet) y dice qué falta, sin instalar nada. El instalador hace esa misma revisión al empezar y se detiene con
+un mensaje claro si algo no sirve. Lo más corto, sin preguntas: `... | bash -s -- --auto --token=TOKEN`.
+
+**Muchas Raspberries:** en vez de instalar una por una, prepara una **imagen de microSD** y cópiala; cada nodo solo
+necesita su token en un archivo de texto: `docs/NODO_IMAGEN_MICROSD.md` (`install.sh --image`, `imagen/prepare-image.sh`).
+
+**Respaldo.** El instalador deja un **respaldo diario** de la base (`data/backups`, 14 días, con copia a la USB si hay una
+conectada). A mano: `node backup.js`; restaurar: `node backup.js --restore ARCHIVO` con el servicio detenido. Guía completa:
+`docs/NODO_RESPALDO.md`. **Capacidad y límites:** `docs/NODO_LIMITES.md` (prueba de carga en
+`herramientas/prueba-de-carga.mjs`). **Colegio nuevo:** `docs/CHECKLIST_NUEVO_COLEGIO.md`.
+
 > **Sobre HTTPS.** El nodo funciona por HTTP dentro de la red de la escuela.
 > Todo lo que usan los alumnos en el nodo (cursos, PIN, progreso) funciona así.
 > HTTPS solo haría falta para funciones del navegador que lo exigen (modo sin

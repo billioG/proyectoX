@@ -6,6 +6,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import zlib from 'node:zlib';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { openDb, getMeta, setMeta } from './db.js';
@@ -158,6 +159,21 @@ function readBody(req) {
   });
 }
 
+// Compresión gzip de lo que es texto (la app son ~2 MB de JavaScript: comprimidos bajan a ~0.6 MB, y por el Wi-Fi de la escuela
+// eso es lo que más pesa cuando muchas tablets abren la app a la vez). Se comprime UNA vez por archivo y se guarda en memoria.
+const COMPRESSIBLE = new Set(['.html', '.js', '.css', '.json', '.svg', '.txt', '.xml', '.vtt']);
+const GZIP_MAX_BYTES = 5 * 1024 * 1024;
+const gzipCache = new Map(); // archivo -> { mtimeMs, size, buf }
+const acceptsGzip = (req) => { const h = String(req.headers['accept-encoding'] || ''); return /gzip/i.test(h) && !/gzip\s*;\s*q=0(\.0*)?\s*(,|$)/i.test(h); };
+function gzippedFile(file, st) {
+  const hit = gzipCache.get(file);
+  if (hit && hit.mtimeMs === st.mtimeMs && hit.size === st.size) return hit.buf;
+  if (gzipCache.size > 600) gzipCache.clear();
+  const buf = zlib.gzipSync(fs.readFileSync(file), { level: 6 });
+  gzipCache.set(file, { mtimeMs: st.mtimeMs, size: st.size, buf });
+  return buf;
+}
+
 // Sirve un archivo con soporte de Range (videos) y sin salir de baseDir.
 function serveFile(req, res, baseDir, rel) {
   const file = path.resolve(baseDir, rel);
@@ -173,7 +189,12 @@ function serveFile(req, res, baseDir, rel) {
     res.writeHead(206, { 'Content-Type': type, 'Content-Range': `bytes ${start}-${end}/${size}`, 'Accept-Ranges': 'bytes', 'Content-Length': end - start + 1 });
     return fs.createReadStream(file, { start, end }).pipe(res);
   }
-  res.writeHead(200, { 'Content-Type': type, 'Content-Length': size, 'Accept-Ranges': 'bytes' });
+  if (COMPRESSIBLE.has(path.extname(file).toLowerCase()) && size <= GZIP_MAX_BYTES && acceptsGzip(req)) {
+    const gz = gzippedFile(file, fs.statSync(file));
+    res.writeHead(200, { 'Content-Type': type, 'Content-Encoding': 'gzip', 'Content-Length': gz.length, Vary: 'Accept-Encoding' });
+    return res.end(gz);
+  }
+  res.writeHead(200, { 'Content-Type': type, 'Content-Length': size, 'Accept-Ranges': 'bytes', Vary: 'Accept-Encoding' });
   fs.createReadStream(file).pipe(res);
 }
 
@@ -193,15 +214,20 @@ function serveScormEntry(res, rel, host) {
 
 // index.html se entrega con las librerías de CDN cambiadas por las copias locales
 // (vendor/cdn/), para que la app arranque sin internet. Ver offline-assets.js.
-let indexCache = { mtimeMs: 0, html: '' };
-function serveIndex(res) {
+let indexCache = { mtimeMs: 0, html: '', gz: null };
+function serveIndex(req, res) {
   const file = path.join(APP_DIR, 'index.html');
   const { mtimeMs } = fs.statSync(file);
-  if (indexCache.mtimeMs !== mtimeMs) indexCache = { mtimeMs, html: localizeIndexHtml(fs.readFileSync(file, 'utf8')) };
+  if (indexCache.mtimeMs !== mtimeMs) indexCache = { mtimeMs, html: localizeIndexHtml(fs.readFileSync(file, 'utf8')), gz: null };
   // /node-config.js define window.QUETZAL_NODE antes que cualquier módulo: config.js decide con él a quién le habla.
   const body = Buffer.from(indexCache.html.replace(/<head[^>]*>/i, (m) => `${m}
 <script src="/node-config.js"></script>`), 'utf8');
-  res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Content-Length': body.length, 'Cache-Control': 'no-cache' });
+  if (acceptsGzip(req)) {
+    indexCache.gz ||= zlib.gzipSync(body, { level: 6 });
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Content-Encoding': 'gzip', 'Content-Length': indexCache.gz.length, 'Cache-Control': 'no-cache', Vary: 'Accept-Encoding' });
+    return res.end(indexCache.gz);
+  }
+  res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Content-Length': body.length, 'Cache-Control': 'no-cache', Vary: 'Accept-Encoding' });
   res.end(body);
 }
 
@@ -844,7 +870,7 @@ const server = http.createServer(async (req, res) => {
 
     const rel = decodeURIComponent(url.pathname.replace(/^\/+/, '')) || 'index.html';
     if (!APP_ALLOWED.some(rx => rx.test(rel))) { res.writeHead(404); return res.end('No encontrado'); }
-    if (rel === 'index.html') return serveIndex(res);
+    if (rel === 'index.html') return serveIndex(req, res);
     serveFile(req, res, APP_DIR, rel);
   } catch (e) {
     console.error(e);

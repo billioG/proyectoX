@@ -6,6 +6,14 @@ Al publicar una versión nueva, agrega una línea arriba de todo (ver CONTRIBUTI
 
 ## 2026-11-05
 
+- **Infraestructura del nodo escolar: respaldo, imagen de microSD, instalación con revisión previa y menos datos por el Wi-Fi.**
+  (1) **Respaldo y restauración** de la base del nodo: `school-node/backup.js` (`node backup.js`, `--list`, `--files`, `--restore`), con respaldo **diario automático** (temporizador de systemd, 14 días, copia a la USB si hay una conectada) que el instalador deja también al actualizar; la restauración revisa el archivo, conserva la base anterior y rehúsa si el servicio está encendido. Guía: `docs/NODO_RESPALDO.md`.
+  (2) **Imagen de microSD maestra**: `install.sh --image`, `school-node/imagen/prepare-image.sh` y `quetzal-firstboot.sh` (el token y el Wi-Fi se escriben en un archivo de texto de la tarjeta; el primer encendido crea `config.json`, un código de docente propio y llaves SSH nuevas, y borra el token). Guía: `docs/NODO_IMAGEN_MICROSD.md`. **Probado solo con simulación; falta probarlo en una Raspberry real.**
+  (3) `install.sh --check` y revisión previa al instalar (64 bits, 2 GB libres, memoria, internet), con mensajes en español.
+  (4) El servidor del nodo entrega **comprimido (gzip)** el JavaScript, CSS y la página (de 2,3 MB a 0,6 MB), una sola vez por archivo y guardado en memoria; los rangos (videos) y las imágenes no se tocan.
+  (5) **Prueba de carga** `school-node/herramientas/prueba-de-carga.mjs`, y documentos de **límites conocidos** (`docs/NODO_LIMITES.md`) y **checklist para colegios nuevos** (`docs/CHECKLIST_NUEVO_COLEGIO.md`).
+  No requiere migraciones ni cambios en Supabase.
+
 - **Torneos entre establecimientos: ya aparecen los equipos de otras escuelas.** La pantalla decía «Todavía no hay equipos» (en la tabla de posiciones y al tocar «Retar») aunque sí existían, porque pedía los equipos junto con el nombre de la escuela y `tournament_teams.school_code` no tiene llave foránea hacia `schools`, así que la consulta fallaba. Ahora busca los nombres de escuela por separado y, si algo falla de verdad, muestra el error real. (v1.0.224)
 
 ## 2026-11-02
