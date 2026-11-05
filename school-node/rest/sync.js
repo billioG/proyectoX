@@ -114,10 +114,13 @@ export function applyRestPull(store, data, pushed = {}, { pendingReactions = new
     const justReads = new Set(Array.isArray(data.applied?.announcement_reads) ? data.applied.announcement_reads : []);
     // Un duelo jugado aquí y aún sin confirmar (su foto sigue en la bandeja) no lo pisa la bajada.
     const pendingDuels = new Set([...store.pendingRpcRefs('timed_math_duel'), ...store.pendingRpcRefs('hangman_duel')]);
+    const pendingFeedback = store.pendingRpcRefs('submit_feedback');
     const keepFor = {
       student_timed_math_duels: (row) => pendingDuels.has(String(row.id)),
       student_timed_math_results: (row) => pendingDuels.has(String(row.duel_id)),
       student_hangman_duels: (row) => pendingDuels.has(String(row.id)),
+      student_suggestions: (row) => pendingFeedback.has(`student_suggestions:${row.id}`),
+      teacher_ratings: (row) => pendingFeedback.has(`teacher_ratings:${row.id}`),
       student_hangman_results: (row) => pendingDuels.has(String(row.duel_id)),
       evaluations: (row) => pendingEvals.has(String(row.project_id)),
       announcements: (row) => justAnnouncements.has(row.id),

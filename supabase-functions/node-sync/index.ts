@@ -39,7 +39,7 @@ import { isAttendanceTable, planAttendanceOps } from './attendance.ts';
 import { isGroupTable, planGroupOps } from './groups.ts';
 import { isExamTable, planExamOps } from './exams.ts';
 import { isWaiverTable, planWaiverOps } from './waivers.ts';
-import { isCompanionFn, validateCompanionEvent, isProfilePhotoFn, validateProfilePhotoEvent, validateProfilePhotoRequest, PROFILE_PHOTO_BUCKET } from './validators.ts';
+import { isCompanionFn, validateCompanionEvent, isProfilePhotoFn, validateProfilePhotoEvent, validateProfilePhotoRequest, PROFILE_PHOTO_BUCKET, isFeedbackFn, validateFeedbackEvent } from './validators.ts';
 import { isTimedMathFn, validateTimedMathEvent } from './duels.ts';
 import { isHangmanFn, validateHangmanEvent } from './duels.ts';
 
@@ -530,6 +530,15 @@ Deno.serve(async (req) => {
         const cv = validateCompanionEvent(raw, { studentIds });
         if (!cv.ok) { rpcErrors.push({ seq, error: cv.error, permanent: true }); continue; }
         const { error } = await admin.rpc('apply_node_companion', cv.call);
+        if (error) { rpcErrors.push({ seq, error: error.message, permanent: error.code === 'P0001' }); continue; }
+        appliedRpc.push(seq);
+        continue;
+      }
+      // Buzón: sugerencias y evaluación del docente hechas en el nodo; apply_node_feedback (migrations/node-feedback.sql) comprueba que el docente sea de la clase del estudiante y las inserta (idempotente por id).
+      if (isFeedbackFn(raw?.fn)) {
+        const fv = validateFeedbackEvent(raw, { studentIds });
+        if (!fv.ok) { rpcErrors.push({ seq, error: fv.error, permanent: true }); continue; }
+        const { error } = await admin.rpc('apply_node_feedback', fv.call);
         if (error) { rpcErrors.push({ seq, error: error.message, permanent: error.code === 'P0001' }); continue; }
         appliedRpc.push(seq);
         continue;

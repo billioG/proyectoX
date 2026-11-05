@@ -223,7 +223,22 @@ export function createPolicy({ store, projects = null }) {
   const canChangeDuel = (ctx, o, n) => ctx.role === 'student' && o.status === 'pending' && ['challenger_id', 'opponent_id', 'wager_gems', 'topic'].every((c) => n[c] === o[c])
     && ((n.status === 'cancelled' && o.challenger_id === ctx.uid) || (n.status === 'rejected' && o.opponent_id === ctx.uid));
 
+  // ---- Buzón (reglas de la nube: el estudiante escribe lo suyo; el docente solo evalúa el de su clase lo valida el nodo, que es más estricto) ----
+  const FB_MAX = 2000;
+  const optText = (v) => v == null || (typeof v === 'string' && v.length <= FB_MAX);
+  const canSuggest = (ctx, r) => ctx.role === 'student' && r.student_id === ctx.uid && r.type === 'suggestion' && typeof r.message === 'string' && r.message.trim().length >= 1 && r.message.length <= FB_MAX
+    && (r.rating == null || int(r.rating, 1, 5));
+  const canRateTeacher = (ctx, r) => {
+    if (ctx.role !== 'student' || r.student_id !== ctx.uid) return false;
+    const me = store.all('students').find((s) => s.id === ctx.uid);
+    if (!me || !store.all('teacher_assignments').some((a) => a.teacher_id === r.teacher_id && sameGroup(a, me))) return false;
+    return typeof r.rating === 'number' && Number.isFinite(r.rating) && r.rating >= 1 && r.rating <= 5
+      && ['q_interest', 'q_practice', 'q_resources', 'q_respect', 'q_clarity'].every((k) => int(r[k], 0, 5)) && optText(r.message) && optText(r.best_moment);
+  };
+
   const readRules = {
+    student_suggestions: (ctx, r) => r.student_id === ctx.uid || staff(ctx),
+    teacher_ratings: (ctx, r) => r.student_id === ctx.uid || r.teacher_id === ctx.uid || ctx.role === 'admin',
     student_hangman_duels: (ctx, r) => inDuel(ctx.uid, r),
     student_hangman_results: (ctx, r) => r.student_id === ctx.uid || inDuel(ctx.uid, store.raw('student_hangman_duels').find((d) => d.id === r.duel_id)),
     student_timed_math_duels: (ctx, r) => inDuel(ctx.uid, r),
@@ -273,6 +288,8 @@ export function createPolicy({ store, projects = null }) {
       || (table === 'attendance' && validAttendance(ctx, row))
       || (table === 'attendance_waivers' && canRequestWaiver(ctx, row))
       || (table === 'student_timed_math_duels' && canChallenge(ctx, row))
+      || (table === 'student_suggestions' && canSuggest(ctx, row))
+      || (table === 'teacher_ratings' && canRateTeacher(ctx, row))
       || (table === 'student_hangman_duels' && canChallenge(ctx, row, 'hangman_duel'))
       || (table === 'exams' && staff(ctx) && examOk(ctx, row))
       || (table === 'exam_results' && resultOk(ctx, row))

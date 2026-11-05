@@ -219,6 +219,27 @@ export const SCHEMA = {
     relations: { exams: { type: 'one', table: 'exams', fk: 'exam_id', ref: 'id' } },
   }),
 
+  // Buzón: sugerencias del estudiante y evaluación semanal de su docente (js/profile-modals.js). Las escribe la app con insert; no van por la bandeja normal: cada una sube como una
+  // función `submit_feedback` (rest/index.js) que la nube aplica con apply_node_feedback (migrations/node-feedback.sql). Los ids de lo creado aquí usan el rango reservado de enteros.
+  // En la nube `teacher_ratings` tiene UNIQUE (estudiante, docente): una evaluación por docente; aquí igual (duplicado = 409).
+  student_suggestions: table({
+    pk: 'id',
+    noPush: true,
+    columns: ['id', 'student_id', 'type', 'message', 'rating', 'created_at'],
+    writable: ['student_id', 'type', 'message', 'rating'],
+    defaults: { id: () => 1_500_000_000 + Math.floor(Math.random() * 500_000_000), created_at: () => new Date().toISOString() },
+    relations: {},
+  }),
+  teacher_ratings: table({
+    pk: 'id',
+    noPush: true,
+    columns: ['id', 'student_id', 'teacher_id', 'rating', 'message', 'created_at', 'q_interest', 'q_practice', 'q_resources', 'q_respect', 'q_clarity', 'best_moment'],
+    writable: ['student_id', 'teacher_id', 'rating', 'message', 'q_interest', 'q_practice', 'q_resources', 'q_respect', 'q_clarity', 'best_moment'],
+    unique: [['student_id', 'teacher_id']],
+    defaults: { id: () => 1_500_000_000 + Math.floor(Math.random() * 500_000_000), created_at: () => new Date().toISOString(), q_interest: () => 0, q_practice: () => 0, q_resources: () => 0, q_respect: () => 0, q_clarity: () => 0 },
+    relations: {},
+  }),
+
   // Retos «Contrarreloj» entre estudiantes (duels.js). El reto lo crea la app con insert (retador, rival y apuesta); aceptar, jugar y enviar son
   // funciones. Los problemas, las horas de arranque y cómo se liquidó se guardan en la fila pero NO son columnas: el navegador no las ve.
   // La fila no va por la bandeja normal: sube como una «foto» del duelo (_rpc timed_math_duel).

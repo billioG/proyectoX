@@ -61,6 +61,12 @@ export function createRestLayer(db, { now = Date.now, random = Math.random, onCh
     // Una lección que se completa por primera vez paga XP (en la nube lo hace un disparador de lesson_completions).
     onChange: (changes = []) => {
       for (const c of changes) {
+        // Buzón: la sugerencia o evaluación recién escrita sube como una función (una por fila; el id la hace idempotente en la nube).
+        if ((c.table === 'student_suggestions' || c.table === 'teacher_ratings') && c.op === 'insert') {
+          const kind = c.table === 'student_suggestions' ? 'suggestion' : 'rating';
+          store.enqueue([{ op: 'submit_feedback', table: '_rpc', row: { ref: `${c.table}:${c.row.id}`, student_id: c.row.student_id, args: { kind, row: c.row } } }]);
+          continue;
+        }
         if (c.table === HANGMAN_TABLE) { hangman.onDuelChange(c.row); continue; }
         if (c.table === DUEL_TABLE) { duels.onDuelChange(c.row); continue; } // el reto (o su cambio de estado) sube como una foto del duelo
         if (c.table === 'projects' && c.op === 'insert' && projects) { projects.register(c.row); continue; } // el archivo y los datos pasan al almacén de proyectos

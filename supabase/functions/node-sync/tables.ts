@@ -36,6 +36,8 @@ export const TABLE_COLUMNS: Record<string, string[]> = {
   attendance_waivers: ['id', 'teacher_id', 'date', 'reason', 'status', 'admin_comment', 'created_at', 'school_code', 'grade', 'section', 'updated_at'],
   exams: ['id', 'teacher_id', 'school_code', 'grade', 'section', 'title', 'bimestre', 'question_count', 'answer_key', 'points', 'created_at'],
   exam_results: ['id', 'exam_id', 'student_id', 'answers', 'correct', 'wrong', 'blank', 'score', 'scanned_by', 'scanned_at'],
+  student_suggestions: ['id', 'student_id', 'type', 'message', 'rating', 'created_at'],
+  teacher_ratings: ['id', 'student_id', 'teacher_id', 'rating', 'message', 'created_at', 'q_interest', 'q_practice', 'q_resources', 'q_respect', 'q_clarity', 'best_moment'],
   reto_plays: ['id', 'student_id', 'game', 'competency', 'ok', 'played_at'],
   practice_results: ['id', 'student_id', 'game', 'competency', 'topic', 'correct', 'total', 'score', 'played_at'],
   attendance: ['id', 'student_id', 'teacher_id', 'school_code', 'grade', 'section', 'date', 'time', 'status', 'created_at'],
@@ -168,6 +170,12 @@ export async function pullTables(
   const attSince = new Date(Date.now() - 120 * 24 * 3600_000).toISOString().slice(0, 10);
   out.attendance = await fetchAll((from, to) => admin.from('attendance').select(list('attendance')).eq('school_code', school).gte('date', attSince).order('id').range(from, to));
   out.resource_notes = await byIds('resource_notes', 'student_id', students);
+  // Buzón: sugerencias de los últimos 120 días y las evaluaciones de docentes de los estudiantes de la escuela (una por docente). La capa local decide quién ve qué.
+  out.student_suggestions = [];
+  for (const part of chunk(students)) {
+    out.student_suggestions.push(...await fetchAll((from, to) => admin.from('student_suggestions').select(list('student_suggestions')).in('student_id', part).gte('created_at', attSince).order('id').range(from, to)));
+  }
+  out.teacher_ratings = await byIds('teacher_ratings', 'student_id', students);
 
   // Retos Contrarreloj de los últimos 30 días de los estudiantes de la escuela. Los problemas y las horas de arranque (columnas internas: la app
   // no las lee en la nube) bajan al nodo para poder jugar sin internet; la capa local no las muestra al navegador. El resultado no tiene id en

@@ -166,3 +166,50 @@ export function validateProfilePhotoEvent(raw: any, ctx: { member: boolean }): {
   if (!ctx.member) return { ok: false, error: 'Ese usuario no es de la escuela de este nodo' };
   return { ok: true, call: { p_user: raw.student_id, p_name: name } };
 }
+
+// ============================================================
+// Buzón del estudiante hecho en el nodo sin internet: sugerencias y evaluación del docente
+// ============================================================
+// El nodo sube cada una como la función submit_feedback con la fila completa (id del rango reservado de enteros, para que reenviarla no duplique). Aquí solo se valida la FORMA y se limpia
+// la fila; la función SQL apply_node_feedback (migrations/node-feedback.sql) comprueba que el docente sea de la clase del estudiante y la inserta.
+export const FEEDBACK_FN = 'submit_feedback';
+export const isFeedbackFn = (fn: unknown): boolean => fn === FEEDBACK_FN;
+const FB_ID_MIN = 1_500_000_000;
+const FB_ID_MAX = 2_099_999_999;
+const UUID_RX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const fbText = (v: unknown, required: boolean): string | null | undefined => {
+  if (v == null) return required ? undefined : null;
+  if (typeof v !== 'string' || v.length > 2000) return undefined;
+  return required && v.trim().length < 1 ? undefined : v;
+};
+const fbDate = (v: unknown): string | undefined => (typeof v === 'string' && v.length <= 40 && !Number.isNaN(Date.parse(v)) ? new Date(Date.parse(v)).toISOString() : undefined);
+
+export function validateFeedbackEvent(raw: any, ctx: { studentIds: Set<string> }): { ok: true; call: { p_kind: string; p_student: string; p_row: Record<string, unknown> } } | { ok: false; error: string } {
+  if (!raw || raw.fn !== FEEDBACK_FN) return { ok: false, error: 'Acción no soportada' };
+  if (typeof raw.student_id !== 'string' || !ctx.studentIds.has(raw.student_id)) return { ok: false, error: 'El estudiante no es de la escuela de este nodo' };
+  const a = raw.args, r = a?.row;
+  if (!a || !r || typeof r !== 'object' || r.student_id !== raw.student_id) return { ok: false, error: 'Mensaje inválido' };
+  if (!Number.isInteger(r.id) || r.id < FB_ID_MIN || r.id > FB_ID_MAX) return { ok: false, error: 'Identificador inválido' };
+  const created = fbDate(r.created_at);
+  if (!created) return { ok: false, error: 'Fecha inválida' };
+  if (a.kind === 'suggestion') {
+    const message = fbText(r.message, true);
+    if (message === undefined || r.type !== 'suggestion') return { ok: false, error: 'Sugerencia inválida' };
+    if (r.rating != null && !(Number.isInteger(r.rating) && r.rating >= 1 && r.rating <= 5)) return { ok: false, error: 'Nota inválida' };
+    return { ok: true, call: { p_kind: 'suggestion', p_student: raw.student_id, p_row: { id: r.id, student_id: raw.student_id, type: 'suggestion', message, rating: r.rating ?? null, created_at: created } } };
+  }
+  if (a.kind === 'rating') {
+    if (typeof r.teacher_id !== 'string' || !UUID_RX.test(r.teacher_id)) return { ok: false, error: 'Docente inválido' };
+    if (typeof r.rating !== 'number' || !Number.isFinite(r.rating) || r.rating < 1 || r.rating > 5) return { ok: false, error: 'Nota inválida' };
+    const message = fbText(r.message, false), best = fbText(r.best_moment, false);
+    if (message === undefined || best === undefined) return { ok: false, error: 'Texto inválido' };
+    const q: Record<string, number> = {};
+    for (const k of ['q_interest', 'q_practice', 'q_resources', 'q_respect', 'q_clarity']) {
+      const n = r[k] ?? 0;
+      if (!Number.isInteger(n) || n < 0 || n > 5) return { ok: false, error: 'Criterio inválido' };
+      q[k] = n;
+    }
+    return { ok: true, call: { p_kind: 'rating', p_student: raw.student_id, p_row: { id: r.id, student_id: raw.student_id, teacher_id: r.teacher_id, rating: Math.round(r.rating * 10) / 10, message, best_moment: best, ...q, created_at: created } } };
+  }
+  return { ok: false, error: 'Tipo de mensaje no soportado' };
+}
