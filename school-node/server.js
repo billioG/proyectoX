@@ -28,6 +28,7 @@ import { createProfilePhotoStore, createProfilePhotoHandler } from './profile-ph
 import { createProjectFiles, createProjectFilesHandler, projectFileKind } from './project-files.js';
 import { POLYFILLS } from './browser-polyfills.js';
 import { createWifi, createNmcliRunner } from './wifi.js';
+import { checkInternet, createConnectivity } from './connectivity.js';
 import { wifiPageHtml } from './wifi-page.js';
 
 const NODE_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -94,10 +95,9 @@ const restRoutes = restLayer.routes;
 // Archivos de cursos que el docente sube en el nodo (Storage de Supabase emulado); suben a la nube al sincronizar.
 // Wi-Fi del servidor (solo Raspberry Pi / Linux con NetworkManager): el docente la conecta desde /wifi sin SSH.
 const wifi = createWifi({ run: createNmcliRunner({ command: Array.isArray(config.nmcli) && config.nmcli.length ? config.nmcli : ['nmcli'] }), platform: config.wifiPlatform || process.platform });
-const internetReachable = async () => {
-  if (!config.cloudUrl) return null;
-  try { await fetch(config.cloudUrl, { method: 'HEAD', signal: AbortSignal.timeout(4000) }); return true; } catch { return false; }
-};
+// ¿Llega a la nube? (con el motivo en español si no): lo usan la pantalla de Wi-Fi y el vigilante de conexión de más abajo.
+const internetCheck = () => checkInternet(config.cloudUrl);
+const internetReachable = async () => (await internetCheck())?.online ?? null;
 // Solo docentes y administradores (sesión de la app, o el panel del docente con su código).
 function networkUser(req, res) {
   if (teacherFromRequest(req)) return true;
@@ -430,6 +430,11 @@ const api = {
       + db.prepare('SELECT COUNT(*) n FROM completions WHERE dirty = 1').get().n
       + db.prepare("SELECT COUNT(*) n FROM xp_events_local WHERE kind = 'chest'").get().n,
     syncing,
+    sync_stage: syncing ? syncStage : null,
+    sync_cause: syncing ? syncCause : null,
+    // Si el servidor llega a la nube (revisado cada 15 s) y, si no, por qué; y las direcciones por las que se abre ahora (cambian al cambiar de red).
+    internet: { online: connectivity.state.online, detail: connectivity.state.detail, checked_at: connectivity.state.checked_at },
+    urls: lanUrls(),
     sync_error: lastSyncError ? lastSyncError.message : null,
     pending: {
       completions: db.prepare('SELECT COUNT(*) n FROM completions WHERE dirty = 1').get().n,
@@ -442,9 +447,9 @@ const api = {
 
   // «Sincronizar ahora»: no pide sesión (el botón también está en la pantalla de entrada; sincronizar no expone ni cambia datos
   // de nadie). No martilla a la nube: si ya se está sincronizando, o se pidió hace menos de 15 s, no arranca otra.
-  'GET /api/wifi/status': wifiRoute(async () => { const s = await wifi.status(); return s.supported ? { ...s, internet: await internetReachable() } : s; }),
+  'GET /api/wifi/status': wifiRoute(async () => { const s = await wifi.status(); if (!s.supported) return s; const c = await internetCheck(); return { ...s, internet: c?.online ?? null, internet_detail: c?.detail ?? null }; }),
   'GET /api/wifi/scan': wifiRoute(async () => ({ networks: await wifi.scan() })),
-  'POST /api/wifi/connect': wifiRoute(async (req) => { const r = await wifi.connect(await readBody(req)); return { ...r, internet: await internetReachable() }; }),
+  'POST /api/wifi/connect': wifiRoute(async (req) => { const r = await wifi.connect(await readBody(req)); const c = await internetCheck(); connectivity.tick(); return { ...r, internet: c?.online ?? null, internet_detail: c?.detail ?? null }; }),
   'POST /api/wifi/forget': wifiRoute(async (req) => wifi.forget(await readBody(req))),
 
   'POST /api/sync/now': (req, res) => {
@@ -453,7 +458,7 @@ const api = {
     if (Date.now() - lastSyncRequestAt < 15_000) return sendJson(res, 200, { started: false, throttled: true });
     lastSyncRequestAt = Date.now();
     lastSyncError = null;
-    trySync();
+    trySync('button');
     sendJson(res, 200, { started: true });
   },
 
@@ -855,26 +860,34 @@ server.listen(config.port || 8080, () => {
 let syncing = false;
 let lastSyncRequestAt = 0;
 let lastSyncError = null; // { message, at } del último intento que falló
+let syncStage = null; // qué está haciendo la sincronización ahora (para el aviso del docente)
+let syncCause = null; // 'reconnect' | 'first' | 'timer' | 'button'
 
 function hasToken() {
   return !!config.nodeToken && !String(config.nodeToken).startsWith('PEGAR');
 }
 
-async function trySync() {
+async function trySync(cause = 'timer') {
   if (syncing || !hasToken()) return { started: false };
   syncing = true;
+  syncCause = cause;
+  syncStage = 'Empezando';
   try {
-    await runSync(db, config);
+    await runSync(db, config, console.log, (stage) => { syncStage = stage; });
     lastSyncError = null;
     return { started: true, ok: true };
   } catch (e) {
     console.log('⏸️  Sin sync ahora:', e.message);
     lastSyncError = { message: friendlySyncError(e.message), at: new Date().toISOString() };
     return { started: true, ok: false };
-  } finally { syncing = false; }
+  } finally { syncing = false; syncStage = null; syncCause = null; }
 }
-setTimeout(trySync, 5000);
-setInterval(trySync, (config.syncEveryMinutes || 10) * 60 * 1000);
+setTimeout(() => trySync('first'), 5000);
+setInterval(() => trySync('timer'), (config.syncEveryMinutes || 10) * 60 * 1000);
+
+// Vigilante de conexión: cada 15 s mira si el servidor llega a la nube; en cuanto la tiene (se conectó el cable al router con internet, o la Wi-Fi) sincroniza solo, sin que el docente pulse nada.
+const connectivity = createConnectivity({ intervalMs: (config.connectivitySeconds || 15) * 1000, minGapMs: (config.connectivityMinGapSeconds || 60) * 1000, check: internetCheck, onOnline: (why) => { if (hasToken()) { lastSyncError = null; return trySync(why); } } });
+if (hasToken()) connectivity.start();
 
 // Sync por USB: revisa cada 20 s si hay una memoria con carpeta QUETZAL.
 // Solo reescribe la USB si cambió algo desde la última vez, para no

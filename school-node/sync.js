@@ -46,14 +46,16 @@ export function buildPush(db, { cloudUrl = '' } = {}) {
   };
 }
 
-export async function runSync(db, config, log = console.log) {
+export async function runSync(db, config, log = console.log, onStage = () => {}) {
   // Primero los archivos de los recursos que el docente subió aquí; las filas viajan solo con los recursos ya completos.
+  onStage('Subiendo archivos de cursos');
   try {
     const files = await uploadContentFiles(db, config, { log });
     if (files.uploaded || files.failed || files.rejected) log(`📤 Archivos de cursos: ${files.uploaded} subidos, ${files.rejected} rechazados, ${files.failed} se reintentan.`);
   } catch (e) {
     log('⚠️ Archivos de cursos: no se pudo intentar la subida:', e.message);
   }
+  onStage('Subiendo fotos de perfil');
   // Fotos de perfil cambiadas aquí: la imagen sube primero; el cambio y el premio viajan en esta misma sincronización cuando ya llegó.
   try {
     const ph = await uploadProfilePhotos(db, config, { log });
@@ -61,6 +63,7 @@ export async function runSync(db, config, log = console.log) {
   } catch (e) {
     log('⚠️ Fotos de perfil: no se pudo intentar la subida:', e.message);
   }
+  onStage('Enviando los cambios y bajando lo nuevo de la nube');
   const push = buildPush(db, { cloudUrl: config.cloudUrl });
 
   const res = await fetch(`${config.cloudUrl}/functions/v1/node-sync`, {
@@ -74,8 +77,10 @@ export async function runSync(db, config, log = console.log) {
 
   applyPull(db, data, push);
   log(`✅ Sync: ${data.students?.length || 0} alumnos, ${data.courses?.length || 0} cursos. Subido: ${JSON.stringify(data.applied)}`);
+  onStage('Descargando archivos de los cursos');
   await downloadFiles(db, config, log);
 
+  onStage('Descargando fotos de perfil');
   // Fotos de perfil de estudiantes y docentes: sin internet no cargarían desde la nube.
   try {
     const photos = await createPhotos({ db, dir: path.join(config.dataDir, 'photos') }).sync(restStoreFor(db, REST_SCHEMA), { log });
@@ -84,6 +89,7 @@ export async function runSync(db, config, log = console.log) {
     log('⚠️ Fotos de perfil: no se pudo intentar la descarga:', e.message);
   }
 
+  onStage('Subiendo proyectos');
   // Proyectos que los estudiantes guardaron en la escuela: se publican en la nube.
   try {
     const projects = await syncProjects(db, config, { log });

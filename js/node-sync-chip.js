@@ -4,6 +4,7 @@
  * sincronización, y deja pedir una a mano con «Sincronizar ahora». En la nube (GitHub Pages) no existe.
  */
 const POLL_MS = 10_000;
+const POLL_BUSY_MS = 2_000; // mientras sincroniza se mira seguido para mostrar el avance
 
 function ago(iso) {
   const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
@@ -16,7 +17,11 @@ function ago(iso) {
 }
 
 function describe(s) {
-  if (s.syncing) return { tone: 'busy', text: 'Sincronizando…' };
+  if (s.syncing) {
+    // El servidor detectó internet solo (cable al router o Wi-Fi) o se pidió a mano: el docente ve en qué paso va.
+    const why = s.sync_cause === 'reconnect' ? 'Se conectó a internet. ' : '';
+    return { tone: 'busy', text: `${why}Sincronizando${s.sync_stage ? `: ${s.sync_stage}` : ''}…` };
+  }
   if (s.sync_error) return { tone: 'warn', text: 'Sin internet por ahora: todo está guardado y se sube solo' };
   const rejected = s.pending?.uploads_rejected?.length || 0;
   if (rejected > 0) return { tone: 'warn', text: `La nube rechazó ${rejected} ${rejected === 1 ? 'archivo' : 'archivos'} de tus cursos: ${s.pending.uploads_rejected[0].error}` };
@@ -52,16 +57,39 @@ function start() {
   document.body.appendChild(chip);
   const text = chip.querySelector('[data-text]');
   const button = chip.querySelector('[data-sync]');
+  let lastStatus = null;
+  // Tocar el texto de la barra (en el celular no hay «pasar el cursor») dice si hay internet y por qué dirección se abre el servidor ahora: cambia al conectarlo a otra red.
+  text.style.cursor = 'pointer';
+  text.addEventListener('click', () => {
+    const urls = Array.isArray(lastStatus?.urls) ? lastStatus.urls : [];
+    const net = lastStatus?.internet?.online === true ? 'El servidor tiene internet.' : lastStatus?.internet?.online === false ? `Sin internet. ${lastStatus.internet.detail || ''}` : '';
+    window.showToast?.(`<i class="fas fa-wifi"></i> ${[net, urls.length ? `Abre el servidor en: ${urls.join(' o ')}` : ''].filter(Boolean).join(' ')}`, 'info');
+  });
+  let wasSyncing = false;
+  let busy = false;
+  let lastCause = null;
 
   async function refresh() {
     try {
       const res = await fetch('/api/node/status', { cache: 'no-store' });
       if (!res.ok) throw new Error(String(res.status));
       const s = await res.json();
+      lastStatus = s;
       const d = describe(s);
       text.textContent = d.text;
       chip.dataset.tone = d.tone;
       button.disabled = !!s.syncing;
+      // Al pasar el cursor: si hay internet o por qué no, y las direcciones por las que se abre el servidor ahora (cambian si se conecta a otra red).
+      const net = s.internet?.online === true ? 'Internet: sí.' : s.internet?.online === false ? `Internet: no. ${s.internet.detail || ''}` : '';
+      chip.title = [net, Array.isArray(s.urls) && s.urls.length ? `Dirección del servidor: ${s.urls.join('  ·  ')}` : ''].filter(Boolean).join('\n');
+      // Un aviso cuando termina una sincronización (también las que arrancó el servidor solo al detectar internet).
+      if (wasSyncing && !s.syncing) {
+        if (!s.sync_error) window.showToast?.('<i class="fas fa-cloud-arrow-up"></i> Listo, se sincronizó con la nube', 'success');
+        else if (lastCause !== 'timer') window.showToast?.(`<i class="fas fa-circle-xmark"></i> ${s.sync_error}`, 'error');
+      }
+      wasSyncing = !!s.syncing;
+      if (s.syncing) lastCause = s.sync_cause;
+      busy = !!s.syncing;
       return s;
     } catch {
       text.textContent = 'Sin conexión con el nodo';
@@ -85,8 +113,8 @@ function start() {
         await new Promise((r) => setTimeout(r, 2000));
         const s = await refresh();
         if (s && !s.syncing) {
-          if (!s.sync_error) window.showToast?.('<i class="fas fa-cloud-arrow-up"></i> Listo, se sincronizó con la nube', 'success');
-          break;
+          break; // el aviso de «Listo» lo da refresh() al ver que terminó
+
         }
       }
     } finally {
@@ -94,8 +122,9 @@ function start() {
     }
   });
 
-  refresh();
-  setInterval(refresh, POLL_MS);
+  // Revisión periódica: cada 10 s, y cada 2 s mientras sincroniza.
+  const loop = async () => { await refresh(); setTimeout(loop, busy ? POLL_BUSY_MS : POLL_MS); };
+  loop();
   window.addEventListener('focus', refresh);
 }
 

@@ -13,6 +13,7 @@ export const FAKE_TOKEN = 'a'.repeat(64);
  *   failConfirm?: boolean,    // la confirmación (push.projects) responde 500
  *   oldFunction?: boolean,    // función vieja: la respuesta no trae applied.projects
  *   rejectProject?: string,   // la nube rechaza todos los proyectos con ese mensaje
+ *   port?: number,            // puerto fijo (para «encender» la nube después de que el nodo ya la buscaba)
  * }
  * Las opciones se pueden cambiar entre llamadas: cloud.opts.failConfirm = false.
  */
@@ -82,7 +83,7 @@ export async function startFakeCloud(opts = {}) {
     send(res, 404, { error: 'no existe' });
   });
 
-  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  await new Promise((resolve) => server.listen(opts.port || 0, '127.0.0.1', resolve));
   cloud.url = `http://127.0.0.1:${server.address().port}`;
   cloud.stop = () => new Promise((resolve) => { server.closeAllConnections?.(); server.close(() => resolve()); });
   return cloud;

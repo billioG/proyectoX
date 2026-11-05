@@ -63,3 +63,24 @@ test('el docente entra a /wifi, ve las redes, se conecta a una y una clave mala 
   await expect(page.locator('#msg')).toContainText('Conectado a Vecino:5G');
   await expect(page.locator('#saved')).toContainText('Vecino:5G');
 });
+
+test('«Probar internet» deja escrito el resultado: si no hay, dice por qué; si hay, lo confirma (antes solo decía «Probando…»)', async ({ page }) => {
+  test.skip(!node, skipReason);
+  await page.goto(`${node.base}/wifi`);
+  await page.fill('#email', 'marta@escuela.com');
+  await page.fill('#pass', '654321');
+  await page.click('#login button[type=submit]');
+  await expect(page.locator('#state')).toContainText('Conectado a');
+
+  // Sin nube a la vista (el nodo de la prueba apunta a un puerto cerrado): dice que no y el motivo en español.
+  await page.click('#test');
+  await expect(page.locator('#msg')).toContainText('No hay internet.');
+  await expect(page.locator('#msg')).toContainText('nube');
+  await expect(page.locator('#test')).toBeEnabled();
+
+  // Con internet: lo confirma y avisa que se sincroniza solo.
+  await page.route('**/api/wifi/status', (route) => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ supported: true, connected: 'CasaMia', saved: [], internet: true, internet_detail: null }) }));
+  await page.click('#test');
+  await expect(page.locator('#msg')).toContainText('Hay internet');
+  await expect(page.locator('#msg')).toContainText('se sincroniza solo');
+});

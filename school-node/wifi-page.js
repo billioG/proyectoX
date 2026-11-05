@@ -52,10 +52,12 @@ export function wifiPageHtml() {
       .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { if (!r.ok) throw new Error(d.error || ('Error ' + r.status)); return d; }); });
   }
   function bars(s) { return s >= 70 ? 'señal fuerte' : s >= 40 ? 'señal media' : 'señal débil'; }
+  var last = null;
   function refresh() {
     return api('/api/wifi/status').then(function (s) {
       if (!s.supported) { $('state').textContent = s.reason; show('warn', false); ['scan', 'test'].forEach(function (b) { $(b).disabled = true; }); return; }
       $('state').textContent = (s.connected ? 'Conectado a: ' + s.connected : 'Sin Wi-Fi conectada') + ' · Internet: ' + (s.internet === null ? 'no se pudo comprobar' : s.internet ? 'sí' : 'no');
+      last = s;
       show('warn', true);
       var box = $('saved'); box.textContent = '';
       if (s.saved && s.saved.length) {
@@ -102,7 +104,16 @@ export function wifiPageHtml() {
       .then(function (d) { show('connect', false); $('pw').value = ''; say('Conectado a ' + d.ssid + '. Internet: ' + (d.internet ? 'sí, ya puede sincronizar.' : 'todavía no responde; espera un momento y toca «Probar internet».'), d.internet ? 'ok' : 'warn'); return refresh(); })
       .catch(function (err) { say(err.message, 'bad'); }).then(function () { $('go').disabled = false; });
   };
-  $('test').onclick = function () { say('Probando…'); refresh().then(function () { say(''); }).catch(function (e) { say(e.message, 'bad'); }); };
+  // El resultado se queda escrito (antes se borraba al terminar y no se sabía si había internet) y, si no hay, dice por qué.
+  $('test').onclick = function () {
+    say('Probando… puede tardar unos segundos.'); $('test').disabled = true;
+    refresh().then(function () {
+      if (!last) return;
+      if (last.internet === true) say('Hay internet: el servidor llega a la nube y se sincroniza solo.', 'ok');
+      else if (last.internet === false) say('No hay internet. ' + (last.internet_detail || ''), 'bad');
+      else say('No se pudo comprobar: falta conectar este servidor a una escuela.', 'warn');
+    }).catch(function (e) { say(e.message, 'bad'); }).then(function () { $('test').disabled = false; });
+  };
 })();
 </script></main></body></html>`;
 }

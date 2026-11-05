@@ -31,6 +31,7 @@ Cuando el nodo ya **sincronizó una vez** con la nube, tus estudiantes y docente
 - **Foto de perfil (desde v1.0.220):** estudiantes y docentes cambian su foto con el modal de siempre; se ve al instante, gana el premio de la primera foto y sube a la nube al sincronizar. Requiere `migrations/node-profile-photo.sql` y `node-sync` actualizado.
 - **Buzón (desde v1.0.221):** sugerencias y evaluación semanal del docente; suben a la nube al sincronizar. Requiere `migrations/node-feedback.sql` y `node-sync` actualizado.
 - **Lo que sigue necesitando internet:** los retos de comprensión, ortografía y depuración (necesitan IA para crear su contenido), notificaciones en tiempo real, la tienda y el pase de temporada, el chat de la mascota y el asistente con IA, y adjuntar imágenes a un comentario.
+- **Sincronización al conectar (desde v1.0.222):** el servidor revisa cada 15 s si llega a la nube y, en cuanto la tiene (cable a un router con internet, o Wi-Fi), sincroniza solo; la barra de abajo muestra el paso en que va y avisa al terminar. Al conectarlo a otra red su dirección IP cambia: conecta el celular a la MISMA red y abre `http://quetzal.local:8080` o la dirección nueva (toca el texto de la barra para verla).
 - **Sincronización:** automática cada 10 minutos cuando hay internet, o a mano con el botón **Sincronizar ahora** del
   aviso de abajo a la izquierda, que también muestra «Sincronizado hace X» o «N cambios por subir».
 - **Modo anterior (PIN y panel del nodo):** sigue disponible en **`/?modo=pin`** (o con el enlace «Docente» del aviso):
