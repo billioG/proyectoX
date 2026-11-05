@@ -61,7 +61,7 @@ test('la sugerencia: la escribe el estudiante, la ve él y el docente, no otro e
   assert.ok(r.data.id >= 1_500_000_000 && r.data.id <= 2_099_999_999, 'id del rango reservado');
   assert.deepEqual((await h.list(a, 'student_suggestions?select=message,type,rating&order=id.desc')).map((x) => x.message), ['  Más tiempo de laboratorio  ']);
   assert.deepEqual(await h.list(b, 'student_suggestions?select=message'), [{ message: 'Más computadoras' }], 'cada estudiante ve solo lo suyo');
-  assert.equal((await h.list(t1, 'student_suggestions?select=id')).length, 2, 'el docente (personal) ve las de la escuela');
+  assert.deepEqual(await h.list(t1, 'student_suggestions?select=id'), [], 'el docente NO lee la tabla directo (vería quién escribió): lo lee por el buzón, anónimo');
   const pending = buildPush(h.db, { cloudUrl: 'x' }).rpc.filter((x) => x.fn === 'submit_feedback');
   assert.deepEqual(pending.map((x) => [x.student_id, x.args.kind, x.args.row.id, x.args.row.message]), [['s1', 'suggestion', r.data.id, '  Más tiempo de laboratorio  ']]);
   // La bajada no la pisa mientras sigue pendiente; al confirmarla la nube manda.
@@ -98,8 +98,9 @@ test('la evaluación del docente: solo al docente de su clase, una por docente, 
     assert.equal((await h.insert(b, 'teacher_ratings', rating({ student_id: over.student_id ?? 's2', ...over }))).status, 403, JSON.stringify(over));
   }
   assert.equal((await h.insert(b, 'teacher_ratings', rating({ student_id: 's2', q_interest: undefined }))).status, 201, 'los criterios omitidos valen 0, como en la nube');
-  // Quién ve qué: el docente evaluado ve las suyas (profile.js promedia `rating`); el otro docente y el otro estudiante no.
-  assert.deepEqual((await h.list(t1, 'teacher_ratings?select=student_id,rating&teacher_id=eq.t1&order=student_id')).map((x) => x.student_id), ['s1', 's2']);
+  // Quién ve qué: el docente evaluado NO lee la tabla directo (vería quién fue); sus notas salen por get_my_ratings (solo la nota) y el buzón.
+  assert.deepEqual(await h.list(t1, 'teacher_ratings?select=student_id,rating&teacher_id=eq.t1'), []);
+  assert.deepEqual((await h.call('POST', '/rest/v1/rpc/get_my_ratings', { token: t1, body: {} }).then((r) => r.json())).map((x) => x.rating).sort(), [4.2, 4.2]);
   assert.deepEqual(await h.list(t2, 'teacher_ratings?select=id'), []);
   assert.deepEqual((await h.list(b, 'teacher_ratings?select=student_id')).map((x) => x.student_id), ['s2']);
   const rpcs = buildPush(h.db, { cloudUrl: 'x' }).rpc.filter((x) => x.fn === 'submit_feedback');
@@ -107,4 +108,33 @@ test('la evaluación del docente: solo al docente de su clase, una por docente, 
   assert.equal(rpcs.find((x) => x.student_id === 's1').args.row.teacher_id, 't1');
   await h.call('DELETE', `/rest/v1/teacher_ratings?id=eq.${r.data.id}`, { token: a });
   assert.equal((await h.list(a, `teacher_ratings?select=id&id=eq.${r.data.id}`)).length, 1, 'no se borran sin internet');
+});
+
+test('el buzón del docente: sus evaluaciones y las sugerencias de SUS clases, anónimas; el administrador ve nombres; el estudiante nada; filtros y límites', async () => {
+  const h = await boot();
+  h.applyBase({ tables: { teachers: [{ id: 't1', full_name: 'Marta', role: 'docente' }, { id: 't2', full_name: 'Raúl', role: 'docente' }, { id: 'ad', full_name: 'Admin', role: 'admin' }] } });
+  const a = await h.student('ana1'), b = await h.student('beto1'), t1 = await h.teacher('marta@escuela.com'), t2 = await h.teacher('raul@escuela.com');
+  await h.insert(a, 'student_suggestions', { student_id: 's1', type: 'suggestion', message: 'Más tiempo de laboratorio' });
+  await h.insert(a, 'teacher_ratings', rating({ message: 'La robótica', best_moment: 'La robótica' }));
+  await h.insert(b, 'teacher_ratings', rating({ student_id: 's2', message: 'Muy rápido', best_moment: null, rating: 3 }));
+  const inbox = async (token, args = {}) => (await h.call('POST', '/rest/v1/rpc/get_feedback_inbox', { token, body: args })).json();
+  const m = await inbox(t1);
+  assert.equal(m.role, 'teacher');
+  assert.deepEqual(m.ratings.map((r) => r.message).sort(), ['La robótica', 'Muy rápido']);
+  assert.deepEqual(m.suggestions.map((s) => s.message).sort(), ['Más computadoras', 'Más tiempo de laboratorio']);
+  assert.ok(m.ratings.every((r) => r.grade === 'Primero' && r.section === 'A'));
+  const text = JSON.stringify(m);
+  for (const secret of ['Ana', 'Beto', 'student_id', 'student_name', '"s1"', '"s2"']) assert.ok(!text.includes(secret), `el docente no debe ver ${secret}`);
+  // Otro docente (su clase es otra): nada.
+  const other = await inbox(t2);
+  assert.deepEqual([other.ratings.length, other.suggestions.length], [0, 0]);
+  // El estudiante no usa el buzón; el administrador necesita sesión propia (no hay admin sembrado): se prueba el módulo directo.
+  assert.deepEqual(await inbox(a), { role: 'teacher', suggestions: [], ratings: [] });
+  const { createInbox } = await import('../school-node/rest/inbox.js');
+  const full = createInbox({ store: h.layer.store }).inbox({ p_school: 'ESC1' }, { uid: 'ad', role: 'admin' });
+  assert.equal(full.role, 'admin');
+  assert.deepEqual(full.ratings.map((r) => [r.student_name, r.teacher_name]).sort(), [['Ana', 'Marta'], ['Beto', 'Marta']]);
+  assert.deepEqual(full.suggestions.map((s) => s.student_name).sort(), ['Ana', 'Beto']);
+  assert.deepEqual(createInbox({ store: h.layer.store }).inbox({ p_school: 'OTRA' }, { uid: 'ad', role: 'admin' }).ratings, []);
+  assert.deepEqual(createInbox({ store: h.layer.store }).inbox({ p_days: 1 }, { uid: 'ad', role: 'admin' }).suggestions.map((x) => x.student_name), ['Ana'], 'la sugerencia vieja (2026-10-30) queda fuera de 1 día');
 });

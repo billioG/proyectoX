@@ -11,7 +11,7 @@ const CRITERIA = ['creativity', 'clarity', 'functionality', 'teamwork', 'social_
 const invalid = (message) => new RestError(400, message, 'P0001');
 const unavailable = (what) => new RestError(400, `${what} aún no está disponible sin internet`, 'P0001');
 
-export function createRpcs({ store, xp, now = Date.now, reactions = null, companion = null, duels = null, hangman = null, profilePhoto = null }) {
+export function createRpcs({ store, xp, now = Date.now, reactions = null, companion = null, duels = null, hangman = null, profilePhoto = null, inbox = null }) {
   const progress = createProgress({ store, now });
   const studentOnly = (ctx, what) => { if (ctx?.role !== 'student') throw unavailable(what); };
 
@@ -50,6 +50,10 @@ export function createRpcs({ store, xp, now = Date.now, reactions = null, compan
       if (!profilePhoto) throw unavailable('Cambiar la foto de perfil');
       return profilePhoto.claim(args, ctx);
     },
+
+    // Buzón: lo que leen el docente (anónimo) y el administrador (con nombres), y las notas del perfil del docente (inbox.js).
+    get_feedback_inbox: (args, ctx) => inbox.inbox(args, ctx),
+    get_my_ratings: (args, ctx) => inbox.myRatings(args, ctx),
 
     // Mis notas de exámenes (el estudiante): el examen sin su clave y mi resultado.
     my_exam_results: (args, ctx) => {

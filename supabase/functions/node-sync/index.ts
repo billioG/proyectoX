@@ -39,7 +39,7 @@ import { isAttendanceTable, planAttendanceOps } from './attendance.ts';
 import { isGroupTable, planGroupOps } from './groups.ts';
 import { isExamTable, planExamOps } from './exams.ts';
 import { isWaiverTable, planWaiverOps } from './waivers.ts';
-import { isCompanionFn, validateCompanionEvent, isProfilePhotoFn, validateProfilePhotoEvent, validateProfilePhotoRequest, PROFILE_PHOTO_BUCKET, isFeedbackFn, validateFeedbackEvent } from './validators.ts';
+import { isCompanionFn, validateCompanionEvent, isProfilePhotoFn, validateProfilePhotoEvent, validateProfilePhotoRequest, PROFILE_PHOTO_BUCKET, isFeedbackFn, validateFeedbackEvent, sanitizeNodeStatus } from './validators.ts';
 import { isTimedMathFn, validateTimedMathEvent } from './duels.ts';
 import { isHangmanFn, validateHangmanEvent } from './duels.ts';
 
@@ -179,6 +179,14 @@ Deno.serve(async (req) => {
     const { data, error } = await admin.storage.from(BUCKET).createSignedUploadUrl(v.path, { upsert: true });
     if (error || !data) return reply({ error: `No se pudo preparar la subida: ${error?.message || 'sin respuesta'}` }, 500);
     return reply({ path: v.path, signed_url: data.signedUrl });
+  }
+
+  // Aviso del servidor (cada ~30 s con internet): guarda su estado para mostrarlo en la plataforma y le responde si el docente pidió «Sincronizar ahora» desde ahí
+  // (node_heartbeat, migrations/node-remote-sync.sql). Se responde antes del pull pesado.
+  if (!usb && body?.action === 'node_ping') {
+    const { data, error } = await admin.rpc('node_heartbeat', { p_node: node.id, p_status: sanitizeNodeStatus(body.status) });
+    if (error) return reply({ error: `No se pudo guardar el estado: ${error.message}` }, 500);
+    return reply({ sync_requested_at: data ?? null, server_time: new Date().toISOString() });
   }
 
   // Foto de perfil cambiada en el nodo: URL firmada de un solo archivo en el depósito de fotos, con el nombre que armó la app (<id>_<hora>.<ext>).

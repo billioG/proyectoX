@@ -36,3 +36,29 @@ test('el estado trae si hay internet (y por qué no) y las direcciones del servi
     assert.ok(on.last_sync_at, 'sincronizó sin pulsar el botón');
   } finally { await cloud.stop(); }
 });
+
+test('el docente toca «Sincronizar ahora» en la plataforma: el servidor, que avisa a la nube cada segundo, lo recibe y sincroniza; la nube ve su estado', { skip, timeout: 90000 }, async () => {
+  const port = await freePort();
+  const cloud = await startFakeCloud({ port });
+  try {
+    const node = await startNode({ config: { cloudUrl: cloud.url, nodeToken: FAKE_TOKEN, connectivitySeconds: 1, remotePingSeconds: 1 } });
+    // Primero sincroniza solo (detecta internet); después el servidor sigue avisando con su estado.
+    await waitFor(() => (cloud.stats.syncs || 0) >= 1 && (cloud.stats.pings || 0) >= 2, { timeout: 40000, every: 200 });
+    assert.equal(typeof cloud.lastPing.pending_changes, 'number');
+    assert.equal(cloud.lastPing.syncing, false);
+    assert.equal(cloud.lastPing.internet, true);
+    assert.ok(Array.isArray(cloud.lastPing.urls));
+    assert.match(String(cloud.lastPing.version), /^v1\.0\.\d+$/);
+    await new Promise((r) => setTimeout(r, 7000)); // pasa también la sincronización del arranque (a los 5 s)
+    const before = cloud.stats.syncs;
+    await new Promise((r) => setTimeout(r, 2500));
+    assert.equal(cloud.stats.syncs, before, 'sin petición no sincroniza de más (solo avisa)');
+    // El docente pide sincronizar en la plataforma.
+    cloud.requestedAt = new Date().toISOString();
+    await waitFor(() => cloud.stats.syncs > before, { timeout: 30000, every: 200 });
+    // La misma petición no se repite.
+    const after = cloud.stats.syncs;
+    await new Promise((r) => setTimeout(r, 3500));
+    assert.equal(cloud.stats.syncs, after, 'una petición, una sincronización');
+  } finally { await cloud.stop(); }
+});

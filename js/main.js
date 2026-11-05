@@ -18,6 +18,8 @@ const MODULE_MAP = {
     'groups': ['js/groups.js'],
     'exams': ['js/omr-core.js', 'js/exams.js'],
     'progress': ['js/progress.js'],
+    'school-servers': ['js/school-servers.js'],
+    'inbox': ['js/inbox.js'],
     'attendance': ['js/attendance.js', 'js/data/challenges.js'],
     'admin-attendance-report': ['js/admin-attendance.js', 'js/attendance-summary-view.js'],
     'admin-eval-report': ['js/admin-evaluations.js'],
@@ -304,6 +306,12 @@ export function loadViewContent(view) {
         case 'progress':
             if (userRole === 'admin' || userRole === 'docente') callViewLoader(view, window.loadProgress);
             break;
+        case 'inbox':
+            if (userRole === 'admin' || userRole === 'docente') callViewLoader(view, window.loadInbox);
+            break;
+        case 'school-servers':
+            if (userRole === 'admin' || userRole === 'docente') callViewLoader(view, window.loadSchoolServers);
+            break;
         case 'lessons':
             callViewLoader(view, window.loadLessons);
             break;
@@ -352,7 +360,7 @@ const ADMIN_ONLY_VIEWS = new Set([
     'admin-dashboard', 'admin-teacher-performance', 'admin-success', 'admin-rocks',
     'schools', 'teachers', 'admin-attendance-report', 'admin-eval-report'
 ]);
-const STAFF_ONLY_VIEWS = new Set(['students', 'exams', 'progress']);
+const STAFF_ONLY_VIEWS = new Set(['students', 'exams', 'progress', 'school-servers', 'inbox']);
 const COORDINADOR_ONLY_VIEWS = new Set(['coordinator-dashboard', 'coordinator-reports']);
 
 function isViewAllowedForRole(view, role) {

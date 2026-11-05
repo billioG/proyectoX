@@ -248,7 +248,7 @@ window.loadTeacherProfile = async function loadTeacherProfile() {
 
         const [assignRes, ratingRes, badgesRes] = await Promise.all([
             _supabase.from('teacher_assignments').select('*').eq('teacher_id', currentUser.id),
-            _supabase.from('teacher_ratings').select('rating').eq('teacher_id', currentUser.id),
+            _supabase.rpc('get_my_ratings'), // solo la nota: el docente no lee quién la puso (migrations/feedback-inbox.sql)
             _supabase.from('teacher_badges').select('badge_id').eq('teacher_id', currentUser.id),
         ]);
 

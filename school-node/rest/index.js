@@ -12,6 +12,7 @@ import { createCompanion } from './companion.js';
 import { createDuels, DUEL_TABLE } from './duels.js';
 import { createHangman, HANGMAN_TABLE } from './hangman.js';
 import { createProfilePhoto } from './profile-photo.js';
+import { createInbox } from './inbox.js';
 
 // `projects`: { upload, pendingCount, register } del almacén de proyectos del nodo (server.js): el estudiante sube su proyecto con la app real.
 export function createRestLayer(db, { now = Date.now, random = Math.random, onChange = () => {}, projects = null, profilePhotos = null } = {}) {
@@ -55,7 +56,7 @@ export function createRestLayer(db, { now = Date.now, random = Math.random, onCh
     const pending = new Set(reactions.pending().map((r) => Number(r.project_id)));
     return pending.size ? (row) => (pending.has(Number(row.id)) ? { ...row, votes: reactions.adjustVotes(row.id, row.votes) } : row) : (row) => row;
   });
-  const rpcs = createRpcs({ store, xp, now, reactions, companion, duels, hangman, profilePhoto });
+  const rpcs = createRpcs({ store, xp, now, reactions, companion, duels, hangman, profilePhoto, inbox: createInbox({ store, now }) });
   const routes = createRestRoutes({
     store, auth, rpcs, projects,
     // Una lección que se completa por primera vez paga XP (en la nube lo hace un disparador de lesson_completions).

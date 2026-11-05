@@ -73,7 +73,7 @@
          index.html pero el navegador puede seguir sirviendo desde caché HTTP
          una versión vieja de un módulo lazy-loaded (ej. pdf-processor.js),
          aunque el tag de versión visible ya muestre la última. -->
-    <script>window.APP_VERSION = 'v1.0.222';</script>
+    <script>window.APP_VERSION = 'v1.0.223';</script>
 
     <!-- Silenciar console.log/info/debug en producción (activar con localStorage.PX_DEBUG='true').
          Va antes de todo lo demás porque los console.log de cada módulo corren
@@ -656,7 +656,7 @@
                         Q</div>
                     Quetzal <span class="text-primary-dark dark:text-primary">LMS</span>
                 </div>
-                <span id="app-version-tag" class="text-[0.65rem] text-slate-500 dark:text-slate-400 font-medium mt-1">v1.0.222</span>
+                <span id="app-version-tag" class="text-[0.65rem] text-slate-500 dark:text-slate-400 font-medium mt-1">v1.0.223</span>
             </div>
 
             <div id="login-error"
@@ -719,7 +719,7 @@
                 <div class="text-2xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent transform hover:scale-105 transition-transform leading-none">
                     Quetzal LMS
                 </div>
-                <span class="text-[0.6rem] text-slate-400 font-medium mt-0.5">v1.0.222</span>
+                <span class="text-[0.6rem] text-slate-400 font-medium mt-0.5">v1.0.223</span>
             </div>
 
             <div class="flex items-center gap-4 sm:gap-6">
@@ -832,6 +832,14 @@
                         <i class="fas fa-chart-line"></i>
                         <span>Progreso</span>
                     </div>
+                    <div id="nav-doc-inbox" class="nav-item" onclick="nav('inbox')">
+                        <i class="fas fa-inbox"></i>
+                        <span>Buzón de la clase</span>
+                    </div>
+                    <div id="nav-doc-servers" class="nav-item" onclick="nav('school-servers')">
+                        <i class="fas fa-server"></i>
+                        <span>Servidor de la escuela</span>
+                    </div>
                     <div id="nav-doc-groups" class="nav-item" onclick="nav('groups')">
                         <i class="fas fa-users"></i>
                         <span>Gestionar Equipos</span>
@@ -875,6 +883,14 @@
                     <div class="nav-item" onclick="nav('progress')">
                         <i class="fas fa-seedling"></i>
                         <span>Progreso Estudiantil</span>
+                    </div>
+                    <div class="nav-item" onclick="nav('inbox')">
+                        <i class="fas fa-inbox"></i>
+                        <span>Buzón y valoraciones</span>
+                    </div>
+                    <div class="nav-item" onclick="nav('school-servers')">
+                        <i class="fas fa-server"></i>
+                        <span>Servidores y sincronización</span>
                     </div>
                     <div class="nav-item" onclick="nav('admin-attendance-report')">
                         <i class="fas fa-calendar-check"></i>
@@ -956,6 +972,19 @@
             <!-- PROGRESO DE LOS ESTUDIANTES (PRÁCTICA + RETOS, POR COMPETENCIA) -->
             <section id="view-progress" class="view-section" style="display: none;">
                 <div id="progress-container"></div>
+            </section>
+
+            <!-- BUZÓN: sugerencias y evaluaciones de la clase (docente: anónimo; administrador: con nombres) -->
+            <section id="view-inbox" class="view-section" style="display: none;">
+                <div class="flex items-center gap-3 mb-6"><div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center text-lg shrink-0"><i class="fas fa-inbox"></i></div><h2 class="mb-0">Buzón de la clase</h2></div>
+                <div id="inbox-container"></div>
+            </section>
+
+            <!-- SERVIDOR DE LA ESCUELA (RASPBERRY): estado y «Sincronizar ahora» desde la plataforma -->
+            <section id="view-school-servers" class="view-section" style="display: none;">
+                <div class="flex items-center gap-3 mb-2"><div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center text-lg shrink-0"><i class="fas fa-server"></i></div><h2 class="mb-0">Servidor de la escuela</h2></div>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">Conecta la Raspberry por cable al router con internet: se sincroniza sola. Aquí ves cómo va y, si quieres, tocas «Sincronizar ahora». No necesitas la dirección IP.</p>
+                <div id="school-servers-container"></div>
             </section>
 
             <!-- REPORTES DEL COORDINADOR (SU ESTABLECIMIENTO) -->
@@ -1321,7 +1350,7 @@
     <!-- Librerías externas: confetti, QR, PDF, JSZip y driver.js se cargan con loadLib() (ver <head>). -->
 
     <!-- Punto de Entrada del Sistema -->
-    <script type="module" src="js/app.js?v=1.0.222"></script>
+    <script type="module" src="js/app.js?v=1.0.223"></script>
 
     <meta name="mobile-web-app-capable" content="yes">
 </body>

@@ -45,6 +45,14 @@ export async function startFakeCloud(opts = {}) {
       const body = JSON.parse((await readBody(req)).toString('utf8') || '{}');
       if (req.headers['x-node-token'] !== FAKE_TOKEN) return send(res, 401, { error: 'Token de nodo requerido' });
 
+      // Aviso del servidor (node_ping): la nube guarda su estado y le dice si el docente pidió sincronizar desde la plataforma.
+      if (body.action === 'node_ping') {
+        cloud.stats.pings = (cloud.stats.pings || 0) + 1;
+        cloud.lastPing = body.status;
+        return send(res, 200, { sync_requested_at: cloud.requestedAt || null, server_time: new Date().toISOString() });
+      }
+      cloud.stats.syncs = (cloud.stats.syncs || 0) + (body.action ? 0 : 1);
+
       // La función vieja no conoce `action`: responde el pull completo a cualquier llamada.
       if (body.action === 'project_upload_url' && !cloud.opts.oldFunction) {
         cloud.stats.urlRequests++;

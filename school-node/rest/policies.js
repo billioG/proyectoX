@@ -237,8 +237,9 @@ export function createPolicy({ store, projects = null }) {
   };
 
   const readRules = {
-    student_suggestions: (ctx, r) => r.student_id === ctx.uid || staff(ctx),
-    teacher_ratings: (ctx, r) => r.student_id === ctx.uid || r.teacher_id === ctx.uid || ctx.role === 'admin',
+    // El docente NO lee estas dos tablas directo (vería quién escribió): las lee por get_feedback_inbox, anónimas (inbox.js), como en la nube (migrations/feedback-inbox.sql).
+    student_suggestions: (ctx, r) => r.student_id === ctx.uid || ctx.role === 'admin',
+    teacher_ratings: (ctx, r) => r.student_id === ctx.uid || ctx.role === 'admin',
     student_hangman_duels: (ctx, r) => inDuel(ctx.uid, r),
     student_hangman_results: (ctx, r) => r.student_id === ctx.uid || inDuel(ctx.uid, store.raw('student_hangman_duels').find((d) => d.id === r.duel_id)),
     student_timed_math_duels: (ctx, r) => inDuel(ctx.uid, r),

@@ -8,7 +8,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { openDb, getMeta } from './db.js';
+import { openDb, getMeta, setMeta } from './db.js';
 import { runSync, loadConfig } from './sync.js';
 import { runUsbSync } from './usb-sync.js';
 import { startMdns } from './mdns.js';
@@ -29,6 +29,7 @@ import { createProjectFiles, createProjectFilesHandler, projectFileKind } from '
 import { POLYFILLS } from './browser-polyfills.js';
 import { createWifi, createNmcliRunner } from './wifi.js';
 import { checkInternet, createConnectivity } from './connectivity.js';
+import { createRemoteSync } from './remote-sync.js';
 import { wifiPageHtml } from './wifi-page.js';
 
 const NODE_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -414,6 +415,11 @@ const publicStudent = (s) => ({
   school_code: getMeta(db, 'school_code'), profile_photo_url: s.profile_photo_url, ...JSON.parse(s.extra || '{}'),
 });
 
+// Cambios de la app que faltan por subir a la nube (lo ve el docente en la barra y la plataforma en línea).
+const pendingChanges = () => restStore.pendingCount()
+  + db.prepare('SELECT COUNT(*) n FROM completions WHERE dirty = 1').get().n
+  + db.prepare("SELECT COUNT(*) n FROM xp_events_local WHERE kind = 'chest'").get().n;
+
 const api = {
   // Estado del nodo (lo usa la app para saber que está en modo nodo).
   'GET /api/node/status': (req, res) => sendJson(res, 200, {
@@ -426,9 +432,7 @@ const api = {
     storage_base: getMeta(db, 'storage_base'),
     last_sync_at: getMeta(db, 'last_sync_at'),
     // Lo que falta por subir a la nube (cambios de la app real + lo del modo anterior) y cómo va la sincronización.
-    pending_changes: restStore.pendingCount()
-      + db.prepare('SELECT COUNT(*) n FROM completions WHERE dirty = 1').get().n
-      + db.prepare("SELECT COUNT(*) n FROM xp_events_local WHERE kind = 'chest'").get().n,
+    pending_changes: pendingChanges(),
     syncing,
     sync_stage: syncing ? syncStage : null,
     sync_cause: syncing ? syncCause : null,
@@ -880,7 +884,7 @@ async function trySync(cause = 'timer') {
     console.log('⏸️  Sin sync ahora:', e.message);
     lastSyncError = { message: friendlySyncError(e.message), at: new Date().toISOString() };
     return { started: true, ok: false };
-  } finally { syncing = false; syncStage = null; syncCause = null; }
+  } finally { syncing = false; syncStage = null; syncCause = null; if (typeof remoteSync !== 'undefined' && hasToken()) remoteSync.ping(); } // la plataforma ve el resultado enseguida
 }
 setTimeout(() => trySync('first'), 5000);
 setInterval(() => trySync('timer'), (config.syncEveryMinutes || 10) * 60 * 1000);
@@ -888,6 +892,16 @@ setInterval(() => trySync('timer'), (config.syncEveryMinutes || 10) * 60 * 1000)
 // Vigilante de conexión: cada 15 s mira si el servidor llega a la nube; en cuanto la tiene (se conectó el cable al router con internet, o la Wi-Fi) sincroniza solo, sin que el docente pulse nada.
 const connectivity = createConnectivity({ intervalMs: (config.connectivitySeconds || 15) * 1000, minGapMs: (config.connectivityMinGapSeconds || 60) * 1000, check: internetCheck, onOnline: (why) => { if (hasToken()) { lastSyncError = null; return trySync(why); } } });
 if (hasToken()) connectivity.start();
+
+// Sincronizar desde la plataforma en línea: cada 30 s (con internet) el servidor avisa a la nube con su estado y atiende el «Sincronizar ahora» que el docente tocó allá (remote-sync.js).
+const APP_VERSION = (() => { try { return /APP_VERSION = '([^']+)'/.exec(fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8'))?.[1] ?? null; } catch { return null; } })();
+const remoteSync = createRemoteSync({
+  cloudUrl: config.cloudUrl, nodeToken: config.nodeToken,
+  getStatus: () => ({ version: APP_VERSION, pending_changes: pendingChanges(), syncing, stage: syncing ? syncStage : null, last_sync_at: getMeta(db, 'last_sync_at'), internet: connectivity.state.online, urls: lanUrls() }),
+  getHandled: () => getMeta(db, 'remote_sync_handled'), setHandled: (v) => setMeta(db, 'remote_sync_handled', v),
+  trySync: (why) => trySync(why), isOnline: () => connectivity.state.online,
+});
+if (hasToken()) setInterval(() => remoteSync.tick(), (config.remotePingSeconds || 30) * 1000).unref();
 
 // Sync por USB: revisa cada 20 s si hay una memoria con carpeta QUETZAL.
 // Solo reescribe la USB si cambió algo desde la última vez, para no

@@ -213,3 +213,19 @@ export function validateFeedbackEvent(raw: any, ctx: { studentIds: Set<string> }
   }
   return { ok: false, error: 'Tipo de mensaje no soportado' };
 }
+
+// ============================================================
+// Aviso del servidor escolar a la nube (acción node_ping): su estado para mostrarlo en la plataforma
+// ============================================================
+// Lo que manda el servidor se limpia a unos pocos campos acotados antes de guardarse (node_heartbeat, migrations/node-remote-sync.sql): la plataforma lo muestra al docente.
+export function sanitizeNodeStatus(raw: any): Record<string, unknown> {
+  const s = raw && typeof raw === 'object' ? raw : {};
+  const text = (v: unknown, max: number): string | null => (typeof v === 'string' && v.length > 0 ? v.slice(0, max) : null);
+  const iso = (v: unknown): string | null => (typeof v === 'string' && v.length <= 40 && !Number.isNaN(Date.parse(v)) ? new Date(Date.parse(v)).toISOString() : null);
+  const pending = Number.isInteger(s.pending_changes) && s.pending_changes >= 0 ? Math.min(s.pending_changes, 1_000_000) : null;
+  const urls = Array.isArray(s.urls) ? s.urls.filter((u: unknown) => typeof u === 'string' && /^https?:\/\/[^\s]{1,100}$/.test(u)).slice(0, 5) : [];
+  return {
+    version: text(s.version, 40), pending_changes: pending, syncing: s.syncing === true, stage: text(s.stage, 120), last_sync_at: iso(s.last_sync_at),
+    internet: typeof s.internet === 'boolean' ? s.internet : null, urls,
+  };
+}
