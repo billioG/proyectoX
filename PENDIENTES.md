@@ -52,11 +52,20 @@ orden de `docs/MIGRATIONS.md`, sección «Orden seguro de lo pendiente».
 - [ ] Publicar v1.0.172 y DESPUÉS correr `migrations/security-hardening-2026-10.sql` (al final muestra una fila: debe dar `false, false, true, true`). Si se corre antes de publicar, las versiones viejas de la app dan error al iniciar sesión.
 - [ ] Correr `migrations/practice-progress.sql` (v1.0.166): en producción la tabla `practice_results` todavía no existe (verificado el 21/10), así que los reportes de progreso por competencia no funcionan.
 - [ ] Correr `migrations/fix-is-staff-coordinador.sql` y compañía (siguen sin marcar abajo).
-- [ ] Límite diario de uso de IA por usuario en `ai-proxy` (hoy no tiene tope: un usuario con sesión podría gastar la cuota de Groq).
-- [ ] Pasar a mediano plazo `students.password_generated` a contraseña con hash (hoy se guarda legible para poder imprimir credenciales).
+- [x] Límite diario de uso de IA por usuario en `ai-proxy` (código listo, 5/11/2026): correr `migrations/ai-usage-limit.sql` y redesplegar `ai-proxy` (topes en `docs/SEGURIDAD_2026-11.md`). Falta decidir si las otras funciones de IA (`ai-generate-*`, `ai-evaluate-*`) también llevan tope.
+- [ ] `students.password_generated` sin texto legible (código listo, 5/11/2026): hash + cifrado en 3 fases (`student-password-hash.sql` → redesplegar `student-login`, `admin-bulk-import-students`, `staff-student-passwords` con el secreto `PASSWORD_VAULT_KEY` → `backfill` → `student-password-drop-plaintext.sql`). Ver `docs/SEGURIDAD_2026-11.md`, §3.
 - [ ] Confirmar el plan de Supabase antes de sumar colegios: el gratuito admite 200 conexiones en tiempo real a la vez (≈ 200 alumnos conectados), 500 MB de base, 5 GB de transferencia al mes y se pausa tras 7 días sin uso. Para clientes pagando: plan Pro.
-- [ ] Envolver `auth.uid()` en `(select auth.uid())` dentro de las políticas RLS (recomendación de rendimiento de Supabase; hacerlo por tabla y probando).
+- [ ] Envolver `auth.uid()` en `(select auth.uid())` dentro de las políticas RLS: migración lista (`rls-auth-uid-initplan.sql`, 5/11/2026), falta correrla en el proyecto de prueba y después en producción.
 - [ ] Fijar también `@supabase/supabase-js@2` en las Edge Functions (`esm.sh/...@2`) a una versión exacta.
+
+## 🔴 Seguridad de noviembre 2026 (código listo, falta aplicar)
+
+Detalle, orden y pruebas en `docs/SEGURIDAD_2026-11.md`:
+
+- [ ] `security-hardening-2026-10.sql` (versión revisada: atómica y con comprobaciones previas).
+- [ ] `security-rls-audit-2026-11.sql`: cierra 4 escrituras abiertas (notificaciones y insignias de docentes) y 17 lecturas públicas.
+- [ ] `security-function-exposure-2026-11.sql`: 86 funciones `SECURITY DEFINER` dejan de ser ejecutables sin sesión (probar el ingreso de alumno y docente).
+- [ ] Decidir las propuestas que no se aplicaron (evaluaciones, equipos y asignaciones visibles entre escuelas): tabla al final del §4 del documento.
 
 ## 🔴 Verificar que estas correcciones críticas de seguridad estén corridas
 

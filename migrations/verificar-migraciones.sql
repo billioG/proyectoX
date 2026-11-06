@@ -56,7 +56,16 @@ with comprobaciones(orden, migracion, tipo, objeto, extra) as (values
   (380, 'node-profile-photo',                     'funcion',         'apply_node_profile_photo', null),
   (390, 'node-feedback',                          'funcion',         'apply_node_feedback', null),
   (400, 'node-remote-sync',                       'funcion',         'request_node_sync', null),
-  (410, 'feedback-inbox',                         'funcion',         'get_feedback_inbox', null)
+  (410, 'feedback-inbox',                         'funcion',         'get_feedback_inbox', null),
+  -- Fase 7: seguridad de noviembre (docs/SEGURIDAD_2026-11.md; cada una después de security-hardening-2026-10)
+  (500, 'ai-usage-limit',                         'tabla',           'ai_usage_daily', null),
+  (501, 'ai-usage-limit',                         'funcion',         'ai_usage_take', null),
+  (510, 'student-password-hash',                  'columna',         'students.password_hash', null),
+  (511, 'student-password-hash',                  'funcion',         'student_password_ok', null),
+  (520, 'security-rls-audit-2026-11',             'sin_politica',    'notifications.Anyone can insert notifications', null),
+  (521, 'security-rls-audit-2026-11',             'sin_politica',    'teacher_badges.Inserción de insignias', null),
+  (530, 'security-function-exposure-2026-11',     'sin_anon_abierto','funciones definer', null),
+  (540, 'rls-auth-uid-initplan',                  'sin_auth_uid_suelto','politicas', null)
 )
 select
   c.orden,
@@ -80,6 +89,16 @@ select
     when 'sin_politica' then not exists (
       select 1 from pg_policies o
       where o.schemaname = 'public' and o.tablename = split_part(c.objeto, '.', 1) and o.policyname = split_part(c.objeto, '.', 2))
+    when 'sin_anon_abierto' then not exists (
+      select 1 from pg_proc p join pg_namespace s on s.oid = p.pronamespace
+      where s.nspname = 'public' and p.prosecdef and p.prokind = 'f'
+        and p.proname not in ('resolve_login_mode_by_username', 'get_class_login_mode')
+        and case when exists (select 1 from pg_roles where rolname = 'anon')
+                 then has_function_privilege('anon', p.oid, 'EXECUTE') else false end)
+    when 'sin_auth_uid_suelto' then not exists (
+      select 1 from pg_policies o
+      where o.schemaname = 'public'
+        and (coalesce(o.qual, '') ~* '(?<!select\s)auth\.uid\(\)' or coalesce(o.with_check, '') ~* '(?<!select\s)auth\.uid\(\)'))
     when 'sin_anon' then not exists (
       select 1 from pg_proc p join pg_namespace s on s.oid = p.pronamespace
       where s.nspname = 'public' and p.proname = c.objeto

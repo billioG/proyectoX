@@ -3,11 +3,13 @@
 // Requiere JWT de usuario autenticado (no basta la anon key).
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { bucketFor, classifyRpcError, limitFor, limitMessage, parseTake, quotaRole } from './quota.ts';
 
 const GROQ_API_KEY   = Deno.env.get('GROQ_API_KEY')!;
 const GROQ_MODEL     = 'openai/gpt-oss-20b';
 const SUPABASE_URL    = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_ANON   = Deno.env.get('SUPABASE_ANON_KEY')!;
+const SUPABASE_SERVICE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 // Límites server-side -- el cliente no puede inflar el costo
 const MAX_TOKENS_CAP = 700;
@@ -75,6 +77,37 @@ Deno.serve(async (req) => {
     const isCSLeader = role === 'cs_leader' && !studentRow;
     const isYesNoJudge = role === 'strict_yesno';
 
+    // LÍMITE DIARIO por usuario (migrations/ai-usage-limit.sql). Se descuenta ANTES de llamar al modelo; las preguntas de la
+    // persona y las frases cortas automáticas de la mascota se cuentan aparte. Los topes se pueden cambiar con secretos
+    // (AI_DAILY_STUDENT_CHAT, AI_DAILY_DOCENTE_CHAT, ... ver quota.ts); 0 = sin acceso.
+    let teacherRole: string | null = null;
+    if (!studentRow) {
+      const { data: t } = await userClient.from('teachers').select('role').eq('id', user.id).maybeSingle();
+      teacherRole = t?.role ?? null;
+    }
+    const qRole = quotaRole(!!studentRow, teacherRole);
+    const bucket = bucketFor(!!short);
+    const limit = limitFor(qRole, bucket, (n) => Deno.env.get(n));
+    const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE);
+    const { data: takeData, error: takeErr } = await admin.rpc('ai_usage_take', { p_user: user.id, p_bucket: bucket, p_limit: limit, p_cost: 1 });
+    const takeState = classifyRpcError(takeErr);
+    if (takeState === 'fatal') {
+      console.error('ai-proxy: no se pudo contar el uso de IA', takeErr?.message);
+      return json({ error: 'No se pudo verificar tu uso del asistente. Intenta de nuevo en un momento.', code: 'quota_unavailable' }, 503);
+    }
+    if (takeState === 'missing') {
+      console.warn('ai-proxy: falta correr migrations/ai-usage-limit.sql; sin límite diario por ahora');
+    } else {
+      const take = parseTake(takeData);
+      if (!take) {
+        console.error('ai-proxy: respuesta inesperada de ai_usage_take', JSON.stringify(takeData));
+        return json({ error: 'No se pudo verificar tu uso del asistente. Intenta de nuevo en un momento.', code: 'quota_unavailable' }, 503);
+      }
+      if (!take.allowed) {
+        return json({ error: limitMessage(qRole, bucket), code: 'daily_limit', limit, used: take.used }, 429);
+      }
+    }
+
     // Historial real del chat -- sin esto cada mensaje era una request
     // aislada sin memoria de lo dicho antes, así que "continuá" generaba
     // algo nuevo sin relación en vez de seguir la idea que quedó a medias.
@@ -138,10 +171,10 @@ Deno.serve(async (req) => {
     });
 
     const data = await res.json();
-    if (data.error) return json({ error: data.error.message }, 500);
+    if (data.error) return json({ error: 'El asistente no pudo responder', message: data.error.message }, 500);
     return json({ content: data.choices?.[0]?.message?.content || '' });
 
   } catch (e) {
-    return json({ error: String(e) }, 500);
+    return json({ error: 'Error interno', message: String(e?.message ?? e) }, 500);
   }
 });

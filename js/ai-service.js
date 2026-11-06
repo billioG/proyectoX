@@ -27,6 +27,9 @@ const AIService = {
             });
 
             const data = await response.json();
+            // Llegó al tope diario de IA (ai-proxy, 429): el texto ya viene listo para mostrar. La frase corta de la
+            // mascota simplemente no se muestra (talk() usa un mensaje fijo).
+            if (data.code === 'daily_limit') return short ? '' : data.error;
             if (data.error) throw new Error(data.error);
             return data.content;
         } catch (err) {

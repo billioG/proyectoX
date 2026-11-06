@@ -100,7 +100,15 @@ Deno.serve(async (req) => {
     } else {
       // Sin configuración de clase todavía -- se cae al valor legacy
       // guardado por alumno al momento de importarlo.
-      if (!password || password !== student.password_generated) { await recordFailure(); return json({ error: GENERIC_ERROR }, 401); }
+      // La contraseña por alumno ya no se guarda legible (migrations/student-password-hash.sql): se compara con su hash en la base.
+      // Si esa migración todavía no se corrió, se usa el texto antiguo para no dejar a nadie fuera.
+      let ok = false;
+      if (password) {
+        const { data: hashOk, error: hashErr } = await admin.rpc('student_password_ok', { p_student: student.id, p_password: password });
+        if (hashErr && /PGRST202|42883|does not exist/i.test(`${hashErr.code} ${hashErr.message}`)) ok = password === student.password_generated;
+        else ok = hashOk === true;
+      }
+      if (!ok) { await recordFailure(); return json({ error: GENERIC_ERROR }, 401); }
     }
 
     const { data: link, error: linkErr } = await admin.auth.admin.generateLink({

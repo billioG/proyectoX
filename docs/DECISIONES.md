@@ -6,7 +6,7 @@ Registro corto (ADR ligero) de las decisiones que más condicionan el código. C
 **Cómo agregar una:** copia el formato de abajo, usa el siguiente número y no borres las anteriores: si una decisión cambia,
 márcala `Reemplazada por ADR-0NN` y escribe la nueva. Una decisión cabe en media pantalla; si necesita más, enlaza a un documento.
 
-Estados: `Vigente` · `Reemplazada` · `Propuesta`. Las decisiones 001 a 003 se tomaron el 2026-11-05; las demás son anteriores y se
+Estados: `Vigente` · `Reemplazada` · `Propuesta`. Las decisiones 001 a 003 y 010 a 012 se tomaron el 2026-11-05; las demás son anteriores y se
 registran hoy a partir de lo que dice el código y los documentos del repositorio.
 
 | # | Decisión | Estado |
@@ -20,6 +20,9 @@ registran hoy a partir de lo que dice el código y los documentos del repositori
 | 007 | El nodo escolar corre la app real sobre una capa compatible con Supabase | Vigente |
 | 008 | `node-sync` en módulos TypeScript puros y probables | Vigente |
 | 009 | Buzón: el docente lee sin saber quién escribió | Vigente |
+| 010 | Contraseñas de alumnos: hash para entrar, cifrado (llave fuera de la base) para mostrar | Vigente (código listo; falta aplicar) |
+| 011 | Funciones `SECURITY DEFINER` cerradas a `anon` por defecto | Vigente (código listo; falta aplicar) |
+| 012 | Tope diario de IA por usuario, contado en la base antes de llamar al modelo | Vigente (código listo; falta aplicar) |
 
 ---
 
@@ -126,3 +129,29 @@ se prueba sin Supabase; el cableado de `index.ts` solo se prueba contra una nube
 devuelven identificadores ni nombres. El administrador ve todo con nombres; el coordinador conserva su acceso a las evaluaciones de sus
 docentes. **Consecuencias.** El anonimato lo garantiza la base, no la pantalla; el nodo replica la misma regla (`policies.js`).
 Abierto: el coordinador sigue viendo quién escribió si consulta la base directamente.
+
+## ADR-010 · Contraseñas de alumnos: hash para entrar, cifrado para mostrar
+**Estado:** Vigente (código listo; falta aplicar) · 2026-11-05
+
+**Contexto.** `students.password_generated` guardaba la contraseña real en texto; cualquier lectura de esa columna entregaba todas las cuentas. Pero el personal a veces
+necesita verla o imprimirla, y un hash no se puede revertir. **Decisión.** Dos columnas: `password_hash` (bcrypt, lo que compara el inicio de sesión) y `password_enc`
+(AES-256-GCM, atado al id del alumno, con una llave `PASSWORD_VAULT_KEY` que vive solo en los secretos de las Edge Functions). Solo la función `staff-student-passwords` descifra, y solo
+para quien la base dice que puede administrar a ese alumno. Se aplica en 3 fases, la última (borrar el texto) con una guarda que se niega si falta algo.
+**Consecuencias.** Un volcado de la base ya no entrega contraseñas. Perder la llave pierde los cifrados (guardarla en un gestor de contraseñas). La contraseña de CLASE
+sigue en texto por diseño (se muestra a los docentes): queda como deuda. Detalle: `docs/SEGURIDAD_2026-11.md`.
+
+## ADR-011 · Funciones `SECURITY DEFINER` cerradas a `anon` por defecto
+**Estado:** Vigente (código listo; falta aplicar) · 2026-11-05
+
+**Contexto.** En Supabase toda función nueva es ejecutable sin sesión; 86 de 90 funciones `SECURITY DEFINER` del volcado lo eran, y confiar en que cada una valide `auth.uid()` ya falló una vez
+(`fix-password-reset-rpc-exposure.sql`). **Decisión.** `anon` solo ejecuta las dos funciones del ingreso (`resolve_login_mode_by_username`, `get_class_login_mode`); todo lo demás exige sesión, y las funciones
+nuevas nacen cerradas. **Consecuencias.** Una función nueva que deba llamarse sin sesión hay que abrirla a propósito (y agregarla a la lista de la migración). Si una pantalla da
+`permission denied for function`, es una función que se llamaba sin sesión y no se había detectado.
+
+## ADR-012 · Tope diario de IA por usuario, contado en la base
+**Estado:** Vigente (código listo; falta aplicar) · 2026-11-05
+
+**Contexto.** `ai-proxy` solo pedía una sesión válida; cualquier cuenta podía gastar la cuota del proveedor sin límite. **Decisión.** Un contador atómico en la base
+(`ai_usage_take`, solo `service_role`) se descuenta **antes** de llamar al modelo, por usuario, día de Guatemala y tipo (preguntas de la persona / frases automáticas de la mascota), con topes por rol
+(estudiante 30, docente 100, administrador 300 por día) cambiables con secretos. Sin contador (falla de la base) no se llama al modelo; sin la migración, se deja pasar con un aviso en los registros.
+**Consecuencias.** Un estudiante muy activo puede llegar al tope en una clase (ajustable con `AI_DAILY_STUDENT_CHAT`). Las otras funciones de IA aún no tienen tope diario.

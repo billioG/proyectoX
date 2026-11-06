@@ -56,7 +56,7 @@ test('verificar-migraciones.sql corre en PostgreSQL: base vacía = nada aplicado
   assert.ok(total >= 36, `${total} comprobaciones`);
   // En una base vacía no hay funciones expuestas a anon ni la política abierta: esas comprobaciones dan true; el resto, false.
   for (const [k, v] of Object.entries(e)) {
-    const closed = /sin_anon|sin_politica/.test(k);
+    const closed = /sin_anon|sin_politica|sin_auth_uid/.test(k);
     assert.equal(v, closed ? 't' : 'f', k);
   }
 

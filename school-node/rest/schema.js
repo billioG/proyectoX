@@ -28,7 +28,7 @@ export const SCHEMA = {
       'streak', 'last_login', 'streak_freeze', 'daily_chest_last_claimed', 'gems_earned_total', 'has_gold_frame', 'has_mascot_glasses',
       'status', 'companion_equipped', 'companion_species', 'season_id', 'season_xp', 'league_tier', 'league_week', 'league_last_result',
       'duel_win_streak', 'best_duel_win_streak'],
-    masked: ['email', 'cui', 'birth_date', 'gender', 'codigo_personal', 'qr_code', 'qr_data', 'password_generated', 'created_by', 'pin_updated_at'],
+    masked: ['email', 'cui', 'birth_date', 'gender', 'codigo_personal', 'qr_code', 'qr_data', 'password_generated', 'password_hash', 'password_enc', 'created_by', 'pin_updated_at'],
     relations: { schools: { type: 'one', table: 'schools', fk: 'school_code', ref: 'code' } },
   }),
 

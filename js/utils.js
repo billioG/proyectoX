@@ -508,6 +508,30 @@ window.fetchStudentSecrets = async function fetchStudentSecrets(ids) {
     return map;
 };
 
+// Contraseñas de alumnos para mostrar o imprimir (solo admin o docente asignado). Ya no existen legibles en la base
+// (migrations/student-password-hash.sql): la Edge Function staff-student-passwords las descifra con una llave que solo vive en el
+// servidor y solo entrega las de alumnos que quien llama puede administrar. Devuelve Map id -> contraseña (texto) o null.
+// Lanza un Error con un mensaje claro si no se pudo (sin sesión, función sin configurar, etc.).
+window.fetchStudentPasswords = async function fetchStudentPasswords(ids) {
+    const map = new Map();
+    const list = [...new Set((ids || []).filter(Boolean))];
+    if (!list.length) return map;
+    const { data: { session } } = await window._supabase.auth.getSession();
+    if (!session?.access_token) throw new Error('Sesión no disponible');
+    for (let i = 0; i < list.length; i += 200) {
+        const chunk = list.slice(i, i + 200);
+        const res = await fetch(`${window.SUPABASE_URL}/functions/v1/staff-student-passwords`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+            body: JSON.stringify({ action: 'reveal', ids: chunk }),
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body.error || 'No se pudieron obtener las contraseñas');
+        Object.entries(body.passwords || {}).forEach(([id, pw]) => map.set(id, pw));
+    }
+    return map;
+};
+
 // Completa en cada fila password_generated/cui/codigo_personal (si el usuario
 // tiene permiso) y marca _secretsOk para saber si esos datos son reales.
 window.mergeStudentSecrets = async function mergeStudentSecrets(rows) {

@@ -9,6 +9,19 @@
 -- ADITIVO / NO DESTRUCTIVO: no borra filas ni columnas. Seguro de
 -- re-ejecutar. Pegar completo en el SQL Editor de Supabase.
 --
+-- REVISADO el 2026-11-05 (ver docs/SEGURIDAD_2026-11.md) para poder aplicarlo sin riesgo:
+--   * TODO va en una sola transacción (begin ... commit): si algo falla, no queda
+--     nada a medias. Antes, un error después de quitar el permiso de lectura de
+--     students dejaba a la app sin poder leer alumnos.
+--   * Revisa ANTES de tocar nada que existan las funciones de las que depende
+--     (is_staff, can_manage_student) y las columnas que usa el trigger; si falta
+--     algo, se detiene con un mensaje que dice qué migración correr primero.
+--   * lock_timeout de 10 s: si otra sesión tiene la tabla ocupada, se cancela en
+--     vez de dejar a los alumnos esperando; basta volver a correrlo.
+--   * Las columnas nuevas password_hash / password_enc (student-password-hash.sql)
+--     quedan excluidas de lo que la app puede leer, aunque se re-ejecute este archivo.
+--   * Se corre DESPUÉS: student-password-hash.sql (lo usa), security-rls-audit-2026-11.sql.
+--
 -- 1. CONTRASEÑAS Y DATOS SENSIBLES DE ALUMNOS
 --    students.password_generated es la contraseña REAL con la que el alumno
 --    entra (student-login la compara en texto). Cualquier usuario con sesión
@@ -36,6 +49,29 @@
 -- ============================================================
 
 
+begin;
+
+set local lock_timeout = '10s';
+
+-- ---------- 0. comprobaciones previas (si algo falta, se cancela TODO sin tocar nada) ----------
+do $$
+declare
+  v_missing text[] := '{}';
+  v_col text;
+begin
+  if to_regprocedure('public.is_staff()') is null then v_missing := array_append(v_missing, 'función is_staff() (fix-is-staff-coordinador.sql o el esquema base)'::text); end if;
+  if to_regprocedure('public.can_manage_student(uuid)') is null then v_missing := array_append(v_missing, 'función can_manage_student(uuid) (guardians.sql)'::text); end if;
+  if to_regclass('public.students') is null then v_missing := array_append(v_missing, 'tabla students'::text); end if;
+  foreach v_col in array array['full_name','email','status','gems_earned_total','birth_date','gender','codigo_personal','created_at','created_by','qr_code','qr_data','password_generated','cui'] loop
+    if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'students' and column_name = v_col) then
+      v_missing := v_missing || format('columna students.%s%s', v_col, case when v_col = 'created_by' then ' (teacher-self-service.sql)' else '' end);
+    end if;
+  end loop;
+  if array_length(v_missing, 1) is not null then
+    raise exception 'security-hardening-2026-10: NO se aplicó nada. Falta: %', array_to_string(v_missing, '; ');
+  end if;
+end $$;
+
 -- ---------- 1. columnas sensibles de students ----------
 do $$
 declare
@@ -45,7 +81,7 @@ begin
     into v_cols
   from information_schema.columns
   where table_schema = 'public' and table_name = 'students'
-    and column_name not in ('password_generated', 'cui', 'codigo_personal', 'pin_hash', 'pin_salt', 'qr_code', 'qr_data');
+    and column_name not in ('password_generated', 'password_hash', 'password_enc', 'cui', 'codigo_personal', 'pin_hash', 'pin_salt', 'qr_code', 'qr_data');
 
   -- Un permiso de tabla completo tapa cualquier permiso por columna: hay que
   -- quitarlo y dar el de columnas.
@@ -60,7 +96,9 @@ stable
 security definer
 set search_path = public
 as $$
-  select s.id, s.password_generated::text, s.cui::text, s.codigo_personal
+  -- password_generated ya no se entrega: la contraseña se ve/imprime con la función staff-student-passwords (cifrada, student-password-hash.sql).
+  -- La columna se conserva en el resultado (siempre null) para no romper a quien la nombre.
+  select s.id, null::text as password_generated, s.cui::text, s.codigo_personal
   from public.students s
   where s.id = any(p_ids)
     and public.can_manage_student(s.id);
@@ -196,10 +234,16 @@ end $$;
 
 notify pgrst, 'reload schema';
 
+commit;
 
--- ---------- Verificación (debe dar: false, false, true, true) ----------
+
+-- ---------- Verificación (debe dar: false, false, true, true, y las dos últimas false si student-password-hash.sql ya corrió) ----------
 select
   has_column_privilege('authenticated', 'public.students', 'password_generated', 'SELECT') as alumno_ve_password,
   has_column_privilege('authenticated', 'public.students', 'cui', 'SELECT') as alumno_ve_cui,
   has_column_privilege('authenticated', 'public.students', 'full_name', 'SELECT') as app_ve_nombre,
-  exists (select 1 from pg_trigger where tgname = 'trg_guard_student_self_update') as trigger_activo;
+  exists (select 1 from pg_trigger where tgname = 'trg_guard_student_self_update') as trigger_activo,
+  case when exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'students' and column_name = 'password_hash')
+       then has_column_privilege('authenticated', 'public.students', 'password_hash', 'SELECT') end as alumno_ve_hash,
+  case when exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'students' and column_name = 'password_enc')
+       then has_column_privilege('authenticated', 'public.students', 'password_enc', 'SELECT') end as alumno_ve_cifrado;

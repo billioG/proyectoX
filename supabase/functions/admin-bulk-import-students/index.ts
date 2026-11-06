@@ -6,6 +6,7 @@
 // ese límite, y corre server-side gateada por is_admin() real.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { encryptPassword, importKey } from '../_shared/vault.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
@@ -182,9 +183,13 @@ Deno.serve(async (req) => {
           gender: s.gender || null,
           birth_date: s.birth_date || null,
           codigo_personal: s.codigo_personal || null,
-          password_generated: password,
           created_by: caller.id,
         };
+        // La contraseña NO se guarda legible: hash (para el inicio de sesión) + cifrado (para mostrarla/imprimirla), ver
+        // migrations/student-password-hash.sql. Si esa migración o el secreto PASSWORD_VAULT_KEY aún no existen, se guarda como antes
+        // (así desplegar la función antes que la migración no rompe la importación).
+        let vaultKey: CryptoKey | null = null;
+        try { vaultKey = await importKey(Deno.env.get('PASSWORD_VAULT_KEY')); } catch { vaultKey = null; }
         let { error: dbError } = await admin.from('students').insert(row);
         // Sin migrations/teacher-self-service.sql todavía no existe la
         // columna created_by: se guarda igual, sin ese dato.
@@ -197,6 +202,23 @@ Deno.serve(async (req) => {
           await admin.auth.admin.deleteUser(created.user.id);
           results.push({ username, fullName, status: 'error', message: dbError.message });
           continue;
+        }
+
+        // Sin la llave de cifrado no hay cómo guardar la contraseña para imprimirla: se deja el texto antiguo, que la fase 2 del
+        // cifrado (staff-student-passwords, action backfill) convierte después.
+        const blob = vaultKey ? await encryptPassword(password, vaultKey, created.user.id) : null;
+        const { error: pwErr } = vaultKey
+          ? await admin.rpc('set_student_password', { p_student: created.user.id, p_password: password, p_enc: blob })
+          : await admin.from('students').update({ password_generated: password }).eq('id', created.user.id);
+        if (pwErr && vaultKey) {
+          // Sin la migración: se deja el texto antiguo (el alumno igual podrá entrar). Cualquier otro error sí se avisa.
+          if (/PGRST202|42883|does not exist/i.test(`${pwErr.code} ${pwErr.message}`)) {
+            await admin.from('students').update({ password_generated: password }).eq('id', created.user.id);
+          } else {
+            console.error('admin-bulk-import-students: no se pudo guardar la contraseña', pwErr.message);
+            results.push({ username, fullName, status: 'created', message: 'Se creó, pero no se pudo guardar la contraseña para imprimirla' });
+            continue;
+          }
         }
 
         results.push({ username, fullName, status: 'created' });
