@@ -37,6 +37,7 @@ En producción: [clases.yoaprendo.online](https://clases.yoaprendo.online)
 | [docs/PILOTO_RURAL.md](docs/PILOTO_RURAL.md) | Protocolo del piloto en escuelas sin internet |
 | [docs/fondos/KIT_POSTULACION.md](docs/fondos/KIT_POSTULACION.md) | Textos, presentación y presupuesto para postular a fondos |
 | [docs/EQUIPO.md](docs/EQUIPO.md) | Cómo sumar personas al equipo y primeras tareas |
+| [docs/soporte/](docs/soporte/README.md) | Kit de onboarding del docente, 10 preguntas frecuentes y guía rápida de soporte |
 | [privacidad.html](privacidad.html) | Política de privacidad |
 | [docs/METRICAS_ADMIN.md](docs/METRICAS_ADMIN.md) | Cómo se calculan las métricas del panel de administración |
 | [MANUAL_DE_USUARIO.md](MANUAL_DE_USUARIO.md) | Uso para docentes y administración |

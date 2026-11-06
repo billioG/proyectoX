@@ -329,6 +329,12 @@ window.uploadProject = async function uploadProject() {
   const MIN_TITLE_LENGTH = 5;
   const MIN_DESCRIPTION_LENGTH = 40;
 
+  // Dice EXACTAMENTE qué falta o qué está mal (antes: «Completa todos los campos» sin decir cuál).
+  const problem = window.validateProjectForm?.({ title, description, file: videoFile });
+  if (problem) {
+    if (typeof showToast === 'function') showToast('<i class="fas fa-circle-xmark"></i> ' + problem, 'error');
+    return;
+  }
   if (!title || !description || !videoFile) {
     if (typeof showToast === 'function') showToast('<i class="fas fa-circle-xmark"></i> Completa todos los campos', 'error');
     return;
@@ -400,7 +406,7 @@ window.uploadProject = async function uploadProject() {
       await _syncManager.enqueue('upload_project', projectData);
     }
 
-    if (typeof showToast === 'function') showToast('<i class="fas fa-rocket"></i> Proyecto guardado (Pendiente Sync)', 'success');
+    if (typeof showToast === 'function') showToast('<i class="fas fa-rocket"></i> Proyecto guardado. Aparecerá en Inicio cuando termine de sincronizar (mira el indicador de abajo).', 'success');
 
     // Limpiar formulario
     document.getElementById('project-title').value = '';
@@ -410,7 +416,8 @@ window.uploadProject = async function uploadProject() {
     if (typeof nav === 'function') nav('feed');
   } catch (err) {
     console.error(err);
-    if (typeof showToast === 'function') showToast('<i class="fas fa-circle-xmark"></i> Error al guardar proyecto', 'error');
+    const f = window.friendlyError ? window.friendlyError(err, 'upload', { online: navigator.onLine }) : { message: 'Error al guardar proyecto' };
+    if (typeof showToast === 'function') showToast('<i class="fas fa-circle-xmark"></i> ' + f.message, 'error');
   } finally {
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-paper-plane text-xl"></i> PUBLICAR PROYECTO AHORA';

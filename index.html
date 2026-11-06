@@ -73,7 +73,7 @@
          index.html pero el navegador puede seguir sirviendo desde caché HTTP
          una versión vieja de un módulo lazy-loaded (ej. pdf-processor.js),
          aunque el tag de versión visible ya muestre la última. -->
-    <script>window.APP_VERSION = 'v1.0.227';</script>
+    <script>window.APP_VERSION = 'v1.0.228';</script>
 
     <!-- Silenciar console.log/info/debug en producción (activar con localStorage.PX_DEBUG='true').
          Va antes de todo lo demás porque los console.log de cada módulo corren
@@ -656,7 +656,7 @@
                         Q</div>
                     Quetzal <span class="text-primary-dark dark:text-primary">LMS</span>
                 </div>
-                <span id="app-version-tag" class="text-[0.65rem] text-slate-500 dark:text-slate-400 font-medium mt-1">v1.0.227</span>
+                <span id="app-version-tag" class="text-[0.65rem] text-slate-500 dark:text-slate-400 font-medium mt-1">v1.0.228</span>
             </div>
 
             <div id="login-error"
@@ -688,6 +688,8 @@
                 <div class="text-right">
                     <button type="button" onclick="window.openForgotPasswordModal()"
                         class="text-xs font-bold text-primary-dark dark:text-primary hover:underline">¿Olvidaste tu contraseña?</button>
+                    <button type="button" onclick="window.openHelp && window.openHelp('ingreso')"
+                        class="block ml-auto text-xs font-bold text-slate-400 hover:text-primary hover:underline mt-1">¿Necesitas ayuda para entrar?</button>
                 </div>
                 <button id="btn-login"
                     class="w-full bg-primary hover:bg-primary-dark text-white font-bold py-4 rounded-xl shadow-xl shadow-primary/20 transition-all active:scale-[0.98] flex items-center justify-center gap-3 mt-4">
@@ -719,7 +721,7 @@
                 <div class="text-2xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent transform hover:scale-105 transition-transform leading-none">
                     Quetzal LMS
                 </div>
-                <span class="text-[0.6rem] text-slate-400 font-medium mt-0.5">v1.0.227</span>
+                <span class="text-[0.6rem] text-slate-400 font-medium mt-0.5">v1.0.228</span>
             </div>
 
             <div class="flex items-center gap-4 sm:gap-6">
@@ -1019,6 +1021,8 @@
                         <div>
                             <h2 class="text-2xl font-black text-slate-800 dark:text-white leading-none mb-1">Lanzar
                                 Nuevo Proyecto</h2>
+                            <button type="button" onclick="window.openHelp && window.openHelp('proyecto')"
+                                class="mt-2 text-[0.65rem] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all"><i class="fas fa-circle-question mr-1"></i>¿Cómo subo mi proyecto?</button>
                             <p class="text-[0.85rem] font-bold text-slate-400 uppercase tracking-widest">Comparte tus
                                 avances tecnológicos con la comunidad</p>
                         </div>
@@ -1350,7 +1354,7 @@
     <!-- Librerías externas: confetti, QR, PDF, JSZip y driver.js se cargan con loadLib() (ver <head>). -->
 
     <!-- Punto de Entrada del Sistema -->
-    <script type="module" src="js/app.js?v=1.0.227"></script>
+    <script type="module" src="js/app.js?v=1.0.228"></script>
 
     <meta name="mobile-web-app-capable" content="yes">
 </body>

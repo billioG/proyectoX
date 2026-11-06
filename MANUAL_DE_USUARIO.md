@@ -1,6 +1,8 @@
 # 🚀 Manual Maestro: Quetzal LMS
 **Versión 2.0 - Sistema Diamante y Gestión de Impacto STEEAM**
 
+> **¿Eres docente y es tu primer día?** Empieza por [`docs/soporte/KIT_ONBOARDING_DOCENTE.md`](docs/soporte/KIT_ONBOARDING_DOCENTE.md) (15 minutos: entrar, pasar lista y proyectos) y las [10 preguntas frecuentes](docs/soporte/PREGUNTAS_FRECUENTES_DOCENTES.md). En la app, cada pantalla clave tiene un botón **Ayuda**.
+
 Bienvenido al manual oficial de la plataforma Quetzal LMS. Este documento es tu guía definitiva para dominar todas las herramientas del ecosistema, desde el aprendizaje gamificado hasta la gestión financiera de alto rendimiento.
 
 ---

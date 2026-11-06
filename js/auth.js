@@ -198,7 +198,7 @@ window.sendPasswordResetEmail = async function sendPasswordResetEmail() {
     document.querySelector('.fixed.z-\\[200\\]')?.remove();
     showToast('<i class="fas fa-circle-check"></i> Revisa tu correo para restablecer tu contraseña', 'success');
   } catch (err) {
-    showToast('<i class="fas fa-circle-xmark"></i> ' + err.message, 'error');
+    showToast('<i class="fas fa-circle-xmark"></i> ' + (window.friendlyError ? window.friendlyError(err, 'reset').message : err.message), 'error');
     if (btn) { btn.disabled = false; btn.innerHTML = 'Enviar'; }
   }
 }
@@ -239,7 +239,7 @@ window.submitNewPassword = async function submitNewPassword() {
     document.getElementById('set-new-password-modal')?.remove();
     showToast('<i class="fas fa-circle-check"></i> Contraseña actualizada', 'success');
   } catch (err) {
-    showToast('<i class="fas fa-circle-xmark"></i> ' + err.message, 'error');
+    showToast('<i class="fas fa-circle-xmark"></i> ' + (window.friendlyError ? window.friendlyError(err, 'password').message : err.message), 'error');
     if (btn) { btn.disabled = false; btn.innerHTML = 'Guardar y Continuar'; }
   }
 }
@@ -385,7 +385,9 @@ export async function handleLogin() {
       window.openOfflineAccountPicker();
       return;
     }
-    showToast('<i class="fas fa-circle-xmark"></i> ' + err.message, 'error');
+    // Mensaje en español con lo que se puede HACER (antes salía el texto técnico, a veces en inglés: «Invalid login credentials»).
+    const f = window.friendlyError ? window.friendlyError(err, 'login', { online: navigator.onLine }) : { message: err.message };
+    showToast('<i class="fas fa-circle-xmark"></i> ' + f.message, 'error');
   } finally {
     btn.disabled = false;
     btn.classList.remove('opacity-50', 'cursor-not-allowed');

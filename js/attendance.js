@@ -73,6 +73,7 @@ window.renderAttendanceUI = window.renderAttendanceUI = function renderAttendanc
                 <div>
                     <h3 class="text-2xl font-black text-slate-800 dark:text-white mb-1 uppercase tracking-tighter flex items-center gap-3">
                         Biometría QR <span class="text-[0.6rem] bg-emerald-500 text-white px-3 py-1 rounded-full tracking-widest font-black">ACTIVO</span>
+                        <button type="button" onclick="window.openHelp('asistencia')" class="ml-1 text-[0.6rem] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all"><i class="fas fa-circle-question mr-1"></i>Ayuda</button>
                     </h3>
                     <p class="text-[0.7rem] font-bold text-slate-400 uppercase tracking-widest">Sincronización en tiempo real con la nube.</p>
                 </div>
@@ -198,7 +199,9 @@ window.startQRScanner = async function startQRScanner() {
         tickScanner();
     } catch (err) {
         console.error(err);
-        showToast('<i class="fas fa-circle-xmark"></i> Error de cámara', 'error');
+        // Dice POR QUÉ no abrió (permiso, sin cámara, en uso, o dirección «http» del servidor de la escuela) y qué hacer.
+        const f = window.friendlyError ? window.friendlyError(err, 'camera') : { message: 'Error de cámara' };
+        showToast('<i class="fas fa-circle-xmark"></i> ' + f.message, 'error');
         qrScanning = false;
     }
 }
@@ -234,12 +237,27 @@ window.tickScanner = function tickScanner() {
     requestAnimationFrame(tickScanner);
 }
 
+let lastBadQrAt = 0;
 window.handleQRCodeDetected = async function handleQRCodeDetected(data) {
+    // La cámara revisa CADA cuadro: un código que no es de Quetzal no debe llenar la pantalla de avisos (uno cada 4 s).
+    const badQr = () => {
+        if (Date.now() - lastBadQrAt < 4000) return;
+        lastBadQrAt = Date.now();
+        showToast('<i class="fas fa-circle-xmark"></i> Ese código QR no es de un estudiante de Quetzal. Usa las credenciales impresas desde «Impresión · Credenciales QR».', 'error');
+    };
+    const pick = document.getElementById('attendance-assignment');
+    if (pick && !pick.value) {
+        if (Date.now() - lastBadQrAt >= 4000) { lastBadQrAt = Date.now(); showToast('<i class="fas fa-circle-xmark"></i> Primero elige tu clase en «Equipo en Aula».', 'error'); }
+        return;
+    }
     try {
-        const parsed = JSON.parse(data);
+        let parsed;
+        try { parsed = JSON.parse(data); } catch { return badQr(); }
+        if (!parsed || typeof parsed !== 'object') return badQr();
         // Soporte para formato comprimido (si=student_id) o legado (id/student_id)
         const id = parsed.si || parsed.id || parsed.student_id;
-        if (!id || (lastScannedIds[id] && Date.now() - lastScannedIds[id] < SCAN_COOLDOWN)) return;
+        if (!id) return badQr();
+        if ((lastScannedIds[id] && Date.now() - lastScannedIds[id] < SCAN_COOLDOWN)) return;
 
         lastScannedIds[id] = Date.now();
 
@@ -262,7 +280,9 @@ window.handleQRCodeDetected = async function handleQRCodeDetected(data) {
         // USAR EL GESTOR DE SINCRONIZACIÓN (MODO KOLIBRI / OFFLINE)
         await _syncManager.enqueue('mark_attendance', attendanceData);
 
-        showToast('<i class="fas fa-circle-check"></i> Asistencia registrada (Pendiente Sync)', 'success');
+        showToast(navigator.onLine
+            ? '<i class="fas fa-circle-check"></i> Asistencia registrada'
+            : '<i class="fas fa-circle-check"></i> Asistencia registrada. Se subirá sola cuando vuelva el internet.', 'success');
         loadStudentsForAttendance();
     } catch (e) {
         console.error('Error en escaneo QR:', e);

@@ -3,6 +3,7 @@
 // ================================================
 
 import { createQueryCache, createCoalescer } from './query-cache.js';
+import { friendlyErrorText } from './help-messages.js'; // también define window.friendlyError, window.validateProjectForm y window.openHelp (docs/soporte/)
 
 // GLOBAL SYSTEM CONFIGURATION
 export const SYSTEM_CONFIG = {
@@ -98,40 +99,8 @@ export function sanitizeAttr(str) {
     return sanitizeInput(str).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-// Errores técnicos (Postgres/Supabase/red) -> mensaje claro + qué hacer. Un
-// docente que ve "violates row-level security policy" piensa que rompió algo y
-// no vuelve a tocar nada. Los mensajes que ya están en español normal no
-// coinciden con ningún patrón y se muestran tal cual.
-const FRIENDLY_ERRORS = [
-    [/failed to fetch|networkerror|network request failed|load failed|fetch failed|timed out|timeout/i,
-        'Parece que no hay conexión. Revisa tu internet y vuelve a intentarlo.'],
-    [/jwt expired|invalid jwt|invalid token|refresh token|not authenticated|no autenticado/i,
-        'Tu sesión venció. Cierra sesión, vuelve a entrar e inténtalo otra vez.'],
-    [/row-level security|permission denied|permiso denegado|not authorized|forbidden|\b42501\b/i,
-        'No tienes permiso para hacer esto. Si crees que sí deberías, avisa al administrador.'],
-    [/could not find the function|\bPGRST20[24]\b|schema cache|does not exist|no existe la (columna|funci|relaci)/i,
-        'Esta función todavía no está lista en el sistema. Avisa al administrador.'],
-    [/duplicate key|unique constraint|\b23505\b|already exists/i,
-        'Eso ya existe (está repetido). Revisa que no lo hayas creado antes.'],
-    [/foreign key|\b23503\b/i,
-        'No se puede hacer porque hay otros datos que dependen de esto.'],
-    [/payload too large|entity too large|exceeded the maximum allowed size|file size/i,
-        'El archivo es demasiado pesado. Prueba con uno más pequeño.'],
-    [/mime type|invalid mime|unsupported media/i,
-        'Ese tipo de archivo no está permitido.'],
-    [/too many requests|rate limit/i,
-        'Hiciste muchas acciones seguidas. Espera un momento y vuelve a intentar.'],
-    [/invalid input syntax|violates check constraint|null value in column|\b2(2P02|3502|3514)\b/i,
-        'Falta algún dato o tiene un formato incorrecto. Revisa el formulario.'],
-    [/internal server error|bad gateway|service unavailable|non-2xx|infinite recursion/i,
-        'Hubo un problema en el servidor. Espera un minuto y vuelve a intentar.'],
-];
-
-export function friendlyErrorText(raw) {
-    const text = String(raw ?? '');
-    const hit = FRIENDLY_ERRORS.find(([re]) => re.test(text));
-    return hit ? hit[1] : null;
-}
+// Errores técnicos (Postgres/Supabase/red) -> mensaje claro: la tabla y friendlyErrorText viven en js/help-messages.js (una sola fuente).
+export { friendlyErrorText };
 
 // Algunos mensajes vienen de funciones de la base de datos escritas con voseo
 // ("No tenés suficientes gemas"); la app habla de tú. Se convierten al mostrarlos
