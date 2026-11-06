@@ -159,3 +159,81 @@ de producción.
 | 110 | 2026-11-02 | `node-companion.sql` | `apply_node_companion(estudiante, función, especie, accesorio, slot)` (solo `service_role`): la mascota hecha en el nodo sin internet, con la misma lógica que las funciones del estudiante. |
 | 108 | 2026-11-01 | `teacher-node-pin.sql` | PIN del docente para entrar al nodo sin internet, fijado EN LÍNEA: tabla `teacher_node_pins` (sin acceso desde la app; solo `service_role`), RPC `set_teacher_node_pin(hash, sal)`, `has_teacher_node_pin()` y `clear_teacher_node_pin()` (solo docentes; el hash lo calcula el navegador, el servidor nunca ve el PIN). `node-sync` lo baja al nodo de las escuelas donde el docente está asignado. |
 | 107 | 2026-11-01 | `node-evaluations.sql` | `apply_node_evaluation(docente, escuela, proyecto, node_ref, evaluación jsonb)` (solo `service_role`): aplica la evaluación que un docente hizo en un nodo escolar sin internet; exige docente asignado a la clase y proyecto de la escuela del nodo, notas enteras 0 a 20 con el total recalculado en la base, una evaluación por proyecto (gana la última) y deja la nota en el proyecto. Ejecutar antes de publicar `node-sync` con `evaluations.ts`. |
+
+### Migraciones sin número en la tabla de arriba
+
+Estas migraciones existen en `migrations/` pero quedaron fuera de la tabla numerada (se agregaron al repositorio entre el
+28 de septiembre y el 4 de octubre de 2026). Están listadas aquí por fecha de incorporación; **el orden para aplicarlas
+está en la sección siguiente**. Una prueba automática (`tests-unit/migrations-docs.test.mjs`) falla si una migración nueva
+no aparece en este documento.
+
+| Fecha | Archivo | Qué hace |
+|---|---|---|
+| 2026-09-28 | `hangman-word-bank.sql` | Banco fijo de palabras «Vida silvestre y ODS de Guatemala» para Ahorcado 1v1 (`hangman_word_bank`, nunca legible por el cliente). Requiere `duel-facts.sql` |
+| 2026-09-28 | `timed-math-word-problems.sql` | Contrarreloj: `generate_math_problems()` con mini-historias de contexto guatemalteco (misma cuenta, mismo resultado). Requiere `student-timed-math-duels.sql` |
+| 2026-09-28 | `sync-queue-idempotency.sql` | `sync_save_evaluation` (evaluar proyecto en una sola función atómica) y `tutor_attendance.client_ref` para que un reintento de la cola offline no duplique |
+| 2026-09-29 | `fix-password-reset-rpc-exposure.sql` | **CRÍTICO.** `admin_reset_user_password` y `reset_password_via_admin` estaban abiertas a `anon` (cambiar la contraseña de cualquier cuenta sin sesión): se cierran y se les exige permiso |
+| 2026-09-29 | `fix-students-and-notifications-rls.sql` | `students` ya no se lee completo entre colegios: solo uno mismo, personal o compañeros de clase; notificaciones más cerradas. Correr después de `fix-password-reset-rpc-exposure.sql` |
+| 2026-09-29 | `fix-students-rls-recursion.sql` | **CRÍTICO.** Arregla la «recursión infinita» que la anterior provocó en la lectura de `students` (`my_classroom_key()`) |
+| 2026-09-29 | `fix-votes-and-evaluations-exposure.sql` | Cierra a `anon` las 4 funciones viejas que modificaban `projects.votes` y una exposición de evaluaciones |
+| 2026-09-29 | `student-pin-cloud.sql` | PIN personal también en el modo sin conexión de la app en la nube (`set_student_pin`, `clear_student_pin`). Requiere `school-nodes.sql` |
+| 2026-09-29 | `companion-panda.sql` | Panda como mascota 11 de la Quetzadex (`is_companion_species`). Requiere `companion-more.sql` |
+| 2026-10-02 | `fix-is-staff-coordinador.sql` | `is_staff()` reconoce al rol `coordinador` (si no, las políticas basadas en `is_staff()` le devuelven vacío) |
+| 2026-10-02 | `fix-coordinator-own-schools.sql` | `set_school_public_projects` vale también para las escuelas de las clases propias del coordinador |
+| 2026-10-02 | `fix-cross-school-public-projects.sql` | `project_author_visible` / `public_project_authors` (SECURITY DEFINER): corrige la regresión de proyectos públicos entre colegios. Requiere `fix-students-and-notifications-rls.sql` y `school-project-visibility.sql` |
+| 2026-10-02 | `fix-toggle-project-like-integer.sql` | `toggle_project_like` recreada con `integer` (con `uuid` todo voto fallaba) |
+| 2026-10-03 | `project-reactions.sql` | Reacciones en proyectos (like, excelente, wow, destacar, ánimo): `project_likes.reaction`, `react_to_project`, `get_project_reactions` |
+| 2026-10-03 | `project-reactions-likes-only.sql` | **Reemplazada** por la siguiente (el Ranking contaba solo «me gusta»). No hace falta correrla si vas a correr `project-reactions-ranking-count.sql` |
+| 2026-10-03 | `project-reactions-ranking-count.sql` | Versión vigente: `projects.votes` = «me gusta» + «excelente». Recalcula los votos |
+| 2026-10-03 | `project-reaction-notifications.sql` | Aviso en la campanita al dueño/equipo cuando reaccionan (sin decir quién; filas creadas solo por el disparador) |
+| 2026-10-03 | `project-thumbnails.sql` | `projects.thumbnail_url`: miniatura JPEG (data URL) para proyectos con modelo 3D |
+| 2026-10-04 | `exams.sql` | Exámenes con hoja de respuestas: `exams`/`exam_results` (la clave nunca llega al alumno) y `my_exam_results()` |
+
+## Orden seguro de lo pendiente
+
+`PENDIENTES.md` marca varias migraciones como «sin correr», pero esa lista quedó atrás de lo que hay en el repositorio. Antes
+de correr nada, **averigua qué falta**: pega `migrations/verificar-migraciones.sql` en el SQL Editor de Supabase (solo lee) y
+corre, de arriba hacia abajo, solo las filas con `aplicada = false`. El orden sigue estas reglas:
+
+1. **Primero lo que cierra huecos de seguridad,** en el orden en que se descubrieron: cada archivo dice «correr después de»
+   el anterior.
+2. **Primero lo que otra migración requiere** (cada archivo lo dice en su encabezado; las dependencias están abajo).
+3. **Antes de publicar** la versión de la app o de `node-sync` que usa la función, no después (una función que no existe
+   hace fallar la llamada; una columna sobrante no molesta a nadie).
+4. **Todas son seguras de re-ejecutar** (regla de este documento): si dudas de una, volver a correrla no daña.
+
+| Fase | Migración (en este orden) | Requiere antes | Notas |
+|---|---|---|---|
+| 1. Seguridad crítica | `fix-password-reset-rpc-exposure.sql` | — | Toma de cuentas sin sesión. **La más urgente** |
+| | `fix-students-and-notifications-rls.sql` | la anterior | Probar después que un alumno ve a sus compañeros |
+| | `fix-students-rls-recursion.sql` | la anterior | Sin ella, la lectura de `students` falla con «infinite recursion» |
+| | `fix-votes-and-evaluations-exposure.sql` | las tres anteriores, `project-votes-server-side.sql` | |
+| 2. Coordinador y proyectos | `fix-is-staff-coordinador.sql` | `coordinador-role.sql` | |
+| | `fix-coordinator-own-schools.sql` | `school-project-visibility.sql` | |
+| | `fix-cross-school-public-projects.sql` | fase 1 completa, `school-project-visibility.sql` | |
+| | `fix-toggle-project-like-integer.sql` | — | Si los votos fallan con «invalid input syntax for type uuid» |
+| 3. Funciones de la app (v1.0.123 a v1.0.131) | `sync-queue-idempotency.sql` | — | |
+| | `student-pin-cloud.sql` | `school-nodes.sql` | |
+| | `hangman-word-bank.sql` | `duel-facts.sql` | |
+| | `timed-math-word-problems.sql` | `student-timed-math-duels.sql` | |
+| | `companion-panda.sql` | `companion-more.sql` | |
+| 4. Retos, reacciones, exámenes, progreso | `duel-per-player-content.sql` | los 5 retos y `audit-fixes-duels-chest.sql` | **Importante:** cada jugador recibe su propio contenido. Correrla **antes** de redesplegar las 4 funciones `ai-generate-*` |
+| | `project-reactions.sql` | — | |
+| | `project-reactions-ranking-count.sql` | `project-reactions.sql` | Omite `project-reactions-likes-only.sql` (reemplazada) |
+| | `project-reaction-notifications.sql` | `project-reactions.sql` | Antes de redesplegar `notify-reaction` |
+| | `project-thumbnails.sql` | — | |
+| | `exams.sql` | — | |
+| | `practice-progress.sql` | los 5 retos, `coordinador-role.sql` | Sin ella, «Mi progreso» sale vacío |
+| 5. Auditoría de octubre | `course-resource-weights.sql` | `lessons.sql`, `courses.sql` | |
+| | `security-hardening-2026-10.sql` | **la app v1.0.172 o posterior ya publicada** | Al final muestra una fila que debe dar `false, false, true, true`. Si se corre antes de publicar, las versiones viejas de la app fallan al iniciar sesión |
+| 6. Nodo escolar | `xp-events.sql`, `node-reactions.sql`, `node-evaluations.sql`, `teacher-node-pin.sql`, `teacher-node-password.sql` | `economy-server-side.sql`, fase 4 (`project-reactions*`), `evaluations-restrict-to-assigned-teacher.sql` | Cada una, **antes** de publicar `node-sync` con el módulo correspondiente |
+| | `node-companion.sql`, `node-timed-math-duel.sql`, `node-hangman-duel.sql`, `node-profile-photo.sql`, `node-feedback.sql` | `companion-collection.sql`, `companion-cosmetics.sql`, `student-timed-math-duels.sql`, `student-hangman-duels.sql`, `hangman-word-bank.sql`, `duel-per-player-content.sql`, `audit-fixes-duels-chest.sql`, `economy-server-side.sql` | Solo `service_role` las ejecuta |
+| | `node-remote-sync.sql`, `feedback-inbox.sql` | `school-nodes.sql` | Después publicar `node-sync` completo (14 archivos) |
+
+**Por qué las funciones se publican después del SQL:** la función `node-sync` o la app llaman a funciones de la base por
+nombre. Si la migración todavía no corrió, esa llamada falla; si corre primero, la versión vieja de la función ni la usa.
+**Con las migraciones de la fase 1:** corre las cuatro de una vez y prueba, con un alumno, que ve su ranking y a sus
+compañeros, y que un docente ve a sus estudiantes; con la 2 prueba a un coordinador.
+
+> **Pendiente de verificar contra producción.** Esta lista sale de leer los encabezados del repositorio, no de consultar tu
+> base. `verificar-migraciones.sql` es la forma de saber el estado real; no hay que fiarse de las casillas de `PENDIENTES.md`.

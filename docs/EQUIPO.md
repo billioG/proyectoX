@@ -42,7 +42,7 @@ Tareas acotadas para aprender el proyecto. Cada una es un pull request.
 
 - [ ] **Pruebas de humo nuevas**: una prueba por pantalla pública más (por ejemplo, que el formulario de login muestre un error claro con usuario vacío).
 - [ ] **Accesibilidad**: revisar que botones con solo ícono tengan `title` o `aria-label` (empezar por `js/students.js`).
-- [ ] **Limpieza**: `js/pdf-processor-new.js` parece no usarse; confirmarlo y proponer quitarlo.
+- [x] **Limpieza** (v1.0.225): se quitaron `js/pdf-processor-new.js`, `js/csv.js`, `js/admin-monthly-report.js`, `js/user-management.js` y `js/teacher-node-pin.js`, que ningún archivo cargaba. Una prueba (`tests-unit/js-inventory.test.mjs`) avisa si vuelve a aparecer un módulo huérfano.
 - [ ] **Scripts viejos**: revisar `scripts/fix-*.js` y `scripts/*.py` (arreglos de una sola vez) y documentar o archivar.
 - [ ] **Estados vacíos**: pantallas que muestran solo un spinner si falla la red; agregar un mensaje con "Reintentar".
 - [ ] **Traducción de errores**: mensajes técnicos de Supabase que llegan al usuario tal cual; mapearlos a texto claro.

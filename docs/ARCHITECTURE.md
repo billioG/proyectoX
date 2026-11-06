@@ -25,7 +25,7 @@ flowchart LR
 | Interfaz | `index.html`, `js/`, `css/` | JavaScript sin framework (módulos ES + funciones en `window`), Tailwind compilado |
 | Modo sin conexión | `service-worker.js`, `js/offline-kit.js`, `js/sync-manager.js` | Service worker con caché, IndexedDB/localStorage |
 | Base de datos y seguridad | Supabase (Postgres) | Reglas por fila (RLS), permisos por columna, funciones `SECURITY DEFINER` |
-| Lógica de servidor | `supabase/functions/` (espejo en `supabase-functions/`) | Deno (Edge Functions) |
+| Lógica de servidor | `supabase/functions/` (única fuente de verdad, ADR-001) | Deno (Edge Functions) |
 | Nodo escolar | `school-node/` | Node.js + better-sqlite3 en Raspberry Pi 4 |
 | Portal de padres | `padres.html` | HTML autocontenido, sin librerías |
 | Hosting | GitHub Pages | `clases.yoaprendo.online` y `billiog.github.io/proyectoX/` |
@@ -74,7 +74,6 @@ manda el navegador.
 | `school-node/content-upload.js`, `multipart.js`, `content-sync.js` | Subida de archivos de cursos al nodo (Storage emulado) y a la nube; `supabase/functions/node-sync/content.ts` valida los cursos y recursos que sube un nodo |
 | `supabase/functions/node-sync/social.ts`, `school-node/rest/profanity.js` | Comentarios, «me gusta» y notas de recursos hechos en el nodo: validación en la nube y filtro de groserías (el mismo de la nube) |
 | `supabase/functions/node-sync/attendance.ts`, `groups.ts`, `school-node/rest/progress.js` | Asistencia y equipos hechos en el nodo (validación en la nube) y progreso de práctica calculado en el nodo |
-| `teacher-node-pin.js` | Ya no se carga (v1.0.200): el docente entra al nodo con su contraseña normal |
 | `notification-center.js` | Refresca los contadores (campana, evaluar, duelos) |
 | `activity-tracker.js` | Tiempo activo (latido cada 30 s, calculado en servidor) |
 
@@ -110,6 +109,37 @@ manda el navegador.
 | `pdf-processor.js` | Importación de nóminas del SIRE (PDF) |
 | `announcements.js`, `surveys.js` | Avisos y encuestas |
 | `admin-*.js`, `kpi-engine.js`, `bonus-system.js` | Tableros, reportes y bonos del admin |
+| `inbox.js` | Buzón de la clase: el docente lee sugerencias y evaluaciones de forma anónima; el administrador, con nombres |
+| `school-servers.js` | «Servidor de la escuela»: estado de la Raspberry y «Sincronizar ahora» desde la plataforma en línea |
+
+### Plan de reorganización de `js/`
+
+`js/` es una carpeta plana de ~85 archivos y 37 000 líneas. Los scripts son clásicos (funciones en `window`) y se cargan por demanda con
+`MODULE_MAP` de `main.js`, así que **mover o partir un archivo toca cuatro lugares a la vez**: `MODULE_MAP`, la lista de caché de
+`service-worker.js`, las etiquetas de `index.html` y las pruebas que lo nombran. Por eso la reorganización va por pasos pequeños, y
+la guardia `tests-unit/js-inventory.test.mjs` revisa en cada cambio que (1) todo lo que el service worker lista existe, (2) todo
+módulo lo carga alguien y (3) la versión coincide en todos los sitios.
+
+| Módulo | Líneas | Por dónde partirlo (secciones que ya tiene) | Prioridad |
+|---|---|---|---|
+| `lessons.js` | 3 700 | 12 secciones con encabezado propio: lista de cursos y edición (l. 70-360) · **nota y ponderación** (360-725) · recursos y **quiz builder** (726-1640) · **biblioteca compartida** (1642-1935) · **vista del alumno y reproductor** (1936-2875) · **runtime SCORM** (2877-3170) · **runtime H5P** (3172-3275) · **exportar notas SIRE** (3276-fin) | Alta: es el 10 % del código en un archivo |
+| `companion.js` | 2 160 | Mascotas y colección · tienda y accesorios · vestidor · tarjeta para redes y videos | Media |
+| `bonus-system.js` | 1 490 | Cálculo de bonos · pantallas del admin · pantallas del docente | Media |
+| `students.js`, `teachers.js`, `gamification.js` | 1 000-1 300 | Lista/edición · importación · contraseñas y padres | Baja |
+
+Reglas para hacerlo sin romper nada:
+
+1. **Un archivo nuevo no pasa de ~1 500 líneas.** Si va a pasar, se parte desde el principio.
+2. **Partir primero, mover carpetas después.** Partir `lessons.js` en `lessons-*.js` (mismo directorio, cada parte registrada en `MODULE_MAP`
+   y en la caché del service worker, y `nav()` carga todas las de la vista) no cambia rutas de nada más. Pasar a subcarpetas
+   (`js/admin/`, `js/juegos/`, `js/nodo/`) se hace **por dominio completo** y en una versión aparte.
+3. **Una parte por versión,** con la guardia en verde y una pasada por Playwright de esa pantalla (hay pruebas en `tests/`).
+4. **Código muerto: se borra,** no se comenta. v1.0.225 quitó cinco módulos que nadie cargaba (`csv.js`, `user-management.js`,
+   `admin-monthly-report.js`, `pdf-processor-new.js`, `teacher-node-pin.js`).
+5. Las variables de un archivo que otro necesita se exponen en `window` (como hoy) o se pasan por parámetro; una partición debe
+   revisar los `const`/`let` de nivel superior que usaban varias secciones.
+
+Esto es un plan: **ningún módulo grande se ha partido todavía** (solo se borró código muerto y se agregó la guardia).
 
 ## Funciones de servidor (`supabase/functions/`)
 
@@ -133,8 +163,12 @@ manda el navegador.
 | `node-sync` | Sincroniza un nodo escolar (token del nodo) | Sin JWT |
 | `trigger-random-event`, `settle-random-event`, `notify-inactive-users` | Tareas programadas (secreto `CRON_SECRET`) | Sin JWT |
 
-Cada función existe dos veces, idéntica, en `supabase/functions/<nombre>/` y
-`supabase-functions/<nombre>/`. La CI falla si difieren.
+Cada función vive **solo** en `supabase/functions/<nombre>/` (ADR-001; la antigua carpeta espejo `supabase-functions/` se eliminó y la CI
+falla si reaparece). Para pegarlas en el editor del panel de Supabase: `node scripts/exportar-funciones.mjs <carpeta>`.
+
+**Formato de error (ADR-002):** todo 4xx/5xx es `{ "error": "texto para mostrar" }`, con `code` y `message` opcionales. El helper
+`supabase/functions/_shared/http.ts` (`errorResponse`, `internalError`, `jsonResponse`) lo codifica y una prueba
+(`tests-unit/edge-errors.test.mjs`) revisa que las funciones lo cumplan.
 
 ## Seguridad: los patrones que se repiten
 

@@ -12,7 +12,7 @@
 - [ ] Probado en ancho de celular
 - [ ] Texto dinámico pasa por `sanitizeInput` / `sanitizeAttr`
 - [ ] Migración nueva: re-ejecutable, con RLS, agregada a `docs/MIGRATIONS.md`
-- [ ] Edge Function: copiada idéntica a `supabase-functions/`
+- [ ] Edge Function: errores como `{ error }` (helper `_shared/http.ts`), con el encabezado «Verify JWT ON/OFF»
 - [ ] Versión subida (`index.html` x4 + `service-worker.js`) y `CHANGELOG.md` actualizado
 - [ ] Sin secretos ni datos personales
 

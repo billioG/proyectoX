@@ -64,7 +64,7 @@ service-worker.js     Caché sin conexión y notificaciones push
 js/                   Módulos de la aplicación
 css/                  Tailwind (fuente y compilado) y estilos propios
 migrations/           Cambios de base de datos (SQL)
-supabase/functions/   Edge Functions (espejo idéntico en supabase-functions/)
+supabase/functions/   Edge Functions (única fuente; _shared/ = módulos comunes)
 school-node/          Servidor del nodo escolar para Raspberry Pi
 scripts/              Utilidades (volcado del esquema, arreglos puntuales)
 docs/                 Documentación técnica

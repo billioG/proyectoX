@@ -57,7 +57,8 @@ npx -y tailwindcss@3.4.17 -c tailwind.config.js -i css/tailwind.src.css -o css/t
 Ver las reglas completas en [docs/MIGRATIONS.md](docs/MIGRATIONS.md). En corto: seguras de re-ejecutar, no destructivas, RLS en toda tabla nueva, permisos mínimos, funciones con privilegios como `security definer` + `set search_path = public`, sin secretos.
 
 ### Edge Functions (`supabase/functions/`)
-- Cada función existe **dos veces e idéntica**: `supabase/functions/<nombre>/index.ts` y `supabase-functions/<nombre>/index.ts`. Editá una y copiala a la otra; la CI falla si difieren.
+- Cada función vive **solo** en `supabase/functions/<nombre>/` (decisión ADR-001 en `docs/DECISIONES.md`; ya no hay carpeta espejo y la CI falla si reaparece `supabase-functions/`). Para pegarla en el editor del panel de Supabase: `node scripts/exportar-funciones.mjs <carpeta> <nombre>`.
+- Los errores se devuelven como `{ "error": "texto" }` con estado 4xx/5xx (ADR-002). Usá el helper `supabase/functions/_shared/http.ts` (`errorResponse`, `internalError`, `jsonResponse`); una prueba revisa todas las funciones.
 - Validá el usuario con su JWT (`auth.getUser()`) y decidí el rol consultando las tablas, nunca por lo que manda el cliente.
 - Usá la *service role* solo dentro de la función, después de validar permisos.
 - Respetá `ALLOWED_ORIGINS`.
@@ -71,7 +72,7 @@ Ver las reglas completas en [docs/MIGRATIONS.md](docs/MIGRATIONS.md). En corto: 
 - [ ] Probé qué pasa sin internet, si el cambio toca algo que el alumno usa en clase.
 - [ ] Todo texto dinámico pasa por `sanitizeInput` / `sanitizeAttr`.
 - [ ] Si agregué una migración: es re-ejecutable, tiene RLS y está al final de `docs/MIGRATIONS.md`.
-- [ ] Si toqué una Edge Function: está copiada a `supabase-functions/`.
+- [ ] Si toqué una Edge Function: sus errores siguen `{ error }` (`npm run test:unit` lo revisa) y anoté si va con Verify JWT ON u OFF.
 - [ ] Subí la versión y actualicé `CHANGELOG.md`.
 - [ ] No hay secretos ni datos personales en el diff.
 

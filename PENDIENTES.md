@@ -4,7 +4,9 @@ Lista de tareas abiertas del proyecto. Marcá con `[x]` lo que vayas
 completando. Lo de "Urgente" son pasos que solo puede hacer el responsable
 del proyecto (necesitan contraseñas o acceso al panel de Supabase).
 
-Última actualización: 26 de septiembre de 2026.
+Última actualización: 5 de noviembre de 2026 (las casillas de migraciones de abajo son anteriores a esa fecha: **no las uses
+para saber qué falta**). Para saber el estado real de la base, corre `migrations/verificar-migraciones.sql` (solo lee) y sigue el
+orden de `docs/MIGRATIONS.md`, sección «Orden seguro de lo pendiente».
 
 ## 🔴 Urgente
 
@@ -55,6 +57,13 @@ del proyecto (necesitan contraseñas o acceso al panel de Supabase).
 - [ ] Confirmar el plan de Supabase antes de sumar colegios: el gratuito admite 200 conexiones en tiempo real a la vez (≈ 200 alumnos conectados), 500 MB de base, 5 GB de transferencia al mes y se pausa tras 7 días sin uso. Para clientes pagando: plan Pro.
 - [ ] Envolver `auth.uid()` en `(select auth.uid())` dentro de las políticas RLS (recomendación de rendimiento de Supabase; hacerlo por tabla y probando).
 - [ ] Fijar también `@supabase/supabase-js@2` en las Edge Functions (`esm.sh/...@2`) a una versión exacta.
+
+## 🔴 Verificar que estas correcciones críticas de seguridad estén corridas
+
+No tenían casilla en esta lista pero existen en `migrations/` (septiembre-octubre 2026). Se verifican con `migrations/verificar-migraciones.sql`:
+
+- [ ] `fix-password-reset-rpc-exposure.sql` (**crítica**: sin ella cualquiera sin sesión podía cambiar la contraseña de otra cuenta) y, en este orden, `fix-students-and-notifications-rls.sql`, `fix-students-rls-recursion.sql`, `fix-votes-and-evaluations-exposure.sql`.
+- [ ] `fix-toggle-project-like-integer.sql`, `sync-queue-idempotency.sql`, `student-pin-cloud.sql`, `hangman-word-bank.sql`, `timed-math-word-problems.sql`, `companion-panda.sql` (esta lista tampoco las traía todas).
 
 ## 🟠 Migraciones y funciones de las últimas versiones
 

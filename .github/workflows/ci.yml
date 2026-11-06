@@ -3,10 +3,9 @@ name: CI
 # Solo verifica -- no compila ni despliega nada, así que no puede romper
 # el sitio (que sigue sirviéndose tal cual desde GitHub Pages). Corre en
 # cada push/PR a main y atrapa errores antes de que lleguen a producción:
-# JS con errores de sintaxis, Edge Functions con errores de tipos, o las
-# dos carpetas espejo de funciones (supabase/ y supabase-functions/)
-# desincronizadas -- exactamente los 3 tipos de bug reales que aparecieron
-# durante el desarrollo de este proyecto.
+# JS con errores de sintaxis, Edge Functions con errores de tipos, o una
+# segunda copia de las funciones que se desincronice -- exactamente los
+# tipos de bug reales que aparecieron durante el desarrollo de este proyecto.
 
 on:
   push:
@@ -56,7 +55,8 @@ jobs:
         run: |
           set -e
           fail=0
-          for f in supabase/functions/*/index.ts; do
+          for f in supabase/functions/*/index.ts supabase/functions/_shared/*.ts; do
+            [ -e "$f" ] || continue
             echo "Checking $f"
             if ! deno check "$f"; then
               echo "::error file=$f::Error de tipos"
@@ -65,33 +65,26 @@ jobs:
           done
           exit $fail
 
-  mirrors-in-sync:
-    name: supabase/functions y supabase-functions deben ser idénticos
+  single-source-functions:
+    name: Las Edge Functions viven solo en supabase/functions
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Comparar carpetas espejo (byte a byte)
+      - name: Rechazar la carpeta espejo supabase-functions/
         run: |
+          # Decisión de arquitectura (docs/DECISIONES.md, ADR-001): una sola fuente de verdad. La carpeta espejo
+          # supabase-functions/ se eliminó porque se desincronizaba; si reaparece, esta tarea falla.
+          if [ -e supabase-functions ]; then
+            echo "::error::supabase-functions/ ya no existe: las funciones viven solo en supabase/functions/. Para pegarlas en el editor del panel de Supabase usa: node scripts/exportar-funciones.mjs <carpeta>"
+            exit 1
+          fi
+          # Cada función debe tener su index.ts (las carpetas que empiezan con _ son módulos compartidos).
           fail=0
-          for f in supabase/functions/*/index.ts; do
-            name=$(basename "$(dirname "$f")")
-            other="supabase-functions/$name/index.ts"
-            if [ ! -f "$other" ]; then
-              echo "::error::Falta $other (existe en supabase/functions pero no en supabase-functions)"
-              fail=1
-              continue
-            fi
-            # Se comparan TODOS los archivos de la función (index.ts y los módulos que importa, ej. projects.ts).
-            if ! diff -r "supabase/functions/$name" "supabase-functions/$name" > /dev/null; then
-              echo "::error file=$f::La carpeta de la función quedó desincronizada con supabase-functions/$name"
-              diff -r "supabase/functions/$name" "supabase-functions/$name" || true
-              fail=1
-            fi
-          done
-          for d in supabase-functions/*/; do
+          for d in supabase/functions/*/; do
             name=$(basename "$d")
-            if [ ! -f "supabase/functions/$name/index.ts" ]; then
-              echo "::error::Falta supabase/functions/$name/index.ts (existe en supabase-functions pero no en supabase/functions)"
+            case "$name" in _*) continue ;; esac
+            if [ ! -f "$d/index.ts" ]; then
+              echo "::error::Falta supabase/functions/$name/index.ts"
               fail=1
             fi
           done
