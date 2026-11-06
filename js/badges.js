@@ -28,7 +28,7 @@ async function checkAndAwardBadges(projectId, score) {
       }
     }
 
-    for (const studentId of studentsToReward) {
+    await Promise.all(studentsToReward.map(async (studentId) => {
       // Obtener todos los proyectos del estudiante (propios O de sus grupos)
       const { data: myGroups } = await _supabase
         .from('group_members')
@@ -68,10 +68,8 @@ async function checkAndAwardBadges(projectId, score) {
       if (highScores >= 3) badgesToAward.push(7);
 
       // Otorgar insignias
-      for (const bId of badgesToAward) {
-        await awardBadge(studentId, bId);
-      }
-    }
+      await awardBadges(studentId, badgesToAward);
+    }));
 
     // Si quien evalúa es docente, verificar sus insignias también
     if (userRole === 'docente' || userRole === 'admin') {
@@ -85,52 +83,52 @@ async function checkAndAwardBadges(projectId, score) {
   }
 }
 
-async function awardBadge(userId, badgeId) {
-  try {
-    const isTeacherBadge = badgeId >= 100;
+// Otorga varias insignias de una vez. Antes, por CADA insignia: una consulta «¿ya la tiene?» + un insert, en fila (evaluar el proyecto de un
+// equipo de 4 con 6 insignias posibles eran más de 50 consultas). Ahora: UNA consulta con las que ya tiene y UN insert con las que faltan.
+async function awardBadges(userId, badgeIds) {
+  const ids = [...new Set((badgeIds || []).filter((n) => Number.isInteger(n)))];
+  if (!userId || !ids.length) return;
+  // Las de docente (id >= 100) y las de estudiante van en tablas distintas.
+  for (const isTeacherBadge of [false, true]) {
+    const group = ids.filter((id) => (id >= 100) === isTeacherBadge);
+    if (!group.length) continue;
     const table = isTeacherBadge ? 'teacher_badges' : 'student_badges';
     const idColumn = isTeacherBadge ? 'teacher_id' : 'student_id';
+    try {
+      const { data: have, error: haveErr } = await _supabase.from(table).select('badge_id').eq(idColumn, userId).in('badge_id', group);
+      if (haveErr) throw haveErr;
+      const owned = new Set((have || []).map((r) => r.badge_id));
+      const missing = group.filter((id) => !owned.has(id));
+      if (!missing.length) continue;
 
-    // Verificar si ya tiene la insignia
-    const { data: existing } = await _supabase
-      .from(table)
-      .select('id')
-      .eq(idColumn, userId)
-      .eq('badge_id', badgeId)
-      .maybeSingle();
-
-    if (existing) return;
-
-    // Otorgar insignia
-    const { error } = await _supabase
-      .from(table)
-      .insert({
-        [idColumn]: userId,
-        badge_id: badgeId
-      });
-
-    if (error) {
-      if (error.message && error.message.includes("Could not find the table")) {
-        console.warn(`⚠️ La tabla ${table} no existe en Supabase. Ignorando insignia.`);
-        return;
+      const { error } = await _supabase.from(table).insert(missing.map((badge_id) => ({ [idColumn]: userId, badge_id })));
+      if (error) {
+        if (error.message && error.message.includes("Could not find the table")) {
+          console.warn(`⚠️ La tabla ${table} no existe en Supabase. Ignorando insignia.`);
+          continue;
+        }
+        throw error;
       }
-      throw error;
-    }
 
-    // Notificar al usuario actual
-    if (currentUser && userId === currentUser.id) {
-      const badgeList = isTeacherBadge ? TEACHER_BADGES : BADGES;
-      const badge = badgeList.find(b => b.id === badgeId);
-      if (badge) {
-        showToast(`<i class="fas fa-champagne-glasses"></i> ¡Nueva insignia desbloqueada: ${badge.icon} ${badge.name}!`, 'success');
+      // Notificar al usuario actual
+      if (currentUser && userId === currentUser.id) {
+        const badgeList = isTeacherBadge ? TEACHER_BADGES : BADGES;
+        for (const badgeId of missing) {
+          const badge = badgeList.find((x) => x.id === badgeId);
+          if (badge) showToast(`<i class="fas fa-champagne-glasses"></i> ¡Nueva insignia desbloqueada: ${badge.icon} ${badge.name}!`, 'success');
+        }
       }
+    } catch (err) {
+      // No loguear errores de tabla inexistente como errores graves
+      if (err.message && err.message.includes("Could not find the table")) continue;
+      console.error('Error otorgando insignia:', err);
     }
-
-  } catch (err) {
-    // No loguear errores de tabla inexistente como errores graves
-    if (err.message && err.message.includes("Could not find the table")) return;
-    console.error('Error otorgando insignia:', err);
   }
+}
+window.awardBadges = awardBadges;
+
+async function awardBadge(userId, badgeId) {
+  return awardBadges(userId, [badgeId]);
 }
 
 // Se llama al dar like a un comentario -- re-chequea las insignias de quien
@@ -149,7 +147,15 @@ async function checkCommentAuthorBadges(commentId) {
 }
 window.checkCommentAuthorBadges = checkCommentAuthorBadges;
 
-async function checkAllBadges(studentId) {
+// Al iniciar sesión esta revisión corría 2 o 3 veces seguidas (auth.js, el temporizador de carga y el Centro de Juego), con ~8 consultas cada una.
+// Ahora, una llamada mientras otra corre comparte su resultado, y una nueva dentro de los 20 s de la anterior no repite el trabajo.
+// Los llamados que vienen de un cambio real (sincronizar, terminar una lección) pasan { force: true }.
+function checkAllBadges(studentId, opts) {
+  const run = () => checkAllBadgesNow(studentId);
+  return window.coalesce ? window.coalesce(`badges:${studentId}`, run, { minGapMs: 20_000, force: !!opts?.force }) : run();
+}
+
+async function checkAllBadgesNow(studentId) {
   try {
     // Obtener grupos del estudiante
     const { data: myGroups } = await _supabase
@@ -171,16 +177,12 @@ async function checkAllBadges(studentId) {
     const excellentScores = projects?.filter(p => p.score >= 90).length || 0;
 
     // Insignias de comentarios/likes en recursos (independientes de proyectos).
-    const { count: totalComments } = await _supabase
-      .from('resource_comments')
-      .select('id', { count: 'exact', head: true })
-      .eq('author_id', studentId);
-
     const { data: myComments } = await _supabase
       .from('resource_comments')
       .select('id')
       .eq('author_id', studentId);
     const myCommentIds = (myComments || []).map(c => c.id);
+    const totalComments = myCommentIds.length;
     let commentLikesReceived = 0;
     if (myCommentIds.length) {
       const { count } = await _supabase
@@ -198,12 +200,10 @@ async function checkAllBadges(studentId) {
     if (totalProjects >= 5) badgesToCheck.push(5);
     if (totalLikes >= 50) badgesToCheck.push(6);
     if (highScores >= 3) badgesToCheck.push(7);
-    if ((totalComments || 0) >= 10) badgesToCheck.push(16);
+    if (totalComments >= 10) badgesToCheck.push(16);
     if (commentLikesReceived >= 10) badgesToCheck.push(17);
 
-    for (const badgeId of badgesToCheck) {
-      await awardBadge(studentId, badgeId);
-    }
+    await awardBadges(studentId, badgesToCheck);
 
     console.log('✅ Todas las insignias verificadas');
 
@@ -242,9 +242,7 @@ async function checkTeacherBadges(teacherId) {
     // Badge 104: Feedback de Calidad (20+)
     if (feedbackCount >= 20) teacherBadgesToAward.push(104);
 
-    for (const badgeId of teacherBadgesToAward) {
-      await awardBadge(teacherId, badgeId);
-    }
+    await awardBadges(teacherId, teacherBadgesToAward);
 
     // Huevo de Pascua: Verificar si es Diciembre y tiene todos los retos
     const now = new Date();

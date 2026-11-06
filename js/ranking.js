@@ -44,7 +44,7 @@ window.loadRanking = async function loadRanking() {
       window.allRankingProjects = projects;
       window.renderRankingInterface(container);
       window.renderRankingRows(projects);
-    });
+    }, { ttlMs: 45_000 }); // el Ranking cambia con los votos: 45 s de vigencia (una reacción propia lo invalida, ver reactions.js)
 
   } catch (err) {
     console.error(err);

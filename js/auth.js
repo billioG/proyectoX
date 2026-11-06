@@ -393,7 +393,25 @@ export async function handleLogin() {
   }
 }
 
-export async function handleSuccessfulLogin(user) {
+// El inicio de sesión llegaba por dos caminos casi a la vez (el evento SIGNED_IN de Supabase y la llamada directa tras escribir la contraseña) y
+// cargaba el perfil, los cursos y todo lo demás DOS veces: la mitad de las ~47 peticiones de un inicio de sesión eran repetidas.
+// Ahora, si ya hay un inicio en curso para el MISMO usuario, la segunda llamada espera ese mismo resultado.
+// (Medido con la app real: la segunda llamada llega ~130 ms DESPUÉS de que la primera terminó, así que no basta con compartir la que está en curso:
+// también se ignora una repetición del mismo usuario dentro de los 8 s, mientras ese usuario siga cargado. Un cierre de sesión limpia
+// window.currentUser, así que volver a entrar enseguida SÍ vuelve a cargar todo.)
+const LOGIN_REPEAT_WINDOW_MS = 8000;
+let _loginInFlight = null;
+let _lastLogin = null;
+export function handleSuccessfulLogin(user) {
+  if (_loginInFlight && _loginInFlight.id === user?.id) return _loginInFlight.promise;
+  if (user?.id && _lastLogin && _lastLogin.id === user.id && Date.now() - _lastLogin.at < LOGIN_REPEAT_WINDOW_MS && window.currentUser?.id === user.id) return Promise.resolve();
+  _lastLogin = { id: user?.id, at: Date.now() };
+  const promise = runSuccessfulLogin(user).finally(() => { if (_loginInFlight && _loginInFlight.promise === promise) _loginInFlight = null; });
+  _loginInFlight = { id: user?.id, promise };
+  return promise;
+}
+
+async function runSuccessfulLogin(user) {
   updateAppState('currentUser', user);
 
   try {

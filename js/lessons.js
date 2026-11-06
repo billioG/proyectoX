@@ -2738,7 +2738,7 @@ window.postResourceComment = async function postResourceComment(lessonId, groupI
     return window.showToast('<i class="fas fa-circle-xmark"></i> ' + msg, 'error');
   }
   if (fileInput) { fileInput.value = ''; window.previewResourceCommentAttachment(fileInput); }
-  if (typeof checkAllBadges === 'function') checkAllBadges(window.currentUser.id);
+  if (typeof checkAllBadges === 'function') checkAllBadges(window.currentUser.id, { force: true });
   window.loadResourceSocialPanel(lessonId);
 };
 

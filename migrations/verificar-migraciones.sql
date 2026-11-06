@@ -65,7 +65,10 @@ with comprobaciones(orden, migracion, tipo, objeto, extra) as (values
   (520, 'security-rls-audit-2026-11',             'sin_politica',    'notifications.Anyone can insert notifications', null),
   (521, 'security-rls-audit-2026-11',             'sin_politica',    'teacher_badges.Inserción de insignias', null),
   (530, 'security-function-exposure-2026-11',     'sin_anon_abierto','funciones definer', null),
-  (540, 'rls-auth-uid-initplan',                  'sin_auth_uid_suelto','politicas', null)
+  (540, 'rls-auth-uid-initplan',                  'sin_auth_uid_suelto','politicas', null),
+  -- Fase 8: rendimiento de noviembre (docs/PERFORMANCE.md)
+  (600, 'performance-2026-11',                    'funcion_contiene','record_active_heartbeat', 'on conflict'),
+  (601, 'random-event-settle-atomic',             'funcion',         'settle_random_event', null)
 )
 select
   c.orden,

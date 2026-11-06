@@ -164,6 +164,8 @@ de producción.
 | 119 | 2026-11-05 | `student-password-drop-plaintext.sql` | **Fase 3 de 3** (irreversible, con guarda): borra el texto de `students.password_generated` solo si TODAS las contraseñas ya tienen hash y cifrado |
 | 120 | 2026-11-05 | `security-rls-audit-2026-11.sql` | Cierra escrituras abiertas (`notifications`, `teacher_notifications`, `teacher_badges`) y lecturas públicas (tablas de personal solo `is_staff()`; las de uso con sesión solo `authenticated`) |
 | 121 | 2026-11-05 | `security-function-exposure-2026-11.sql` | Quita EXECUTE a `PUBLIC` y `anon` de toda función `SECURITY DEFINER` salvo las 2 del ingreso; conserva lo de `authenticated`/`service_role`; y lo mismo por defecto para las nuevas |
+| 123 | 2026-11-05 | `performance-2026-11.sql` | Índices que faltaban (Ranking, campana de avisos, suscripciones push, comentarios, encuestas, asistencia, retos, temas de duelos; se saltan si la tabla o columna no existe) y `record_active_heartbeat` más liviano (2 consultas en vez de 4, atómico). Detalle: `docs/PERFORMANCE.md` |
+| 124 | 2026-11-05 | `random-event-settle-atomic.sql` | `settle_random_event(evento, reparto)` (solo `service_role`): liquida un evento sorpresa en una transacción (puestos, premios, SUMA de gemas sin pisar, no paga dos veces). Correr **antes** de redesplegar `settle-random-event` |
 | 122 | 2026-11-05 | `rls-auth-uid-initplan.sql` | Envuelve `auth.uid()`, `auth.role()`, `auth.jwt()`, `is_staff()` e `is_admin()` en `(select ...)` en todas las políticas de `public` (rendimiento; mismo resultado) |
 
 ### Migraciones sin número en la tabla de arriba
@@ -238,6 +240,8 @@ corre, de arriba hacia abajo, solo las filas con `aplicada = false`. El orden si
 | | `security-rls-audit-2026-11.sql` | `fix-is-staff-coordinador.sql` | Prueba con estudiante, docente y administrador |
 | | `security-function-exposure-2026-11.sql` | todas las anteriores | Probar la pantalla de ingreso (alumno y docente) |
 | | `rls-auth-uid-initplan.sql` | todas las anteriores (la última) | Es rendimiento, no seguridad: puede esperar; mismas pruebas |
+| 5c. Rendimiento (`docs/PERFORMANCE.md`) | `performance-2026-11.sql` | `security-function-exposure-2026-11.sql` (deja el latido solo para `authenticated`) | Probar que el tiempo activo sigue sumando (+30 s) |
+| | `random-event-settle-atomic.sql` → redesplegar `settle-random-event` | — | Probar con un evento de prueba |
 | 6. Nodo escolar | `xp-events.sql`, `node-reactions.sql`, `node-evaluations.sql`, `teacher-node-pin.sql`, `teacher-node-password.sql` | `economy-server-side.sql`, fase 4 (`project-reactions*`), `evaluations-restrict-to-assigned-teacher.sql` | Cada una, **antes** de publicar `node-sync` con el módulo correspondiente |
 | | `node-companion.sql`, `node-timed-math-duel.sql`, `node-hangman-duel.sql`, `node-profile-photo.sql`, `node-feedback.sql` | `companion-collection.sql`, `companion-cosmetics.sql`, `student-timed-math-duels.sql`, `student-hangman-duels.sql`, `hangman-word-bank.sql`, `duel-per-player-content.sql`, `audit-fixes-duels-chest.sql`, `economy-server-side.sql` | Solo `service_role` las ejecuta |
 | | `node-remote-sync.sql`, `feedback-inbox.sql` | `school-nodes.sql` | Después publicar `node-sync` completo (14 archivos) |

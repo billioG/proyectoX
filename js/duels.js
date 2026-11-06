@@ -21,7 +21,7 @@ window.loadDuelsSection = async function loadDuelsSection() {
   window._duelsCache = duels || [];
   await window.hydratePlayedSet('student_duel_answers', window._duelsCache, '_myDuelPlayed');
   window.renderDuelsSection();
-  if (typeof window.updateDuelPendingBadge === 'function') window.updateDuelPendingBadge();
+  if (typeof window.updateDuelPendingBadge === 'function') window.updateDuelPendingBadge({ force: true }); // el usuario acaba de abrir/recargar los duelos: dato fresco
   window.checkDuelResults();
   window.subscribeDuelRealtime();
 }
@@ -49,10 +49,14 @@ window.checkDuelResults = async function checkDuelResults() {
   const completed = (window._duelsCache || []).filter(d => d.status === 'completed');
   if (!completed.length) return;
 
+  // UNA sola consulta por todos los duelos terminados (antes: una por duelo, en fila, cada vez que se abría el Centro de Juego:
+  // con un historial de 10 duelos eran 10 viajes al servidor). Se muestra el primero, en el orden de la lista, que aún no se vio.
+  const { data: mine } = await _supabase.from('student_duel_answers')
+    .select('id, duel_id, score, result_seen')
+    .in('duel_id', completed.map(d => d.id)).eq('student_id', currentUser.id);
+  const byDuel = new Map((mine || []).map(a => [a.duel_id, a]));
   for (const duel of completed) {
-    const { data: myAnswer } = await _supabase.from('student_duel_answers')
-      .select('id, score, result_seen')
-      .eq('duel_id', duel.id).eq('student_id', currentUser.id).maybeSingle();
+    const myAnswer = byDuel.get(duel.id);
     if (!myAnswer || myAnswer.result_seen) continue;
 
     window.showDuelResultModal(duel, myAnswer.score);

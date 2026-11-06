@@ -33,6 +33,15 @@ Deno.serve(async (req) => {
 
   let settled = 0;
   for (const event of dueEvents) {
+    // Camino normal: la base liquida el evento completo en UNA transacción (migrations/random-event-settle-atomic.sql): ordena, reparte,
+    // SUMA las gemas sin pisar las que el alumno ganó en otro lado y no paga dos veces si el cron se solapa.
+    const { error: rpcErr } = await admin.rpc('settle_random_event', { p_event: event.id, p_split: PRIZE_SPLIT });
+    if (!rpcErr) { settled++; continue; }
+    if (!/PGRST202|42883|does not exist/i.test(`${rpcErr.code} ${rpcErr.message}`)) {
+      console.error('settle-random-event: falló la liquidación de', event.id, rpcErr.message);
+      continue; // se reintenta en el siguiente minuto (el evento sigue 'active')
+    }
+    // Compatibilidad: sin la migración, se liquida como antes (3 consultas por premiado).
     const { data: participants } = await admin
       .from('event_participants')
       .select('*')

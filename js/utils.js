@@ -2,6 +2,8 @@
 // UTILS.JS - FUNCIONES COMPARTIDAS (Versión Clásica)
 // ================================================
 
+import { createQueryCache, createCoalescer } from './query-cache.js';
+
 // GLOBAL SYSTEM CONFIGURATION
 export const SYSTEM_CONFIG = {
     projectsPerBimester: parseInt(localStorage.getItem('sys_projects_per_bimestre')) || 4,
@@ -189,46 +191,22 @@ export function getStatusBadge(status) {
  * @param {Function} fetchPromise - Función que retorna la promesa de Supabase
  * @param {Function} onUpdate - Callback opcional cuando lleguen los datos frescos (recibe data y un flag isFromCache)
  */
-export async function fetchWithCache(cacheKey, fetchPromise, onUpdate = null) {
-    let cachedData = null;
-
-    // 1. Intentar obtener de cache local (Instantáneo)
-    if (typeof _syncManager !== 'undefined') {
-        try {
-            cachedData = await _syncManager.getCache(cacheKey);
-            if (cachedData && onUpdate) {
-                onUpdate(cachedData, true); // true = desde cache
-            }
-        } catch (e) {
-            console.warn(`⚠️ Error leyendo cache para ${cacheKey}:`, e);
-        }
-    }
-
-    // 2. Intentar obtener de la red (Segundo plano o si no hay cache)
-    try {
-        const result = await fetchPromise();
-
-        // Manejar estructura de respuesta de Supabase {data, error}
-        if (result && result.error) throw result.error;
-
-        const freshData = result && result.data !== undefined ? result.data : result;
-
-        // 3. Guardar en cache si tenemos datos exitosos
-        if (typeof _syncManager !== 'undefined' && freshData) {
-            await _syncManager.setCache(cacheKey, freshData);
-        }
-
-        // 4. Notificar a la UI con datos frescos
-        if (onUpdate) {
-            onUpdate(freshData, false); // false = desde red (fresco)
-        }
-
-        return freshData;
-    } catch (err) {
-        console.warn(`🔌 Fallo de red para ${cacheKey}, usando cache si existe:`, err);
-        return cachedData;
-    }
+// Caché de consultas (js/query-cache.js): muestra lo guardado en el dispositivo y pide lo nuevo al servidor; con { ttlMs } usa lo guardado SIN
+// consultar mientras sea reciente, y las pedidas idénticas a la vez comparten una sola consulta. Sin opciones se comporta como siempre.
+const _queryCache = createQueryCache({
+    readEntry: async (key) => (typeof _syncManager !== 'undefined' && _syncManager.getCacheEntry ? _syncManager.getCacheEntry(key) : null),
+    writeEntry: async (key, data) => { if (typeof _syncManager !== 'undefined') await _syncManager.setCache(key, data); },
+    warn: (...args) => console.warn('⚠️', ...args),
+});
+export async function fetchWithCache(cacheKey, fetchPromise, onUpdate = null, opts = {}) {
+    return _queryCache.fetchWithCache(cacheKey, fetchPromise, onUpdate, opts);
 }
+// Después de guardar algo que cambia datos cacheados con ttlMs: la próxima lectura va al servidor. Acepta una clave o un prefijo.
+export function invalidateCache(keyOrPrefix) { return _queryCache.invalidate(keyOrPrefix); }
+window.invalidateCache = invalidateCache;
+// window.coalesce(clave, fn, { minGapMs, force }): corre fn una vez aunque lo pidan varios a la vez o muy seguido (ver js/query-cache.js).
+const _coalescer = createCoalescer();
+window.coalesce = (key, fn, opts) => _coalescer.run(key, fn, opts);
 
 /**
  * QR_MAP - Mapeo de llaves cortas para compresión de QR (Modo Kolibri)

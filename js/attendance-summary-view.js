@@ -9,11 +9,31 @@ let currentFilterDate = new Date(); // To track selected month
 
 let currentContainerId = 'admin-attendance-report-container';
 
+let currentOpts = {};
+
+const pad2 = (n) => String(n).padStart(2, '0');
+// Primer día del mes mostrado y del siguiente (texto AAAA-MM-DD): la columna `date` es una fecha, no una hora.
+function monthBounds(d) {
+    const y = d.getFullYear(), m = d.getMonth();
+    const next = new Date(y, m + 1, 1);
+    return { first: `${y}-${pad2(m + 1)}-01`, next: `${next.getFullYear()}-${pad2(next.getMonth() + 1)}-01`, key: `${y}-${pad2(m + 1)}` };
+}
+
+// Esta vista muestra UN mes a la vez. Antes pedía TODA la asistencia de todos los tiempos (cada alumno, cada día, con dos relaciones) y
+// la filtraba por mes en el navegador: crecía sin límite y, pasadas las 1000 filas que Supabase devuelve por defecto, mostraba
+// cifras incompletas en silencio. Ahora pide solo el mes que se ve, completo (paginado con un orden estable) y guardado por mes.
 window.showAttendanceSummaryView = async function showAttendanceSummaryView(opts = {}) {
-    const { containerId = 'admin-attendance-report-container', teacherIds = null, cacheKey = 'admin_global_attendance' } = opts;
+    const { containerId = 'admin-attendance-report-container' } = opts;
+    currentOpts = opts;
     currentContainerId = containerId;
     const container = document.getElementById(containerId);
     if (!container) return;
+    await loadAttendanceMonth(container);
+}
+
+async function loadAttendanceMonth(container) {
+    const { teacherIds = null, cacheKey = 'admin_global_attendance' } = currentOpts;
+    const { first, next, key } = monthBounds(currentFilterDate);
 
     if (!container.innerHTML || container.innerHTML.includes('fa-circle-notch')) {
         container.innerHTML = `
@@ -28,32 +48,31 @@ window.showAttendanceSummaryView = async function showAttendanceSummaryView(opts
         const _supabase = window._supabase;
         const fetchWithCache = window.fetchWithCache;
 
-        await fetchWithCache(cacheKey, async () => {
-            // 1. Cargar registros de asistencia y datos de escuelas en paralelo.
+        await fetchWithCache(`${cacheKey}_${key}`, async () => {
             // Coordinador: solo la asistencia tomada por sus docentes asignados
             // (RLS también lo exige -- ver migrations/school-project-visibility.sql).
-            let attendanceQuery = _supabase
-                .from('attendance')
-                .select(`
-                    *,
-                    students!fk_attendance_student(full_name, school_code),
-                    teachers!fk_attendance_teacher(full_name)
-                `)
-                .order('date', { ascending: false });
-            if (teacherIds) attendanceQuery = attendanceQuery.in('teacher_id', teacherIds);
+            const buildAttendance = () => {
+                let q = _supabase
+                    .from('attendance')
+                    .select(`
+                        id, date, status, student_id, teacher_id,
+                        students!fk_attendance_student(full_name, school_code),
+                        teachers!fk_attendance_teacher(full_name)
+                    `)
+                    .gte('date', first).lt('date', next)
+                    .order('date', { ascending: false })
+                    .order('id'); // desempate: sin él, las páginas pueden repetir o saltarse filas
+                if (teacherIds) q = q.in('teacher_id', teacherIds);
+                return q;
+            };
 
-            const [attendanceResult, schoolsResult] = await Promise.all([
-                attendanceQuery,
-                _supabase.from('schools').select('code, name, address')
+            const [attendance, schoolsResult] = await Promise.all([
+                window.fetchAllRows(buildAttendance),
+                // Los establecimientos casi no cambian: vigentes 10 minutos.
+                window.fetchWithCache('attendance_view_schools', () => _supabase.from('schools').select('code, name, address'), null, { ttlMs: 10 * 60_000 }),
             ]);
 
-            if (attendanceResult.error) throw attendanceResult.error;
-            if (schoolsResult.error) throw schoolsResult.error;
-
-            return {
-                attendance: attendanceResult.data || [],
-                schools: schoolsResult.data || []
-            };
+            return { attendance: attendance || [], schools: schoolsResult || [] };
         }, (snapshot) => {
             globalAttendanceData = snapshot.attendance;
 
@@ -251,9 +270,11 @@ window.renderAnalyticsView = function renderAnalyticsView(container) {
 }
 
 window.changeFilterMonth = function (delta) {
+    // setMonth con el día 31 «salta» de mes (31 de marzo - 1 mes = 3 de marzo): se fija el día 1 antes de mover.
+    currentFilterDate.setDate(1);
     currentFilterDate.setMonth(currentFilterDate.getMonth() + delta);
     const container = document.getElementById(currentContainerId);
-    if (container) window.renderAnalyticsView(container);
+    if (container) loadAttendanceMonth(container); // pide ESE mes (guardado por mes: volver a uno ya visto es instantáneo)
 }
 
 // Función global para manejar el acordeón
@@ -305,7 +326,7 @@ window.exportGroupReport = function (schoolName, teacherName) {
     // Añadir BOM para que Excel abra bien los caracteres especiales
     link.setAttribute("href", 'data:text/csv;charset=utf-8,\uFEFF' + encodeURIComponent(csvContent.substring(25)));
 
-    link.setAttribute("download", `Reporte_Asistencia_${schoolName}_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute("download", `Reporte_Asistencia_${schoolName}_${monthBounds(currentFilterDate).key}.csv`); // el mes que se está viendo
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

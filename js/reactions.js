@@ -90,6 +90,9 @@ window.reactToProject = async function reactToProject(projectId, reaction) {
   try {
     const { data: result, error } = await window._supabase.rpc('react_to_project', { p_project_id: projectId, p_reaction: reaction });
     if (error) throw error;
+    // El voto cambia el Ranking: la próxima vez que se abra debe pedirlo al servidor aunque su caché todavía esté vigente.
+    window.invalidateCache?.('global_ranking');
+    window.invalidateCache?.('ranking_class_');
 
     const info = window.PROJECT_REACTIONS.find(r => r.key === result.mine);
     if (info) sendReactionPush(projectId);

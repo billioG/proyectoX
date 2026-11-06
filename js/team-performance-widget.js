@@ -14,13 +14,21 @@ async function loadTeamPerformanceDashboard() {
         const endOfMonth = new Date(currentYear, currentMonth, 0, 23, 59, 59).toISOString().split('T')[0];
         const monthName = now.toLocaleDateString('es-ES', { month: 'long' });
 
-        // Cargar todos los datos necesarios en paralelo
+        // Cargar todos los datos necesarios en paralelo.
+        // Solo se usa el MES en curso (más abajo cada lista se filtra por startDate..endDate): antes se traían las tablas completas de
+        // todos los tiempos, que crecen sin límite y, pasadas las 1000 filas que Supabase devuelve por defecto, daban conteos incompletos.
+        // Los límites de la consulta son los MISMOS instantes que usa el filtro de abajo (para las fechas de asistencia, un día de
+        // margen a cada lado, porque el filtro compara una fecha sin hora contra la medianoche local); el resultado no cambia.
+        const qStart = new Date(currentYear, currentMonth - 1, 1);
+        const qEnd = new Date(currentYear, currentMonth, 0, 23, 59, 59);
+        const dayBefore = new Date(qStart.getTime() - 86400_000).toISOString().split('T')[0];
+        const dayAfter = new Date(qEnd.getTime() + 86400_000).toISOString().split('T')[0];
         const [teachersRes, attendanceRes, evalsRes, weeklyEvidenceRes, monthlyReportsRes, assignmentsRes, waiversRes, groupsRes, schoolsRes] = await Promise.all([
             _supabase.from('teachers').select('*'),
-            _supabase.from('attendance').select('teacher_id, date, status'),
-            _supabase.from('evaluations').select('teacher_id, created_at, project_id'),
-            _supabase.from('weekly_evidence').select('teacher_id, created_at'),
-            _supabase.from('teacher_monthly_reports').select('teacher_id, month, year'),
+            window.fetchAllRows(() => _supabase.from('attendance').select('id, teacher_id, date, status').gte('date', dayBefore).lte('date', dayAfter).order('id')).then(data => ({ data })).catch(() => ({ data: [] })),
+            window.fetchAllRows(() => _supabase.from('evaluations').select('id, teacher_id, created_at, project_id').gte('created_at', qStart.toISOString()).lte('created_at', qEnd.toISOString()).order('id')).then(data => ({ data })).catch(() => ({ data: [] })),
+            window.fetchAllRows(() => _supabase.from('weekly_evidence').select('id, teacher_id, created_at').gte('created_at', qStart.toISOString()).lte('created_at', qEnd.toISOString()).order('id')).then(data => ({ data })).catch(() => ({ data: [] })),
+            _supabase.from('teacher_monthly_reports').select('teacher_id, month, year').eq('month', currentMonth).eq('year', currentYear),
             _supabase.from('teacher_assignments').select('teacher_id, school_code, grade, section'),
             _supabase.from('attendance_waivers').select('*').eq('status', 'approved').gte('date', startOfMonth).lte('date', endOfMonth),
             _supabase.from('groups').select('*'),

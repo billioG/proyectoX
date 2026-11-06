@@ -155,7 +155,7 @@ window.addEventListener('sync-finished', async (e) => {
   if (e.detail && e.detail.processed > 0) {
     console.log('🔄 Sincronización exitosa, refrescando insignias y nivel...');
     if (userRole === 'estudiante' && typeof window.checkAllBadges === 'function') {
-      await window.checkAllBadges(currentUser.id);
+      await window.checkAllBadges(currentUser.id, { force: true });
     }
     window.initGamification();
   }
@@ -464,7 +464,11 @@ function guatemalaToday() {
 // reparten EN SERVIDOR cuando juega el segundo, y el número en pantalla
 // quedaba viejo hasta volver a iniciar sesión ("no me sumó las gemas").
 let _walletTimer = null;
-window.refreshMyWallet = async function refreshMyWallet() {
+// Compartida: si dos partes la piden a la vez (inicio de sesión + Centro de Juego), hay UNA consulta (sin espera mínima: tras un duelo debe poder repetirse).
+window.refreshMyWallet = function refreshMyWallet() {
+  return window.coalesce ? window.coalesce('wallet', () => refreshMyWalletNow()) : refreshMyWalletNow();
+};
+async function refreshMyWalletNow() {
   const u = window.userData;
   if (window.userRole !== 'estudiante' || !u || !window.currentUser || window.isNodeSession || !navigator.onLine) return;
   const { data } = await window._supabase.from('students')
@@ -746,7 +750,7 @@ window.openGamificationHub = async function openGamificationHub() {
         .limit(10);
     }, (topStudents) => {
       if (typeof window.renderGamificationHubContent === 'function') window.renderGamificationHubContent(modal, topStudents);
-    });
+    }, { ttlMs: 60_000 }); // el top 10 por XP cambia despacio: 60 s de vigencia
   } catch (err) {
     console.error(err);
     if (typeof window.renderGamificationHubContent === 'function') window.renderGamificationHubContent(modal, []);
@@ -991,7 +995,14 @@ window.buyShopItem = async function buyShopItem(name, price) {
 // Cuenta pendientes de los 4 desafíos 1v1 -- antes solo miraba
 // student_duels, así que retos de Ahorcado/Contrarreloj/Encontrá el Error
 // nunca prendían el punto rojo del sidebar.
-window.updateDuelPendingBadge = async function updateDuelPendingBadge() {
+// El punto rojo de retos lo piden el inicio de sesión (refreshAllBadges), initGamification y la lista de duelos: ~2 veces seguidas con 4 consultas
+// cada una. Una llamada mientras otra corre comparte su resultado y otra dentro de los 10 s no repite (los cambios reales pasan { force: true }).
+window.updateDuelPendingBadge = function updateDuelPendingBadge(opts) {
+  return window.coalesce
+    ? window.coalesce('duel-pending-badge', () => updateDuelPendingBadgeNow(), { minGapMs: 10_000, force: !!opts?.force })
+    : updateDuelPendingBadgeNow();
+};
+async function updateDuelPendingBadgeNow() {
   const badge = document.getElementById('duel-pending-badge');
   if (!badge) return;
   const _supabase = window._supabase;

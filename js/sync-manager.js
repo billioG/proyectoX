@@ -164,6 +164,15 @@ class SyncManager {
         });
     }
 
+    // La entrada completa ({ data, timestamp }): query-cache.js la usa para saber cuánto tiempo tiene lo guardado.
+    async getCacheEntry(key) {
+        if (!this.db) return null;
+        return new Promise((resolve, reject) => {
+            const request = this.db.transaction(['data_cache'], 'readonly').objectStore('data_cache').get(key);
+            request.onsuccess = () => resolve(request.result ? { data: request.result.data ?? null, timestamp: request.result.timestamp } : null);
+            request.onerror = () => reject(request.error);
+        });
+    }
     async getCache(key) {
         if (!this.db) return null;
         return new Promise((resolve, reject) => {
@@ -344,7 +353,7 @@ class SyncManager {
                             // pero como insert() no siempre devuelve el ID en modo bulk o sin select, 
                             // confiaremos en que el estudiante verá su insignia al recargar o tras la primera evaluación.
                             // Por ahora, verificamos todas las insignias del autor.
-                            await checkAllBadges(data.user_id);
+                            await checkAllBadges(data.user_id, { force: true });
                         }
                     }
                     return uploadSuccess;

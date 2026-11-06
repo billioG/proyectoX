@@ -4,7 +4,24 @@
  * vía notify-announcement al enviarse.
  */
 
-window.loadAnnouncementsUnreadCount = async function loadAnnouncementsUnreadCount() {
+// Punto rojo de la campana. Lo piden el inicio de sesión, refreshAllBadges() y un temporizador de la carga de la página (2 o 3 veces
+// en los primeros segundos), y cada vez eran ~10 consultas una tras otra. Ahora: (1) las consultas independientes van EN PARALELO,
+// (2) una llamada mientras otra corre comparte su resultado y (3) un pedido sin `force` dentro de los 15 s de la última no consulta de nuevo.
+// Las acciones que cambian el conteo (marcar leído, borrar) llaman con { force: true }.
+const _unread = { running: null, last: 0, again: false };
+const UNREAD_MIN_GAP_MS = 15_000;
+window.loadAnnouncementsUnreadCount = function loadAnnouncementsUnreadCount(opts) {
+  const force = opts === true || !!(opts && opts.force);
+  if (_unread.running) { if (force) _unread.again = true; return _unread.running; }
+  if (!force && Date.now() - _unread.last < UNREAD_MIN_GAP_MS) return Promise.resolve();
+  const run = () => computeAnnouncementsUnread().catch((e) => console.warn('No se pudo actualizar el punto de avisos:', e?.message || e));
+  _unread.running = run().then(async () => {
+    while (_unread.again) { _unread.again = false; await run(); }
+  }).finally(() => { _unread.running = null; _unread.last = Date.now(); });
+  return _unread.running;
+};
+
+async function computeAnnouncementsUnread() {
   const badge = document.getElementById('announcements-unread-badge');
   if (!badge || !window.currentUser) return;
 
@@ -20,21 +37,17 @@ window.loadAnnouncementsUnreadCount = async function loadAnnouncementsUnreadCoun
 
   const _supabase = window._supabase;
 
-  const { data: announcements } = await _supabase.from('announcements')
-    .select('id').order('created_at', { ascending: false }).limit(50);
-  const { data: reads } = await _supabase.from('announcement_reads')
-    .select('announcement_id').eq('user_id', window.currentUser.id);
+  // Retos 1v1 pendientes también suman al total de la campana (antes "te retaron" solo prendía el punto del botón Centro de Juego).
+  const [{ data: announcements }, { data: reads }, pendingSurveys, { data: unreadCommentNotifs }, pendingChallenges, { data: unreadReactionNotifs }] = await Promise.all([
+    _supabase.from('announcements').select('id').order('created_at', { ascending: false }).limit(50),
+    _supabase.from('announcement_reads').select('announcement_id').eq('user_id', window.currentUser.id),
+    typeof window.getPendingSurveys === 'function' ? window.getPendingSurveys() : Promise.resolve([]),
+    _supabase.from('comment_notifications').select('id').eq('read', false),
+    getPendingChallengeCards(),
+    _supabase.from('project_reaction_notifications').select('id').eq('read', false).not('reaction', 'is', null),
+  ]);
   const readIds = new Set((reads || []).map(r => r.announcement_id));
   const unreadAnnouncements = (announcements || []).filter(a => !readIds.has(a.id)).length;
-
-  const pendingSurveys = typeof window.getPendingSurveys === 'function' ? await window.getPendingSurveys() : [];
-  const { data: unreadCommentNotifs } = await _supabase.from('comment_notifications').select('id').eq('read', false);
-  // Retos 1v1 pendientes ahora también suman al total de la campana -- antes
-  // "te retaron" solo prendía el punto rojo del botón Centro de Juego, que
-  // el alumno no siempre asocia con "tengo una notificación nueva".
-  const pendingChallenges = await getPendingChallengeCards();
-  const { data: unreadReactionNotifs } = await _supabase.from('project_reaction_notifications')
-    .select('id').eq('read', false).not('reaction', 'is', null);
   const unread = unreadAnnouncements + pendingSurveys.length + (unreadCommentNotifs?.length || 0) + pendingChallenges.length + (unreadReactionNotifs?.length || 0);
 
   if (unread > 0) {
@@ -115,7 +128,7 @@ window.openAnnouncementsInbox = async function openAnnouncementsInbox() {
   const unreadReactionIds = (reactionNotifs || []).filter(n => !n.read).map(n => n.id);
   if (unreadReactionIds.length) {
     await _supabase.from('project_reaction_notifications').update({ read: true }).in('id', unreadReactionIds);
-    window.loadAnnouncementsUnreadCount();
+    window.loadAnnouncementsUnreadCount({ force: true });
   }
 
   // El aviso no dice QUIÉN reaccionó (menores) -- solo con qué y a qué proyecto.
@@ -151,7 +164,7 @@ window.openAnnouncementsInbox = async function openAnnouncementsInbox() {
   const unreadCommentIds = (commentNotifs || []).filter(n => !n.read).map(n => n.id);
   if (unreadCommentIds.length) {
     await _supabase.from('comment_notifications').update({ read: true }).in('id', unreadCommentIds);
-    window.loadAnnouncementsUnreadCount();
+    window.loadAnnouncementsUnreadCount({ force: true });
   }
 
   const commentNotifCards = (commentNotifs || []).map(n => `
@@ -225,7 +238,7 @@ window.openAnnouncementsInbox = async function openAnnouncementsInbox() {
       unreadIds.map(id => ({ announcement_id: id, user_id: currentUser.id })),
       { onConflict: 'announcement_id,user_id' }
     );
-    window.loadAnnouncementsUnreadCount();
+    window.loadAnnouncementsUnreadCount({ force: true });
   }
 }
 
@@ -333,7 +346,7 @@ window.deleteAnnouncement = async function deleteAnnouncement(id) {
   if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
   window.showToast('<i class="fas fa-circle-check"></i> Aviso eliminado', 'success');
   window.openAnnouncementsInbox();
-  window.loadAnnouncementsUnreadCount();
+  window.loadAnnouncementsUnreadCount({ force: true });
 }
 
 // Destinatarios (ver migrations/announcements-targeting.sql):

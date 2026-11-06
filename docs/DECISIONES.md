@@ -6,7 +6,7 @@ Registro corto (ADR ligero) de las decisiones que más condicionan el código. C
 **Cómo agregar una:** copia el formato de abajo, usa el siguiente número y no borres las anteriores: si una decisión cambia,
 márcala `Reemplazada por ADR-0NN` y escribe la nueva. Una decisión cabe en media pantalla; si necesita más, enlaza a un documento.
 
-Estados: `Vigente` · `Reemplazada` · `Propuesta`. Las decisiones 001 a 003 y 010 a 012 se tomaron el 2026-11-05; las demás son anteriores y se
+Estados: `Vigente` · `Reemplazada` · `Propuesta`. Las decisiones 001 a 003 y 010 a 013 se tomaron el 2026-11-05; las demás son anteriores y se
 registran hoy a partir de lo que dice el código y los documentos del repositorio.
 
 | # | Decisión | Estado |
@@ -23,6 +23,7 @@ registran hoy a partir de lo que dice el código y los documentos del repositori
 | 010 | Contraseñas de alumnos: hash para entrar, cifrado (llave fuera de la base) para mostrar | Vigente (código listo; falta aplicar) |
 | 011 | Funciones `SECURITY DEFINER` cerradas a `anon` por defecto | Vigente (código listo; falta aplicar) |
 | 012 | Tope diario de IA por usuario, contado en la base antes de llamar al modelo | Vigente (código listo; falta aplicar) |
+| 013 | Rendimiento: medir peticiones con la app real, caché con vigencia explícita y trabajo repetido coalescido | Vigente |
 
 ---
 
@@ -155,3 +156,13 @@ nuevas nacen cerradas. **Consecuencias.** Una función nueva que deba llamarse s
 (`ai_usage_take`, solo `service_role`) se descuenta **antes** de llamar al modelo, por usuario, día de Guatemala y tipo (preguntas de la persona / frases automáticas de la mascota), con topes por rol
 (estudiante 30, docente 100, administrador 300 por día) cambiables con secretos. Sin contador (falla de la base) no se llama al modelo; sin la migración, se deja pasar con un aviso en los registros.
 **Consecuencias.** Un estudiante muy activo puede llegar al tope en una clase (ajustable con `AI_DAILY_STUDENT_CHAT`). Las otras funciones de IA aún no tienen tope diario.
+
+## ADR-013 · Rendimiento: medir con la app real, caché con vigencia explícita, trabajo repetido coalescido
+**Estado:** Vigente · 2026-11-05
+
+**Contexto.** Medido con la app real sobre el nodo, un inicio de sesión hacía 47 peticiones y casi la mitad eran idénticas (el inicio corría dos veces; insignias, retos y gemas se disparaban desde varios lugares). El
+`fetchWithCache` existente siempre volvía a pedir al servidor, así que no bajaba la carga. **Decisión.** (1) `tests/perf-budget.spec.js` cuenta las peticiones por pantalla y falla si pasan un techo; las
+optimizaciones se justifican con esa medición, no con intuición. (2) La caché de consultas (`js/query-cache.js`) solo evita ir al servidor si quien llama pide una vigencia (`ttlMs`) y quien escribe invalida la clave: el
+dato viejo es una decisión explícita por pantalla, no un efecto escondido. (3) El trabajo que varios lugares piden a la vez o muy seguido se coalesce (`window.coalesce`); las acciones que cambian datos fuerzan con `{ force: true }`.
+**Consecuencias.** Una pantalla puede mostrar datos de hasta `ttlMs` atrás (45 a 60 s hoy) salvo que se invalide. Una función nueva que se llame al iniciar sesión debe pasar por la prueba de presupuesto. El feed del Inicio
+(todos los proyectos, con miniaturas) sigue siendo la mayor carga por estudiante; paginarlo en el servidor es la siguiente decisión pendiente (`docs/PERFORMANCE.md`, §7).
