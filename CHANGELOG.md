@@ -4,6 +4,10 @@ Cambios publicados en Quetzal LMS, del más reciente al más antiguo. Cada líne
 
 Al publicar una versión nueva, agrega una línea arriba de todo (ver CONTRIBUTING.md).
 
+## 2026-11-06
+
+- **Arreglos: el menú con el Centro de Juego abierto y la barra de sincronización (v1.0.229).** (1) El Centro de Juego es una pantalla completa que quedaba por encima del menú: el menú se abría detrás y parecía roto. Abrir el menú o navegar ahora cierra el Centro de Juego. (2) La barra «cambios por subir / Sincronizar ahora / Wi-Fi» solo aparece **después de iniciar sesión y solo para docentes, coordinadores y administradores**; los estudiantes y la pantalla de entrada ya no la ven (ni consultan el estado del servidor). Pruebas actualizadas en `tests/node-chip.spec.js` y `tests/node-rest.spec.js`.
+
 ## 2026-11-05
 
 - **Soporte y ayuda dentro de la app (v1.0.228).** Nueva carpeta `docs/soporte/`: **Kit de onboarding del docente** (entrar, pasar lista, proyectos; 15 minutos), **las 10 preguntas frecuentes** con su solución, **Guía rápida de soporte** (reglas, 5 preguntas iniciales, diagnóstico por síntoma, qué mandar al escalar) y la guía de textos de la app. En la app: botones **Ayuda** en la pantalla de entrada, **Tomar Asistencia** y **Subir Proyecto**; el aviso de cámara dice **por qué** no abrió (permiso, otra app, sin cámara, o dirección `http` del servidor escolar); un QR ajeno o sin clase elegida ya avisa (antes fallaba en silencio); subir un proyecto dice **exactamente qué falta**; entrar con datos malos sale en español claro (antes `Invalid login credentials`); sin conexión se dice que lo hecho **quedó guardado**. Todo el texto vive en `js/help-messages.js` (la tabla general de errores se movió allí desde `utils.js`). Pruebas: `tests-unit/help-messages.test.mjs` (también revisa que los documentos citen menús y botones que existen) y `tests/help.spec.js`. Pendiente de decisión: pasar lista sin cámara (hoy solo QR). No requiere migraciones.

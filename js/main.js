@@ -116,6 +116,14 @@ export function updateThemeIcon(isDark) {
 window.updateThemeIcon = updateThemeIcon;
 
 
+// Pantallas completas que se abren POR ENCIMA de la app (z-index 150): el Centro de Juego. El menú queda debajo y «dejaba de funcionar»:
+// se abría detrás y tocar una opción cambiaba la vista escondida. Abrir el menú o navegar las cierra.
+const FULLSCREEN_OVERLAYS = ['#gamification-hub-modal'];
+export function closeFullscreenOverlays() {
+    FULLSCREEN_OVERLAYS.forEach((sel) => document.querySelector(sel)?.remove());
+}
+window.closeFullscreenOverlays = closeFullscreenOverlays;
+
 export function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
     // Buscamos por ID (nuevo botón) o por clase (antiguo botón, fallback)
@@ -123,6 +131,7 @@ export function toggleSidebar() {
     sidebarActive = !sidebarActive;
 
     if (sidebarActive) {
+        closeFullscreenOverlays();
         sidebar.classList.add('active');
         if (toggle) toggle.innerHTML = '<i class="fas fa-times"></i>';
     } else {
@@ -174,6 +183,7 @@ export function nav(view) {
     // volver, esto permite reabrir en la misma vista en vez de mandar
     // siempre al feed/dashboard por defecto (ver handleSuccessfulLogin).
     sessionStorage.setItem('PX_LAST_VIEW', view);
+    closeFullscreenOverlays();
 
     // Ocultar todas las vistas
     const allViews = document.querySelectorAll('.view-section');

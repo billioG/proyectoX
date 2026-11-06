@@ -92,16 +92,17 @@ test('entra y ve Inicio, Cursos con su avance, el cofre, la Práctica y el aviso
   await expect(lessons.getByRole('heading', { name: 'Robótica básica' })).toBeVisible();
   await expect(lessons.getByText('50%')).toBeVisible();
 
-  // Aviso de sincronización: sin sincronizar y sin cambios; al completar una lección cuenta 1 cambio por subir.
-  const chip = page.locator('#node-sync-chip');
-  await expect(chip).toContainText('Aún sin sincronizar');
+  // La barra de sincronización es solo de docentes y administradores: la estudiante NO la ve. El estado del servidor sí cuenta los cambios.
+  await expect(page.locator('#node-sync-chip')).toBeHidden();
+  const pending = async () => (await (await page.request.get(`${node.base}/api/node/status`)).json()).pending_changes;
+  expect(await pending()).toBe(0);
   const xp = await page.evaluate(async () => {
     await window._supabase.from('lesson_completions').upsert({ lesson_id: 'l2', student_id: 's1', score: 90, status: 'completed' }, { onConflict: 'lesson_id,student_id' });
     window.dispatchEvent(new Event('focus'));
     return (await window._supabase.from('students').select('xp').eq('id', 's1').single()).data.xp;
   });
   expect(xp).toBe(1250); // 10 XP por la lección, al instante
-  await expect(chip).toContainText('1 cambio por subir');
+  await expect.poll(pending).toBe(1); // 1 cambio por subir
 
   // Cofre diario sin internet: el premio llega y el XP sube.
   const chest = await page.evaluate(async () => (await window._supabase.rpc('claim_daily_chest')).data);

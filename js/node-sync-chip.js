@@ -2,7 +2,11 @@
  * AVISO DE SINCRONIZACIÓN -- solo cuando la app corre sobre un nodo escolar con la capa local lista
  * (window.QUETZAL_NODE.rest, ver js/config.js). Muestra cuánto falta por subir a la nube y cuándo fue la última
  * sincronización, y deja pedir una a mano con «Sincronizar ahora». En la nube (GitHub Pages) no existe.
+ * Solo se ve DESPUÉS de iniciar sesión y SOLO para docentes, coordinadores y administradores: un estudiante no sincroniza ni cambia la Wi-Fi del servidor.
  */
+const STAFF_ROLES = ['docente', 'coordinador', 'admin'];
+export const canSeeSyncChip = (user = window.currentUser, role = window.userRole) => !!user && STAFF_ROLES.includes(role);
+
 const POLL_MS = 10_000;
 const POLL_BUSY_MS = 2_000; // mientras sincroniza se mira seguido para mostrar el avance
 
@@ -39,6 +43,7 @@ function describe(s) {
 function start() {
   const style = document.createElement('style');
   style.textContent = `
+    #node-sync-chip[hidden] { display: none !important; }
     #node-sync-chip { position: fixed; left: .75rem; bottom: calc(env(safe-area-inset-bottom, 0px) + .75rem); z-index: 90; display: flex; align-items: center; gap: .5rem;
       padding: .35rem .5rem .35rem .75rem; border-radius: 9999px; font-size: .7rem; font-weight: 700; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; box-shadow: 0 1px 4px rgba(0,0,0,.12); }
     #node-sync-chip[data-tone="warn"] { background: #fffbeb; color: #b45309; border-color: #fde68a; }
@@ -53,6 +58,7 @@ function start() {
   const chip = document.createElement('div');
   chip.id = 'node-sync-chip';
   chip.setAttribute('role', 'status');
+  chip.hidden = true; // se muestra al iniciar sesión como docente o administrador
   chip.innerHTML = '<span data-text></span><button type="button" data-sync>Sincronizar ahora</button><a href="/wifi" title="Conectar el servidor a una Wi-Fi (docentes)" style="color:inherit;font-size:.65rem;font-weight:800;text-decoration:underline">Wi-Fi</a>';
   document.body.appendChild(chip);
   const text = chip.querySelector('[data-text]');
@@ -122,10 +128,21 @@ function start() {
     }
   });
 
-  // Revisión periódica: cada 10 s, y cada 2 s mientras sincroniza.
-  const loop = async () => { await refresh(); setTimeout(loop, busy ? POLL_BUSY_MS : POLL_MS); };
+  // Visible solo con sesión de docente/coordinador/administrador (se revisa cada segundo: barato, sin tocar la red).
+  // Sin sesión o con un estudiante no hay barra ni consultas al estado del nodo.
+  let shown = false;
+  setInterval(() => {
+    const should = canSeeSyncChip();
+    if (should === shown) return;
+    shown = should;
+    chip.hidden = !should;
+    if (should) refresh(); // acaba de iniciar sesión: estado al instante
+  }, 1000);
+
+  // Revisión periódica: cada 10 s, y cada 2 s mientras sincroniza (solo si la barra se ve).
+  const loop = async () => { if (shown) await refresh(); setTimeout(loop, busy ? POLL_BUSY_MS : POLL_MS); };
   loop();
-  window.addEventListener('focus', refresh);
+  window.addEventListener('focus', () => { if (shown) refresh(); });
 }
 
 if (window.QUETZAL_NODE?.rest === true && !/[?&]modo=pin\b/.test(location.search)) {

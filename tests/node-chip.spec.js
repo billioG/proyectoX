@@ -10,13 +10,16 @@ test.use({ serviceWorkers: 'block' });
 test.beforeAll(async () => {
   const helper = await import('../tests-unit/helpers/start-node.mjs');
   if (!helper.sqliteAvailable()) { skipReason = 'better-sqlite3 no está instalado para este Node'; return; }
-  const { hashClassPassword } = await import('../school-node/rest/auth.js');
+  const { hashClassPassword, emailHash } = await import('../school-node/rest/auth.js');
   const salt = 'ab'.repeat(8);
   node = await helper.startNode({
     rest: {
+      teacher_logins: [{ teacher_id: 't1', email_hash: emailHash('marta@escuela.com'), pin_hash: hashClassPassword('654321', salt), pin_salt: salt }],
       class_verifiers: [{ class_key: 'ESC1|Primero|A', requires_password: true, salt, hash: hashClassPassword('clase123', salt) }],
       tables: {
         schools: [{ id: 1, code: 'ESC1', name: 'Escuela Piloto' }],
+        teachers: [{ id: 't1', full_name: 'Marta Gómez', role: 'docente' }],
+        teacher_assignments: [{ id: 1, teacher_id: 't1', school_code: 'ESC1', grade: 'Primero', section: 'A' }],
         students: [{ id: 's1', username: 'ana1', full_name: 'Ana López', school_code: 'ESC1', grade: 'Primero', section: 'A', status: 'activo', xp: 10, gems: 5, role: 'estudiante' }],
       },
     },
@@ -31,18 +34,20 @@ test('la barra muestra el avance cuando el servidor sincroniza solo al detectar 
   test.setTimeout(90_000);
   let current = { ...base, syncing: false, last_sync_at: '2026-11-05T09:00:00Z' };
   await page.route('**/api/node/status', (route) => route.fulfill({ contentType: 'application/json', body: JSON.stringify(current) }));
-  await page.addInitScript(() => { try { localStorage.setItem('PX_TOUR_DONE', '1'); localStorage.setItem('onboarding_seen_s1', 'true'); } catch { /* sin almacenamiento */ } });
+  await page.addInitScript(() => { try { localStorage.setItem('PX_TOUR_DONE', '1'); localStorage.setItem('onboarding_seen_t1', 'true'); localStorage.setItem('onboarding_seen_s1', 'true'); } catch { /* sin almacenamiento */ } });
   await page.goto(node.base);
   await page.waitForSelector('#login-username');
-  await page.fill('#login-username', 'ana1');
-  await page.fill('#login-password', 'clase123');
-  await page.click('#btn-login');
   const chip = page.locator('#node-sync-chip');
+  // Antes de iniciar sesión la barra NO existe a la vista.
+  await expect(chip).toBeHidden();
+  await page.fill('#login-username', 'marta@escuela.com');
+  await page.fill('#login-password', '654321');
+  await page.click('#btn-login');
   await expect(chip).toContainText('Sincronizado hace');
   await expect(chip).toHaveAttribute('title', /Internet: sí\.[\s\S]*Dirección del servidor: http:\/\/192\.168\.1\.50:8080 {2}·.*quetzal\.local/);
 
   // En el celular: tocar el texto muestra si hay internet y por dónde se abre el servidor (cambia al conectarlo a otra red).
-  await chip.locator('[data-text]').click();
+  await chip.locator('[data-text]').evaluate((el) => el.click()); // (en el celular otra capa puede taparla; el clic real es el mismo)
   await expect(page.getByText('El servidor tiene internet.')).toBeVisible();
   await expect(page.getByText('Abre el servidor en: http://192.168.1.50:8080 o http://quetzal.local:8080')).toBeVisible();
 
@@ -62,4 +67,35 @@ test('la barra muestra el avance cuando el servidor sincroniza solo al detectar 
   await expect(chip).toContainText('Sincronizando', { timeout: 30_000 });
   current = { ...base, syncing: false, sync_error: 'Sin internet por ahora: la conexión es muy lenta.', internet: { online: false, detail: 'La nube no respondió a tiempo.' } };
   await expect(page.getByText('la conexión es muy lenta').first()).toBeVisible({ timeout: 30_000 });
+});
+
+test('la barra de sincronización no la ve una estudiante, y el menú sigue funcionando con el Centro de Juego abierto', async ({ page }) => {
+  test.skip(!node, skipReason);
+  test.setTimeout(90_000);
+  await page.route('**/api/node/status', (route) => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ ...base, syncing: false, last_sync_at: '2026-11-05T09:00:00Z' }) }));
+  await page.addInitScript(() => { try { localStorage.setItem('PX_TOUR_DONE', '1'); localStorage.setItem('onboarding_seen_s1', 'true'); localStorage.setItem('gamecenter_onboarding_seen_s1', 'true'); } catch { /* sin almacenamiento */ } });
+  await page.goto(node.base);
+  await page.waitForSelector('#login-username');
+  await page.fill('#login-username', 'ana1');
+  await page.fill('#login-password', 'clase123');
+  await page.click('#btn-login');
+  await page.waitForFunction(() => window.currentUser?.id === 's1' && window.userData?.full_name);
+  await page.evaluate(() => { document.getElementById('daily-chest-modal')?.remove(); });
+  await page.waitForTimeout(2500); // la barra se decide cada segundo
+  await expect(page.locator('#node-sync-chip')).toBeHidden();
+
+  // Centro de Juego (pantalla completa): abrir el menú y elegir otra opción debe cerrarlo y mostrar esa pantalla.
+  await page.evaluate(() => window.openGamificationHub());
+  await expect(page.locator('#gamification-hub-modal')).toBeVisible();
+  await page.evaluate(() => window.toggleSidebar());
+  await expect(page.locator('#gamification-hub-modal')).toHaveCount(0);
+  await expect(page.locator('#sidebar')).toHaveClass(/active/);
+  await page.evaluate(() => window.nav('lessons'));
+  await expect(page.locator('#view-lessons')).toBeVisible();
+  // Y navegar directo (sin tocar el botón del menú) también lo cierra.
+  await page.evaluate(() => window.openGamificationHub());
+  await expect(page.locator('#gamification-hub-modal')).toBeVisible();
+  await page.evaluate(() => window.nav('ranking'));
+  await expect(page.locator('#gamification-hub-modal')).toHaveCount(0);
+  await expect(page.locator('#view-ranking')).toBeVisible();
 });
