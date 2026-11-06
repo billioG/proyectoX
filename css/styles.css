@@ -134,6 +134,13 @@
   transform: translateX(0) !important;
 }
 
+/* Centro de Juego (pantalla completa, z-150): el menú abierto se dibuja ENCIMA para poder elegir otra opción. */
+@media (max-width: 767px) {
+  body:has(#gamification-hub-modal) #sidebar.active {
+    z-index: 200 !important;
+  }
+}
+
 /* Hide navigation sections based on role - managed by JS but safe fallback */
 [id^="nav-"] {
   display: none;

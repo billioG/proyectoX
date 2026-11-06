@@ -84,13 +84,24 @@ test('la barra de sincronización no la ve una estudiante, y el menú sigue func
   await page.waitForTimeout(2500); // la barra se decide cada segundo
   await expect(page.locator('#node-sync-chip')).toBeHidden();
 
-  // Centro de Juego (pantalla completa): abrir el menú y elegir otra opción debe cerrarlo y mostrar esa pantalla.
+  // Centro de Juego (pantalla completa): abrir el menú NO lo cierra (queda encima); elegir una opción sí lo cierra y muestra esa pantalla.
   await page.evaluate(() => window.openGamificationHub());
   await expect(page.locator('#gamification-hub-modal')).toBeVisible();
   await page.evaluate(() => window.toggleSidebar());
-  await expect(page.locator('#gamification-hub-modal')).toHaveCount(0);
+  // Abrir el menú NO saca del Centro de Juego y el menú queda encima (z-index mayor que el del hub).
+  await expect(page.locator('#gamification-hub-modal')).toBeVisible();
   await expect(page.locator('#sidebar')).toHaveClass(/active/);
+  await page.waitForTimeout(700); // el menú se desliza 300 ms
+  await page.evaluate(() => { document.getElementById('daily-chest-modal')?.remove(); }); // el cofre diario puede reaparecer encima
+  const z = await page.evaluate(() => ({
+    side: +getComputedStyle(document.getElementById('sidebar')).zIndex,
+    hub: +getComputedStyle(document.getElementById('gamification-hub-modal')).zIndex,
+  }));
+  if (page.viewportSize().width < 768) { // en computadora el menú es fijo y el Centro de Juego lo cubre por diseño
+    expect(z.side).toBeGreaterThan(z.hub);
+  }
   await page.evaluate(() => window.nav('lessons'));
+  await expect(page.locator('#gamification-hub-modal')).toHaveCount(0);
   await expect(page.locator('#view-lessons')).toBeVisible();
   // Y navegar directo (sin tocar el botón del menú) también lo cierra.
   await page.evaluate(() => window.openGamificationHub());

@@ -117,7 +117,7 @@ window.updateThemeIcon = updateThemeIcon;
 
 
 // Pantallas completas que se abren POR ENCIMA de la app (z-index 150): el Centro de Juego. El menú queda debajo y «dejaba de funcionar»:
-// se abría detrás y tocar una opción cambiaba la vista escondida. Abrir el menú o navegar las cierra.
+// se abría detrás y tocar una opción cambiaba la vista escondida. El menú se dibuja encima (styles.css); navegar (nav) las cierra.
 const FULLSCREEN_OVERLAYS = ['#gamification-hub-modal'];
 export function closeFullscreenOverlays() {
     FULLSCREEN_OVERLAYS.forEach((sel) => document.querySelector(sel)?.remove());
@@ -131,7 +131,7 @@ export function toggleSidebar() {
     sidebarActive = !sidebarActive;
 
     if (sidebarActive) {
-        closeFullscreenOverlays();
+        // El menú se abre ENCIMA del Centro de Juego (ver styles.css); solo elegir una opción (nav) lo cierra.
         sidebar.classList.add('active');
         if (toggle) toggle.innerHTML = '<i class="fas fa-times"></i>';
     } else {
