@@ -72,4 +72,4 @@ Mira el **indicador de abajo**:
   Todo se sincroniza solo cuando el servidor tiene internet; el aviso de abajo a la izquierda lo muestra. Docentes: **Servidor de la escuela** muestra si ya sincronizó.
 - **Con Quetzal en línea sin internet:** puedes seguir un rato; la asistencia y los proyectos quedan guardados en el dispositivo y se suben al volver la señal (indicador **SIN CONEXIÓN → PENDIENTE → CONECTADO**).
 - **Limitaciones sin internet:** no hay asistente con IA ni notificaciones; y en el servidor escolar **no se puede usar la cámara** (pregunta 2).
-- Si ya entraste antes en ese dispositivo, la pantalla de entrada ofrece **elegir tu cuenta guardada**.
+- Si ya entraste antes en ese dispositivo, toca **Entrar** sin internet y la app te ofrece **elegir tu cuenta guardada**.

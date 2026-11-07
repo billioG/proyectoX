@@ -81,7 +81,7 @@ test('entra y ve Inicio, Cursos con su avance, el cofre, la Práctica y el aviso
   await open(page);
   await login(page);
 
-  await expect(page.getByText('Ana López').first()).toBeVisible();
+  await expect(page.locator('#user-name')).toHaveText('Ana López'); // en celular el nombre del encabezado va oculto (hidden sm:block): se comprueba el texto
   await closeOverlays(page);
   await expect(page.getByText('TU RANGO')).toBeVisible();
   await expect(page.getByText('1240 XP TOTAL')).toBeVisible();
@@ -122,7 +122,7 @@ test('un estudiante no puede leer columnas secretas ni a otros salones por la ca
   test.skip(!node, skipReason);
   await open(page);
   await login(page);
-  await expect(page.getByText('Ana López').first()).toBeVisible();
+  await expect(page.locator('#user-name')).toHaveText('Ana López'); // en celular el nombre del encabezado va oculto (hidden sm:block): se comprueba el texto
   const out = await page.evaluate(async () => {
     const pin = await window._supabase.from('students').select('pin_hash').limit(1);
     const secret = await window._supabase.from('xp_events').select('*');
@@ -147,7 +147,7 @@ test('el docente entra con su correo y PIN, evalúa un proyecto y avisa a su cla
   page.on('pageerror', e => errors.push(e.message));
   await open(page);
   await login(page, 'marta@escuela.com', '654321');
-  await expect(page.getByText('Marta Gómez').first()).toBeVisible();
+  await expect(page.locator('#user-name')).toHaveText('Marta Gómez');
   await expect(page.locator('#btn-offline-entry')).toHaveCount(0);
 
   // Evaluar: solo ve los proyectos de su clase y los guarda con el total recalculado por el nodo.
@@ -186,9 +186,9 @@ test('el docente entra con su correo y PIN, evalúa un proyecto y avisa a su cla
   await reloaded;
   await page.waitForSelector('#login-username');
   await login(page, 'marta@escuela.com', '000000');
-  await expect(page.getByText('Invalid login credentials').first()).toBeVisible();
+  await expect(page.getByText('Usuario o contraseña incorrectos').first()).toBeVisible();
   await login(page, 'ana1', 'clase123');
-  await expect(page.getByText('Ana López').first()).toBeVisible();
+  await expect(page.locator('#user-name')).toHaveText('Ana López'); // en celular el nombre del encabezado va oculto (hidden sm:block): se comprueba el texto
   await closeOverlays(page);
   const inbox = await page.evaluate(async () => { await window.openAnnouncementsInbox(); return document.getElementById('announcements-inbox-modal')?.innerText || ''; });
   expect(inbox).toContain('Traer el robot el lunes');

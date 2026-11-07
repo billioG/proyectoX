@@ -115,7 +115,10 @@ async function refreshBranding() {
   const sessionCode = window.currentUser ? window.userData?.school_code : null;
   const nb = nodeBrand();
   // Sin sesión en un nodo: el colegio del nodo manda (un nodo es de un solo colegio).
-  const code = !sessionCode && nb ? nb.code : schoolCodeToShow({ sessionCode, search: location.search, last: store.get(LAST_KEY) });
+  // Con sesión iniciada manda el colegio de la persona; quien no tiene colegio (administrador) ve la marca original de Quetzal.
+  // El colegio recordado en el dispositivo solo se usa en la pantalla de entrada (sin sesión).
+  const code = window.currentUser && !sessionCode ? null
+    : !sessionCode && nb ? nb.code : schoolCodeToShow({ sessionCode, search: location.search, last: store.get(LAST_KEY) });
   if (!code) { if (shownFor !== null) { shownFor = null; applyBranding(brandView(null)); } return; }
   if (shownFor === code) return;
   shownFor = code;

@@ -288,26 +288,9 @@ function showLoginScreen() {
 
   document.getElementById('app-container').style.display = 'none';
   renderMotivationalQuote();
-  renderOfflineEntryButton();
-}
-
-// Botón "Entrar sin internet" si en esta tablet ya entró alguien con
-// internet -- también sirve cuando hay WiFi pero sin salida a internet
-// (navigator.onLine dice true y el login online no responde).
-function renderOfflineEntryButton() {
+  // Ya no hay un botón aparte «Entrar sin internet»: sin internet, «Entrar» falla por la red y abre solo el selector de cuentas
+  // guardadas en esta tablet (ver handleLogin).
   document.getElementById('btn-offline-entry')?.remove();
-  // Sobre el nodo no aplica: la tablet ya está dentro de la red de la escuela y entra con su usuario y contraseña.
-  if (window.IS_NODE_REST) return;
-  if (!window.listOfflineAccounts?.().length) return;
-  const loginBtn = document.getElementById('btn-login');
-  if (!loginBtn) return;
-  const btn = document.createElement('button');
-  btn.id = 'btn-offline-entry';
-  btn.type = 'button';
-  btn.className = 'btn-secondary-tw w-full h-12 mt-3 text-xs uppercase font-bold';
-  btn.innerHTML = '<i class="fas fa-wifi"></i> Entrar sin internet';
-  btn.onclick = () => window.openOfflineAccountPicker();
-  loginBtn.insertAdjacentElement('afterend', btn);
 }
 
 function renderMotivationalQuote() {
