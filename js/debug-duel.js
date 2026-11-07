@@ -51,8 +51,6 @@ window.renderDebugSection = function renderDebugSection() {
     title: 'Encuentra el Error 1v1',
     subtitle: 'Una de estas afirmaciones es falsa. Gana quien la encuentra primero.',
     icon: 'fa-magnifying-glass',
-    c1: '#059669',
-    c2: '#0284c7',
     onclick: "window.GameArena.chooseMode('debug')",
     cta: '<i class="fas fa-bolt"></i> Practicar o retar',
   });

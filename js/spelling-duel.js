@@ -43,8 +43,6 @@ window.renderSpellingSection = function renderSpellingSection() {
     title: 'Ortografía 1v1',
     subtitle: 'Te damos una pista, escribes la palabra con sus tildes. Gana quien acierta más rápido.',
     icon: 'fa-spell-check',
-    c1: '#7c3aed',
-    c2: '#db2777',
     onclick: "window.GameArena.chooseMode('spelling')",
     cta: '<i class="fas fa-bolt"></i> Practicar o retar',
   });

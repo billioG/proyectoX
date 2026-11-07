@@ -141,6 +141,22 @@
   }
 }
 
+/* Colores sólidos de la marca (los del colegio si los configuró; si no, los originales de Quetzal).
+   1 = principal, 2 = secundario, 3 = acento; «-d» es el tono oscuro para sombras de botones. */
+:root {
+  --brand-1: rgb(var(--primary-rgb, 0 200 83));
+  --brand-1-d: rgb(var(--primary-dark-rgb, 0 150 36));
+  --brand-2: rgb(var(--sec-600, 79 70 229));
+  --brand-2-d: rgb(var(--sec-800, 55 48 163));
+  --brand-3: rgb(var(--acc-600, 217 119 6));
+  --brand-3-d: rgb(var(--acc-800, 146 64 14));
+}
+
+/* Sin degradados: todo `bg-gradient-to-*` de Tailwind se pinta con su primer color, sólido. */
+[class*="bg-gradient-to-"] {
+  background-image: linear-gradient(var(--tw-gradient-from), var(--tw-gradient-from)) !important;
+}
+
 /* Hide navigation sections based on role - managed by JS but safe fallback */
 [id^="nav-"] {
   display: none;
@@ -248,9 +264,7 @@
   font-weight: 900;
   margin-bottom: 1rem;
   line-height: 1.2;
-  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--brand-1);
 }
 
 .onboarding-description {

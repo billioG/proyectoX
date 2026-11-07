@@ -7,7 +7,7 @@
 
 const GA_STYLES = `
 .ga-overlay{position:fixed;inset:0;z-index:240;display:flex;align-items:flex-start;justify-content:center;padding:1.5rem;
-  background:radial-gradient(circle at 50% 30%,#1e1b4b 0%,#0f172a 55%,#020617 100%);overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;
+  background:#0f172a;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;
   -webkit-overflow-scrolling:touch;animation:ga-fade .25s ease-out}
 .ga-overlay::before{content:"";position:fixed;inset:-50%;background:repeating-conic-gradient(from 0deg,rgba(255,255,255,.03) 0 10deg,transparent 10deg 20deg);animation:ga-spin 40s linear infinite;pointer-events:none}
 .ga-panel{position:relative;width:100%;max-width:32rem;text-align:center;color:#fff;margin:auto}
@@ -16,8 +16,8 @@ const GA_STYLES = `
 .ga-player.left{animation:ga-in-left .5s cubic-bezier(.2,1.4,.4,1) both}
 .ga-player.right{animation:ga-in-right .5s cubic-bezier(.2,1.4,.4,1) both}
 .ga-avatar{width:5.5rem;height:5.5rem;border-radius:9999px;display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:900;
-  background:linear-gradient(135deg,#6366f1,#ec4899);border:4px solid rgba(255,255,255,.9);box-shadow:0 0 30px rgba(99,102,241,.6);overflow:hidden}
-.ga-player.right .ga-avatar{background:linear-gradient(135deg,#f97316,#ef4444);box-shadow:0 0 30px rgba(239,68,68,.6)}
+  background:var(--brand-2);border:4px solid rgba(255,255,255,.9);box-shadow:0 0 30px rgba(0,0,0,.35);overflow:hidden}
+.ga-player.right .ga-avatar{background:var(--brand-3);box-shadow:0 0 30px rgba(0,0,0,.35)}
 .ga-avatar img{width:100%;height:100%;object-fit:cover}
 .ga-fighter{width:7.5rem;height:7.5rem;filter:drop-shadow(0 0 18px rgba(99,102,241,.55))}
 .ga-player.right .ga-fighter{filter:drop-shadow(0 0 18px rgba(239,68,68,.55))}
@@ -37,7 +37,7 @@ const GA_STYLES = `
 .ga-ok{animation:ga-flash-ok .5s ease-out}
 .ga-bad{animation:ga-shake .45s ease-in-out,ga-flash-bad .5s ease-out}
 .ga-btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;width:100%;height:3.25rem;border-radius:1rem;font-weight:900;font-size:.85rem;
-  letter-spacing:.1em;text-transform:uppercase;color:#fff;background:linear-gradient(135deg,#22c55e,#16a34a);box-shadow:0 6px 0 #15803d,0 10px 25px rgba(34,197,94,.35);
+  letter-spacing:.1em;text-transform:uppercase;color:#fff;background:var(--brand-1);box-shadow:0 6px 0 var(--brand-1-d),0 10px 25px rgba(0,0,0,.25);
   transition:transform .1s,box-shadow .1s;border:0;cursor:pointer}
 .ga-btn:active{transform:translateY(4px);box-shadow:0 2px 0 #15803d}
 .ga-btn:disabled{opacity:.6;cursor:not-allowed}
@@ -53,7 +53,7 @@ const GA_STYLES = `
 .ga-key:hover{background:rgba(129,140,248,.25)}
 .ga-key:active{transform:scale(.88);background:rgba(129,140,248,.45)}
 .ga-hero{position:relative;overflow:hidden;cursor:pointer;border-radius:1.5rem;padding:1.5rem;margin-bottom:1rem;color:#fff;
-  background:linear-gradient(135deg,var(--ga-c1,#6366f1),var(--ga-c2,#ec4899));box-shadow:0 10px 30px rgba(0,0,0,.35);transition:transform .15s}
+  background:var(--ga-c1,var(--brand-2));box-shadow:0 10px 30px rgba(0,0,0,.35);transition:transform .15s}
 .ga-hero:hover{transform:translateY(-3px) scale(1.01)}
 .ga-hero:active{transform:scale(.98)}
 .ga-hero-icon{position:absolute;right:-.5rem;bottom:-1.5rem;font-size:7rem;opacity:.18;transform:rotate(-12deg)}
@@ -62,7 +62,7 @@ const GA_STYLES = `
 .ga-hero-cta{display:inline-flex;align-items:center;gap:.4rem;margin-top:1rem;padding:.45rem 1rem;border-radius:9999px;background:rgba(255,255,255,.2);
   font-size:.7rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase}
 .ga-mini-avatar{width:2.5rem;height:2.5rem;border-radius:9999px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:900;color:#fff;
-  background:linear-gradient(135deg,#f97316,#ef4444);overflow:hidden}
+  background:var(--brand-3);overflow:hidden}
 .ga-mini-avatar img{width:100%;height:100%;object-fit:cover}
 .ga-quick{margin-bottom:2rem;padding:1rem;border-radius:1.5rem;background:rgba(250,204,21,.06);border:1px solid rgba(250,204,21,.25)}
 .ga-quick-title{font-weight:900;font-style:italic;text-transform:uppercase;color:#facc15;font-size:1rem;margin-bottom:.75rem}
@@ -133,10 +133,18 @@ window.GameArena = {
   },
 
   // Tarjeta grande para "crear reto" en el Centro de Juego.
-  heroHtml({ title, subtitle, icon, c1, c2, onclick, cta = '<i class="fas fa-bolt"></i> Retar a alguien' }) {
+  // Las tarjetas grandes usan colores sólidos de la marca (1 principal, 2 secundario, 3 acento); sin tono explícito se reparte por título.
+  heroTone(tone, title) {
+    if ([1, 2, 3, '1', '2', '3'].includes(tone)) return Number(tone);
+    let n = 0;
+    for (const ch of String(title || '')) n += ch.charCodeAt(0);
+    return (n % 3) + 1;
+  },
+
+  heroHtml({ title, subtitle, icon, tone, onclick, cta = '<i class="fas fa-bolt"></i> Retar a alguien' }) {
     this.ensureStyles();
     return `
-      <div class="ga-hero" style="--ga-c1:${c1};--ga-c2:${c2}" onclick="${onclick}">
+      <div class="ga-hero" style="--ga-c1:var(--brand-${this.heroTone(tone, title)})" onclick="${onclick}">
         <i class="fas ${icon} ga-hero-icon"></i>
         <h4>${title}</h4>
         <p>${subtitle}</p>
@@ -381,7 +389,7 @@ window.GameArena = {
   },
 
   rematchBtnHtml(game, duel) {
-    return `<button class="h-8 px-3 rounded-lg text-white text-[0.6rem] font-black uppercase mr-2" style="background:linear-gradient(135deg,#f97316,#dc2626)" onclick="window.GameArena.rematch('${game}', '${duel.id}')"><i class="fas fa-rotate-right"></i> Revancha</button>`;
+    return `<button class="h-8 px-3 rounded-lg text-white text-[0.6rem] font-black uppercase mr-2" style="background:var(--brand-3)" onclick="window.GameArena.rematch('${game}', '${duel.id}')"><i class="fas fa-rotate-right"></i> Revancha</button>`;
   },
 
   // Lo llama cada juego al terminar: si con esa jugada se cerró el duelo,

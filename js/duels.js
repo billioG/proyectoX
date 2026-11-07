@@ -175,8 +175,6 @@ window.renderDuelsSection = function renderDuelsSection() {
     title: 'Comprensión Lectora 1v1',
     subtitle: 'Lee un texto y responde preguntas sobre lo que dice. Gana quien comprende mejor.',
     icon: 'fa-book-open',
-    c1: '#2563eb',
-    c2: '#9333ea',
     onclick: "window.GameArena.chooseMode('quiz')",
     cta: '<i class="fas fa-bolt"></i> Practicar o retar',
   });
@@ -500,11 +498,13 @@ window.sendDuelPushNotification = async function sendDuelPushNotification(duelId
   try {
     if (!duelId) return;
     const { data: { session } } = await window._supabase.auth.getSession();
-    await fetch(`${window.SUPABASE_URL}/functions/v1/notify-duel`, {
+    const res = await fetch(`${window.SUPABASE_URL}/functions/v1/notify-duel`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
       body: JSON.stringify({ duel_id: duelId, type, game }),
     });
+    // Antes un fallo del servidor pasaba en silencio: ahora queda en la consola para poder diagnosticarlo.
+    if (!res.ok) console.warn('notify-duel respondió', res.status, await res.text().catch(() => ''));
   } catch (err) {
     console.error('Error enviando push de duelo:', err);
   }

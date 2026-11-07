@@ -8,10 +8,10 @@
 const SP_STYLES = `
 .sp-head{display:flex;align-items:center;gap:1rem;margin:.5rem 0 1rem;text-align:left}
 .sp-level{width:4.5rem;height:4.5rem;border-radius:1.25rem;flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  background:linear-gradient(135deg,#f59e0b,#ef4444);box-shadow:0 6px 0 #b45309,0 10px 25px rgba(245,158,11,.4);font-weight:900}
+  background:var(--brand-3);box-shadow:0 6px 0 var(--brand-3-d),0 10px 25px rgba(0,0,0,.25);font-weight:900}
 .sp-level b{font-size:1.9rem;line-height:1}.sp-level span{font-size:.55rem;letter-spacing:.15em;text-transform:uppercase}
 .sp-bar{height:.8rem;border-radius:9999px;background:rgba(255,255,255,.1);overflow:hidden;margin-top:.4rem}
-.sp-bar div{height:100%;border-radius:9999px;background:linear-gradient(90deg,#facc15,#f97316);transition:width .6s}
+.sp-bar div{height:100%;border-radius:9999px;background:var(--brand-3);transition:width .6s}
 .sp-track{display:flex;gap:.6rem;overflow-x:auto;padding:1rem .25rem 1.25rem;scroll-snap-type:x proximity}
 .sp-node{flex:0 0 6.2rem;scroll-snap-align:center;border-radius:1rem;padding:.5rem .4rem .6rem;display:flex;flex-direction:column;align-items:center;gap:.35rem;
   background:rgba(255,255,255,.05);border:2px solid rgba(255,255,255,.08);position:relative}
@@ -66,8 +66,7 @@ window.renderSeasonHero = async function renderSeasonHero(containerId = 'season-
       title: `Pase · ${spMonthName(p.season_id)}`,
       subtitle: `Nivel ${p.level}/${p.max_level} · quedan ${spDaysLeft(p.ends_at)} días. Premios gratis y accesorios exclusivos.`,
       icon: 'fa-ticket',
-      c1: '#f59e0b',
-      c2: '#ef4444',
+      tone: 3,
       onclick: 'window.openSeasonPass()',
       cta: p.claimable > 0 ? `<i class="fas fa-gift"></i> ${p.claimable} premio(s) para reclamar` : '<i class="fas fa-ticket"></i> Ver pase',
     });
@@ -156,7 +155,7 @@ window.renderSeasonPass = function renderSeasonPass(scrollToCurrent = false) {
     ${p.claimable > 0 ? `<button class="ga-btn" onclick="window.claimAllSeasonRewards()"><i class="fas fa-gift"></i> Reclamar todo (${p.claimable})</button>` : ''}
     <div class="sp-track" id="sp-track">${nodes}</div>
     <p style="font-size:.72rem;color:#94a3b8;margin-bottom:1rem"><i class="fas fa-circle-info"></i> Todo el XP que ganes este mes (cursos, retos, duelos, cofre diario) suma al pase. Se reinicia el 1 de cada mes.</p>
-    <button class="ga-btn" style="background:linear-gradient(135deg,#475569,#334155);box-shadow:0 6px 0 #1e293b" onclick="document.getElementById('season-pass-overlay').remove(); window.renderSeasonHero?.()">Cerrar</button>`;
+    <button class="ga-btn" style="background:#475569;box-shadow:0 6px 0 #1e293b" onclick="document.getElementById('season-pass-overlay').remove(); window.renderSeasonHero?.()">Cerrar</button>`;
 
   if (scrollToCurrent) {
     const target = card.querySelector(`.sp-node[data-level="${Math.max(1, Math.min(p.max_level, p.level))}"]`);

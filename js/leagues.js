@@ -15,7 +15,7 @@ window.LEAGUE_TIERS = LEAGUE_TIERS;
 
 const LG_STYLES = `
 .lg-head{display:flex;align-items:center;gap:1rem;padding:1.25rem;border-radius:1.5rem;margin-bottom:1rem;color:#fff;
-  background:linear-gradient(135deg,var(--lg-c),#0f172a 120%);box-shadow:0 10px 30px rgba(0,0,0,.3)}
+  background:var(--lg-c);box-shadow:0 10px 30px rgba(0,0,0,.3)}
 .lg-badge{width:4.5rem;height:4.5rem;flex-shrink:0;border-radius:1.25rem;display:flex;align-items:center;justify-content:center;font-size:2.4rem;
   background:rgba(255,255,255,.15);box-shadow:inset 0 0 0 3px rgba(255,255,255,.35)}
 .lg-row{display:flex;align-items:center;gap:.75rem;padding:.55rem .75rem;border-radius:1rem;background:rgba(255,255,255,.04);margin-bottom:.35rem;color:#e2e8f0}

@@ -79,8 +79,6 @@ window.renderHangmanSection = function renderHangmanSection() {
     title: 'Ahorcado 1v1',
     subtitle: 'Adivina la palabra letra por letra antes de quedarte sin vidas. Gana el más rápido.',
     icon: 'fa-spider',
-    c1: '#e11d48',
-    c2: '#7c3aed',
     onclick: "window.GameArena.chooseMode('hangman')",
     cta: '<i class="fas fa-bolt"></i> Practicar o retar',
   });

@@ -47,8 +47,6 @@ window.renderTimedMathSection = function renderTimedMathSection() {
     title: 'Contrarreloj 1v1',
     subtitle: `${MATH_TIME_LIMIT_SECONDS} segundos, 10 operaciones. Gana quien acierta más.`,
     icon: 'fa-stopwatch',
-    c1: '#f97316',
-    c2: '#dc2626',
     onclick: "window.GameArena.chooseMode('timed_math')",
     cta: '<i class="fas fa-bolt"></i> Practicar o retar',
   });
@@ -269,7 +267,7 @@ window.tickTimedMathClock = function tickTimedMathClock() {
   if (el) el.textContent = `${state.secondsLeft}s`;
   if (bar) {
     bar.style.width = `${(state.secondsLeft / MATH_TIME_LIMIT_SECONDS) * 100}%`;
-    if (state.secondsLeft <= 10) bar.style.background = 'linear-gradient(90deg,#ef4444,#f97316)';
+    if (state.secondsLeft <= 10) bar.style.background = '#ef4444';
   }
   if (state.secondsLeft <= 10 && state.secondsLeft > 0 && navigator.vibrate) navigator.vibrate(30);
   if (state.secondsLeft <= 0) {
@@ -298,7 +296,7 @@ window.renderTimedMathGame = function renderTimedMathGame() {
         <span class="ga-clock" id="timed-math-clock">${state.secondsLeft}s</span>
       </div>
       <div style="height:.6rem;border-radius:9999px;background:rgba(255,255,255,.1);overflow:hidden;margin-bottom:1.5rem">
-        <div id="timed-math-bar" style="height:100%;width:100%;border-radius:9999px;background:linear-gradient(90deg,#facc15,#22c55e);transition:width 1s linear"></div>
+        <div id="timed-math-bar" style="height:100%;width:100%;border-radius:9999px;background:var(--brand-1);transition:width 1s linear"></div>
       </div>
       <div id="timed-math-question" style="font-weight:900;margin-bottom:1rem;line-height:1.25"></div>
       <input type="text" inputmode="none" id="timed-math-answer-input" class="ga-input" placeholder="?" autocomplete="off"

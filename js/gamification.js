@@ -549,7 +549,7 @@ window.openGemsGuide = async function openGemsGuide() {
         ${row('fa-camera', '#60a5fa', 'Tu primera foto de perfil', '+25 💎', 'Una sola vez, al subir tu foto.')}
         ${row('fa-ticket', '#f472b6', 'Pase de temporada', 'premios', 'Algunos niveles del pase dan gemas: juega y sube de nivel.')}
       </div>
-      <button onclick="this.closest('.fixed').remove(); window.GameArena && window.GameArena.quickChallenge && window.GameArena.quickChallenge('quiz')" class="w-full mt-5 h-12 rounded-xl font-black uppercase text-sm text-slate-900" style="background:linear-gradient(135deg,#facc15,#f97316)"><i class="fas fa-bolt"></i> Retar a alguien ahora</button>
+      <button onclick="this.closest('.fixed').remove(); window.GameArena && window.GameArena.quickChallenge && window.GameArena.quickChallenge('quiz')" class="w-full mt-5 h-12 rounded-xl font-black uppercase text-sm text-slate-900" style="background:var(--brand-3)"><i class="fas fa-bolt"></i> Retar a alguien ahora</button>
     </div>`;
   document.body.appendChild(modal);
 };
@@ -799,8 +799,7 @@ window.renderGamificationHubContent = function renderGamificationHubContent(moda
                       title: 'Vestidor',
                       subtitle: 'Gorras, lentes, capas y trajes para tu mascota. Algunos se desbloquean gratis al evolucionar.',
                       icon: 'fa-shirt',
-                      c1: '#0ea5e9',
-                      c2: '#6366f1',
+                      tone: 2,
                       onclick: 'window.openWardrobe()',
                       cta: '<i class="fas fa-shirt"></i> Abrir vestidor',
                     }) : ''}
@@ -808,8 +807,7 @@ window.renderGamificationHubContent = function renderGamificationHubContent(moda
                       title: 'Quetzadex',
                       subtitle: 'Fauna de Guatemala: conoce la ficha de cada mascota y suma nuevas a tu colección con gemas.',
                       icon: 'fa-book-open',
-                      c1: '#10b981',
-                      c2: '#f59e0b',
+                      tone: 1,
                       onclick: 'window.openQuetzadex()',
                       cta: '<i class="fas fa-egg"></i> Abrir Quetzadex',
                     }) : ''}

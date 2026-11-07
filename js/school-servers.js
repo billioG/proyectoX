@@ -6,6 +6,7 @@
 const ONLINE_MS = 90_000; // visto hace menos de esto = «en línea»
 let refreshTimer = null;
 let fastUntil = 0;
+let holdRefresh = false; // mientras el administrador renombra o confirma algo, la lista no se vuelve a dibujar
 
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -40,6 +41,19 @@ export function describeNode(n, now = Date.now()) {
 
 const TONE = { ok: 'text-emerald-500', busy: 'text-blue-500', warn: 'text-amber-500', off: 'text-slate-400' };
 
+// Solo el administrador: renombrar, revocar (deja de sincronizar) y eliminar (solo si nunca se conectó).
+function adminActions(n) {
+  const never = !n.last_seen_at;
+  const btn = 'text-[0.6rem] font-black uppercase tracking-wide';
+  return `
+    <div class="flex flex-wrap items-center gap-4 mt-3 pt-3 border-t border-slate-200/60 dark:border-slate-700/60" data-admin-actions="${esc(n.id)}">
+      <button type="button" class="${btn} text-slate-500 hover:text-primary" data-node-rename="${esc(n.id)}" data-name="${esc(n.name)}"><i class="fas fa-pen mr-1"></i>Renombrar</button>
+      ${never
+        ? `<button type="button" class="${btn} text-rose-500 hover:text-rose-600" data-node-delete="${esc(n.id)}"><i class="fas fa-trash mr-1"></i>Eliminar</button>`
+        : `<button type="button" class="${btn} text-rose-500 hover:text-rose-600" data-node-revoke="${esc(n.id)}"><i class="fas fa-ban mr-1"></i>Revocar</button>`}
+    </div>`;
+}
+
 function render(container, nodes) {
   if (!nodes.length) {
     container.innerHTML = `
@@ -72,6 +86,7 @@ function render(container, nodes) {
                 ${st.version ? `<span class="text-[0.6rem] font-bold text-slate-400 shrink-0">${esc(st.version)}</span>` : ''}
               </div>
               <p class="text-xs text-slate-500 dark:text-slate-400 mt-2" data-detail>${esc(d.detail)}</p>
+              ${window.userRole === 'admin' ? adminActions(n) : ''}
             </div>`;
         }).join('')}
       </div>
@@ -99,10 +114,61 @@ const friendly = (error) => (/get_school_nodes|request_node_sync|schema cache|do
 
 async function refresh(container) {
   if (!document.body.contains(container)) { clearInterval(refreshTimer); refreshTimer = null; return; }
+  if (holdRefresh) return;
   const { data, error } = await fetchNodes();
   if (error) { container.innerHTML = `<div class="glass-card p-6 text-sm text-slate-500"><i class="fas fa-cloud-slash mr-2"></i>${esc(friendly(error))}</div>`; return; }
   render(container, data || []);
   container.querySelectorAll('[data-sync-school]').forEach((b) => { b.onclick = () => window.requestSchoolSync(b.dataset.syncSchool, b); });
+  container.querySelectorAll('[data-node-rename]').forEach((b) => { b.onclick = () => startRename(container, b); });
+  container.querySelectorAll('[data-node-revoke]').forEach((b) => { b.onclick = () => armThenRun(b, 'Revocar', 'revoke_school_node', 'Servidor revocado: ya no puede sincronizar.', container); });
+  container.querySelectorAll('[data-node-delete]').forEach((b) => { b.onclick = () => armThenRun(b, 'Eliminar', 'delete_school_node', 'Servidor eliminado.', container); });
+}
+
+const friendlyManage = (error) => (/rename_school_node|delete_school_node|schema cache|does not exist|42883|PGRST20/i.test(`${error?.message || ''} ${error?.code || ''}`)
+  ? 'Falta ejecutar la migración «node-manage» en Supabase.'
+  : (error?.message || 'No se pudo completar'));
+
+// Confirmación en el mismo botón (la app no usa confirm()): el primer toque pide confirmar, el segundo ejecuta.
+function armThenRun(btn, label, rpc, okMsg, container) {
+  if (btn.dataset.armed !== '1') {
+    btn.dataset.armed = '1';
+    holdRefresh = true;
+    btn.textContent = '¿Seguro? Toca de nuevo';
+    setTimeout(() => { if (btn.isConnected) { btn.dataset.armed = ''; btn.textContent = label; } holdRefresh = false; }, 4000);
+    return;
+  }
+  btn.disabled = true;
+  const id = btn.dataset.nodeRevoke || btn.dataset.nodeDelete;
+  window._supabase.rpc(rpc, { p_id: id }).then(async ({ error }) => {
+    holdRefresh = false;
+    if (error) { btn.disabled = false; return window.showToast?.(`<i class="fas fa-circle-xmark"></i> ${esc(friendlyManage(error))}`, 'error'); }
+    window.showToast?.(`<i class="fas fa-circle-check"></i> ${okMsg}`, 'success');
+    await refresh(container);
+  });
+}
+
+function startRename(container, btn) {
+  const row = btn.closest('[data-admin-actions]');
+  if (!row) return;
+  holdRefresh = true;
+  row.innerHTML = `
+    <input type="text" maxlength="80" value="${esc(btn.dataset.name)}" class="input-field-tw h-9 text-xs font-bold flex-1 min-w-[10rem]" aria-label="Nombre del servidor">
+    <button type="button" class="text-[0.6rem] font-black uppercase text-primary" data-ok>Guardar</button>
+    <button type="button" class="text-[0.6rem] font-black uppercase text-slate-400" data-cancel>Cancelar</button>`;
+  const input = row.querySelector('input');
+  input.focus(); input.select();
+  const done = () => { holdRefresh = false; refresh(container); };
+  const save = async () => {
+    const name = input.value.trim();
+    if (!name) return;
+    const { error } = await window._supabase.rpc('rename_school_node', { p_id: btn.dataset.nodeRename, p_name: name });
+    if (error) return window.showToast?.(`<i class="fas fa-circle-xmark"></i> ${esc(friendlyManage(error))}`, 'error');
+    window.showToast?.('<i class="fas fa-circle-check"></i> Nombre cambiado.', 'success');
+    done();
+  };
+  row.querySelector('[data-ok]').onclick = save;
+  row.querySelector('[data-cancel]').onclick = done;
+  input.onkeydown = (e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') done(); };
 }
 
 window.requestSchoolSync = async function requestSchoolSync(code, btn) {

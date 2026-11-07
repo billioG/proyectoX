@@ -169,6 +169,7 @@ de producción.
 | 122 | 2026-11-05 | `rls-auth-uid-initplan.sql` | Envuelve `auth.uid()`, `auth.role()`, `auth.jwt()`, `is_staff()` e `is_admin()` en `(select ...)` en todas las políticas de `public` (rendimiento; mismo resultado) |
 
 | 125 | 2026-11-06 | `school-branding.sql` | `schools.brand_name` y `schools.logo_data`: nombre y logo propios del colegio en el encabezado (el crédito «Hecho por Yo Aprendo · Quetzal LMS» siempre se muestra). Correr **antes** de redesplegar `node-sync` (ahora pide estas dos columnas) |
+| 126 | 2026-11-07 | `node-manage.sql` | `rename_school_node` y `delete_school_node` (solo administrador): renombrar un servidor escolar y eliminarlo si está revocado o nunca se conectó. No cambia `node-sync` |
 
 ### Migraciones sin número en la tabla de arriba
 
@@ -204,7 +205,7 @@ no aparece en este documento.
 **Las migraciones de seguridad y rendimiento de noviembre (fases 5b y 5c) ya se aplicaron en producción**, según confirmó el
 administrador del proyecto. Este repositorio no puede comprobarlo por su cuenta: la forma de verificarlo sigue siendo pegar
 `migrations/verificar-migraciones.sql` en el SQL Editor (solo lee) y ver que todas las filas den `aplicada = true`.
-**Lo único nuevo sin aplicar** es `school-branding.sql` (fila 125; fase 5d). Las secciones de abajo conservan el orden por si
+**Lo nuevo sin aplicar** es `school-branding.sql` (fila 125; fase 5d) y `node-manage.sql` (fila 126). `feedback-inbox.sql` se vuelve a ejecutar para mostrar el bimestre. Las secciones de abajo conservan el orden por si
 hay que reconstruir una base nueva.
 
 ## Orden seguro de lo pendiente

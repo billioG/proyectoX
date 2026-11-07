@@ -123,7 +123,9 @@ async function renderNodeList() {
           <p class="text-[0.65rem] text-slate-400 truncate">${esc(schoolName(n.school_code))} · creado ${esc(when(n.created_at))}</p>
           <p class="text-[0.7rem] font-bold ${TONE[st.tone]}">${esc(st.label)}</p>
         </div>
-        ${n.revoked_at ? '' : `<button type="button" class="shrink-0 text-[0.6rem] font-black uppercase text-rose-500 hover:text-rose-600" data-revoke="${esc(n.id)}" onclick="window.revokeSchoolNode(this)">Revocar</button>`}
+        ${n.revoked_at
+          ? `<button type="button" class="shrink-0 text-[0.6rem] font-black uppercase text-rose-500 hover:text-rose-600" data-delete="${esc(n.id)}" onclick="window.deleteSchoolNode(this)">Eliminar</button>`
+          : `<button type="button" class="shrink-0 text-[0.6rem] font-black uppercase text-rose-500 hover:text-rose-600" data-revoke="${esc(n.id)}" onclick="window.revokeSchoolNode(this)">Revocar</button>`}
       </div>`;
   }).join('');
 }
@@ -186,6 +188,21 @@ W.copyNodeToken = async function copyNodeToken() {
 W.hideNodeToken = function hideNodeToken() {
   const box = document.getElementById('node-admin-token');
   if (box) box.innerHTML = '';
+};
+
+// Eliminar un nodo ya revocado (el registro se borra de verdad; el servidor físico no vuelve a poder sincronizar).
+W.deleteSchoolNode = async function deleteSchoolNode(btn) {
+  if (btn.dataset.armed !== '1') {
+    btn.dataset.armed = '1';
+    btn.textContent = '¿Seguro? Toca de nuevo';
+    setTimeout(() => { if (btn.isConnected) { btn.dataset.armed = ''; btn.textContent = 'Eliminar'; } }, 4000);
+    return;
+  }
+  btn.disabled = true;
+  const { error } = await window._supabase.rpc('delete_school_node', { p_id: btn.dataset.delete });
+  if (error) { btn.disabled = false; return showError(/delete_school_node|schema cache|does not exist|42883|PGRST20/i.test(error.message || '') ? 'Falta ejecutar la migración «node-manage» en Supabase.' : (error.message || 'No se pudo eliminar')); }
+  window.showToast?.('<i class="fas fa-circle-check"></i> Nodo eliminado', 'success');
+  await renderNodeList();
 };
 
 W.revokeSchoolNode = async function revokeSchoolNode(btn) {
