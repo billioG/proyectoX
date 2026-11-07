@@ -177,6 +177,34 @@ if ('serviceWorker' in navigator) {
     });
 }
 
+// ── Grupo plegable «Configuración» del menú lateral ──
+function setNavGroupOpen(group, open) {
+    const toggle = group.querySelector('.nav-group-toggle');
+    const items = group.querySelector('.nav-group-items');
+    if (!toggle || !items) return;
+    items.hidden = !open;
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+window.setNavGroupOpen = setNavGroupOpen;
+window.toggleNavGroup = function toggleNavGroup(toggle) {
+    const group = toggle.closest('.nav-group');
+    if (group) setNavGroupOpen(group, toggle.getAttribute('aria-expanded') !== 'true');
+};
+// Un grupo sin ninguna opción visible (p. ej. modo simple del docente) no se muestra.
+window.updateNavGroups = function updateNavGroups() {
+    document.querySelectorAll('.nav-group').forEach(group => {
+        const hasVisible = [...group.querySelectorAll('.nav-group-items .nav-item')]
+            .some(el => el.style.display !== 'none');
+        group.style.display = hasVisible ? '' : 'none';
+    });
+};
+document.addEventListener('keydown', (e) => {
+    if ((e.key === 'Enter' || e.key === ' ') && e.target?.classList?.contains('nav-group-toggle')) {
+        e.preventDefault();
+        window.toggleNavGroup(e.target);
+    }
+});
+
 export function nav(view) {
     console.log('📍 Navegando a:', view);
     // Si Chrome descarta la pestaña en segundo plano y recarga la app al
@@ -197,6 +225,9 @@ export function nav(view) {
     allNavItems.forEach(item => {
         if (item.getAttribute('onclick')?.includes(`'${view}'`)) {
             item.classList.add('active');
+            // Si vive dentro de «Configuración», se despliega el grupo para que se vea dónde está.
+            const group = item.closest('.nav-group');
+            if (group) setNavGroupOpen(group, true);
         }
     });
 

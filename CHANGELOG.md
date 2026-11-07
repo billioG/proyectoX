@@ -4,6 +4,10 @@ Cambios publicados en Quetzal LMS, del más reciente al más antiguo. Cada líne
 
 Al publicar una versión nueva, agrega una línea arriba de todo (ver CONTRIBUTING.md).
 
+## 2026-11-07
+
+- **Menú más ligero y privacidad en el perfil (v1.0.235).** (1) Lo que es configuración se agrupa en un solo menú plegable «Configuración»: para el docente, Servidor de la escuela, Gestionar Equipos, Bonos y Desempeño y Nodo escolar (USB); para el administrador, Establecimientos, Estudiantes, Docentes, Servidores y sincronización, Incentivos y Pagos, Videos Quetzadex, Registrar nodo escolar y Nodo escolar (USB). El grupo viene plegado, se despliega solo al entrar a una de sus opciones (y durante el tutorial) y no aparece si el docente en modo simple no tiene ninguna opción dentro. (2) La pantalla de entrada ya no enlaza a «Política de privacidad» ni a «Para colegios e instituciones»; la política queda en el perfil del usuario (estudiante y docente). Prueba nueva: tests/nav-config-group.spec.js.
+
 ## 2026-11-06
 
 - **Nuevo: 3 colores por colegio (v1.0.234).** Además del principal, el colegio elige un **secundario** (reemplaza índigo, violeta, púrpura y azul: secciones, tarjetas, degradados) y un **acento** (reemplaza ámbar, naranja y amarillo: gemas, XP, destacados). Del color base la app calcula los 11 tonos; el formulario trae vista previa y 5 paletas sugeridas, y rechaza colores ilegibles. Rojo (peligro) y verde de éxito **no** cambian a propósito. Sin marca propia no cambia nada (cada color conserva su valor de siempre como respaldo). Requiere volver a correr `migrations/school-branding.sql` (agrega `brand_color2`, `brand_color3` y recrea la vista pública) y redesplegar `node-sync` (solo `tables.ts`).

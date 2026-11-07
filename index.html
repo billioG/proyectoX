@@ -73,7 +73,7 @@
          index.html pero el navegador puede seguir sirviendo desde caché HTTP
          una versión vieja de un módulo lazy-loaded (ej. pdf-processor.js),
          aunque el tag de versión visible ya muestre la última. -->
-    <script>window.APP_VERSION = 'v1.0.234';</script>
+    <script>window.APP_VERSION = 'v1.0.235';</script>
 
     <!-- Silenciar console.log/info/debug en producción (activar con localStorage.PX_DEBUG='true').
          Va antes de todo lo demás porque los console.log de cada módulo corren
@@ -435,6 +435,25 @@
             flex-shrink: 0;
         }
 
+        /* Grupo plegable «Configuración» del menú lateral */
+        .nav-group-toggle { user-select: none; }
+        .nav-group-toggle .nav-chevron {
+            margin-left: auto;
+            width: auto;
+            font-size: 0.75rem;
+            transition: transform 0.25s;
+        }
+        .nav-group-toggle[aria-expanded="true"] .nav-chevron { transform: rotate(180deg); }
+        .nav-group-items {
+            margin-left: 2rem;
+            border-left: 2px solid rgba(148, 163, 184, 0.25);
+        }
+        .nav-group-items .nav-item {
+            margin-left: 0.5rem;
+            padding: 0.7rem 1.1rem;
+            font-size: 0.92rem;
+        }
+
         .main-content {
             padding: 1.5rem;
             transition: all 0.3s;
@@ -659,7 +678,7 @@
                     <img id="login-brand-logo" class="hidden w-14 h-14 rounded-2xl object-contain bg-white shrink-0" alt="Logo del colegio">
                     <span id="login-brand-name">Quetzal <span class="text-primary-dark dark:text-primary">LMS</span></span>
                 </div>
-                <span id="app-version-tag" class="text-[0.65rem] text-slate-500 dark:text-slate-400 font-medium mt-1">v1.0.234</span>
+                <span id="app-version-tag" class="text-[0.65rem] text-slate-500 dark:text-slate-400 font-medium mt-1">v1.0.235</span>
                 <span class="text-[0.65rem] text-slate-400 font-medium mt-0.5">Hecho por Yo Aprendo</span>
             </div>
 
@@ -702,11 +721,6 @@
             </div>
 
             <div class="login-help mt-10"></div>
-            <p class="text-center text-xs mt-6">
-                <a href="privacidad.html" target="_blank" rel="noopener" class="text-slate-400 hover:text-primary underline">Política de privacidad</a>
-                <span class="text-slate-600 mx-2">·</span>
-                <a href="colegios.html" target="_blank" rel="noopener" class="text-slate-400 hover:text-primary underline">Para colegios e instituciones</a>
-            </p>
         </div>
     </main>
     <!-- Texto real y VISIBLE (nada oculto -- Google penaliza texto invisible
@@ -727,7 +741,7 @@
                     <div id="brand-name" class="text-2xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent transform hover:scale-105 transition-transform leading-none truncate">
                         Quetzal LMS
                     </div>
-                    <span class="text-[0.6rem] text-slate-400 font-medium mt-0.5 truncate"><span id="brand-credit" class="hidden">Hecho por Yo Aprendo · Quetzal LMS · </span>v1.0.234</span>
+                    <span class="text-[0.6rem] text-slate-400 font-medium mt-0.5 truncate"><span id="brand-credit" class="hidden">Hecho por Yo Aprendo · Quetzal LMS · </span>v1.0.235</span>
                 </div>
             </div>
 
@@ -845,14 +859,6 @@
                         <i class="fas fa-inbox"></i>
                         <span>Buzón de la clase</span>
                     </div>
-                    <div id="nav-doc-servers" class="nav-item" onclick="nav('school-servers')">
-                        <i class="fas fa-server"></i>
-                        <span>Servidor de la escuela</span>
-                    </div>
-                    <div id="nav-doc-groups" class="nav-item" onclick="nav('groups')">
-                        <i class="fas fa-users"></i>
-                        <span>Gestionar Equipos</span>
-                    </div>
                     <div id="nav-doc-attendance" class="nav-item" onclick="nav('attendance')">
                         <i class="fas fa-user-check"></i>
                         <span>Tomar Asistencia</span>
@@ -865,13 +871,31 @@
                         <i class="fas fa-trophy"></i>
                         <span>Ranking</span>
                     </div>
-                    <div id="nav-doc-bonus" class="nav-item" onclick="nav('bonus-system')">
-                        <i class="fas fa-bullseye"></i>
-                        <span>Bonos y Desempeño</span>
-                    </div>
-                    <div class="nav-item nav-node-usb" onclick="(async () => { if (typeof window.openNodeUsbSync !== 'function') await import('./js/node-usb.js'); window.openNodeUsbSync(); })()">
-                        <i class="fab fa-usb"></i>
-                        <span>Nodo escolar (USB)</span>
+                    <!-- Todo lo de configuración, plegado en un solo grupo -->
+                    <div class="nav-group" id="cfg-group-doc">
+                        <div class="nav-item nav-group-toggle" role="button" tabindex="0" aria-expanded="false" onclick="toggleNavGroup(this)">
+                            <i class="fas fa-gear"></i>
+                            <span>Configuración</span>
+                            <i class="fas fa-chevron-down nav-chevron"></i>
+                        </div>
+                        <div class="nav-group-items" hidden>
+                            <div id="nav-doc-servers" class="nav-item" onclick="nav('school-servers')">
+                                <i class="fas fa-server"></i>
+                                <span>Servidor de la escuela</span>
+                            </div>
+                            <div id="nav-doc-groups" class="nav-item" onclick="nav('groups')">
+                                <i class="fas fa-users"></i>
+                                <span>Gestionar Equipos</span>
+                            </div>
+                            <div id="nav-doc-bonus" class="nav-item" onclick="nav('bonus-system')">
+                                <i class="fas fa-bullseye"></i>
+                                <span>Bonos y Desempeño</span>
+                            </div>
+                            <div class="nav-item nav-node-usb" onclick="(async () => { if (typeof window.openNodeUsbSync !== 'function') await import('./js/node-usb.js'); window.openNodeUsbSync(); })()">
+                                <i class="fab fa-usb"></i>
+                                <span>Nodo escolar (USB)</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -897,10 +921,6 @@
                         <i class="fas fa-inbox"></i>
                         <span>Buzón y valoraciones</span>
                     </div>
-                    <div class="nav-item" onclick="nav('school-servers')">
-                        <i class="fas fa-server"></i>
-                        <span>Servidores y sincronización</span>
-                    </div>
                     <div class="nav-item" onclick="nav('admin-attendance-report')">
                         <i class="fas fa-calendar-check"></i>
                         <span>Asistencia Global</span>
@@ -913,18 +933,6 @@
                         <i class="fas fa-handshake"></i>
                         <span>Fidelización (CS)</span>
                     </div>
-                    <div class="nav-item" onclick="nav('schools')">
-                        <i class="fas fa-school"></i>
-                        <span>Establecimientos</span>
-                    </div>
-                    <div class="nav-item" onclick="nav('students')">
-                        <i class="fas fa-user-graduate"></i>
-                        <span>Estudiantes</span>
-                    </div>
-                    <div class="nav-item" onclick="nav('teachers')">
-                        <i class="fas fa-chalkboard-teacher"></i>
-                        <span>Docentes</span>
-                    </div>
                     <div class="nav-item" onclick="nav('lessons')">
                         <i class="fas fa-book-open"></i>
                         <span>Cursos</span>
@@ -933,21 +941,47 @@
                         <i class="fas fa-trophy"></i>
                         <span>Ranking Global</span>
                     </div>
-                    <div class="nav-item" onclick="nav('bonus-system')">
-                        <i class="fas fa-medal"></i>
-                        <span>Incentivos y Pagos</span>
-                    </div>
-                    <div class="nav-item" onclick="(async () => { if (typeof window.openQuetzadexAdmin !== 'function') await window.loadModule('profile'); window.openQuetzadexAdmin(); })()">
-                        <i class="fas fa-film"></i>
-                        <span>Videos Quetzadex</span>
-                    </div>
-                    <div class="nav-item" onclick="(async () => { if (typeof window.openNodeAdmin !== 'function') await import('./js/node-admin.js?v=' + (window.APP_VERSION || '')); window.openNodeAdmin(); })()">
-                        <i class="fas fa-server"></i>
-                        <span>Registrar nodo escolar</span>
-                    </div>
-                    <div class="nav-item nav-node-usb" onclick="(async () => { if (typeof window.openNodeUsbSync !== 'function') await import('./js/node-usb.js'); window.openNodeUsbSync(); })()">
-                        <i class="fab fa-usb"></i>
-                        <span>Nodo escolar (USB)</span>
+                    <!-- Gestión y configuración, plegadas en un solo grupo -->
+                    <div class="nav-group" id="cfg-group-admin">
+                        <div class="nav-item nav-group-toggle" role="button" tabindex="0" aria-expanded="false" onclick="toggleNavGroup(this)">
+                            <i class="fas fa-gear"></i>
+                            <span>Configuración</span>
+                            <i class="fas fa-chevron-down nav-chevron"></i>
+                        </div>
+                        <div class="nav-group-items" hidden>
+                            <div class="nav-item" onclick="nav('schools')">
+                                <i class="fas fa-school"></i>
+                                <span>Establecimientos</span>
+                            </div>
+                            <div class="nav-item" onclick="nav('students')">
+                                <i class="fas fa-user-graduate"></i>
+                                <span>Estudiantes</span>
+                            </div>
+                            <div class="nav-item" onclick="nav('teachers')">
+                                <i class="fas fa-chalkboard-teacher"></i>
+                                <span>Docentes</span>
+                            </div>
+                            <div class="nav-item" onclick="nav('school-servers')">
+                                <i class="fas fa-server"></i>
+                                <span>Servidores y sincronización</span>
+                            </div>
+                            <div class="nav-item" onclick="nav('bonus-system')">
+                                <i class="fas fa-medal"></i>
+                                <span>Incentivos y Pagos</span>
+                            </div>
+                            <div class="nav-item" onclick="(async () => { if (typeof window.openQuetzadexAdmin !== 'function') await window.loadModule('profile'); window.openQuetzadexAdmin(); })()">
+                                <i class="fas fa-film"></i>
+                                <span>Videos Quetzadex</span>
+                            </div>
+                            <div class="nav-item" onclick="(async () => { if (typeof window.openNodeAdmin !== 'function') await import('./js/node-admin.js?v=' + (window.APP_VERSION || '')); window.openNodeAdmin(); })()">
+                                <i class="fas fa-server"></i>
+                                <span>Registrar nodo escolar</span>
+                            </div>
+                            <div class="nav-item nav-node-usb" onclick="(async () => { if (typeof window.openNodeUsbSync !== 'function') await import('./js/node-usb.js'); window.openNodeUsbSync(); })()">
+                                <i class="fab fa-usb"></i>
+                                <span>Nodo escolar (USB)</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -1363,7 +1397,7 @@
     <!-- Librerías externas: confetti, QR, PDF, JSZip y driver.js se cargan con loadLib() (ver <head>). -->
 
     <!-- Punto de Entrada del Sistema -->
-    <script type="module" src="js/app.js?v=1.0.234"></script>
+    <script type="module" src="js/app.js?v=1.0.235"></script>
 
     <meta name="mobile-web-app-capable" content="yes">
 </body>

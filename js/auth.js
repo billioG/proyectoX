@@ -602,6 +602,7 @@ function setupNavigationUI() {
   }
 
   if (userRole === 'docente') applyTeacherSimpleMode();
+  window.updateNavGroups?.();
 }
 
 // MODO SIMPLE DEL DOCENTE -- un docente que recién empieza ve solo lo que
@@ -625,6 +626,8 @@ function applyTeacherSimpleMode() {
   document.querySelectorAll('#nav-docente .nav-node-usb').forEach(el => {
     el.style.display = simple || !NODE_USB_FEATURE_READY ? 'none' : '';
   });
+
+  window.updateNavGroups?.();
 
   const nav = document.getElementById('nav-docente');
   if (!nav) return;

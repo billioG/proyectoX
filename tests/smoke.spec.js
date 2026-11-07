@@ -16,7 +16,9 @@ test('la pantalla de inicio de sesión carga sin errores', async ({ page }) => {
   await page.goto('/');
   await expect(page.locator('#login-username')).toBeVisible({ timeout: 15_000 });
   await expect(page.locator('#btn-login')).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Política de privacidad' })).toBeVisible();
+  // La política de privacidad vive en el perfil del usuario; el login no enlaza ni a ella ni a «Para colegios».
+  await expect(page.getByRole('link', { name: 'Política de privacidad' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Para colegios e instituciones' })).toHaveCount(0);
   expect(errors, errors.join('\n')).toEqual([]);
 });
 

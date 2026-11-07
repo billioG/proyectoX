@@ -377,6 +377,8 @@ window.startOnboardingTour = function startOnboardingTour() {
   if (window.userRole === 'docente' && !window.userData?.is_1bot_team) {
     steps = steps.filter(s => s.element !== '#nav-doc-bonus' && s.element !== '#main-content-area-bonus');
   }
+  // Los pasos que resaltan opciones de «Configuración» necesitan el grupo desplegado.
+  document.querySelectorAll('#nav-docente .nav-group').forEach(g => window.setNavGroupOpen?.(g, true));
   runGuidedTour(steps);
 };
 
