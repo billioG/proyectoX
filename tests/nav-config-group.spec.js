@@ -57,6 +57,9 @@ test('la configuración del docente está plegada en un grupo y se despliega al 
   await expect(page.locator('#nav-doc-attendance')).toBeVisible();
   await expect(page.locator('#seg-group-doc .nav-group-toggle')).toHaveAttribute('aria-expanded', 'false');
   await expect(page.locator('#nav-doc-students')).toBeHidden();
+  // Un docente que no coordina no ve «Mis Docentes» / «Mi Establecimiento».
+  await expect(page.locator('.nav-coord-only')).toHaveCount(2);
+  for (const el of await page.locator('.nav-coord-only').all()) await expect(el).toBeHidden();
 
   // El grupo aparece plegado.
   await expect(toggle).toBeVisible();

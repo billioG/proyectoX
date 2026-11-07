@@ -589,7 +589,10 @@ function setupNavigationUI() {
   // que además de su menú normal de docente (el bloque de arriba ya lo
   // mostró) se le agrega el de "Mis Docentes"/"Mi Establecimiento".
   const coordNav = document.getElementById('nav-coordinador');
-  if (coordNav && window.isCoordinator && userRole === 'docente') coordNav.style.display = 'block';
+  // En el docente-coordinador, «Mis Docentes» y «Mi Establecimiento» viven dentro de «Seguimiento».
+  const coordInDoc = !!(window.isCoordinator && userRole === 'docente');
+  if (coordNav && coordInDoc) coordNav.style.display = 'none';
+  document.querySelectorAll('.nav-coord-only').forEach(el => { el.style.display = coordInDoc ? '' : 'none'; });
 
   // "Bonos y Desempeño" es el programa de retribución de docentes 1bot
   // (asistencia con geocerca, evidencia fotográfica, etc.) -- no aplica a

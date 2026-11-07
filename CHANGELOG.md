@@ -6,6 +6,8 @@ Al publicar una versión nueva, agrega una línea arriba de todo (ver CONTRIBUTI
 
 ## 2026-11-07
 
+- **«Mis Docentes» y «Mi Establecimiento» pasan a «Seguimiento» (v1.0.239).** Para el docente que además es coordinador, ya no hay un bloque suelto al final del menú: ambas opciones viven en el grupo Seguimiento. Quien no coordina no las ve.
+
 - **Menú del docente en tres grupos y bimestre en el Buzón (v1.0.238).** (1) El menú queda: Inicio y tres grupos plegables: **Mi clase** (Cursos, Tomar Asistencia, Evaluar Proyectos, Exámenes; viene abierto), **Seguimiento** (Progreso, Ranking, Buzón de la clase) y **Configuración** (Gestionar Estudiantes, Gestionar Equipos, Servidor de la escuela, Bonos, Nodo USB). Cada docente recuerda en su dispositivo qué grupos dejó abiertos. (2) Las evaluaciones del Buzón muestran el bimestre; requiere volver a ejecutar migrations/feedback-inbox.sql (idempotente; si la columna no existe, simplemente no se muestra). El bimestre no aparece en el servidor de la escuela sin internet.
 
 - **Un solo lugar para los comentarios de los estudiantes (v1.0.237).** «Ver feedback detallado de estudiantes» (perfil del docente) y «Buzón de la clase» (menú) mostraban lo mismo a medias: el primero solo las evaluaciones, el segundo evaluaciones con promedios por criterio y además las sugerencias, y funciona también con el servidor de la escuela sin internet. Ahora el botón del perfil abre el Buzón de la clase y se elimina la ventana duplicada.
