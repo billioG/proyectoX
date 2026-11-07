@@ -31,6 +31,7 @@ import { POLYFILLS } from './browser-polyfills.js';
 import { createWifi, createNmcliRunner } from './wifi.js';
 import { checkInternet, createConnectivity } from './connectivity.js';
 import { createRemoteSync } from './remote-sync.js';
+import { createSelfUpdate } from './self-update.js';
 import { wifiPageHtml } from './wifi-page.js';
 
 const NODE_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -934,11 +935,27 @@ if (hasToken()) connectivity.start();
 
 // Sincronizar desde la plataforma en línea: cada 30 s (con internet) el servidor avisa a la nube con su estado y atiende el «Sincronizar ahora» que el docente tocó allá (remote-sync.js).
 const APP_VERSION = (() => { try { return /APP_VERSION = '([^']+)'/.exec(fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8'))?.[1] ?? null; } catch { return null; } })();
+// Actualizar desde la plataforma («Actualizar servidores»): git pull + dependencias si cambiaron, y reinicio (systemd lo levanta). Ver self-update.js.
+const selfUpdate = createSelfUpdate({ appDir: APP_DIR });
+let updating = false;
+let updateError = null;
+function startSelfUpdate() {
+  if (updating) return { started: false };
+  updating = true; updateError = null;
+  selfUpdate.update().then((r) => {
+    updating = false;
+    if (!r.ok) { updateError = r.error || 'No se pudo actualizar'; console.error('Actualización desde la plataforma:', updateError); return; }
+    if (r.changed) { console.log(`Actualizado ${String(r.from).slice(0, 7)} -> ${String(r.to).slice(0, 7)}: reiniciando.`); setTimeout(() => process.exit(0), 1500); }
+  }).catch((e) => { updating = false; updateError = String(e?.message || e).slice(0, 180); });
+  return { started: true };
+}
 const remoteSync = createRemoteSync({
   cloudUrl: config.cloudUrl, nodeToken: config.nodeToken,
-  getStatus: () => ({ version: APP_VERSION, pending_changes: pendingChanges(), syncing, stage: syncing ? syncStage : null, last_sync_at: getMeta(db, 'last_sync_at'), internet: connectivity.state.online, urls: lanUrls() }),
+  getStatus: () => ({ version: APP_VERSION, pending_changes: pendingChanges(), syncing, stage: syncing ? syncStage : null, last_sync_at: getMeta(db, 'last_sync_at'), internet: connectivity.state.online, urls: lanUrls(), updating, update_error: updateError }),
   getHandled: () => getMeta(db, 'remote_sync_handled'), setHandled: (v) => setMeta(db, 'remote_sync_handled', v),
   trySync: (why) => trySync(why), isOnline: () => connectivity.state.online,
+  updater: startSelfUpdate, isBusy: () => syncing || updating,
+  getHandledUpdate: () => getMeta(db, 'remote_update_handled'), setHandledUpdate: (v) => setMeta(db, 'remote_update_handled', v),
 });
 if (hasToken()) setInterval(() => remoteSync.tick(), (config.remotePingSeconds || 30) * 1000).unref();
 

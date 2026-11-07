@@ -186,7 +186,9 @@ Deno.serve(async (req) => {
   if (!usb && body?.action === 'node_ping') {
     const { data, error } = await admin.rpc('node_heartbeat', { p_node: node.id, p_status: sanitizeNodeStatus(body.status) });
     if (error) return reply({ error: `No se pudo guardar el estado: ${error.message}` }, 500);
-    return reply({ sync_requested_at: data ?? null, server_time: new Date().toISOString() });
+    // «Actualizar servidores» (migrations/node-remote-update.sql): si la columna aún no existe, simplemente no hay petición de actualizar.
+    const { data: upd } = await admin.from('school_nodes').select('update_requested_at').eq('id', node.id).maybeSingle();
+    return reply({ sync_requested_at: data ?? null, update_requested_at: upd?.update_requested_at ?? null, server_time: new Date().toISOString() });
   }
 
   // Foto de perfil cambiada en el nodo: URL firmada de un solo archivo en el depósito de fotos, con el nombre que armó la app (<id>_<hora>.<ext>).

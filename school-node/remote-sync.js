@@ -3,7 +3,9 @@
 // entra desde su computadora con internet, conecta la Raspberry al router y pide sincronizar. Solo avisa si hay internet (lo decide connectivity.js).
 const STALE_MS = 5 * 60 * 1000; // una petición vieja (de cuando el servidor estaba apagado) no dispara una sincronización por sí sola
 
-export function createRemoteSync({ cloudUrl, nodeToken, getStatus, getHandled, setHandled, trySync, isOnline = () => true, fetchImpl = fetch, now = Date.now, timeoutMs = 15000 }) {
+export function createRemoteSync({ cloudUrl, nodeToken, getStatus, getHandled, setHandled, trySync, isOnline = () => true, fetchImpl = fetch, now = Date.now, timeoutMs = 15000,
+  // «Actualizar servidores» (opcional): updater() arranca la actualización ({ started }); isBusy() dice si está sincronizando (no se actualiza a medias).
+  updater = null, getHandledUpdate = () => null, setHandledUpdate = () => {}, isBusy = () => false }) {
   /** Avisa a la nube y devuelve { sync_requested_at, server_time } o null si no se pudo. */
   async function ping() {
     if (!cloudUrl || !nodeToken) return null;
@@ -26,6 +28,25 @@ export function createRemoteSync({ cloudUrl, nodeToken, getStatus, getHandled, s
     if (isOnline() !== true) return 'sin-internet';
     const r = await ping();
     if (!r) return 'sin-respuesta';
+
+    // Actualizar va primero: tras el reinicio, la sincronización pedida se atiende con el código nuevo.
+    const updRequested = Date.parse(r.update_requested_at);
+    if (updater && Number.isFinite(updRequested)) {
+      const updHandled = Date.parse(getHandledUpdate() || '');
+      if (!(Number.isFinite(updHandled) && updRequested <= updHandled)) {
+        const cloudTime = Date.parse(r.server_time);
+        if ((Number.isFinite(cloudTime) ? cloudTime : now()) - updRequested > STALE_MS) {
+          setHandledUpdate(r.update_requested_at); // petición vieja (el servidor estaba apagado): no se actualiza por sorpresa
+        } else if (isBusy()) {
+          return 'espera';
+        } else {
+          setHandledUpdate(r.update_requested_at); // se anota ANTES: si el servicio se reinicia, la misma petición no se repite
+          const out = await updater();
+          if (out?.started) return 'actualizando';
+        }
+      }
+    }
+
     const requested = Date.parse(r.sync_requested_at);
     if (!Number.isFinite(requested)) return 'nada';
     const handled = Date.parse(getHandled() || '');

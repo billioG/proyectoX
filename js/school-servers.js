@@ -33,10 +33,12 @@ export function describeNode(n, now = Date.now()) {
       detail: seen === null ? 'Conéctalo por cable al router con internet (o a una Wi-Fi) y aparecerá aquí.' : `Se vio ${ago(n.last_seen_at)}. Conéctalo por cable al router con internet.`,
     };
   }
+  if (st.updating) return { tone: 'busy', badge: 'Actualizando…', detail: 'Descargando la versión nueva. Se reinicia solo y vuelve a aparecer en menos de un minuto.' };
   if (st.syncing) return { tone: 'busy', badge: 'Sincronizando…', detail: st.stage ? `${st.stage}…` : 'Trabajando…' };
   const pending = Number.isInteger(st.pending_changes) ? st.pending_changes : 0;
   const last = n.last_sync_at ? `Última sincronización ${ago(n.last_sync_at)}.` : 'Todavía no ha sincronizado.';
-  return { tone: pending > 0 ? 'warn' : 'ok', badge: 'En línea', detail: `${pending > 0 ? `${pending} ${pending === 1 ? 'cambio' : 'cambios'} por subir. ` : 'Todo está al día. '}${last}` };
+  const failed = st.update_error ? ` No se pudo actualizar: ${st.update_error}` : '';
+  return { tone: pending > 0 || failed ? 'warn' : 'ok', badge: 'En línea', detail: `${pending > 0 ? `${pending} ${pending === 1 ? 'cambio' : 'cambios'} por subir. ` : 'Todo está al día. '}${last}${failed}` };
 }
 
 const TONE = { ok: 'text-emerald-500', busy: 'text-blue-500', warn: 'text-amber-500', off: 'text-slate-400' };
@@ -45,7 +47,10 @@ const TONE = { ok: 'text-emerald-500', busy: 'text-blue-500', warn: 'text-amber-
 function adminActions(n) {
   const never = !n.last_seen_at && !n.last_sync_at; // un nodo que sincronizó (aunque sea de una versión vieja que no avisa) está en uso
   const btn = 'text-[0.6rem] font-black uppercase tracking-wide';
+  const v = n.status?.version;
+  const outdated = v && window.APP_VERSION && v !== window.APP_VERSION;
   return `
+    ${outdated ? `<p class="text-[0.65rem] font-bold text-amber-500 mt-2"><i class="fas fa-circle-up mr-1"></i>Tiene la ${esc(v)}; la plataforma va en la ${esc(window.APP_VERSION)}. Usa «Actualizar servidores».</p>` : ''}
     <div class="flex flex-wrap items-center gap-4 mt-3 pt-3 border-t border-slate-200/60 dark:border-slate-700/60" data-admin-actions="${esc(n.id)}">
       <button type="button" class="${btn} text-slate-500 hover:text-primary" data-node-rename="${esc(n.id)}" data-name="${esc(n.name)}"><i class="fas fa-pen mr-1"></i>Renombrar</button>
       ${never
@@ -70,7 +75,10 @@ function render(container, nodes) {
     <section class="glass-card p-5 mb-5">
       <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
         <h3 class="text-sm font-black text-slate-800 dark:text-white uppercase tracking-tight"><i class="fas fa-school text-primary mr-2"></i>${esc(g.name)}</h3>
-        <button type="button" class="btn-primary-tw h-10 px-5 text-xs uppercase font-bold" data-sync-school="${esc(code)}"><i class="fas fa-rotate"></i> Sincronizar ahora</button>
+        <div class="flex flex-wrap items-center gap-3">
+          ${window.userRole === 'admin' ? `<button type="button" class="btn-secondary-tw h-10 px-5 text-xs uppercase font-bold" data-update-school="${esc(code)}" title="Descarga la versión nueva de Quetzal en los servidores de esta escuela y los reinicia"><i class="fas fa-cloud-arrow-down"></i> Actualizar servidores</button>` : ''}
+          <button type="button" class="btn-primary-tw h-10 px-5 text-xs uppercase font-bold" data-sync-school="${esc(code)}"><i class="fas fa-rotate"></i> Sincronizar ahora</button>
+        </div>
       </div>
       <div class="space-y-3">
         ${g.nodes.map((n) => {
@@ -119,6 +127,7 @@ async function refresh(container) {
   if (error) { container.innerHTML = `<div class="glass-card p-6 text-sm text-slate-500"><i class="fas fa-cloud-slash mr-2"></i>${esc(friendly(error))}</div>`; return; }
   render(container, data || []);
   container.querySelectorAll('[data-sync-school]').forEach((b) => { b.onclick = () => window.requestSchoolSync(b.dataset.syncSchool, b); });
+  container.querySelectorAll('[data-update-school]').forEach((b) => { b.onclick = () => window.requestSchoolUpdate(b.dataset.updateSchool, b); });
   container.querySelectorAll('[data-node-rename]').forEach((b) => { b.onclick = () => startRename(container, b); });
   container.querySelectorAll('[data-node-revoke]').forEach((b) => { b.onclick = () => armThenRun(b, 'Revocar', 'revoke_school_node', 'Servidor revocado: ya no puede sincronizar.', container); });
   container.querySelectorAll('[data-node-delete]').forEach((b) => { b.onclick = () => armThenRun(b, 'Eliminar', 'delete_school_node', 'Servidor eliminado.', container); });
@@ -182,6 +191,34 @@ window.requestSchoolSync = async function requestSchoolSync(code, btn) {
     fastUntil = Date.now() + 2 * 60_000; // mientras tanto se mira seguido
   } catch (e) {
     window.showToast?.(`<i class="fas fa-circle-xmark"></i> ${esc(friendly(e))}`, 'error');
+  } finally {
+    const container = document.getElementById('school-servers-container');
+    if (container) await refresh(container);
+  }
+};
+
+// Solo administrador. El servidor ve la petición en su siguiente aviso (~30 s), descarga la versión nueva y se reinicia. Un servidor con una versión
+// anterior a esta función no responde: hay que actualizarlo una vez a mano con install.sh --update.
+window.requestSchoolUpdate = async function requestSchoolUpdate(code, btn) {
+  if (btn && btn.dataset.armed !== '1') {
+    btn.dataset.armed = '1';
+    holdRefresh = true;
+    btn.innerHTML = '<i class="fas fa-triangle-exclamation"></i> ¿Seguro? Toca de nuevo';
+    setTimeout(() => { if (btn.isConnected) { btn.dataset.armed = ''; btn.innerHTML = '<i class="fas fa-cloud-arrow-down"></i> Actualizar servidores'; } holdRefresh = false; }, 4000);
+    return;
+  }
+  holdRefresh = false;
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Pidiendo…'; }
+  try {
+    const { data, error } = await window._supabase.rpc('request_node_update', { p_school: code });
+    if (error) throw error;
+    window.showToast?.(data > 0
+      ? '<i class="fas fa-cloud-arrow-down"></i> Listo: en menos de 30 segundos el servidor empieza a actualizarse y se reinicia solo.'
+      : '<i class="fas fa-circle-info"></i> El pedido ya estaba hecho hace unos segundos. Espera a que el servidor empiece.', 'success');
+    fastUntil = Date.now() + 5 * 60_000;
+  } catch (e) {
+    const missing = /request_node_update|schema cache|does not exist|42883|PGRST20/i.test(`${e?.message || ''} ${e?.code || ''}`);
+    window.showToast?.(`<i class="fas fa-circle-xmark"></i> ${esc(missing ? 'Falta ejecutar la migración «node-remote-update» en Supabase.' : (e?.message || 'No se pudo pedir la actualización'))}`, 'error');
   } finally {
     const container = document.getElementById('school-servers-container');
     if (container) await refresh(container);

@@ -227,5 +227,6 @@ export function sanitizeNodeStatus(raw: any): Record<string, unknown> {
   return {
     version: text(s.version, 40), pending_changes: pending, syncing: s.syncing === true, stage: text(s.stage, 120), last_sync_at: iso(s.last_sync_at),
     internet: typeof s.internet === 'boolean' ? s.internet : null, urls,
+    updating: s.updating === true, update_error: text(s.update_error, 200),
   };
 }

@@ -15,7 +15,7 @@ try {
 
 test('el estado válido pasa tal cual, con la fecha normalizada', { skip }, () => {
   const out = mod.sanitizeNodeStatus({ version: 'v1.0.223', pending_changes: 3, syncing: true, stage: 'Subiendo archivos de cursos', last_sync_at: '2026-11-05T15:00:00.000Z', internet: true, urls: ['http://192.168.1.50:8080', 'http://quetzal.local:8080'] });
-  assert.deepEqual(out, { version: 'v1.0.223', pending_changes: 3, syncing: true, stage: 'Subiendo archivos de cursos', last_sync_at: '2026-11-05T15:00:00.000Z', internet: true, urls: ['http://192.168.1.50:8080', 'http://quetzal.local:8080'] });
+  assert.deepEqual(out, { version: 'v1.0.223', pending_changes: 3, syncing: true, stage: 'Subiendo archivos de cursos', last_sync_at: '2026-11-05T15:00:00.000Z', internet: true, urls: ['http://192.168.1.50:8080', 'http://quetzal.local:8080'], updating: false, update_error: null });
 });
 
 test('lo raro se descarta o se acota: campos desconocidos, textos enormes, números absurdos, fechas malas y direcciones que no son http(s)', { skip }, () => {
@@ -30,7 +30,14 @@ test('lo raro se descarta o se acota: campos desconocidos, textos enormes, núme
   assert.equal(out.last_sync_at, null);
   assert.equal(out.internet, null);
   assert.deepEqual(out.urls, ['http://ok.local', 'http://b', 'http://c', 'http://d', 'http://e']);
-  assert.deepEqual(Object.keys(out).sort(), ['internet', 'last_sync_at', 'pending_changes', 'stage', 'syncing', 'urls', 'version']);
+  assert.deepEqual(Object.keys(out).sort(), ['internet', 'last_sync_at', 'pending_changes', 'stage', 'syncing', 'update_error', 'updating', 'urls', 'version']);
   assert.equal(mod.sanitizeNodeStatus({ pending_changes: 9_999_999 }).pending_changes, 1_000_000);
-  for (const junk of [null, undefined, 5, 'x', []]) assert.deepEqual(Object.keys(mod.sanitizeNodeStatus(junk)).sort(), ['internet', 'last_sync_at', 'pending_changes', 'stage', 'syncing', 'urls', 'version']);
+  for (const junk of [null, undefined, 5, 'x', []]) assert.deepEqual(Object.keys(mod.sanitizeNodeStatus(junk)).sort(), ['internet', 'last_sync_at', 'pending_changes', 'stage', 'syncing', 'update_error', 'updating', 'urls', 'version']);
+});
+
+test('el estado de actualización: «updating» solo si es true y el error se acota a 200 caracteres', { skip }, () => {
+  assert.equal(mod.sanitizeNodeStatus({ updating: true }).updating, true);
+  assert.equal(mod.sanitizeNodeStatus({ updating: 'si' }).updating, false);
+  assert.equal(mod.sanitizeNodeStatus({ update_error: 'e'.repeat(500) }).update_error.length, 200);
+  assert.equal(mod.sanitizeNodeStatus({ update_error: '' }).update_error, null);
 });
