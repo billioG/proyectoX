@@ -6,6 +6,8 @@ Al publicar una versión nueva, agrega una línea arriba de todo (ver CONTRIBUTI
 
 ## 2026-11-07
 
+- **Arreglo: los avisos (retos, anuncios, eventos) casi no le llegaban a nadie (v1.0.241).** Causa: la única forma de activarlos era un botón escondido en el perfil, así que muy pocos dispositivos estaban suscritos (en producción solo 7 de estudiantes y 3 de docentes). Ahora, al entrar, si el navegador aún no tiene el permiso, aparece un aviso «¿Quieres recibir avisos?» con botón «Activar avisos» (el navegador exige un toque del usuario); «Ahora no» lo oculta 14 días. Además, si el rival no tiene avisos activados, la consola lo dice en vez de fallar en silencio.
+
 - **Sin degradados, con los colores del colegio, y gestión de servidores escolares (v1.0.240).** (1) Se quitan los degradados: las tarjetas grandes del Centro de Juego (Pase, Vestidor, Quetzadex y los retos 1v1), los botones, avatares, barras y ligas pasan a colores **sólidos** que siguen los tres colores del colegio (principal, secundario y acento); todo degradado de Tailwind se pinta con su primer color. (2) El administrador puede **renombrar**, **revocar** y **eliminar** servidores escolares desde «Servidor de la escuela» (eliminar solo si nunca se conectó) y eliminar los ya revocados desde «Registrar nodo escolar»; requiere `migrations/node-manage.sql` (fila 126). (3) Si falla el aviso push de un reto, ahora queda registrado en la consola del navegador.
 
 - **«Mis Docentes» y «Mi Establecimiento» pasan a «Seguimiento» (v1.0.239).** Para el docente que además es coordinador, ya no hay un bloque suelto al final del menú: ambas opciones viven en el grupo Seguimiento. Quien no coordina no las ve.

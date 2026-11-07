@@ -505,6 +505,7 @@ window.sendDuelPushNotification = async function sendDuelPushNotification(duelId
     });
     // Antes un fallo del servidor pasaba en silencio: ahora queda en la consola para poder diagnosticarlo.
     if (!res.ok) console.warn('notify-duel respondió', res.status, await res.text().catch(() => ''));
+    else { const out = await res.json().catch(() => ({})); if (out && out.sent === 0) console.info('notify-duel: el rival no tiene avisos activados (0 enviados).'); }
   } catch (err) {
     console.error('Error enviando push de duelo:', err);
   }

@@ -42,7 +42,9 @@ window.syncPushSubscription = async function syncPushSubscription(subscription) 
 // navegador rotaba la suscripción no se guardaba la nueva.
 window.autoSyncPushOnLogin = async function autoSyncPushOnLogin() {
   try {
-    if (!window.isPushSupported() || Notification.permission !== 'granted' || !window.currentUser) return;
+    if (!window.isPushSupported() || !window.currentUser) return;
+    if (Notification.permission === 'default') { window.maybePromptPushOptIn?.(); return; }
+    if (Notification.permission !== 'granted') return;
     const registration = await navigator.serviceWorker.ready;
     let subscription = await registration.pushManager.getSubscription();
     if (!subscription) {
@@ -56,6 +58,43 @@ window.autoSyncPushOnLogin = async function autoSyncPushOnLogin() {
     console.error('Error sincronizando push al iniciar sesión:', err);
   }
 }
+
+// Invitación a activar los avisos. Antes el único camino era un botón escondido en el perfil, así que casi nadie
+// los activaba y los avisos de retos, eventos y anuncios no le llegaban a nadie. El navegador exige un toque del usuario
+// para pedir el permiso: por eso es un aviso con botón, no una ventana automática. Si lo cierra, no vuelve a molestar por 14 días.
+const PUSH_PROMPT_KEY = 'PX_PUSH_PROMPT_SNOOZE_UNTIL';
+window.maybePromptPushOptIn = function maybePromptPushOptIn() {
+  try {
+    if (window.QUETZAL_NODE || !navigator.onLine || document.getElementById('push-optin-banner')) return;
+    const until = Number(localStorage.getItem(PUSH_PROMPT_KEY) || 0);
+    if (until > Date.now()) return;
+  } catch (e) { /* sin almacenamiento: se muestra igual */ }
+  setTimeout(() => {
+    if (!window.currentUser || Notification.permission !== 'default' || document.getElementById('push-optin-banner')) return;
+    const banner = document.createElement('div');
+    banner.id = 'push-optin-banner';
+    banner.className = 'fixed left-4 right-4 bottom-4 md:left-auto md:right-6 md:max-w-sm z-[90] glass-card p-4 shadow-2xl bg-white dark:bg-slate-900 border border-primary/30';
+    banner.innerHTML = `
+      <div class="flex items-start gap-3">
+        <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0"><i class="fas fa-bell"></i></div>
+        <div class="min-w-0">
+          <p class="text-sm font-bold text-slate-800 dark:text-white">¿Quieres recibir avisos?</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Te avisamos de retos, premios, anuncios y eventos sorpresa, incluso con la app cerrada.</p>
+          <div class="flex items-center gap-4 mt-3">
+            <button type="button" class="btn-primary-tw h-9 px-4 text-[0.65rem] uppercase font-bold" data-push-yes>Activar avisos</button>
+            <button type="button" class="text-[0.65rem] font-bold uppercase text-slate-400 hover:text-slate-600" data-push-no>Ahora no</button>
+          </div>
+        </div>
+      </div>`;
+    const close = (days) => {
+      try { localStorage.setItem(PUSH_PROMPT_KEY, String(Date.now() + days * 86_400_000)); } catch (e) { /* sin almacenamiento */ }
+      banner.remove();
+    };
+    banner.querySelector('[data-push-yes]').onclick = async () => { close(3); await window.enableEventNotifications(); };
+    banner.querySelector('[data-push-no]').onclick = () => close(14);
+    document.body.appendChild(banner);
+  }, 6000);
+};
 
 // Al cerrar sesión: la tablet deja de recibir push de esta cuenta.
 window.unregisterPushOnLogout = async function unregisterPushOnLogout() {
