@@ -822,8 +822,8 @@ function nodeBrand() {
     const rows = restStore.raw('schools');
     const code = getMeta(db, 'school_code');
     const row = rows.find((s) => s.code === code) || (rows.length === 1 ? rows[0] : null);
-    if (!row || (!row.brand_name && !row.logo_data && !row.brand_color)) return null;
-    return { code: row.code, brand_name: row.brand_name ?? null, logo_data: row.logo_data ?? null, brand_color: row.brand_color ?? null };
+    if (!row || (!row.brand_name && !row.logo_data && !row.brand_color && !row.brand_color2 && !row.brand_color3)) return null;
+    return { code: row.code, brand_name: row.brand_name ?? null, logo_data: row.logo_data ?? null, brand_color: row.brand_color ?? null, brand_color2: row.brand_color2 ?? null, brand_color3: row.brand_color3 ?? null };
   } catch { return null; }
 }
 

@@ -13,8 +13,8 @@ const { brandView, cleanBrandName, isSafeLogo, CREDIT_TEXT, MAX_BRAND_NAME } = a
 const PNG = 'data:image/png;base64,iVBORw0KGgo=';
 
 test('sin nombre ni logo se queda la marca de Quetzal', () => {
-  assert.deepEqual(brandView({}), { name: '', logo: null, color: null, custom: false });
-  assert.deepEqual(brandView(null), { name: '', logo: null, color: null, custom: false });
+  assert.deepEqual(brandView({}), { name: '', logo: null, color: null, color2: null, color3: null, custom: false });
+  assert.deepEqual(brandView(null), { name: '', logo: null, color: null, color2: null, color3: null, custom: false });
 });
 
 test('con nombre o logo es marca propia', () => {
@@ -91,4 +91,53 @@ test('migración: color con formato, vista pública mínima (sin funciones) y co
   assert.match(read('school-node/rest/schema.js'), /'brand_color'/);
   assert.match(read('supabase/functions/node-sync/tables.ts'), /'brand_color'/);
   assert.match(read('tailwind.config.js'), /--primary-rgb/);
+});
+
+const { shades, SHADE_STEPS, PRESETS, isUsableAccent } = await import('../js/branding.js');
+
+test('de un color base salen 11 tonos: el 500 es el elegido, los bajos más claros y los altos más oscuros', () => {
+  const sh = shades('#4f46e5');
+  assert.deepEqual(Object.keys(sh).map(Number), SHADE_STEPS);
+  assert.equal(sh[500], '#4f46e5');
+  const lum = (h) => { const c = [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)); return c[0] * 0.2126 + c[1] * 0.7152 + c[2] * 0.0722; };
+  for (let i = 1; i < SHADE_STEPS.length; i++) assert.ok(lum(sh[SHADE_STEPS[i - 1]]) > lum(sh[SHADE_STEPS[i]]), `${SHADE_STEPS[i - 1]} más claro que ${SHADE_STEPS[i]}`);
+  assert.match(sh[50], /^#[0-9a-f]{6}$/);
+});
+
+test('las paletas sugeridas cumplen las reglas de contraste', () => {
+  assert.ok(PRESETS.length >= 4);
+  for (const p of PRESETS) {
+    assert.equal(isUsableColor(p.colors[0]), true, `${p.name} principal`);
+    assert.equal(isUsableColor(p.colors[1]), true, `${p.name} secundario`);
+    assert.equal(isUsableAccent(p.colors[2]), true, `${p.name} acento`);
+  }
+});
+
+test('el acento puede ser más claro que el principal, pero no casi blanco', () => {
+  assert.equal(isUsableAccent('#f59e0b'), true);
+  assert.equal(isUsableAccent('#fde68a'), false);
+  assert.equal(isUsableAccent('#ffffff'), false);
+  assert.equal(brandView({ brand_color2: '#4f46e5', brand_color3: '#f59e0b' }).color2, '#4f46e5');
+  assert.equal(brandView({ brand_color3: '#fde68a' }).color3, null);
+});
+
+test('Tailwind: índigo/violeta/púrpura/azul usan --sec-* y ámbar/naranja/amarillo usan --acc-*, con su valor de siempre de respaldo; rojo y esmeralda no cambian', () => {
+  const css = read('css/tailwind.css');
+  assert.match(css, /\.bg-indigo-600\{[^}]*var\(--sec-600,79 70 229\)/);
+  assert.match(css, /\.bg-blue-600\{[^}]*var\(--sec-600,37 99 235\)/);
+  assert.match(css, /\.text-amber-500\{[^}]*var\(--acc-500,245 158 11\)/);
+  assert.match(css, /\.bg-orange-500\{[^}]*var\(--acc-500,249 115 22\)/);
+  assert.match(css, /\.bg-rose-500\{[^}]*rgb\(244 63 94/);
+  assert.match(css, /\.bg-emerald-500\{[^}]*rgb\(16 185 129/);
+});
+
+test('la migración y el nodo incluyen los colores 2 y 3 y la vista pública los expone', () => {
+  const sql = read('migrations/school-branding.sql');
+  assert.match(sql, /add column if not exists brand_color2/);
+  assert.match(sql, /add column if not exists brand_color3/);
+  assert.match(sql, /select code, brand_name, logo_data, brand_color, brand_color2, brand_color3/);
+  assert.equal((sql.match(/create or replace view public\.school_brands/g) || []).length, 1, 'una sola definición de la vista: volver a correr el archivo no falla');
+  assert.match(read('school-node/rest/schema.js'), /'brand_color2', 'brand_color3'/);
+  assert.match(read('supabase/functions/node-sync/tables.ts'), /'brand_color2', 'brand_color3'/);
+  assert.match(read('school-node/server.js'), /brand_color2: row\.brand_color2/);
 });

@@ -15,15 +15,40 @@ const lin = (c) => { const s = c / 255; return s <= 0.03928 ? s / 12.92 : ((s + 
 const luminance = (hex) => { const [r, g, b] = rgbOf(hex); return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b); };
 // Contraste del texto blanco sobre el color (los botones usan texto blanco). WCAG pide 3:1 para texto grande y botones.
 export const contrastWithWhite = (hex) => 1.05 / (luminance(hex) + 0.05);
+// Principal y secundario llevan texto blanco encima (botones, etiquetas): contraste mínimo 3:1.
 export const isUsableColor = (hex) => isHexColor(hex) && contrastWithWhite(hex) >= 3;
+// El acento (dorados, destacados) puede ser más claro, pero no casi blanco: se perdería sobre fondo claro.
+export const isUsableAccent = (hex) => isHexColor(hex) && contrastWithWhite(hex) >= 1.8;
 const mix = (hex, k) => '#' + rgbOf(hex).map((c) => Math.round(c * k).toString(16).padStart(2, '0')).join('');
+const toward = (hex, target, t) => '#' + rgbOf(hex).map((c, i) => Math.round(c + (target[i] - c) * t).toString(16).padStart(2, '0')).join('');
 
-// Qué mostrar para un colegio. Sin nombre, logo ni color válidos => marca de Quetzal.
+// De un color base salen los 11 tonos (50 a 950) que usa la app. El 500 es el color elegido.
+export const SHADE_STEPS = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950];
+const LIGHTER = { 50: 0.92, 100: 0.84, 200: 0.68, 300: 0.5, 400: 0.25 };
+const DARKER = { 600: 0.12, 700: 0.27, 800: 0.42, 900: 0.57, 950: 0.72 };
+export function shades(hex) {
+  const out = {};
+  for (const s of SHADE_STEPS) out[s] = s === 500 ? hex.toLowerCase() : LIGHTER[s] !== undefined ? toward(hex, [255, 255, 255], LIGHTER[s]) : toward(hex, [0, 0, 0], DARKER[s]);
+  return out;
+}
+
+// Paletas sugeridas [principal, secundario, acento]: todas cumplen las reglas de contraste.
+export const PRESETS = [
+  { name: 'Océano', colors: ['#0369a1', '#4f46e5', '#f59e0b'] },
+  { name: 'Bosque', colors: ['#15803d', '#0f766e', '#d97706'] },
+  { name: 'Vino', colors: ['#9f1239', '#6d28d9', '#eab308'] },
+  { name: 'Atardecer', colors: ['#c2410c', '#be185d', '#eab308'] },
+  { name: 'Grafito', colors: ['#334155', '#0e7490', '#f59e0b'] },
+];
+
+// Qué mostrar para un colegio. Sin nombre, logo ni colores válidos => marca de Quetzal.
 export function brandView(school) {
   const name = cleanBrandName(school?.brand_name);
   const logo = isSafeLogo(school?.logo_data) ? school.logo_data : null;
   const color = isUsableColor(school?.brand_color) ? school.brand_color.toLowerCase() : null;
-  return { name, logo, color, custom: !!(name || logo || color) };
+  const color2 = isUsableColor(school?.brand_color2) ? school.brand_color2.toLowerCase() : null;
+  const color3 = isUsableAccent(school?.brand_color3) ? school.brand_color3.toLowerCase() : null;
+  return { name, logo, color, color2, color3, custom: !!(name || logo || color || color2 || color3) };
 }
 
 // Reduce la imagen elegida a un cuadrado máximo de `size` px (PNG con transparencia) para guardarla como data URL.
@@ -54,6 +79,22 @@ function applyColor(color) {
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', color);
 }
 
+const range = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
+// Variables del tema claro (index.html, «light-contrast») que oscurecen el texto de cada familia: se alinean con el color elegido.
+const LIGHT_TEXT_VARS = {
+  sec: [...['--lc19', '--lc20'], ...range(8, 15).map((n) => `--la${n}`), ...range(44, 51).map((n) => `--la${n}`)],
+  acc: [...range(6, 11).map((n) => `--lc${n}`), ...range(4, 7).map((n) => `--la${n}`), ...range(24, 27).map((n) => `--la${n}`)],
+};
+// prefix 'sec' (secundario: índigo, violeta, púrpura, azul) o 'acc' (acento: ámbar, naranja, amarillo).
+function applyFamily(prefix, color) {
+  const root = document.documentElement.style;
+  const vars = [...SHADE_STEPS.map((s) => `--${prefix}-${s}`), ...LIGHT_TEXT_VARS[prefix]];
+  if (!color) { vars.forEach((n) => root.removeProperty(n)); return; }
+  const sh = shades(color);
+  SHADE_STEPS.forEach((s) => root.setProperty(`--${prefix}-${s}`, rgbOf(sh[s]).join(' ')));
+  LIGHT_TEXT_VARS[prefix].forEach((n) => root.setProperty(n, sh[700]));
+}
+
 export function applyBranding(view) {
   const text = view.name || 'Quetzal LMS';
   const nameEl = document.getElementById('brand-name');
@@ -77,10 +118,12 @@ export function applyBranding(view) {
   }
   if (loginTile) loginTile.classList.toggle('hidden', !!view.logo);
   applyColor(view.color);
+  applyFamily('sec', view.color2);
+  applyFamily('acc', view.color3);
   document.title = view.name ? `${view.name} · Quetzal LMS` : 'Quetzal LMS | Plataforma Educativa con Gamificación para Escuelas en Guatemala';
 }
 
-const COLS = 'brand_name, logo_data, brand_color';
+const COLS = 'brand_name, logo_data, brand_color, brand_color2, brand_color3';
 const cacheKey = (code) => `px_brand_${code}`;
 const LAST_KEY = 'px_brand_last_code';
 const store = {

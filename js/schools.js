@@ -1,7 +1,35 @@
 // ================================================
 // GESTIÓN DE ESTABLECIMIENTOS - PARTE 1
 // ================================================
-import { cleanBrandName, resizeLogo, isUsableColor } from './branding.js';
+import { cleanBrandName, resizeLogo, isUsableColor, isUsableAccent, PRESETS, shades } from './branding.js';
+
+const BRAND_INPUTS = ['edit-school-brand-color', 'edit-school-brand-color2', 'edit-school-brand-color3'];
+// Vista previa de los 3 colores con la misma lógica de tonos que usa la app.
+window.updateBrandPreview = function updateBrandPreview() {
+  const box = document.getElementById('brand-preview');
+  if (!box) return;
+  const val = (id) => { const el = document.getElementById(id); return !el || el.dataset.set === '0' ? null : (el.dataset.set === '1' ? el.value : el.dataset.orig || null); };
+  const [p, s, a] = BRAND_INPUTS.map((id, i) => val(id) || ['#00c853', '#4f46e5', '#f59e0b'][i]);
+  const sec = shades(s); const acc = shades(a);
+  box.innerHTML = `
+    <span style="background:${p};color:#fff" class="px-3 py-1.5 rounded-lg text-xs font-bold">Botón principal</span>
+    <span style="background:${sec[600]};color:#fff" class="px-3 py-1.5 rounded-lg text-xs font-bold">Secundario</span>
+    <span style="background:${sec[100]};color:${sec[700]}" class="px-3 py-1.5 rounded-lg text-xs font-bold">Etiqueta suave</span>
+    <span style="background:${acc[500]};color:#fff" class="px-3 py-1.5 rounded-lg text-xs font-bold">★ 120 XP</span>
+    <span style="background:${acc[100]};color:${acc[700]}" class="px-3 py-1.5 rounded-lg text-xs font-bold">Destacado</span>`;
+};
+window.clearBrandColor = function clearBrandColor(n) {
+  const el = document.getElementById('edit-school-brand-color' + (n === '1' ? '' : n));
+  if (!el) return;
+  el.dataset.set = '0'; el.value = el.dataset.def;
+  window.updateBrandPreview();
+};
+window.applyBrandPreset = function applyBrandPreset(i) {
+  const pr = PRESETS[i];
+  if (!pr) return;
+  BRAND_INPUTS.forEach((id, k) => { const el = document.getElementById(id); if (el) { el.value = pr.colors[k]; el.dataset.set = '1'; } });
+  window.updateBrandPreview();
+};
 
 const escapeAttr = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -368,7 +396,7 @@ window.editSchool = async function editSchool(schoolId) {
                 </div>
             </div>
 
-            ${'brand_name' in school && 'brand_color' in school ? `
+            ${'brand_name' in school && 'brand_color3' in school ? `
             <div class="col-span-full">
                 <div class="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/30 space-y-3">
                     <label class="text-[0.6rem] font-black uppercase text-emerald-600 dark:text-emerald-400 tracking-widest block">Marca del colegio (opcional)</label>
@@ -380,10 +408,25 @@ window.editSchool = async function editSchool(schoolId) {
                         <input type="file" id="edit-school-logo-file" accept="image/png,image/jpeg,image/webp" class="text-xs flex-1 min-w-0" onchange="window.pickSchoolLogo(this)">
                         <button type="button" class="btn-secondary-tw px-3 h-10 text-[0.65rem] font-bold uppercase" onclick="window.clearSchoolLogo()">Quitar logo</button>
                     </div>
-                    <div class="flex items-center gap-3">
-                        <input type="color" id="edit-school-brand-color" value="${school.brand_color || '#00c853'}" class="h-12 w-16 rounded-lg cursor-pointer bg-transparent" oninput="document.getElementById('edit-school-brand-color').dataset.set = '1'">
-                        <span class="text-[0.65rem] text-emerald-700/70 dark:text-emerald-400/70 flex-1">Color principal de botones y detalles (debe contrastar con el texto blanco; si es muy claro se avisa).</span>
-                        <button type="button" class="btn-secondary-tw px-3 h-10 text-[0.65rem] font-bold uppercase" onclick="const c=document.getElementById('edit-school-brand-color'); c.value='#00c853'; c.dataset.set='0'">Color de Quetzal</button>
+                    <div class="space-y-2">
+                        <p class="text-[0.6rem] font-black uppercase text-emerald-600 dark:text-emerald-400 tracking-widest">Colores (opcional)</p>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            ${[['1', 'brand_color', 'Principal', 'Botones y detalles', '#00c853'], ['2', 'brand_color2', 'Secundario', 'Secciones y tarjetas (reemplaza índigo, violeta y azul)', '#4f46e5'], ['3', 'brand_color3', 'Acento', 'Gemas, XP y destacados (reemplaza ámbar y naranja)', '#f59e0b']].map(([n, col, label, hint, def]) => `
+                            <div class="rounded-xl bg-white/60 dark:bg-slate-900/40 border border-emerald-100 dark:border-emerald-900/30 p-3 space-y-2">
+                                <div class="flex items-center gap-2">
+                                    <input type="color" id="edit-school-brand-color${n === '1' ? '' : n}" data-orig="${escapeAttr(school[col] || '')}" data-def="${def}" value="${escapeAttr(school[col] || def)}" class="h-10 w-12 rounded-lg cursor-pointer bg-transparent" oninput="this.dataset.set='1'; window.updateBrandPreview()">
+                                    <b class="text-xs">${label}</b>
+                                    <button type="button" class="ml-auto text-[0.6rem] font-bold uppercase text-slate-400 hover:text-rose-500" onclick="window.clearBrandColor('${n}')">Quitar</button>
+                                </div>
+                                <p class="text-[0.6rem] text-slate-500 dark:text-slate-400 leading-snug">${hint}</p>
+                            </div>`).join('')}
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="text-[0.6rem] font-bold uppercase text-slate-400">Paletas:</span>
+                            ${PRESETS.map((pr, i) => `<button type="button" class="btn-secondary-tw px-3 h-8 text-[0.6rem] font-bold uppercase" onclick="window.applyBrandPreset(${i})">${pr.name}</button>`).join('')}
+                        </div>
+                        <div id="brand-preview" class="flex flex-wrap items-center gap-2 p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700"></div>
+                        <p class="text-[0.6rem] text-slate-500 dark:text-slate-400">Rojo (avisos de peligro) y verde de éxito no cambian, para que un error o un acierto se sigan viendo como tales.</p>
                     </div>
                 </div>
             </div>` : ''}
@@ -414,6 +457,7 @@ window.editSchool = async function editSchool(schoolId) {
     `;
 
     document.body.appendChild(modal);
+    window.updateBrandPreview();
     window.loadProgramsChecklistForSchool(schoolId);
 
   } catch (err) {
@@ -499,15 +543,18 @@ window.saveSchoolChanges = async function saveSchoolChanges(schoolId) {
 
   const btn = document.getElementById('btn-save-school');
   // La marca solo se envía si el formulario la mostró (la migración school-branding.sql ya está aplicada).
-  const colorEl = document.getElementById('edit-school-brand-color');
-  const hadColor = colorEl && colorEl.defaultValue !== '#00c853';
-  const pickedColor = colorEl && (colorEl.dataset.set === '1' || (hadColor && colorEl.dataset.set !== '0')) ? colorEl.value : null;
-  if (pickedColor && !isUsableColor(pickedColor)) {
-    return showToast('<i class="fas fa-circle-xmark"></i> Ese color es muy claro: el texto blanco no se leería. Elige uno más oscuro.', 'error');
+  // Colores: null = sin color propio (queda el de Quetzal).
+  const colorVal = (id) => { const el = document.getElementById(id); if (!el) return undefined; if (el.dataset.set === '0') return null; if (el.dataset.set === '1') return el.value.toLowerCase(); return el.dataset.orig || null; };
+  const c1 = colorVal('edit-school-brand-color'); const c2 = colorVal('edit-school-brand-color2'); const c3 = colorVal('edit-school-brand-color3');
+  if ((c1 && !isUsableColor(c1)) || (c2 && !isUsableColor(c2))) {
+    return showToast('<i class="fas fa-circle-xmark"></i> El color principal y el secundario no pueden ser tan claros: el texto blanco no se leería. Elige uno más oscuro.', 'error');
+  }
+  if (c3 && !isUsableAccent(c3)) {
+    return showToast('<i class="fas fa-circle-xmark"></i> El acento es casi blanco y se perdería sobre el fondo. Elige uno más intenso.', 'error');
   }
   const brandFields = document.getElementById('edit-school-brand-name')
     ? { brand_name: cleanBrandName(document.getElementById('edit-school-brand-name').value) || null,
-        brand_color: pickedColor,
+        brand_color: c1, brand_color2: c2, brand_color3: c3,
         ...(window.__schoolLogoDraft !== undefined ? { logo_data: window.__schoolLogoDraft } : {}) }
     : {};
 

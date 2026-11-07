@@ -16,7 +16,7 @@ test.beforeAll(async () => {
     rest: {
       class_verifiers: [{ class_key: 'ESC1|Primero|A', requires_password: true, salt, hash: hashClassPassword('clase123', salt) }],
       tables: {
-        schools: [{ id: 1, code: 'ESC1', name: 'Escuela Piloto', brand_name: 'Colegio San José', logo_data: LOGO, brand_color: '#1d4ed8' }],
+        schools: [{ id: 1, code: 'ESC1', name: 'Escuela Piloto', brand_name: 'Colegio San José', logo_data: LOGO, brand_color: '#1d4ed8', brand_color2: '#0f766e', brand_color3: '#d97706' }],
         students: [{ id: 's1', username: 'ana1', full_name: 'Ana López', school_code: 'ESC1', grade: 'Primero', section: 'A', status: 'activo', xp: 10, gems: 5, role: 'estudiante' }],
       },
     },
@@ -36,6 +36,9 @@ test('el encabezado muestra el nombre y el logo del colegio, y el crédito de Yo
   await expect(page.locator('#login-brand-logo')).toBeVisible();
   await expect(page.locator('#login-brand-tile')).toBeHidden();
   expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--primary-rgb').trim())).toBe('29 78 216');
+  // Secundario (índigo/violeta/azul) y acento (ámbar/naranja/amarillo) también cambian: 500 = el color elegido.
+  expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--sec-500').trim())).toBe('15 118 110');
+  expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--acc-500').trim())).toBe('217 119 6');
   // El botón de entrar anima el cambio de color (transition-all): se termina la animación para leer el color final.
   await page.evaluate(() => document.getAnimations().forEach((a) => a.finish()));
   await expect.poll(() => page.evaluate(() => getComputedStyle(document.querySelector('#btn-login')).backgroundColor)).toMatch(/29, 78, 216|rgb\(29 78 216\)/);
