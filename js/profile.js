@@ -364,8 +364,8 @@ window.renderTeacherProfileUI = function renderTeacherProfileUI(container, teach
             <i class="fas fa-comments text-primary"></i> Comentarios de Estudiantes
         </h3>
         <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">Lo que tus alumnos opinaron de tus clases.</p>`}
-        <button onclick="window.viewAllTeacherComments && window.viewAllTeacherComments()" class="w-full ${is1bot ? 'mt-10' : ''} py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold rounded-2xl transition-all uppercase tracking-widest text-xs">
-            VER FEEDBACK DETALLADO DE ESTUDIANTES
+        <button onclick="nav('inbox')" class="w-full ${is1bot ? 'mt-10' : ''} py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold rounded-2xl transition-all uppercase tracking-widest text-xs">
+            VER BUZÓN DE LA CLASE
         </button>
     </div>
 

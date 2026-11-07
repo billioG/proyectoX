@@ -6,6 +6,8 @@ Al publicar una versión nueva, agrega una línea arriba de todo (ver CONTRIBUTI
 
 ## 2026-11-07
 
+- **Un solo lugar para los comentarios de los estudiantes (v1.0.237).** «Ver feedback detallado de estudiantes» (perfil del docente) y «Buzón de la clase» (menú) mostraban lo mismo a medias: el primero solo las evaluaciones, el segundo evaluaciones con promedios por criterio y además las sugerencias, y funciona también con el servidor de la escuela sin internet. Ahora el botón del perfil abre el Buzón de la clase y se elimina la ventana duplicada.
+
 - **Se quita el «modo simple» del docente (v1.0.236).** Con el menú ya agrupado en «Configuración», ocultar opciones y tener que pulsar «Ver todas las opciones» solo confundía. Ahora todos los docentes ven siempre el mismo menú; se eliminan el botón y la preferencia guardada en el dispositivo.
 
 - **Menú más ligero y privacidad en el perfil (v1.0.235).** (1) Lo que es configuración se agrupa en un solo menú plegable «Configuración»: para el docente, Servidor de la escuela, Gestionar Equipos, Bonos y Desempeño y Nodo escolar (USB); para el administrador, Establecimientos, Estudiantes, Docentes, Servidores y sincronización, Incentivos y Pagos, Videos Quetzadex, Registrar nodo escolar y Nodo escolar (USB). El grupo viene plegado, se despliega solo al entrar a una de sus opciones (y durante el tutorial) y no aparece si el docente en modo simple no tiene ninguna opción dentro. (2) La pantalla de entrada ya no enlaza a «Política de privacidad» ni a «Para colegios e instituciones»; la política queda en el perfil del usuario (estudiante y docente). Prueba nueva: tests/nav-config-group.spec.js.
