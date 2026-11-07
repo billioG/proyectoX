@@ -1,6 +1,31 @@
 // ================================================
 // GESTIÓN DE ESTABLECIMIENTOS - PARTE 1
 // ================================================
+import { cleanBrandName, resizeLogo } from './branding.js';
+
+const escapeAttr = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+// Logo elegido en el formulario de edición: undefined = sin cambios, null = quitar, texto = logo nuevo (data URL).
+window.__schoolLogoDraft = undefined;
+window.pickSchoolLogo = async function pickSchoolLogo(input) {
+  const file = input?.files?.[0];
+  if (!file) return;
+  try {
+    window.__schoolLogoDraft = await resizeLogo(file);
+    const img = document.getElementById('edit-school-logo-preview');
+    if (img) { img.src = window.__schoolLogoDraft; img.classList.remove('hidden'); }
+  } catch (err) {
+    input.value = '';
+    showToast(`<i class="fas fa-circle-xmark"></i> ${err.message || 'No se pudo leer el logo'}`, 'error');
+  }
+};
+window.clearSchoolLogo = function clearSchoolLogo() {
+  window.__schoolLogoDraft = null;
+  const img = document.getElementById('edit-school-logo-preview');
+  if (img) { img.removeAttribute('src'); img.classList.add('hidden'); }
+  const f = document.getElementById('edit-school-logo-file');
+  if (f) f.value = '';
+};
 
 window.loadSchools = async function loadSchools() {
   const container = document.getElementById('schools-container');
@@ -217,6 +242,7 @@ window.filterSchools = function filterSchools() {
 // ================================================
 
 window.editSchool = async function editSchool(schoolId) {
+  window.__schoolLogoDraft = undefined;
   try {
     const { data: school, error } = await window._supabase
       .from('schools')
@@ -342,6 +368,20 @@ window.editSchool = async function editSchool(schoolId) {
                 </div>
             </div>
 
+            ${'brand_name' in school ? `
+            <div class="col-span-full">
+                <div class="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/30 space-y-3">
+                    <label class="text-[0.6rem] font-black uppercase text-emerald-600 dark:text-emerald-400 tracking-widest block">Marca del colegio (opcional)</label>
+                    <p class="text-[0.65rem] text-emerald-700/70 dark:text-emerald-400/70">Se muestra en el encabezado de la app. Siempre aparece también «Hecho por Yo Aprendo · Quetzal LMS».</p>
+                    <input type="text" id="edit-school-brand-name" maxlength="60" class="input-field-tw h-12 text-sm" placeholder="Nombre que verán (si se deja vacío: Quetzal LMS)" value="${escapeAttr(school.brand_name || '')}">
+                    <div class="flex items-center gap-3">
+                        <img id="edit-school-logo-preview" class="h-14 w-14 rounded-xl object-contain bg-white border border-slate-200 ${school.logo_data ? '' : 'hidden'}" ${school.logo_data ? `src="${escapeAttr(school.logo_data)}"` : ''} alt="Logo">
+                        <input type="file" id="edit-school-logo-file" accept="image/png,image/jpeg,image/webp" class="text-xs flex-1 min-w-0" onchange="window.pickSchoolLogo(this)">
+                        <button type="button" class="btn-secondary-tw px-3 h-10 text-[0.65rem] font-bold uppercase" onclick="window.clearSchoolLogo()">Quitar logo</button>
+                    </div>
+                </div>
+            </div>` : ''}
+
             <div class="col-span-full">
                 <div class="p-4 rounded-xl bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/30 flex items-center justify-between gap-4">
                     <div>
@@ -452,6 +492,11 @@ window.saveSchoolChanges = async function saveSchoolChanges(schoolId) {
   const radius = parseInt(document.getElementById('edit-school-radius')?.value);
 
   const btn = document.getElementById('btn-save-school');
+  // La marca solo se envía si el formulario la mostró (la migración school-branding.sql ya está aplicada).
+  const brandFields = document.getElementById('edit-school-brand-name')
+    ? { brand_name: cleanBrandName(document.getElementById('edit-school-brand-name').value) || null,
+        ...(window.__schoolLogoDraft !== undefined ? { logo_data: window.__schoolLogoDraft } : {}) }
+    : {};
 
   if (!name || !department || !municipality) {
     return showToast('<i class="fas fa-circle-xmark"></i> Completa nombre, departamento y municipio', 'error');
@@ -476,6 +521,7 @@ window.saveSchoolChanges = async function saveSchoolChanges(schoolId) {
         area,
         projects_per_bimestre: isNaN(projectsTarget) ? 4 : projectsTarget,
         public_projects: publicProjects,
+        ...brandFields,
         latitude: isNaN(lat) ? null : lat,
         longitude: isNaN(lng) ? null : lng,
         geofence_radius: isNaN(radius) ? 100 : radius
@@ -496,6 +542,7 @@ window.saveSchoolChanges = async function saveSchoolChanges(schoolId) {
     }
 
     showToast('<i class="fas fa-circle-check"></i> Establecimiento actualizado correctamente', 'success');
+    if ('brand_name' in brandFields) window.refreshBranding?.();
 
     // Remover específicamente el modal de edición
     const editModal = document.querySelector('.fixed.z-\\[200\\]') || document.querySelector('.fixed.inset-0.z-\\[100\\]');

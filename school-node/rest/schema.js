@@ -17,7 +17,7 @@ export const SCHEMA = {
   schools: table({
     pk: 'id',
     columns: ['id', 'code', 'name', 'address', 'department', 'municipality', 'sector', 'level', 'schedule', 'area', 'created_at',
-      'latitude', 'longitude', 'geofence_radius', 'projects_per_bimestre', 'programa', 'public_projects'],
+      'latitude', 'longitude', 'geofence_radius', 'projects_per_bimestre', 'programa', 'public_projects', 'brand_name', 'logo_data'],
     masked: ['phone', 'email'],
     relations: {},
   }),

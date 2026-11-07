@@ -6,6 +6,8 @@ Al publicar una versión nueva, agrega una línea arriba de todo (ver CONTRIBUTI
 
 ## 2026-11-06
 
+- **Nuevo: nombre y logo propios del colegio (v1.0.231).** El administrador puede poner el nombre y el logo del colegio en *Establecimientos → Editar*; se ven en el encabezado de la app. «Hecho por Yo Aprendo · Quetzal LMS» siempre aparece (encabezado con marca propia, pie del menú y pantalla de entrada). Requiere `migrations/school-branding.sql` (aplicarla antes de redesplegar `node-sync`). También se actualizaron los documentos: las migraciones de seguridad y rendimiento de noviembre ya están aplicadas en producción.
+
 - **Arreglo: el menú ya no saca del Centro de Juego (v1.0.230).** En la v1.0.229 abrir el menú cerraba el Centro de Juego. Ahora el menú se abre encima (en celular) y el Centro de Juego se cierra solo al elegir una opción. Prueba: `tests/node-chip.spec.js`.
 
 - **Arreglos: el menú con el Centro de Juego abierto y la barra de sincronización (v1.0.229).** (1) El Centro de Juego es una pantalla completa que quedaba por encima del menú: el menú se abría detrás y parecía roto. Abrir el menú o navegar ahora cierra el Centro de Juego. (2) La barra «cambios por subir / Sincronizar ahora / Wi-Fi» solo aparece **después de iniciar sesión y solo para docentes, coordinadores y administradores**; los estudiantes y la pantalla de entrada ya no la ven (ni consultan el estado del servidor). Pruebas actualizadas en `tests/node-chip.spec.js` y `tests/node-rest.spec.js`.

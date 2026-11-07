@@ -5,6 +5,10 @@ Revisión de seguridad hecha **solo sobre el repositorio**: el código, las migr
 corren cada migración en un PostgreSQL de verdad (con roles `anon`, `authenticated` y `service_role` simulados), y eso es lo
 que respalda cada afirmación de aquí. Antes de aplicar en producción: hazlo primero en el proyecto de prueba (`docs/SETUP.md`).
 
+> **Estado (2026-11-06):** las migraciones de este documento **ya se aplicaron en producción**, según confirmó el administrador.
+> El repositorio no puede comprobarlo: para verificarlo, `migrations/verificar-migraciones.sql` (solo lee) debe dar `aplicada = true`
+> en todas las filas. Las columnas «Cuándo aplicar» de abajo quedan como referencia del orden (útil para una base nueva).
+
 ## Resumen
 
 | # | Tema | Hallazgo | Qué se entrega | Cuándo aplicar |

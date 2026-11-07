@@ -3,6 +3,8 @@
 Hecho **solo desde el repositorio**: lectura del código, mediciones con la app real corriendo sobre el nodo escolar, y pruebas en un PostgreSQL de verdad.
 **No se midió contra tu Supabase real ni con una Raspberry real**; lo que depende de eso está marcado. Los cambios van en la v1.0.227 y en tres migraciones nuevas.
 
+> **Estado (2026-11-06):** las tres migraciones de rendimiento (`performance-2026-11.sql`, `random-event-settle-atomic.sql`, `rls-auth-uid-initplan.sql`) **ya se aplicaron en producción**, según confirmó el administrador (el repositorio no puede comprobarlo; ver `docs/MIGRATIONS.md`, «Estado en producción»).
+
 ## 1. Lo más importante
 
 1. **El inicio de sesión de un estudiante hacía 47 peticiones; ahora 27 (−43 %).** La mitad eran repetidas: el inicio de sesión corría **dos veces** (evento `SIGNED_IN` + llamada directa) y

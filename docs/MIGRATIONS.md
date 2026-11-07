@@ -168,6 +168,8 @@ de producción.
 | 124 | 2026-11-05 | `random-event-settle-atomic.sql` | `settle_random_event(evento, reparto)` (solo `service_role`): liquida un evento sorpresa en una transacción (puestos, premios, SUMA de gemas sin pisar, no paga dos veces). Correr **antes** de redesplegar `settle-random-event` |
 | 122 | 2026-11-05 | `rls-auth-uid-initplan.sql` | Envuelve `auth.uid()`, `auth.role()`, `auth.jwt()`, `is_staff()` e `is_admin()` en `(select ...)` en todas las políticas de `public` (rendimiento; mismo resultado) |
 
+| 125 | 2026-11-06 | `school-branding.sql` | `schools.brand_name` y `schools.logo_data`: nombre y logo propios del colegio en el encabezado (el crédito «Hecho por Yo Aprendo · Quetzal LMS» siempre se muestra). Correr **antes** de redesplegar `node-sync` (ahora pide estas dos columnas) |
+
 ### Migraciones sin número en la tabla de arriba
 
 Estas migraciones existen en `migrations/` pero quedaron fuera de la tabla numerada (se agregaron al repositorio entre el
@@ -196,6 +198,14 @@ no aparece en este documento.
 | 2026-10-03 | `project-reaction-notifications.sql` | Aviso en la campanita al dueño/equipo cuando reaccionan (sin decir quién; filas creadas solo por el disparador) |
 | 2026-10-03 | `project-thumbnails.sql` | `projects.thumbnail_url`: miniatura JPEG (data URL) para proyectos con modelo 3D |
 | 2026-10-04 | `exams.sql` | Exámenes con hoja de respuestas: `exams`/`exam_results` (la clave nunca llega al alumno) y `my_exam_results()` |
+
+## Estado en producción (actualizado 2026-11-06)
+
+**Las migraciones de seguridad y rendimiento de noviembre (fases 5b y 5c) ya se aplicaron en producción**, según confirmó el
+administrador del proyecto. Este repositorio no puede comprobarlo por su cuenta: la forma de verificarlo sigue siendo pegar
+`migrations/verificar-migraciones.sql` en el SQL Editor (solo lee) y ver que todas las filas den `aplicada = true`.
+**Lo único nuevo sin aplicar** es `school-branding.sql` (fila 125; fase 5d). Las secciones de abajo conservan el orden por si
+hay que reconstruir una base nueva.
 
 ## Orden seguro de lo pendiente
 
@@ -242,6 +252,7 @@ corre, de arriba hacia abajo, solo las filas con `aplicada = false`. El orden si
 | | `rls-auth-uid-initplan.sql` | todas las anteriores (la última) | Es rendimiento, no seguridad: puede esperar; mismas pruebas |
 | 5c. Rendimiento (`docs/PERFORMANCE.md`) | `performance-2026-11.sql` | `security-function-exposure-2026-11.sql` (deja el latido solo para `authenticated`) | Probar que el tiempo activo sigue sumando (+30 s) |
 | | `random-event-settle-atomic.sql` → redesplegar `settle-random-event` | — | Probar con un evento de prueba |
+| 5d. Marca del colegio (v1.0.231) | `school-branding.sql` → después redesplegar `node-sync` | — | Sin la migración, el formulario del colegio no muestra la marca y la app sigue igual; **no redesplegar `node-sync` antes**: pide las dos columnas nuevas |
 | 6. Nodo escolar | `xp-events.sql`, `node-reactions.sql`, `node-evaluations.sql`, `teacher-node-pin.sql`, `teacher-node-password.sql` | `economy-server-side.sql`, fase 4 (`project-reactions*`), `evaluations-restrict-to-assigned-teacher.sql` | Cada una, **antes** de publicar `node-sync` con el módulo correspondiente |
 | | `node-companion.sql`, `node-timed-math-duel.sql`, `node-hangman-duel.sql`, `node-profile-photo.sql`, `node-feedback.sql` | `companion-collection.sql`, `companion-cosmetics.sql`, `student-timed-math-duels.sql`, `student-hangman-duels.sql`, `hangman-word-bank.sql`, `duel-per-player-content.sql`, `audit-fixes-duels-chest.sql`, `economy-server-side.sql` | Solo `service_role` las ejecuta |
 | | `node-remote-sync.sql`, `feedback-inbox.sql` | `school-nodes.sql` | Después publicar `node-sync` completo (14 archivos) |
@@ -251,5 +262,6 @@ nombre. Si la migración todavía no corrió, esa llamada falla; si corre primer
 **Con las migraciones de la fase 1:** corre las cuatro de una vez y prueba, con un alumno, que ve su ranking y a sus
 compañeros, y que un docente ve a sus estudiantes; con la 2 prueba a un coordinador.
 
-> **Pendiente de verificar contra producción.** Esta lista sale de leer los encabezados del repositorio, no de consultar tu
-> base. `verificar-migraciones.sql` es la forma de saber el estado real; no hay que fiarse de las casillas de `PENDIENTES.md`.
+> **Estado real contra producción.** Esta lista sale de leer los encabezados del repositorio, no de consultar la base. El
+> administrador confirmó (2026-11-06) que las de seguridad y rendimiento de noviembre ya están aplicadas; `verificar-migraciones.sql`
+> es la forma de comprobarlo. No hay que fiarse de las casillas de `PENDIENTES.md`.
