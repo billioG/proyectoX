@@ -1,5 +1,5 @@
 // Menú lateral del docente: lo de configuración vive plegado en un solo grupo «Configuración».
-// Al navegar a una opción de dentro, el grupo se despliega; en modo simple el docente no ve el grupo vacío.
+// Al navegar a una opción de dentro, el grupo se despliega; sin modo simple, el docente ve todas sus opciones.
 const { test, expect } = require('@playwright/test');
 
 let node = null;
@@ -52,7 +52,7 @@ test('la configuración del docente está plegada en un grupo y se despliega al 
   // En celular el menú está oculto hasta tocar la hamburguesa.
   if (await page.locator('#mobile-menu-btn').isVisible()) await page.click('#mobile-menu-btn');
 
-  // Modo simple (por defecto): el grupo aparece, plegado, y solo con lo que el docente puede usar.
+  // El grupo aparece plegado.
   await expect(toggle).toBeVisible();
   await expect(toggle).toContainText('Configuración');
   await expect(toggle).toHaveAttribute('aria-expanded', 'false');
@@ -71,10 +71,10 @@ test('la configuración del docente está plegada en un grupo y se despliega al 
   await expect(toggle).toHaveAttribute('aria-expanded', 'true');
   await expect(page.locator('#nav-doc-servers')).toHaveClass(/active/);
 
-  // Sin modo simple aparecen también Equipos (y el resto), todo dentro del grupo.
-  await page.evaluate(() => window.toggleTeacherSimpleMode());
+  // Equipos también vive dentro del grupo, y ya no hay «modo simple» ni botón para alternarlo.
   await expect(page.locator('#nav-doc-groups')).toBeVisible();
   expect(await page.locator('#nav-docente > #nav-doc-groups').count()).toBe(0);
+  await expect(page.locator('#nav-doc-simple-toggle')).toHaveCount(0);
 
   expect(errors, errors.join('\n')).toEqual([]);
 });

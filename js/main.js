@@ -190,7 +190,7 @@ window.toggleNavGroup = function toggleNavGroup(toggle) {
     const group = toggle.closest('.nav-group');
     if (group) setNavGroupOpen(group, toggle.getAttribute('aria-expanded') !== 'true');
 };
-// Un grupo sin ninguna opción visible (p. ej. modo simple del docente) no se muestra.
+// Un grupo sin ninguna opción visible (p. ej. «Bonos» para quien no es del equipo 1bot) no se muestra.
 window.updateNavGroups = function updateNavGroups() {
     document.querySelectorAll('.nav-group').forEach(group => {
         const hasVisible = [...group.querySelectorAll('.nav-group-items .nav-item')]
