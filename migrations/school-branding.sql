@@ -22,3 +22,21 @@ alter table public.schools add constraint schools_logo_data_fmt
 
 comment on column public.schools.brand_name is 'Nombre que el colegio quiere ver en el encabezado (opcional).';
 comment on column public.schools.logo_data is 'Logo del colegio como data URL png/jpeg/webp (máx. 150 000 caracteres).';
+
+-- ── Color del colegio y lectura pública mínima para la pantalla de entrada (v1.0.232) ──
+-- Se puede volver a correr aunque la primera parte ya esté aplicada.
+alter table public.schools add column if not exists brand_color text;
+alter table public.schools drop constraint if exists schools_brand_color_fmt;
+alter table public.schools add constraint schools_brand_color_fmt
+  check (brand_color is null or brand_color ~ '^#[0-9a-fA-F]{6}$');
+comment on column public.schools.brand_color is 'Color principal del colegio (#RRGGBB), opcional.';
+
+-- La pantalla de entrada no tiene sesión y `schools` solo la leen usuarios con sesión. Esta vista expone SOLO
+-- código, nombre, logo y color de los colegios que configuraron su marca (nada más de la fila).
+-- Es una vista (no una función SECURITY DEFINER), así que no cambia la exposición de funciones a `anon`.
+create or replace view public.school_brands as
+  select code, brand_name, logo_data, brand_color
+  from public.schools
+  where brand_name is not null or logo_data is not null or brand_color is not null;
+revoke all on public.school_brands from public;
+grant select on public.school_brands to anon, authenticated;

@@ -6,6 +6,8 @@ Al publicar una versión nueva, agrega una línea arriba de todo (ver CONTRIBUTI
 
 ## 2026-11-06
 
+- **Nuevo: la marca del colegio se ve en la pantalla de entrada y se puede elegir el color (v1.0.232).** (1) En la entrada se muestran el nombre y el logo del colegio: en el nodo escolar automáticamente (es de un solo colegio); en la nube con el enlace `?colegio=CODIGO` (el formulario del colegio lo muestra) y, después de entrar una vez, el dispositivo lo recuerda. (2) Color principal por colegio (botones y detalles; se rechaza uno tan claro que el texto blanco no se lea). Los colores de Tailwind `primary` ahora usan variables CSS (`css/tailwind.css` regenerado). Requiere volver a correr `migrations/school-branding.sql` (agrega `brand_color` y la vista pública `school_brands`) y redesplegar `node-sync`. «Hecho por Yo Aprendo · Quetzal LMS» sigue siempre visible.
+
 - **Nuevo: nombre y logo propios del colegio (v1.0.231).** El administrador puede poner el nombre y el logo del colegio en *Establecimientos → Editar*; se ven en el encabezado de la app. «Hecho por Yo Aprendo · Quetzal LMS» siempre aparece (encabezado con marca propia, pie del menú y pantalla de entrada). Requiere `migrations/school-branding.sql` (aplicarla antes de redesplegar `node-sync`). También se actualizaron los documentos: las migraciones de seguridad y rendimiento de noviembre ya están aplicadas en producción.
 
 - **Arreglo: el menú ya no saca del Centro de Juego (v1.0.230).** En la v1.0.229 abrir el menú cerraba el Centro de Juego. Ahora el menú se abre encima (en celular) y el Centro de Juego se cierra solo al elegir una opción. Prueba: `tests/node-chip.spec.js`.

@@ -1,7 +1,7 @@
 // ================================================
 // GESTIÓN DE ESTABLECIMIENTOS - PARTE 1
 // ================================================
-import { cleanBrandName, resizeLogo } from './branding.js';
+import { cleanBrandName, resizeLogo, isUsableColor } from './branding.js';
 
 const escapeAttr = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -368,16 +368,22 @@ window.editSchool = async function editSchool(schoolId) {
                 </div>
             </div>
 
-            ${'brand_name' in school ? `
+            ${'brand_name' in school && 'brand_color' in school ? `
             <div class="col-span-full">
                 <div class="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/30 space-y-3">
                     <label class="text-[0.6rem] font-black uppercase text-emerald-600 dark:text-emerald-400 tracking-widest block">Marca del colegio (opcional)</label>
                     <p class="text-[0.65rem] text-emerald-700/70 dark:text-emerald-400/70">Se muestra en el encabezado de la app. Siempre aparece también «Hecho por Yo Aprendo · Quetzal LMS».</p>
+                    <p class="text-[0.65rem] text-emerald-700/80 dark:text-emerald-400/80 break-all">Enlace para que la pantalla de entrada ya muestre esta marca: <b>${escapeAttr(location.origin + location.pathname)}?colegio=${escapeAttr(school.code)}</b> (después de entrar una vez, ese dispositivo la recuerda).</p>
                     <input type="text" id="edit-school-brand-name" maxlength="60" class="input-field-tw h-12 text-sm" placeholder="Nombre que verán (si se deja vacío: Quetzal LMS)" value="${escapeAttr(school.brand_name || '')}">
                     <div class="flex items-center gap-3">
                         <img id="edit-school-logo-preview" class="h-14 w-14 rounded-xl object-contain bg-white border border-slate-200 ${school.logo_data ? '' : 'hidden'}" ${school.logo_data ? `src="${escapeAttr(school.logo_data)}"` : ''} alt="Logo">
                         <input type="file" id="edit-school-logo-file" accept="image/png,image/jpeg,image/webp" class="text-xs flex-1 min-w-0" onchange="window.pickSchoolLogo(this)">
                         <button type="button" class="btn-secondary-tw px-3 h-10 text-[0.65rem] font-bold uppercase" onclick="window.clearSchoolLogo()">Quitar logo</button>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <input type="color" id="edit-school-brand-color" value="${school.brand_color || '#00c853'}" class="h-12 w-16 rounded-lg cursor-pointer bg-transparent" oninput="document.getElementById('edit-school-brand-color').dataset.set = '1'">
+                        <span class="text-[0.65rem] text-emerald-700/70 dark:text-emerald-400/70 flex-1">Color principal de botones y detalles (debe contrastar con el texto blanco; si es muy claro se avisa).</span>
+                        <button type="button" class="btn-secondary-tw px-3 h-10 text-[0.65rem] font-bold uppercase" onclick="const c=document.getElementById('edit-school-brand-color'); c.value='#00c853'; c.dataset.set='0'">Color de Quetzal</button>
                     </div>
                 </div>
             </div>` : ''}
@@ -493,8 +499,15 @@ window.saveSchoolChanges = async function saveSchoolChanges(schoolId) {
 
   const btn = document.getElementById('btn-save-school');
   // La marca solo se envía si el formulario la mostró (la migración school-branding.sql ya está aplicada).
+  const colorEl = document.getElementById('edit-school-brand-color');
+  const hadColor = colorEl && colorEl.defaultValue !== '#00c853';
+  const pickedColor = colorEl && (colorEl.dataset.set === '1' || (hadColor && colorEl.dataset.set !== '0')) ? colorEl.value : null;
+  if (pickedColor && !isUsableColor(pickedColor)) {
+    return showToast('<i class="fas fa-circle-xmark"></i> Ese color es muy claro: el texto blanco no se leería. Elige uno más oscuro.', 'error');
+  }
   const brandFields = document.getElementById('edit-school-brand-name')
     ? { brand_name: cleanBrandName(document.getElementById('edit-school-brand-name').value) || null,
+        brand_color: pickedColor,
         ...(window.__schoolLogoDraft !== undefined ? { logo_data: window.__schoolLogoDraft } : {}) }
     : {};
 

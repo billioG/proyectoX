@@ -16,7 +16,7 @@ test.beforeAll(async () => {
     rest: {
       class_verifiers: [{ class_key: 'ESC1|Primero|A', requires_password: true, salt, hash: hashClassPassword('clase123', salt) }],
       tables: {
-        schools: [{ id: 1, code: 'ESC1', name: 'Escuela Piloto', brand_name: 'Colegio San José', logo_data: LOGO }],
+        schools: [{ id: 1, code: 'ESC1', name: 'Escuela Piloto', brand_name: 'Colegio San José', logo_data: LOGO, brand_color: '#1d4ed8' }],
         students: [{ id: 's1', username: 'ana1', full_name: 'Ana López', school_code: 'ESC1', grade: 'Primero', section: 'A', status: 'activo', xp: 10, gems: 5, role: 'estudiante' }],
       },
     },
@@ -30,8 +30,15 @@ test('el encabezado muestra el nombre y el logo del colegio, y el crédito de Yo
   await page.addInitScript(() => { try { localStorage.setItem('PX_TOUR_DONE', '1'); localStorage.setItem('onboarding_seen_s1', 'true'); localStorage.setItem('gamecenter_onboarding_seen_s1', 'true'); } catch { /* sin almacenamiento */ } });
   await page.goto(node.base);
   await page.waitForSelector('#login-username');
-  // Antes de entrar: marca de Quetzal y crédito.
+  // Antes de entrar: en el nodo de un solo colegio ya se ve su nombre, su logo y su color; el crédito de Yo Aprendo está siempre.
   await expect(page.getByText('Hecho por Yo Aprendo').first()).toBeVisible();
+  await expect(page.locator('#login-brand-name')).toHaveText('Colegio San José', { timeout: 15_000 });
+  await expect(page.locator('#login-brand-logo')).toBeVisible();
+  await expect(page.locator('#login-brand-tile')).toBeHidden();
+  expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--primary-rgb').trim())).toBe('29 78 216');
+  // El botón de entrar anima el cambio de color (transition-all): se termina la animación para leer el color final.
+  await page.evaluate(() => document.getAnimations().forEach((a) => a.finish()));
+  await expect.poll(() => page.evaluate(() => getComputedStyle(document.querySelector('#btn-login')).backgroundColor)).toMatch(/29, 78, 216|rgb\(29 78 216\)/);
   await page.fill('#login-username', 'ana1');
   await page.fill('#login-password', 'clase123');
   await page.click('#btn-login');

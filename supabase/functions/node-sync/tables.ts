@@ -10,7 +10,7 @@ import { ANNOUNCEMENT_COLUMNS, announcementVisibleToSchool, restrictToSchool } f
 export const TABLE_COLUMNS: Record<string, string[]> = {
   schools: ['id', 'code', 'name', 'address', 'department', 'municipality', 'sector', 'level', 'schedule', 'area', 'created_at',
     'latitude', 'longitude', 'geofence_radius', 'projects_per_bimestre', 'programa', 'public_projects',
-    'brand_name', 'logo_data'],
+    'brand_name', 'logo_data', 'brand_color'],
   students: ['id', 'full_name', 'username', 'school_code', 'grade', 'section', 'profile_photo_url', 'role', 'created_at', 'xp', 'gems',
     'streak', 'last_login', 'streak_freeze', 'daily_chest_last_claimed', 'gems_earned_total', 'has_gold_frame', 'has_mascot_glasses',
     'status', 'companion_equipped', 'companion_species', 'season_id', 'season_xp', 'league_tier', 'league_week', 'league_last_result',

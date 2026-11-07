@@ -13,8 +13,8 @@ const { brandView, cleanBrandName, isSafeLogo, CREDIT_TEXT, MAX_BRAND_NAME } = a
 const PNG = 'data:image/png;base64,iVBORw0KGgo=';
 
 test('sin nombre ni logo se queda la marca de Quetzal', () => {
-  assert.deepEqual(brandView({}), { name: '', logo: null, custom: false });
-  assert.deepEqual(brandView(null), { name: '', logo: null, custom: false });
+  assert.deepEqual(brandView({}), { name: '', logo: null, color: null, custom: false });
+  assert.deepEqual(brandView(null), { name: '', logo: null, color: null, custom: false });
 });
 
 test('con nombre o logo es marca propia', () => {
@@ -58,4 +58,37 @@ test('el formulario solo envía la marca si la columna existe (no rompe antes de
   const js = read('js/schools.js');
   assert.match(js, /'brand_name' in school/);
   assert.match(js, /document\.getElementById\('edit-school-brand-name'\)\s*\?/);
+});
+
+const { isUsableColor, contrastWithWhite, schoolCodeToShow } = await import('../js/branding.js');
+
+test('color: solo #RRGGBB y con contraste suficiente con texto blanco', () => {
+  assert.equal(isUsableColor('#1d4ed8'), true);
+  assert.equal(isUsableColor('#00c853'), false, 'el verde de Quetzal es claro: contraste < 3 (ya lo usa la app, pero un color nuevo debe ser más oscuro)');
+  assert.equal(isUsableColor('#ffff00'), false);
+  for (const bad of ['red', '#fff', '#12345g', 'rgb(0,0,0)', 'url(x)', '', null]) assert.equal(isUsableColor(bad), false, String(bad));
+  assert.ok(contrastWithWhite('#000000') > 20);
+  assert.equal(brandView({ brand_color: '#1D4ED8' }).color, '#1d4ed8');
+  assert.equal(brandView({ brand_color: '#ffff00' }).color, null);
+  assert.equal(brandView({ brand_color: '#1d4ed8' }).custom, true);
+});
+
+test('qué colegio mostrar en la entrada: sesión > enlace ?colegio= > último del dispositivo', () => {
+  assert.equal(schoolCodeToShow({ sessionCode: 'ESC1', search: '?colegio=OTRO', last: 'ULT' }), 'ESC1');
+  assert.equal(schoolCodeToShow({ search: '?x=1&colegio=ESC2', last: 'ULT' }), 'ESC2');
+  assert.equal(schoolCodeToShow({ search: '', last: 'ULT' }), 'ULT');
+  assert.equal(schoolCodeToShow({ search: '?colegio=<script>', last: null }), null);
+  assert.equal(schoolCodeToShow({}), null);
+});
+
+test('migración: color con formato, vista pública mínima (sin funciones) y columna en el nodo', () => {
+  const sql = read('migrations/school-branding.sql');
+  assert.match(sql, /add column if not exists brand_color/);
+  assert.match(sql, /create or replace view public\.school_brands/);
+  assert.match(sql, /select code, brand_name, logo_data, brand_color/);
+  assert.match(sql, /grant select on public\.school_brands to anon, authenticated/);
+  assert.doesNotMatch(sql.replace(/--.*$/gm, ''), /security definer/i);
+  assert.match(read('school-node/rest/schema.js'), /'brand_color'/);
+  assert.match(read('supabase/functions/node-sync/tables.ts'), /'brand_color'/);
+  assert.match(read('tailwind.config.js'), /--primary-rgb/);
 });

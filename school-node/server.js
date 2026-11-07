@@ -815,10 +815,23 @@ ${others.length ? `<p class="otras">Si no abre, prueba con: ${others.map(escHtml
 }
 
 // Script que la app carga para saber que está en un nodo escolar.
+// Marca del colegio de este nodo (nombre, logo, color) para la pantalla de entrada: ahí todavía no hay sesión y la API de datos la exige.
+// Solo esos tres campos, del colegio del nodo (o el único que tenga).
+function nodeBrand() {
+  try {
+    const rows = restStore.raw('schools');
+    const code = getMeta(db, 'school_code');
+    const row = rows.find((s) => s.code === code) || (rows.length === 1 ? rows[0] : null);
+    if (!row || (!row.brand_name && !row.logo_data && !row.brand_color)) return null;
+    return { code: row.code, brand_name: row.brand_name ?? null, logo_data: row.logo_data ?? null, brand_color: row.brand_color ?? null };
+  } catch { return null; }
+}
+
 function nodeConfigScript() {
   return `${POLYFILLS}window.QUETZAL_NODE = ${JSON.stringify({
     name: getMeta(db, 'node_name'), school_code: getMeta(db, 'school_code'),
     storage_base: getMeta(db, 'storage_base'), last_sync_at: getMeta(db, 'last_sync_at'), rest: restReady(),
+    brand: nodeBrand(),
   })};`;
 }
 

@@ -13,8 +13,9 @@ module.exports = {
     extend: {
       colors: {
         primary: {
-          DEFAULT: '#00C853',
-          dark: '#009624',
+          // Variables CSS para poder cambiar el color por colegio en tiempo de ejecución (js/branding.js).
+          DEFAULT: 'rgb(var(--primary-rgb, 0 200 83) / <alpha-value>)',
+          dark: 'rgb(var(--primary-dark-rgb, 0 150 36) / <alpha-value>)',
         },
         cream: '#F8F5F0',
         secondary: '#64748B',

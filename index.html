@@ -73,7 +73,7 @@
          index.html pero el navegador puede seguir sirviendo desde caché HTTP
          una versión vieja de un módulo lazy-loaded (ej. pdf-processor.js),
          aunque el tag de versión visible ya muestre la última. -->
-    <script>window.APP_VERSION = 'v1.0.231';</script>
+    <script>window.APP_VERSION = 'v1.0.232';</script>
 
     <!-- Silenciar console.log/info/debug en producción (activar con localStorage.PX_DEBUG='true').
          Va antes de todo lo demás porque los console.log de cada módulo corren
@@ -250,6 +250,8 @@
         :root {
             --primary: #00C853;
             --primary-dark: #009624;
+            --primary-rgb: 0 200 83;
+            --primary-dark-rgb: 0 150 36;
             --cream: #F8F5F0;
             --slate-50: #f8fafc;
             --slate-100: #f1f5f9;
@@ -628,7 +630,7 @@
                 position: fixed !important;
                 width: 60px !important;
                 height: 60px !important;
-                background-color: #00C853 !important;
+                background-color: var(--primary, #00C853) !important;
                 color: white !important;
                 border-radius: 50% !important;
                 border: none !important;
@@ -650,13 +652,14 @@
         class="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-6 sm:p-12 transition-colors duration-500">
         <div class="glass-card w-full max-w-md p-10 transform scale-100 dark:bg-slate-900/40">
             <div class="flex flex-col items-center mb-10">
-                <div class="text-4xl font-bold tracking-tighter text-slate-800 dark:text-white flex items-center gap-2">
-                    <div
-                        class="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center text-white shadow-lg shadow-primary/30">
+                <div class="text-4xl font-bold tracking-tighter text-slate-800 dark:text-white flex items-center gap-2 text-center">
+                    <div id="login-brand-tile"
+                        class="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center text-white shadow-lg shadow-primary/30 shrink-0">
                         Q</div>
-                    Quetzal <span class="text-primary-dark dark:text-primary">LMS</span>
+                    <img id="login-brand-logo" class="hidden w-14 h-14 rounded-2xl object-contain bg-white shrink-0" alt="Logo del colegio">
+                    <span id="login-brand-name">Quetzal <span class="text-primary-dark dark:text-primary">LMS</span></span>
                 </div>
-                <span id="app-version-tag" class="text-[0.65rem] text-slate-500 dark:text-slate-400 font-medium mt-1">v1.0.231</span>
+                <span id="app-version-tag" class="text-[0.65rem] text-slate-500 dark:text-slate-400 font-medium mt-1">v1.0.232</span>
                 <span class="text-[0.65rem] text-slate-400 font-medium mt-0.5">Hecho por Yo Aprendo</span>
             </div>
 
@@ -724,7 +727,7 @@
                     <div id="brand-name" class="text-2xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent transform hover:scale-105 transition-transform leading-none truncate">
                         Quetzal LMS
                     </div>
-                    <span class="text-[0.6rem] text-slate-400 font-medium mt-0.5 truncate"><span id="brand-credit" class="hidden">Hecho por Yo Aprendo · Quetzal LMS · </span>v1.0.231</span>
+                    <span class="text-[0.6rem] text-slate-400 font-medium mt-0.5 truncate"><span id="brand-credit" class="hidden">Hecho por Yo Aprendo · Quetzal LMS · </span>v1.0.232</span>
                 </div>
             </div>
 
@@ -1360,7 +1363,7 @@
     <!-- Librerías externas: confetti, QR, PDF, JSZip y driver.js se cargan con loadLib() (ver <head>). -->
 
     <!-- Punto de Entrada del Sistema -->
-    <script type="module" src="js/app.js?v=1.0.231"></script>
+    <script type="module" src="js/app.js?v=1.0.232"></script>
 
     <meta name="mobile-web-app-capable" content="yes">
 </body>
