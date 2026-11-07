@@ -43,7 +43,7 @@ const TONE = { ok: 'text-emerald-500', busy: 'text-blue-500', warn: 'text-amber-
 
 // Solo el administrador: renombrar, revocar (deja de sincronizar) y eliminar (solo si nunca se conectó).
 function adminActions(n) {
-  const never = !n.last_seen_at;
+  const never = !n.last_seen_at && !n.last_sync_at; // un nodo que sincronizó (aunque sea de una versión vieja que no avisa) está en uso
   const btn = 'text-[0.6rem] font-black uppercase tracking-wide';
   return `
     <div class="flex flex-wrap items-center gap-4 mt-3 pt-3 border-t border-slate-200/60 dark:border-slate-700/60" data-admin-actions="${esc(n.id)}">

@@ -38,8 +38,8 @@ begin
   if not public.is_admin() then raise exception 'Solo un admin puede eliminar nodos'; end if;
   select * into v_node from public.school_nodes where id = p_id;
   if not found then raise exception 'Nodo no encontrado'; end if;
-  if v_node.revoked_at is null and v_node.last_seen_at is not null then
-    raise exception 'Revócalo primero: solo se pueden eliminar nodos revocados o que nunca se conectaron';
+  if v_node.revoked_at is null and (v_node.last_seen_at is not null or v_node.last_sync_at is not null) then
+    raise exception 'Revócalo primero: solo se pueden eliminar nodos revocados o que nunca se conectaron ni sincronizaron';
   end if;
   delete from public.school_nodes where id = p_id;
 end;
