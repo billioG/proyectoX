@@ -58,6 +58,7 @@ begin
   select coalesce(jsonb_agg(row order by (row ->> 'created_at') desc), '[]'::jsonb) into v_ratings from (
     select jsonb_strip_nulls(jsonb_build_object(
       'id', r.id, 'rating', r.rating, 'message', r.message, 'best_moment', r.best_moment, 'created_at', r.created_at,
+      'bimestre', to_jsonb(r) -> 'bimestre', -- to_jsonb: si la columna no existiera devuelve null en vez de fallar
       'q_interest', r.q_interest, 'q_practice', r.q_practice, 'q_resources', r.q_resources, 'q_respect', r.q_respect, 'q_clarity', r.q_clarity,
       'school_code', st.school_code, 'school_name', sc.name, 'grade', st.grade, 'section', st.section,
       'teacher_name', case when v_admin or r.teacher_id <> auth.uid() then t.full_name else null end,

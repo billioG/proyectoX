@@ -31,7 +31,7 @@ function ratingCard(r, admin) {
     <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
       <div class="flex items-center justify-between gap-3 mb-2">
         <span class="text-sm font-black text-amber-500"><i class="fas fa-star"></i> ${Number.isFinite(note) ? note.toFixed(1) : '-'} / 5</span>
-        <span class="text-[0.65rem] font-bold text-slate-400">${esc(when(r.created_at))}</span>
+        <span class="text-[0.65rem] font-bold text-slate-400">${r.bimestre ? `Bimestre ${esc(r.bimestre)} · ` : ''}${esc(when(r.created_at))}</span>
       </div>
       ${comments.map((c) => `<p class="text-sm italic text-slate-600 dark:text-slate-300">"${esc(c)}"</p>`).join('') || '<p class="text-xs text-slate-400">Sin comentario.</p>'}
       <p class="text-[0.65rem] font-bold uppercase text-slate-400 tracking-wide mt-3">

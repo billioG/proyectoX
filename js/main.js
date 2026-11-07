@@ -186,13 +186,26 @@ function setNavGroupOpen(group, open) {
     toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
 }
 window.setNavGroupOpen = setNavGroupOpen;
+// El docente recuerda qué grupos dejó abiertos (por dispositivo). Sin preferencia, solo viene abierto el que trae data-open-default.
+const navGroupKey = (group) => `PX_NAV_GROUP_${group.id}`;
 window.toggleNavGroup = function toggleNavGroup(toggle) {
     const group = toggle.closest('.nav-group');
-    if (group) setNavGroupOpen(group, toggle.getAttribute('aria-expanded') !== 'true');
+    if (!group) return;
+    const open = toggle.getAttribute('aria-expanded') !== 'true';
+    setNavGroupOpen(group, open);
+    try { localStorage.setItem(navGroupKey(group), open ? '1' : '0'); } catch (e) { /* sin almacenamiento */ }
 };
+function restoreNavGroup(group) {
+    if (group.dataset.restored) return;
+    group.dataset.restored = '1';
+    let saved = null;
+    try { saved = localStorage.getItem(navGroupKey(group)); } catch (e) { /* sin almacenamiento */ }
+    setNavGroupOpen(group, saved === null ? group.hasAttribute('data-open-default') : saved === '1');
+}
 // Un grupo sin ninguna opción visible (p. ej. «Bonos» para quien no es del equipo 1bot) no se muestra.
 window.updateNavGroups = function updateNavGroups() {
     document.querySelectorAll('.nav-group').forEach(group => {
+        restoreNavGroup(group);
         const hasVisible = [...group.querySelectorAll('.nav-group-items .nav-item')]
             .some(el => el.style.display !== 'none');
         group.style.display = hasVisible ? '' : 'none';

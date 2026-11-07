@@ -52,6 +52,12 @@ test('la configuración del docente está plegada en un grupo y se despliega al 
   // En celular el menú está oculto hasta tocar la hamburguesa.
   if (await page.locator('#mobile-menu-btn').isVisible()) await page.click('#mobile-menu-btn');
 
+  // Tres grupos: «Mi clase» viene abierto (lo de todos los días); «Seguimiento» y «Configuración», plegados.
+  await expect(page.locator('#cls-group-doc .nav-group-toggle')).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator('#nav-doc-attendance')).toBeVisible();
+  await expect(page.locator('#seg-group-doc .nav-group-toggle')).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.locator('#nav-doc-students')).toBeHidden();
+
   // El grupo aparece plegado.
   await expect(toggle).toBeVisible();
   await expect(toggle).toContainText('Configuración');
@@ -65,6 +71,11 @@ test('la configuración del docente está plegada en un grupo y se despliega al 
   await expect(group.getByText('Servidor de la escuela')).toBeVisible();
   await toggle.click();
   await expect(items).toBeHidden();
+
+  // Lo que el docente deja abierto se recuerda en el dispositivo.
+  await page.reload();
+  await page.waitForFunction(() => window.currentUser?.id === 't1' && window.nav);
+  await expect(page.locator('#cls-group-doc .nav-group-toggle')).toHaveAttribute('aria-expanded', 'true');
 
   // Navegar a una opción de dentro despliega el grupo y la marca activa.
   await page.evaluate(() => window.nav('school-servers'));

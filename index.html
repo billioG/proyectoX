@@ -73,7 +73,7 @@
          index.html pero el navegador puede seguir sirviendo desde caché HTTP
          una versión vieja de un módulo lazy-loaded (ej. pdf-processor.js),
          aunque el tag de versión visible ya muestre la última. -->
-    <script>window.APP_VERSION = 'v1.0.237';</script>
+    <script>window.APP_VERSION = 'v1.0.238';</script>
 
     <!-- Silenciar console.log/info/debug en producción (activar con localStorage.PX_DEBUG='true').
          Va antes de todo lo demás porque los console.log de cada módulo corren
@@ -678,7 +678,7 @@
                     <img id="login-brand-logo" class="hidden w-14 h-14 rounded-2xl object-contain bg-white shrink-0" alt="Logo del colegio">
                     <span id="login-brand-name">Quetzal <span class="text-primary-dark dark:text-primary">LMS</span></span>
                 </div>
-                <span id="app-version-tag" class="text-[0.65rem] text-slate-500 dark:text-slate-400 font-medium mt-1">v1.0.237</span>
+                <span id="app-version-tag" class="text-[0.65rem] text-slate-500 dark:text-slate-400 font-medium mt-1">v1.0.238</span>
                 <span class="text-[0.65rem] text-slate-400 font-medium mt-0.5">Hecho por Yo Aprendo</span>
             </div>
 
@@ -741,7 +741,7 @@
                     <div id="brand-name" class="text-2xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent transform hover:scale-105 transition-transform leading-none truncate">
                         Quetzal LMS
                     </div>
-                    <span class="text-[0.6rem] text-slate-400 font-medium mt-0.5 truncate"><span id="brand-credit" class="hidden">Hecho por Yo Aprendo · Quetzal LMS · </span>v1.0.237</span>
+                    <span class="text-[0.6rem] text-slate-400 font-medium mt-0.5 truncate"><span id="brand-credit" class="hidden">Hecho por Yo Aprendo · Quetzal LMS · </span>v1.0.238</span>
                 </div>
             </div>
 
@@ -839,39 +839,53 @@
                         <i class="fas fa-home"></i>
                         <span>Inicio</span>
                     </div>
-                    <div id="nav-doc-lessons" class="nav-item" onclick="nav('lessons')">
-                        <i class="fas fa-book-open"></i>
-                        <span>Cursos</span>
+                    <!-- Tres grupos: lo que se hace en clase, el seguimiento y la configuración -->
+                    <div class="nav-group" id="cls-group-doc" data-open-default="1">
+                        <div class="nav-item nav-group-toggle" role="button" tabindex="0" aria-expanded="false" onclick="toggleNavGroup(this)">
+                            <i class="fas fa-chalkboard-user"></i>
+                            <span>Mi clase</span>
+                            <i class="fas fa-chevron-down nav-chevron"></i>
+                        </div>
+                        <div class="nav-group-items" hidden>
+                            <div id="nav-doc-lessons" class="nav-item" onclick="nav('lessons')">
+                                <i class="fas fa-book-open"></i>
+                                <span>Cursos</span>
+                            </div>
+                            <div id="nav-doc-attendance" class="nav-item" onclick="nav('attendance')">
+                                <i class="fas fa-user-check"></i>
+                                <span>Tomar Asistencia</span>
+                            </div>
+                            <div id="nav-doc-evaluate" class="nav-item" onclick="nav('evaluate')">
+                                <i class="fas fa-clipboard-check"></i>
+                                <span>Evaluar Proyectos</span>
+                            </div>
+                            <div id="nav-doc-exams" class="nav-item" onclick="nav('exams')">
+                                <i class="fas fa-file-circle-check"></i>
+                                <span>Exámenes</span>
+                            </div>
+                        </div>
                     </div>
-                    <div id="nav-doc-evaluate" class="nav-item" onclick="nav('evaluate')">
-                        <i class="fas fa-clipboard-check"></i>
-                        <span>Evaluar Proyectos</span>
+                    <div class="nav-group" id="seg-group-doc">
+                        <div class="nav-item nav-group-toggle" role="button" tabindex="0" aria-expanded="false" onclick="toggleNavGroup(this)">
+                            <i class="fas fa-chart-line"></i>
+                            <span>Seguimiento</span>
+                            <i class="fas fa-chevron-down nav-chevron"></i>
+                        </div>
+                        <div class="nav-group-items" hidden>
+                            <div id="nav-doc-progress" class="nav-item" onclick="nav('progress')">
+                                <i class="fas fa-chart-line"></i>
+                                <span>Progreso</span>
+                            </div>
+                            <div id="nav-doc-ranking" class="nav-item" onclick="nav('ranking')">
+                                <i class="fas fa-trophy"></i>
+                                <span>Ranking</span>
+                            </div>
+                            <div id="nav-doc-inbox" class="nav-item" onclick="nav('inbox')">
+                                <i class="fas fa-inbox"></i>
+                                <span>Buzón de la clase</span>
+                            </div>
+                        </div>
                     </div>
-                    <div id="nav-doc-exams" class="nav-item" onclick="nav('exams')">
-                        <i class="fas fa-file-circle-check"></i>
-                        <span>Exámenes</span>
-                    </div>
-                    <div id="nav-doc-progress" class="nav-item" onclick="nav('progress')">
-                        <i class="fas fa-chart-line"></i>
-                        <span>Progreso</span>
-                    </div>
-                    <div id="nav-doc-inbox" class="nav-item" onclick="nav('inbox')">
-                        <i class="fas fa-inbox"></i>
-                        <span>Buzón de la clase</span>
-                    </div>
-                    <div id="nav-doc-attendance" class="nav-item" onclick="nav('attendance')">
-                        <i class="fas fa-user-check"></i>
-                        <span>Tomar Asistencia</span>
-                    </div>
-                    <div id="nav-doc-students" class="nav-item" onclick="nav('students')">
-                        <i class="fas fa-user-graduate"></i>
-                        <span>Gestionar Estudiantes</span>
-                    </div>
-                    <div id="nav-doc-ranking" class="nav-item" onclick="nav('ranking')">
-                        <i class="fas fa-trophy"></i>
-                        <span>Ranking</span>
-                    </div>
-                    <!-- Todo lo de configuración, plegado en un solo grupo -->
                     <div class="nav-group" id="cfg-group-doc">
                         <div class="nav-item nav-group-toggle" role="button" tabindex="0" aria-expanded="false" onclick="toggleNavGroup(this)">
                             <i class="fas fa-gear"></i>
@@ -879,13 +893,17 @@
                             <i class="fas fa-chevron-down nav-chevron"></i>
                         </div>
                         <div class="nav-group-items" hidden>
-                            <div id="nav-doc-servers" class="nav-item" onclick="nav('school-servers')">
-                                <i class="fas fa-server"></i>
-                                <span>Servidor de la escuela</span>
+                            <div id="nav-doc-students" class="nav-item" onclick="nav('students')">
+                                <i class="fas fa-user-graduate"></i>
+                                <span>Gestionar Estudiantes</span>
                             </div>
                             <div id="nav-doc-groups" class="nav-item" onclick="nav('groups')">
                                 <i class="fas fa-users"></i>
                                 <span>Gestionar Equipos</span>
+                            </div>
+                            <div id="nav-doc-servers" class="nav-item" onclick="nav('school-servers')">
+                                <i class="fas fa-server"></i>
+                                <span>Servidor de la escuela</span>
                             </div>
                             <div id="nav-doc-bonus" class="nav-item" onclick="nav('bonus-system')">
                                 <i class="fas fa-bullseye"></i>
@@ -1397,7 +1415,7 @@
     <!-- Librerías externas: confetti, QR, PDF, JSZip y driver.js se cargan con loadLib() (ver <head>). -->
 
     <!-- Punto de Entrada del Sistema -->
-    <script type="module" src="js/app.js?v=1.0.237"></script>
+    <script type="module" src="js/app.js?v=1.0.238"></script>
 
     <meta name="mobile-web-app-capable" content="yes">
 </body>
