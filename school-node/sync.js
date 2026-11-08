@@ -13,6 +13,7 @@ import { createReactionStore } from './reactions.js';
 import { createEvaluationStore } from './evaluations.js';
 import { restStoreFor } from './rest/store.js';
 import { createPhotos } from './rest/photos.js';
+import { createMediaSigner } from './media-sign.js';
 import { restPush, applyRestPull } from './rest/sync.js';
 import { SCHEMA as REST_SCHEMA } from './rest/schema.js';
 import { createContentStore } from './content-upload.js';
@@ -83,7 +84,7 @@ export async function runSync(db, config, log = console.log, onStage = () => {})
   onStage('Descargando fotos de perfil');
   // Fotos de perfil de estudiantes y docentes: sin internet no cargarían desde la nube.
   try {
-    const photos = await createPhotos({ db, dir: path.join(config.dataDir, 'photos') }).sync(restStoreFor(db, REST_SCHEMA), { log });
+    const photos = await createPhotos({ db, dir: path.join(config.dataDir, 'photos') }).sync(restStoreFor(db, REST_SCHEMA), { log, signer: createMediaSigner({ cloudUrl: config.cloudUrl, nodeToken: config.nodeToken }) });
     if (photos.downloaded) log(`🖼️  Fotos de perfil: ${photos.downloaded} descargadas.`);
   } catch (e) {
     log('⚠️ Fotos de perfil: no se pudo intentar la descarga:', e.message);

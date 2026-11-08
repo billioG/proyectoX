@@ -1,17 +1,35 @@
 // Cableado al navegador de los medios privados (ver private-media-core.js): cada <img>, <video>, <audio>, <source>, <iframe> y <a> que apunte a la dirección pública
-// de un bucket privado se cambia por una dirección firmada en cuanto aparece en la página. No hace falta tocar las ~60 plantillas que muestran fotos y videos.
-// No actúa en el servidor escolar (el nodo sirve sus propios archivos y no tiene sesión de Supabase) ni sin sesión iniciada.
+// de un bucket privado se cambia, en cuanto aparece en la página, por:
+//   * en la nube: una dirección firmada que vence (la firma el propio navegador con su sesión);
+//   * en el servidor escolar: /node-media?u=..., una ruta del nodo que consigue la firma con el token del nodo y redirige (solo funciona con internet; la foto ya
+//     descargada al nodo se sirve local, ver school-node/rest/photos.js).
+// No hace falta tocar las ~60 plantillas que muestran fotos y videos.
 import { createMediaResolver, parsePrivateUrl } from './private-media-core.js';
 
 const ATTRS = { IMG: 'src', VIDEO: 'src', AUDIO: 'src', SOURCE: 'src', IFRAME: 'src', A: 'href' };
 let resolver = null;
 
+const isNode = () => !!window.QUETZAL_NODE;
+
+function nodeCloudOrigin() {
+  try { return new URL(window.QUETZAL_NODE.storage_base).origin; } catch { return null; }
+}
+
 function enabled() {
-  return !window.QUETZAL_NODE && !!window._supabase?.storage && !!window.SUPABASE_URL;
+  if (isNode()) return !!nodeCloudOrigin();
+  return !!window._supabase?.storage && !!window.SUPABASE_URL;
 }
 
 function getResolver() {
   if (resolver) return resolver;
+  if (isNode()) {
+    const origin = nodeCloudOrigin();
+    resolver = {
+      parse: (url) => parsePrivateUrl(url, origin),
+      resolve: async (url) => (parsePrivateUrl(url, origin) ? `/node-media?u=${encodeURIComponent(String(url).trim())}` : url),
+    };
+    return resolver;
+  }
   resolver = createMediaResolver({
     supabaseUrl: window.SUPABASE_URL,
     sign: async (bucket, paths, opts) => {
@@ -56,7 +74,10 @@ window.resolveMediaUrl = async function resolveMediaUrl(url) {
   if (!enabled()) return url;
   try { return await getResolver().resolve(url); } catch { return url; }
 };
-window.isPrivateMediaUrl = (url) => !!(window.SUPABASE_URL && parsePrivateUrl(url, window.SUPABASE_URL));
+window.isPrivateMediaUrl = (url) => {
+  const base = isNode() ? nodeCloudOrigin() : window.SUPABASE_URL;
+  return !!(base && parsePrivateUrl(url, base));
+};
 
 function start() {
   if (!enabled()) return;
@@ -69,9 +90,9 @@ function start() {
   }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['src', 'href'] });
 }
 
-// Los datos de Supabase llegan cuando termina el arranque de la app; se espera a que exista el cliente.
+// En la nube, los datos de Supabase llegan cuando termina el arranque de la app; se espera a que exista el cliente. En el nodo, /node-config.js ya definió QUETZAL_NODE.
 let tries = 0;
 const wait = setInterval(() => {
-  if (window._supabase?.storage && window.SUPABASE_URL) { clearInterval(wait); start(); }
-  else if (++tries > 120 || window.QUETZAL_NODE) clearInterval(wait);
+  if (enabled()) { clearInterval(wait); start(); }
+  else if (++tries > 120) clearInterval(wait);
 }, 500);

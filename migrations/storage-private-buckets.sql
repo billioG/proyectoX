@@ -9,8 +9,8 @@
 -- Qué NO cambia: las direcciones que la app guardó en la base (siguen siendo las de siempre; se firman al mostrarlas). El bucket de cursos (course-content) sigue público:
 -- es material educativo del docente, no contenido de menores.
 --
--- Límite conocido: el servidor escolar (Raspberry) muestra las fotos y videos de la nube con la dirección pública guardada y no firma. Con estos buckets privados,
--- las fotos de OTROS alumnos que vengan de la nube dejan de verse en el nodo (las que se subieron en el propio nodo se siguen sirviendo desde el nodo).
+-- Servidor escolar (Raspberry): no tiene la llave de la nube, así que pide las firmas a la función node-sync (acción sign_media). ANTES de aplicar este paso hay que haber
+-- redesplegado node-sync (index.ts y media.ts) y actualizado cada nodo a la v1.0.247 o posterior; si no, los nodos no podrán bajar fotos nuevas.
 --
 -- Seguro de re-ejecutar. Pegar completo en el SQL Editor de Supabase.
 -- ============================================================

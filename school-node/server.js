@@ -32,6 +32,7 @@ import { createWifi, createNmcliRunner } from './wifi.js';
 import { checkInternet, createConnectivity } from './connectivity.js';
 import { createRemoteSync } from './remote-sync.js';
 import { createSelfUpdate } from './self-update.js';
+import { createMediaSigner, isPrivateCloudUrl } from './media-sign.js';
 import { wifiPageHtml } from './wifi-page.js';
 
 const NODE_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -118,6 +119,8 @@ const contentStore = createContentStore({ db, dir: CONTENT_DIR });
 const storageHandler = createStorageHandler({ store: contentStore, auth: restLayer.auth });
 const profilePhotoHandler = createProfilePhotoHandler({ store: profilePhotoStore, auth: restLayer.auth });
 const projectFilesHandler = createProjectFilesHandler({ store: projectFiles, auth: restLayer.auth, reserveBytes: (projectLimits.minFreeDiskMB ?? 2048) * 1024 * 1024 });
+// Fotos, videos y adjuntos de la nube en buckets privados: se piden firmados a node-sync (ver media-sign.js).
+const mediaSigner = createMediaSigner({ cloudUrl: config.cloudUrl, nodeToken: config.nodeToken });
 const photosStore = createPhotos({ db, dir: path.resolve(config.dataDir, 'photos') });
 const teacherStore = createTeacherStore(db, { hashPin: (pin, salt) => hashPin(pin, salt), verifySetupCode: (code) => verifyTeacherCode(code) });
 projectStore.cleanup(); // borradores huérfanos de una subida cortada por un reinicio o un apagón
@@ -872,6 +875,15 @@ const server = http.createServer(async (req, res) => {
       if (!rel) { res.writeHead(404); return res.end('No encontrado'); }
       if (!storageFile) return serveScormEntry(res, rel, req.headers.host);
       return serveFile(req, res, CONTENT_DIR, rel);
+    }
+    // Un video o una foto de la nube que se ve en el nodo: el navegador pide /node-media?u=<dirección pública>; si hay internet, el nodo consigue la dirección firmada y lo redirige.
+    if (url.pathname === '/node-media') {
+      const target = url.searchParams.get('u') || '';
+      if (!isPrivateCloudUrl(target, config.cloudUrl)) { res.writeHead(404); return res.end('No encontrado'); }
+      const signed = hasToken() ? await mediaSigner.signOne(target) : null;
+      if (!signed) { res.writeHead(502, { 'Cache-Control': 'no-store' }); return res.end('Sin conexión con la nube'); }
+      res.writeHead(302, { Location: signed, 'Cache-Control': 'no-store' });
+      return res.end();
     }
     const photoName = /^\/photos\/([^/]+)$/.exec(url.pathname)?.[1];
     if (photoName) {

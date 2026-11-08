@@ -295,7 +295,7 @@ antes y después; y `auth.uid()` envuelto sin cambiar lo que ve cada rol.
 **Límites, dichos con franqueza:**
 
 - Quien tiene sesión (cualquier estudiante o docente) puede listar y firmar los archivos de esos buckets; es lo que permite ver las fotos de los compañeros y los proyectos del feed. Se cerró lo anónimo, no lo interno. Restringir por clase exigiría cambiar cómo se nombran los archivos.
-- **Servidor escolar:** no tiene sesión de Supabase y no firma. Con el paso 2, las fotos de otros alumnos que vengan de la nube dejan de verse en la Raspberry; las subidas en el propio nodo se siguen sirviendo desde él.
+- **Servidor escolar:** no tiene la llave de la nube ni sesión de Supabase. Desde la v1.0.247 pide las firmas a `node-sync` (acción `sign_media`: solo archivos de la escuela del nodo, 40 por pedido, 2 h): descarga las fotos de perfil firmadas para guardarlas en el nodo, y la ruta `/node-media` redirige al navegador de la red local a la dirección firmada cuando hay internet (videos de proyectos, adjuntos). Sin internet siguen viéndose las fotos ya descargadas; los videos de la nube necesitan internet, como antes. **Hay que redesplegar `node-sync` (`index.ts` y `media.ts`) y actualizar cada nodo** (`install.sh --update` o el botón «Actualizar servidores»).
 - El bucket `course-content` (cursos del docente) sigue público a propósito: no es contenido de menores, y los cursos se ven sin internet.
 - Una dirección firmada que alguien copie sirve hasta que venza (2 h).
 - Nada de esto se probó contra tu Supabase real; el paso 2 trae su «Deshacer».

@@ -35,16 +35,18 @@ export function createPhotos({ db, dir }) {
     },
 
     /** Baja las fotos que faltan de estudiantes y docentes de la réplica. Un fallo no detiene nada: se reintenta en la próxima. */
-    async sync(store, { fetchFn = fetch, log = () => {}, max = 300 } = {}) {
+    async sync(store, { fetchFn = fetch, log = () => {}, max = 300, signer = null } = {}) {
       const have = cached();
       const urls = new Set();
       for (const t of ['students', 'teachers']) for (const r of store.all(t)) if (typeof r.profile_photo_url === 'string' && r.profile_photo_url.startsWith('https://')) urls.add(r.profile_photo_url);
       let downloaded = 0, failed = 0;
       fs.mkdirSync(dir, { recursive: true });
-      for (const url of [...urls].slice(0, max)) {
-        if (have.has(url) || !fromProject(url)) continue;
+      const missing = [...urls].slice(0, max).filter((url) => !have.has(url) && fromProject(url));
+      // Con el bucket privado la dirección pública ya no abre: se piden las firmadas a node-sync. Si no hay firmador, o no devolvió una, se intenta la pública (bucket aún público).
+      const signed = signer && missing.length ? await signer.sign(missing).catch(() => ({})) : {};
+      for (const url of missing) {
         try {
-          const res = await fetchFn(url, { signal: AbortSignal.timeout(15000) });
+          const res = await fetchFn(signed[url] || url, { signal: AbortSignal.timeout(15000) });
           const ext = TYPES[String(res.headers.get('content-type') || '').split(';')[0].trim().toLowerCase()];
           if (!res.ok || !ext) throw new Error('no es una imagen');
           if (Number(res.headers.get('content-length')) > MAX_BYTES) throw new Error('demasiado pesada');

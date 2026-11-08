@@ -28,6 +28,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { buildFeedProjects, FEED_LIMIT, nextRoles, validateProjectPush, validateUploadRequest } from './projects.ts';
 import { computeStudentXp, validateXpEvent } from './xp.ts';
 import { validateReactionEvent } from './validators.ts';
+import { MEDIA_TTL_SECONDS, validateSignRequest } from './media.ts';
 import { buildTeacherList, shapeEvaluations, validateEvaluationEvent } from './evaluations.ts';
 import { buildClassVerifiers, buildTeacherLogins, pullTables } from './tables.ts';
 import { validatePracticeEvent } from './validators.ts';
@@ -206,6 +207,43 @@ Deno.serve(async (req) => {
     const { data, error } = await admin.storage.from(PROFILE_PHOTO_BUCKET).createSignedUploadUrl(v.path, { upsert: true });
     if (error || !data) return reply({ error: `No se pudo preparar la subida: ${error?.message || 'sin respuesta'}` }, 500);
     return reply({ path: v.path, signed_url: data.signedUrl });
+  }
+
+  // Fotos, videos y adjuntos en buckets PRIVADOS: el nodo no tiene la llave de la nube, así que pide aquí una dirección firmada (2 h) por cada archivo que necesita.
+  // Solo se firma lo que es de la escuela de este nodo: el dueño (estudiante de la escuela o docente asignado) sale de la ruta o, en los videos de proyectos, de la tabla
+  // projects. Reglas puras en media.ts. Devuelve { signed: { <dirección pública>: <dirección firmada> } }; lo que no se puede firmar, simplemente no aparece.
+  if (!usb && body?.action === 'sign_media') {
+    const v = validateSignRequest(body, SUPABASE_URL);
+    if (!v.ok) return reply({ error: v.error }, 400);
+    const authorOf = new Map<string, string>();
+    const projectUrls = v.refs.filter((r) => r.owner.kind === 'project').map((r) => r.url);
+    if (projectUrls.length) {
+      const { data: rows } = await admin.from('projects').select('video_url, user_id').in('video_url', projectUrls);
+      for (const r of rows || []) authorOf.set(String(r.video_url), String(r.user_id).toLowerCase());
+    }
+    const ownerOf = (r: typeof v.refs[number]): string | null => (r.owner.kind === 'user' ? r.owner.id : authorOf.get(r.url) ?? null);
+    const ids = [...new Set(v.refs.map(ownerOf).filter((x): x is string => !!x))];
+    const members = new Set<string>();
+    if (ids.length) {
+      const { data: sts } = await admin.from('students').select('id').in('id', ids).eq('school_code', node.school_code);
+      for (const s of sts || []) members.add(String(s.id).toLowerCase());
+      const rest = ids.filter((id) => !members.has(id));
+      if (rest.length) {
+        const { data: tas } = await admin.from('teacher_assignments').select('teacher_id').in('teacher_id', rest).eq('school_code', node.school_code);
+        for (const t of tas || []) members.add(String(t.teacher_id).toLowerCase());
+      }
+    }
+    const allowed = v.refs.filter((r) => { const o = ownerOf(r); return !!o && members.has(o); });
+    const signed: Record<string, string> = {};
+    for (const bucket of [...new Set(allowed.map((r) => r.bucket))]) {
+      const refs = allowed.filter((r) => r.bucket === bucket);
+      const { data } = await admin.storage.from(bucket).createSignedUrls(refs.map((r) => r.path), MEDIA_TTL_SECONDS);
+      for (const item of data || []) {
+        const ref = refs.find((r) => r.path === item.path);
+        if (ref && item.signedUrl) signed[ref.url] = item.signedUrl;
+      }
+    }
+    return reply({ signed });
   }
 
   try {
