@@ -75,7 +75,7 @@ function generateVisualCertificate(type, name) {
                 <h1 class="text-5xl font-black text-slate-900 mb-8 tracking-tighter uppercase">STEEAM Quetzal LMS</h1>
                 
                 <p class="text-lg text-slate-600 mb-6 italic">Se otorga con honor el presente reconocimiento a:</p>
-                <h2 class="text-4xl font-black border-b-4 border-slate-900 pb-2 inline-block px-10 mb-8 uppercase tracking-tighter">${name}</h2>
+                <h2 class="text-4xl font-black border-b-4 border-slate-900 pb-2 inline-block px-10 mb-8 uppercase tracking-tighter">${window.sanitizeInput(name)}</h2>
                 
                 <p class="text-lg text-slate-600 leading-relaxed max-w-xl mx-auto mb-10">
                     Por su destacado compromiso, liderazgo y resultados excepcionales en el ecosistema de educación tecnológica durante el ciclo 2026, alcanzando el grado de <br>

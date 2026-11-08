@@ -187,7 +187,7 @@ function renderTeacherPerformanceHTML(container, data, kpis, opts = {}) {
                         <summary class="list-none cursor-pointer p-4 flex items-center gap-4 flex-wrap hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
                             <i class="fas fa-chevron-right text-slate-300 dark:text-slate-600 text-xs transition-transform group-open/row:rotate-90 shrink-0"></i>
                             <div class="w-11 h-11 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
-                                ${t.profile_photo_url ? `<img src="${t.profile_photo_url}" class="w-full h-full object-cover">` : '<i class="fas fa-user-tie text-slate-400"></i>'}
+                                ${t.profile_photo_url ? `<img src="${window.safeUrl(t.profile_photo_url)}" class="w-full h-full object-cover">` : '<i class="fas fa-user-tie text-slate-400"></i>'}
                             </div>
                             <div class="flex-1 min-w-[160px]">
                                 <div class="font-bold text-sm text-slate-800 dark:text-white">${sanitizeInput(t.full_name)}</div>

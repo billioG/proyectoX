@@ -517,7 +517,7 @@ function displayStudentsPreview(students) {
                 <td class="px-6 py-4">
                     <div class="flex items-center gap-2 mb-1">
                         <i class="fas fa-user text-xs text-slate-300"></i>
-                        <span class="text-xs font-mono font-bold text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded">${s.username}</span>
+                        <span class="text-xs font-mono font-bold text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded">${window.sanitizeInput(s.username)}</span>
                     </div>
                 </td>
                 <td class="px-6 py-4">

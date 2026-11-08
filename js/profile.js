@@ -71,7 +71,7 @@ window.renderStudentProfileUI = function renderStudentProfileUI(container, stude
     <div class="flex flex-col md:flex-row gap-8 mb-12 items-center text-center md:text-left animate-slideUp">
         <div class="relative group">
             <div class="w-32 h-32 rounded-[2rem] bg-indigo-50 dark:bg-slate-800 flex items-center justify-center text-5xl shadow-xl border-4 border-white dark:border-slate-900 group-hover:rotate-3 transition-transform duration-500 overflow-hidden ring-1 ring-slate-100 dark:ring-slate-800">
-                ${student.profile_photo_url ? `<img src="${student.profile_photo_url}" class="w-full h-full object-cover">` : '<i class="fas fa-graduation-cap"></i>'}
+                ${student.profile_photo_url ? `<img src="${window.safeUrl(student.profile_photo_url)}" class="w-full h-full object-cover">` : '<i class="fas fa-graduation-cap"></i>'}
             </div>
             <button onclick="window.openUploadPhotoModal()" class="absolute -bottom-2 -right-2 w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center shadow-lg transform hover:scale-110 transition-all border-2 border-white dark:border-slate-900">
                 <i class="fas fa-camera text-sm"></i>
@@ -85,7 +85,7 @@ window.renderStudentProfileUI = function renderStudentProfileUI(container, stude
             <h2 class="text-4xl font-bold text-slate-800 dark:text-white tracking-tight leading-none mb-2">${sanitizeInput(student.full_name || 'Nombre Estudiante')}</h2>
             <div class="flex items-center justify-center md:justify-start gap-2 text-xs font-semibold text-slate-400 uppercase tracking-widest">
                 <i class="fas fa-id-card text-primary text-sm opacity-50"></i>
-                <span class="opacity-80">ID: ${student.username || 'N/A'}</span>
+                <span class="opacity-80">ID: ${window.sanitizeInput(student.username || 'N/A')}</span>
             </div>
         </div>
         <div class="flex gap-2">
@@ -287,7 +287,7 @@ window.renderTeacherProfileUI = function renderTeacherProfileUI(container, teach
     container.innerHTML = `
     <div class="flex flex-col md:flex-row gap-8 mb-10 items-center text-center md:text-left">
         <div class="w-32 h-32 rounded-3xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center text-5xl shadow-inner border border-indigo-500/20 shrink-0 overflow-hidden">
-            ${teacher.profile_photo_url ? `<img src="${teacher.profile_photo_url}" class="w-full h-full object-cover">` : '<i class="fas fa-chalkboard-user"></i>‍<i class="fas fa-school"></i>'}
+            ${teacher.profile_photo_url ? `<img src="${window.safeUrl(teacher.profile_photo_url)}" class="w-full h-full object-cover">` : '<i class="fas fa-chalkboard-user"></i>‍<i class="fas fa-school"></i>'}
         </div>
         <div class="grow">
             <h2 class="text-4xl font-bold text-slate-800 dark:text-white tracking-tight">${window.sanitizeInput(teacher.full_name)}</h2>
@@ -299,7 +299,7 @@ window.renderTeacherProfileUI = function renderTeacherProfileUI(container, teach
         </div>
         <div class="flex gap-3">
             <button onclick="window.openUploadPhotoModal()" class="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:text-primary transition-colors"><i class="fas fa-camera text-xl"></i></button>
-            <button onclick="window.openEditTeacherContactModal('${teacher.phone || ''}', '${teacher.birth_date || ''}')" class="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:text-primary transition-colors" title="Editar teléfono y fecha de nacimiento"><i class="fas fa-id-card text-xl"></i></button>
+            <button onclick="window.openEditTeacherContactModal('${String(teacher.phone || '').replace(/[^0-9+\-\s()]/g, '')}', '${String(teacher.birth_date || '').replace(/[^0-9-]/g, '')}')" class="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:text-primary transition-colors" title="Editar teléfono y fecha de nacimiento"><i class="fas fa-id-card text-xl"></i></button>
             <button onclick="window.openChangePasswordModal(true)" class="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:text-primary transition-colors" title="Cambiar contraseña"><i class="fas fa-key text-xl"></i></button>
             <button onclick="window.startOnboardingTour && window.startOnboardingTour()" class="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:text-primary transition-colors" title="Ver tutorial"><i class="fas fa-map-signs text-xl"></i></button>
             <a href="privacidad.html" target="_blank" rel="noopener" class="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:text-primary transition-colors" title="Política de privacidad" aria-label="Política de privacidad"><i class="fas fa-shield-halved text-xl"></i></a>

@@ -200,7 +200,7 @@ window.renderEvalDashboard = function renderEvalDashboard(container, stats) {
         return `
                                 <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
                                     <td class="px-6 py-4">
-                                        <div class="text-sm font-bold text-slate-800 dark:text-white">${school.name}</div>
+                                        <div class="text-sm font-bold text-slate-800 dark:text-white">${window.sanitizeInput(school.name)}</div>
                                     </td>
                                     <td class="px-6 py-4 text-center">
                                        <div class="flex flex-col items-center justify-center">

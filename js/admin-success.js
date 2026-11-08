@@ -772,7 +772,7 @@ window.renderExecutiveReportView = function renderExecutiveReportView(container,
                             <h4 class="text-[0.6rem] font-black uppercase text-rose-500 tracking-[0.2em] mb-4 flex items-center gap-2">
                                 <i class="fas fa-heart"></i> Nota de Customer Success
                             </h4>
-                             <p id="cs-ai-note" class="text-white text-lg font-medium italic leading-relaxed">"${dynamicData.note}"</p>
+                             <p id="cs-ai-note" class="text-white text-lg font-medium italic leading-relaxed">"${window.sanitizeInput(dynamicData.note)}"</p>
                         </div>
                      </div>
 

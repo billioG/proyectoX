@@ -2,7 +2,7 @@
 // SERVICE WORKER - PROJECTX PWA
 // ================================================
 
-const CACHE_NAME = 'projectx-v1.0.244';
+const CACHE_NAME = 'projectx-v1.0.245';
 // Caché de archivos de lecciones (video/PDF/imagen/paquetes SCORM-H5P) --
 // separada de CACHE_NAME a propósito: CACHE_NAME se recrea y se BORRA
 // entera en cada deploy (bump de versión) para forzar JS/CSS frescos, pero
@@ -64,7 +64,7 @@ const EAGER_MODULES = [
   'js/student-presence.js', 'js/students.js', 'js/schools.js', 'js/ranking.js', 'js/bonus-system.js',
   'js/admin-success.js', 'js/evaluation.js', 'js/admin-evaluations.js',
   'js/attendance.js', 'js/groups.js', 'js/gamification.js', 'js/profile.js',
-  'js/feed-ui.js', 'js/utils.js', 'js/query-cache.js', 'js/help-messages.js', 'js/qrcode.min.js',
+  'js/feed-ui.js', 'js/utils.js', 'js/safe-html.js', 'js/query-cache.js', 'js/help-messages.js', 'js/qrcode.min.js',
 ];
 
 const urlsToCache = [

@@ -343,7 +343,7 @@ window.renderStudentsAttendanceList = function renderStudentsAttendanceList(cont
                         </div>
                         <div class="grow min-w-0">
                             <p class="text-[0.7rem] font-black text-slate-800 dark:text-white truncate leading-none mb-1">${sanitizeInput(s.full_name)}</p>
-                            <p class="text-[0.5rem] font-bold text-slate-400 uppercase tracking-widest">@${s.username}</p>
+                            <p class="text-[0.5rem] font-bold text-slate-400 uppercase tracking-widest">@${window.sanitizeInput(s.username)}</p>
                         </div>
                     </div>
                 `;

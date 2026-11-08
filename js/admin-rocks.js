@@ -152,7 +152,7 @@ function renderMonthCard(monthName, monthNumber, rocks) {
                     ${activeRocks.map(rock => `
                         <div class="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
                             <div class="flex items-start justify-between gap-2 mb-2">
-                                <h4 class="text-sm font-bold text-slate-800 dark:text-white flex-1 leading-tight">${rock.name}</h4>
+                                <h4 class="text-sm font-bold text-slate-800 dark:text-white flex-1 leading-tight">${window.sanitizeInput(rock.name)}</h4>
                                 <button onclick="window.editRock('${rock.id}')" class="text-slate-400 hover:text-primary transition-colors p-1">
                                     <i class="fas fa-edit text-xs"></i>
                                 </button>
@@ -221,7 +221,7 @@ window.openCreateRockModal = function (preselectedMonth = null, rockToEdit = nul
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="md:col-span-2">
                         <label class="text-[0.65rem] font-black uppercase text-slate-400 tracking-widest block mb-2">Nombre *</label>
-                        <input type="text" id="rock-name" required value="${rockToEdit?.name || ''}"
+                        <input type="text" id="rock-name" required value="${window.sanitizeAttr(rockToEdit?.name || '')}"
                                class="w-full px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white focus:border-primary transition-all">
                     </div>
                     <div class="md:col-span-2">

@@ -35,6 +35,15 @@ test('el index.html del nodo ya no pide nada a un CDN (salvo PDF.js)', () => {
   assert.deepEqual(loader.filter(u => !allowed(u)), [], 'librerías del cargador que siguen pidiéndose a internet');
 });
 
+test('la CSP que entrega el nodo no menciona ningún CDN, pero conserva el resto de sus cierres', () => {
+  const csp = /http-equiv="Content-Security-Policy" content="([^"]+)"/.exec(localizeIndexHtml(html))?.[1];
+  assert.ok(csp, 'el nodo entrega index.html con CSP');
+  assert.doesNotMatch(csp, /jsdelivr|cdnjs|googleapis|gstatic/);
+  assert.match(csp, /script-src 'self' 'unsafe-inline';/);
+  assert.match(csp, /object-src 'none'/);
+  assert.match(csp, /base-uri 'self'/);
+});
+
 test('supabase-js se carga desde el propio nodo, y sin las conexiones tempranas a CDN', () => {
   const out = localizeIndexHtml(html);
   assert.match(out, /<script defer src="vendor\/cdn\/supabase-js-2\.118\.0\.js"><\/script>/);

@@ -4,6 +4,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Política de contenido (CSP). Conservadora a propósito: la app usa manejadores onclick="..." en línea, así que scripts y estilos en línea
+         siguen permitidos; lo que SÍ cierra es: plugins (object), <base> y formularios hacia otros sitios, y scripts de cualquier sitio que no sea
+         la app o sus dos CDN (jsDelivr y cdnjs). Las conexiones y las imágenes no se limitan porque la app habla con Supabase, la Raspberry de la
+         escuela (http en la red local) y recursos de cursos de cualquier sitio. Detalle y límites: docs/SEGURIDAD_2026-11.md. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; img-src 'self' data: blob: https: http:; media-src 'self' blob: https: http:; connect-src 'self' https: wss: http: ws: blob: data:; frame-src 'self' https: http: blob:; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
     <title>Quetzal LMS | Plataforma Educativa con Gamificación para Escuelas en Guatemala</title>
     <meta name="description"
         content="Quetzal LMS es un sistema de gestión de aprendizaje (LMS) para escuelas en Guatemala: cursos, evaluación de proyectos, retos 1v1 y gamificación para motivar a tus estudiantes.">
@@ -73,7 +78,7 @@
          index.html pero el navegador puede seguir sirviendo desde caché HTTP
          una versión vieja de un módulo lazy-loaded (ej. pdf-processor.js),
          aunque el tag de versión visible ya muestre la última. -->
-    <script>window.APP_VERSION = 'v1.0.244';</script>
+    <script>window.APP_VERSION = 'v1.0.245';</script>
 
     <!-- Silenciar console.log/info/debug en producción (activar con localStorage.PX_DEBUG='true').
          Va antes de todo lo demás porque los console.log de cada módulo corren
@@ -678,7 +683,7 @@
                     <img id="login-brand-logo" class="hidden w-14 h-14 rounded-2xl object-contain bg-white shrink-0" alt="Logo del colegio">
                     <span id="login-brand-name">Quetzal <span class="text-primary-dark dark:text-primary">LMS</span></span>
                 </div>
-                <span id="app-version-tag" class="text-[0.65rem] text-slate-500 dark:text-slate-400 font-medium mt-1">v1.0.244</span>
+                <span id="app-version-tag" class="text-[0.65rem] text-slate-500 dark:text-slate-400 font-medium mt-1">v1.0.245</span>
                 <span class="text-[0.65rem] text-slate-400 font-medium mt-0.5">Hecho por Yo Aprendo</span>
             </div>
 
@@ -741,7 +746,7 @@
                     <div id="brand-name" class="text-2xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent transform hover:scale-105 transition-transform leading-none truncate">
                         Quetzal LMS
                     </div>
-                    <span class="text-[0.6rem] text-slate-400 font-medium mt-0.5 truncate"><span id="brand-credit" class="hidden">Hecho por Yo Aprendo · Quetzal LMS · </span>v1.0.244</span>
+                    <span class="text-[0.6rem] text-slate-400 font-medium mt-0.5 truncate"><span id="brand-credit" class="hidden">Hecho por Yo Aprendo · Quetzal LMS · </span>v1.0.245</span>
                 </div>
             </div>
 
@@ -1424,7 +1429,7 @@
     <!-- Librerías externas: confetti, QR, PDF, JSZip y driver.js se cargan con loadLib() (ver <head>). -->
 
     <!-- Punto de Entrada del Sistema -->
-    <script type="module" src="js/app.js?v=1.0.244"></script>
+    <script type="module" src="js/app.js?v=1.0.245"></script>
 
     <meta name="mobile-web-app-capable" content="yes">
 </body>

@@ -146,11 +146,11 @@ window.renderTeacherCard = function renderTeacherCard(t, sanitizeInput) {
               ? `<div class="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-900/10 text-emerald-600 dark:text-emerald-400 text-[0.6rem] font-bold uppercase tracking-widest border border-emerald-500/10 flex items-center gap-1"><i class="fas fa-circle text-[0.4rem]"></i> ACTIVO</div>`
               : `<div class="px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-900/10 text-amber-600 dark:text-amber-400 text-[0.6rem] font-bold uppercase tracking-widest border border-amber-500/10 flex items-center gap-1"><i class="fas fa-circle text-[0.4rem]"></i> INACTIVO</div>`;
             return `
-            <div class="teacher-card glass-card p-0 overflow-hidden hover:translate-y-[-4px] transition-all group" data-name="${t.full_name.toLowerCase()}" data-email="${t.email.toLowerCase()}">
+            <div class="teacher-card glass-card p-0 overflow-hidden hover:translate-y-[-4px] transition-all group" data-name="${window.sanitizeAttr(t.full_name.toLowerCase())}" data-email="${window.sanitizeAttr(t.email.toLowerCase())}">
                 <div class="p-6 relative">
                     <div class="flex justify-between items-start mb-4">
                         <div class="w-16 h-16 rounded-2xl bg-slate-50 dark:bg-slate-800 overflow-hidden shadow-sm border border-slate-100 dark:border-slate-700">
-                             ${t.profile_photo_url ? `<img src="${t.profile_photo_url}" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center text-slate-300 text-2xl"><i class="fas fa-user"></i></div>`}
+                             ${t.profile_photo_url ? `<img src="${window.safeUrl(t.profile_photo_url)}" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center text-slate-300 text-2xl"><i class="fas fa-user"></i></div>`}
                         </div>
                         <div class="flex flex-col items-end gap-1">
                              ${statusBadge}
@@ -951,12 +951,12 @@ window.editTeacher = async function editTeacher(teacherId) {
 
           <div>
             <label class="text-[0.7rem] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Email (No editable)</label>
-            <input type="email" id="edit-teacher-email" class="input-field-tw opacity-50 cursor-not-allowed bg-slate-100 dark:bg-slate-800" value="${teacher.email}" readonly>
+            <input type="email" id="edit-teacher-email" class="input-field-tw opacity-50 cursor-not-allowed bg-slate-100 dark:bg-slate-800" value="${window.sanitizeAttr(teacher.email)}" readonly>
           </div>
 
           <div>
             <label class="text-[0.7rem] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Teléfono</label>
-            <input type="tel" id="edit-teacher-phone" class="input-field-tw" value="${teacher.phone || ''}" placeholder="1234-5678">
+            <input type="tel" id="edit-teacher-phone" class="input-field-tw" value="${window.sanitizeAttr(teacher.phone || '')}" placeholder="1234-5678">
           </div>
 
           <div>

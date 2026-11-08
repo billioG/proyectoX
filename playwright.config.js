@@ -10,6 +10,9 @@ module.exports = defineConfig({
   use: {
     baseURL: 'http://localhost:8080',
     locale: 'es-GT',
+    // Las esperas page.waitForFunction de Playwright evalúan texto como código y la CSP de la app (sin 'unsafe-eval') las bloquea: se salta la CSP
+    // en las pruebas en general. tests/csp.spec.js la vuelve a activar para comprobar que la app no viola su propia política.
+    bypassCSP: true,
   },
   // PW_CHANNEL=chrome usa el Chrome instalado en la computadora (útil en
   // Windows si el navegador que descarga Playwright no puede abrirse).

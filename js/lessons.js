@@ -817,11 +817,11 @@ window.previewCourseResource = function previewCourseResource(lessonId) {
     const ytMatch = lesson.content_url?.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([a-zA-Z0-9_-]{6,})/);
     mediaHtml = ytMatch
       ? `<iframe class="w-full aspect-video rounded-xl" src="https://www.youtube.com/embed/${ytMatch[1]}" frameborder="0" allowfullscreen></iframe>`
-      : `<video class="w-full rounded-xl" src="${lesson.content_url}" controls></video>`;
+      : `<video class="w-full rounded-xl" src="${window.safeUrl(lesson.content_url)}" controls></video>`;
   } else if (lesson.content_type === 'pdf') {
-    mediaHtml = `<iframe class="w-full h-[60vh] rounded-xl border border-slate-200 dark:border-slate-700" src="${lesson.content_url}"></iframe>`;
+    mediaHtml = `<iframe class="w-full h-[60vh] rounded-xl border border-slate-200 dark:border-slate-700" src="${window.safeUrl(lesson.content_url)}"></iframe>`;
   } else if (lesson.content_type === 'image') {
-    mediaHtml = `<img src="${lesson.content_url}" class="w-full rounded-xl">`;
+    mediaHtml = `<img src="${window.safeUrl(lesson.content_url)}" class="w-full rounded-xl">`;
   } else if (lesson.content_type === 'tinkercad') {
     // Tinkercad manda X-Frame-Options: sameorigin en casi todas sus páginas
     // (solo el link especial de "Insertar" a veces lo evita, y es difícil
@@ -832,7 +832,7 @@ window.previewCourseResource = function previewCourseResource(lessonId) {
       <div class="w-full rounded-xl border border-slate-200 dark:border-slate-700 p-10 flex flex-col items-center gap-4 text-center">
         <i class="fas fa-microchip text-4xl text-primary"></i>
         <p class="text-sm text-slate-500 dark:text-slate-400">Este recurso abre el diseño de Tinkercad en una pestaña nueva.</p>
-        <a href="${lesson.content_url}" target="_blank" rel="noopener" class="btn-primary-tw h-11 px-6 text-xs uppercase font-bold"><i class="fas fa-up-right-from-square"></i> Abrir en Tinkercad</a>
+        <a href="${window.safeUrl(lesson.content_url)}" target="_blank" rel="noopener" class="btn-primary-tw h-11 px-6 text-xs uppercase font-bold"><i class="fas fa-up-right-from-square"></i> Abrir en Tinkercad</a>
       </div>`;
   } else if (lesson.content_type === 'scorm' || lesson.content_type === 'html5') {
     // Ver comentario en selectCourseResource() -- srcdoc en vez de src=""
@@ -2464,11 +2464,11 @@ window.selectCourseResource = function selectCourseResource(index) {
     const ytMatch = lesson.content_url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([a-zA-Z0-9_-]{6,})/);
     mediaHtml = ytMatch
       ? `<iframe class="w-full aspect-video rounded-xl" src="https://www.youtube.com/embed/${ytMatch[1]}" frameborder="0" allowfullscreen></iframe>`
-      : `<video class="w-full rounded-xl" src="${lesson.content_url}" controls></video>`;
+      : `<video class="w-full rounded-xl" src="${window.safeUrl(lesson.content_url)}" controls></video>`;
   } else if (lesson.content_type === 'pdf') {
-    mediaHtml = `<iframe class="w-full h-[60vh] rounded-xl border border-slate-200 dark:border-slate-700" src="${lesson.content_url}"></iframe>`;
+    mediaHtml = `<iframe class="w-full h-[60vh] rounded-xl border border-slate-200 dark:border-slate-700" src="${window.safeUrl(lesson.content_url)}"></iframe>`;
   } else if (lesson.content_type === 'image') {
-    mediaHtml = `<img src="${lesson.content_url}" class="w-full rounded-xl">`;
+    mediaHtml = `<img src="${window.safeUrl(lesson.content_url)}" class="w-full rounded-xl">`;
   } else if (lesson.content_type === 'tinkercad') {
     // Tinkercad manda X-Frame-Options: sameorigin en casi todas sus páginas
     // (solo el link especial de "Insertar" a veces lo evita, y es difícil
@@ -2479,7 +2479,7 @@ window.selectCourseResource = function selectCourseResource(index) {
       <div class="w-full rounded-xl border border-slate-200 dark:border-slate-700 p-10 flex flex-col items-center gap-4 text-center">
         <i class="fas fa-microchip text-4xl text-primary"></i>
         <p class="text-sm text-slate-500 dark:text-slate-400">Este recurso abre el diseño de Tinkercad en una pestaña nueva.</p>
-        <a href="${lesson.content_url}" target="_blank" rel="noopener" class="btn-primary-tw h-11 px-6 text-xs uppercase font-bold"><i class="fas fa-up-right-from-square"></i> Abrir en Tinkercad</a>
+        <a href="${window.safeUrl(lesson.content_url)}" target="_blank" rel="noopener" class="btn-primary-tw h-11 px-6 text-xs uppercase font-bold"><i class="fas fa-up-right-from-square"></i> Abrir en Tinkercad</a>
       </div>`;
   } else if (lesson.content_type === 'scorm') {
     // src="" (no srcdoc) hacía una navegación HTTP normal al proxy --
@@ -2576,7 +2576,7 @@ window.buildResourceCommentsHtml = function buildResourceCommentsHtml(comments, 
       <div class="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 text-xs">
         <span class="font-bold ${c.author_role === 'docente' ? 'text-primary' : 'text-slate-600 dark:text-slate-300'}">${sanitizeInput(c.author_name)}${c.author_role === 'docente' ? ' <i class="fas fa-chalkboard-user"></i>' : ''}</span>
         <p class="text-slate-500 dark:text-slate-400 mt-0.5">${sanitizeInput(c.content)}</p>
-        ${c.attachment_url ? `<a href="${c.attachment_url}" target="_blank" rel="noopener" class="block mt-1.5">${/\.(png|jpe?g|gif|webp)$/i.test(c.attachment_url) ? `<img src="${c.attachment_url}" class="max-h-32 rounded-lg border border-slate-200 dark:border-slate-700">` : `<span class="text-[0.65rem] font-bold text-primary"><i class="fas fa-paperclip"></i> Ver archivo adjunto</span>`}</a>` : ''}
+        ${c.attachment_url ? `<a href="${window.safeUrl(c.attachment_url)}" target="_blank" rel="noopener" class="block mt-1.5">${/\.(png|jpe?g|gif|webp)$/i.test(c.attachment_url) ? `<img src="${window.safeUrl(c.attachment_url)}" class="max-h-32 rounded-lg border border-slate-200 dark:border-slate-700">` : `<span class="text-[0.65rem] font-bold text-primary"><i class="fas fa-paperclip"></i> Ver archivo adjunto</span>`}</a>` : ''}
         <div class="flex items-center gap-3 mt-1.5">
           <button class="text-[0.65rem] font-bold ${likedByMe ? 'text-rose-500' : 'text-slate-400 hover:text-rose-400'}" onclick="${fns.likeFn(c.id, likedByMe)}"><i class="fa${likedByMe ? 's' : 'r'} fa-heart"></i>${likes.length ? ' ' + likes.length : ''}</button>
           <button class="text-[0.65rem] font-bold text-slate-400 hover:text-primary" onclick="window.toggleCommentReplyBox('${c.id}')"><i class="fas fa-reply"></i> Responder</button>

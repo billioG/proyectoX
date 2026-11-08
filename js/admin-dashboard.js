@@ -557,7 +557,7 @@ window.showSchoolSatisfactionModal = function () {
                     <tbody class="text-sm">
                         ${rows.map(row => `
                             <tr class="border-b border-slate-50 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                                <td class="py-4 pr-4 font-bold text-slate-800 dark:text-white">${row.name}</td>
+                                <td class="py-4 pr-4 font-bold text-slate-800 dark:text-white">${window.sanitizeInput(row.name)}</td>
                                 <td class="py-4 text-center font-black text-amber-500">${row.avg.toFixed(1)} <i class="fas fa-star text-xs"></i></td>
                                 <td class="py-4 text-center text-slate-500 font-medium">${row.count}</td>
                             </tr>
@@ -742,11 +742,11 @@ window.renderTeacherRow = function renderTeacherRow(t, stats) {
             <td class="px-8 py-5">
                 <div class="flex items-center gap-4">
                     <div class="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 overflow-hidden flex items-center justify-center text-slate-400 group-hover:scale-110 transition-transform">
-                        ${t.profile_photo_url ? `<img src="${t.profile_photo_url}" class="w-full h-full object-cover">` : '<i class="fas fa-user-tie text-xl"></i>'}
+                        ${t.profile_photo_url ? `<img src="${window.safeUrl(t.profile_photo_url)}" class="w-full h-full object-cover">` : '<i class="fas fa-user-tie text-xl"></i>'}
                     </div>
                     <div>
                         <div class="text-base font-black text-slate-800 dark:text-white">${window.sanitizeInput(t.full_name)}</div>
-                        <div class="text-xs font-bold text-slate-400 tracking-tight">${t.email}</div>
+                        <div class="text-xs font-bold text-slate-400 tracking-tight">${window.sanitizeInput(t.email)}</div>
                     </div>
                 </div>
             </td>

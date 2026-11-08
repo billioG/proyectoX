@@ -3,6 +3,7 @@
 // ================================================
 
 import { createQueryCache, createCoalescer } from './query-cache.js';
+import { safeUrl } from './safe-html.js';
 import { friendlyErrorText } from './help-messages.js'; // también define window.friendlyError, window.validateProjectForm y window.openHelp (docs/soporte/)
 
 // GLOBAL SYSTEM CONFIGURATION
@@ -418,6 +419,7 @@ window.formatDateTime = formatDateTime;
 window.debounce = debounce;
 window.sanitizeInput = sanitizeInput;
 window.sanitizeAttr = sanitizeAttr;
+window.safeUrl = safeUrl;
 window.showToast = showToast;
 window.friendlyErrorText = friendlyErrorText;
 window.getStatusBadge = getStatusBadge;

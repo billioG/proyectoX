@@ -262,10 +262,10 @@ function renderRockItem(rock) {
                 <div class="shrink-0 mt-1">${icon}</div>
                 <div class="flex-1">
                     <div class="flex justify-between mb-1">
-                        <h4 class="text-sm font-black text-slate-800 dark:text-white">${rock.rock_name || rock.name}</h4>
+                        <h4 class="text-sm font-black text-slate-800 dark:text-white">${window.sanitizeInput(rock.rock_name || rock.name)}</h4>
                         ${badge}
                     </div>
-                    <p class="text-xs text-slate-500 mb-3">${rock.rock_description || rock.description}</p>
+                    <p class="text-xs text-slate-500 mb-3">${window.sanitizeInput(rock.rock_description || rock.description)}</p>
                     ${!isCompleted ? `
                         <button onclick="window.openCompleteRockModal('${rock.rock_id || rock.id}')" class="px-3 py-1 bg-primary text-white text-[0.6rem] font-black rounded-lg">COMPLETAR</button>
                     ` : ''}
@@ -288,7 +288,7 @@ window.openCompleteRockModal = async function (rockId) {
     modal.innerHTML = `
         <div class="w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
             <div class="p-6 bg-amber-500 text-white flex justify-between">
-                <h2 class="font-black uppercase">${rock.name}</h2>
+                <h2 class="font-black uppercase">${window.sanitizeInput(rock.name)}</h2>
                 <button onclick="this.closest('.fixed').remove()"><i class="fas fa-times"></i></button>
             </div>
             <div class="p-6">

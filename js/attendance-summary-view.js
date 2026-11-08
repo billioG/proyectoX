@@ -191,7 +191,7 @@ window.renderAnalyticsView = function renderAnalyticsView(container) {
                                 </span>
                                 <div>
                                     <h3 class="text-lg font-black text-slate-800 dark:text-white leading-tight hover:text-indigo-500 transition-colors">${group.schoolName}</h3>
-                                    ${group.schoolAddress ? `<p class="text-[0.65rem] text-slate-400 font-medium">${group.schoolAddress}</p>` : ''}
+                                    ${group.schoolAddress ? `<p class="text-[0.65rem] text-slate-400 font-medium">${window.sanitizeInput(group.schoolAddress)}</p>` : ''}
                                     <div class="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 font-medium mt-1">
                                         <i class="fas fa-chalkboard-teacher text-xs"></i> ${group.teacherName}
                                     </div>
@@ -246,7 +246,7 @@ window.renderAnalyticsView = function renderAnalyticsView(container) {
                                         ${group.records.sort((a, b) => new Date(b.date) - new Date(a.date)).map(record => `
                                             <tr class="hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors">
                                                 <td class="p-3 font-mono text-slate-500 text-xs border-b border-slate-100 dark:border-slate-800">${new Date(record.date).toLocaleDateString()}</td>
-                                                <td class="p-3 font-bold text-slate-700 dark:text-slate-300 border-b border-slate-100 dark:border-slate-800">${record.students?.full_name || 'Estudiante Eliminado'}</td>
+                                                <td class="p-3 font-bold text-slate-700 dark:text-slate-300 border-b border-slate-100 dark:border-slate-800">${window.sanitizeInput(record.students?.full_name || 'Estudiante Eliminado')}</td>
                                                 <td class="p-3 text-right border-b border-slate-100 dark:border-slate-800">
                                                     ${record.status === 'present'
                     ? '<span class="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-emerald-50 text-emerald-600 text-xs font-bold uppercase"><i class="fas fa-check"></i> Presente</span>'

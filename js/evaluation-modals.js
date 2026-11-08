@@ -138,7 +138,7 @@ window.openEvaluationModal = async function openEvaluationModal(projectId) {
                   <div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-end">
                       <div class="md:col-span-2">
                         <label class="text-[0.6rem] font-black uppercase text-slate-400 tracking-widest mb-2 block ml-1">Observaciones / Feedback constructivo</label>
-                        <textarea id="eval-feedback" class="w-full h-32 p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium resize-none focus:ring-2 focus:ring-primary/20 transition-all font-sans" placeholder="Escribe aquí los consejos para el equipo...">${existingEval?.feedback || ''}</textarea>
+                        <textarea id="eval-feedback" class="w-full h-32 p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium resize-none focus:ring-2 focus:ring-primary/20 transition-all font-sans" placeholder="Escribe aquí los consejos para el equipo...">${window.sanitizeInput(existingEval?.feedback || '')}</textarea>
                       </div>
 
                       <div class="flex flex-col gap-4">

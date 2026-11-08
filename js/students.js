@@ -422,7 +422,7 @@ window.renderStudentsList = function renderStudentsList(container, students, all
                     <h4 class="text-xs font-black text-slate-800 dark:text-white truncate uppercase tracking-tight">${window.sanitizeInput(s.full_name || '')}</h4>
                     <div class="flex items-center gap-2 mt-1">
                         <span class="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[0.55rem] font-bold text-slate-500 uppercase tracking-widest">${s.grade} ${s.section}</span>
-                        <span class="text-[0.6rem] font-mono text-slate-400">@${s.username || 'sin-usuario'}</span>
+                        <span class="text-[0.6rem] font-mono text-slate-400">@${window.sanitizeInput(s.username || 'sin-usuario')}</span>
                         <span class="presence-pill hidden px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/30 text-[0.55rem] font-bold text-emerald-600 uppercase tracking-widest">En línea</span>
                         ${s.status === 'baja' ? '<span class="px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-900/30 text-[0.55rem] font-bold text-rose-500 uppercase tracking-widest">Baja</span>' : ''}
                         ${s.status === 'egresado' ? '<span class="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/30 text-[0.55rem] font-bold text-amber-600 uppercase tracking-widest">Egresado</span>' : ''}
@@ -512,7 +512,7 @@ window.openAddStudentModal = async function openAddStudentModal(student = null) 
 
         <div>
            <label class="block text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Usuario Generado (Automático)</label>
-           <input type="text" id="student-username" value="${student?.username || ''}" readonly
+           <input type="text" id="student-username" value="${window.sanitizeAttr(student?.username || '')}" readonly
                   class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-900 text-slate-500 cursor-not-allowed font-mono text-sm">
         </div>
 

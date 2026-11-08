@@ -256,3 +256,25 @@ antes y después; y `auth.uid()` envuelto sin cambiar lo que ve cada rol.
 - El flujo de la fase 2 desde el **editor del panel**: la función `staff-student-passwords` importa `../_shared/vault.ts` y `../_shared/http.ts`; con la CLI funciona, para el editor usa
   `node scripts/exportar-funciones.mjs <carpeta> staff-student-passwords` (copia esos módulos dentro de la función). No se ha probado en producción.
 - Que alguna pantalla use una política o función que aquí se cierra y que el código revisado no muestre (por eso las pruebas por rol y el apartado «Deshacer»).
+
+## 7. XSS y política de contenido (CSP) — v1.0.245
+
+**Qué se revisó.** Un escaneo de las plantillas HTML de `js/` buscó datos que escribe un usuario y entran a `innerHTML` sin escape (238 candidatos; la mayoría eran falsos positivos: constantes, números, textos de la propia app). Se corrigieron los reales:
+
+| Dónde | Riesgo |
+|---|---|
+| `feed-ui.js` — título del proyecto en `data-title="…"` | Lo escribe un **estudiante**; unas comillas rompían el atributo y ejecutaban código en el navegador de quien viera el feed |
+| `lessons.js` — `content_url` y `attachment_url` en `iframe`/`video`/`img`/`a` | Un `javascript:` o unas comillas en la dirección ejecutaban código en el alumno que abre la lección |
+| `profile.js` — teléfono del docente dentro de un `onclick` | Entraba a una cadena de JavaScript; ahora solo pasan dígitos y signos de teléfono |
+| Fotos de perfil (`src`), nombres, correos, usuarios, nombres y descripciones de tareas | Sin escape en 10+ pantallas; ahora `sanitizeInput` / `sanitizeAttr` / `safeUrl` |
+
+`js/safe-html.js` trae `safeUrl()` (solo `http(s)`, `blob:`, imágenes `data:` y rutas relativas; rechaza `javascript:`, `data:text/html`, `vbscript:` y esquemas escondidos con tabuladores) y se usa como `window.safeUrl`.
+
+**CSP.** `index.html` lleva una política por `<meta>` (GitHub Pages no deja poner cabeceras): cierra `object`, `<base>`, formularios hacia otros sitios y scripts de cualquier sitio que no sea la app, jsDelivr o cdnjs.
+**Límites, dichos con franqueza:**
+
+- La app usa manejadores `onclick="…"` en línea, así que la CSP tiene que permitir `script-src 'unsafe-inline'`. Eso significa que **la CSP no detiene un XSS que ya está inyectado**: lo que lo detiene es el escape de arriba. Quitar `unsafe-inline` exige reescribir cientos de `onclick` con `addEventListener`; es el siguiente paso grande, no está hecho.
+- `connect-src` e `img-src` quedan abiertos (`https:`/`http:`) porque la app habla con Supabase, con la Raspberry por `http` en la red local y carga recursos de cursos de cualquier sitio. Por eso la CSP **no impide exfiltrar datos** si hubiera un XSS.
+- `frame-ancestors` (anti-clickjacking) no funciona por `<meta>`; hace falta una cabecera (por ejemplo, Cloudflare delante del dominio).
+
+**Pruebas.** `tests-unit/safe-html.test.mjs` (escapes, esquemas peligrosos, que las plantillas corregidas no vuelvan al código y que la CSP conserve sus cierres) y `tests/csp.spec.js` (con la CSP activa: la pantalla de entrada y ocho vistas con sesión de docente no disparan ningún bloqueo). El resto de las pruebas de navegador usan `bypassCSP` porque las esperas `waitForFunction` de Playwright evalúan texto como código.

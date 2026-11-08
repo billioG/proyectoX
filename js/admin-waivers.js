@@ -269,7 +269,7 @@ window.renderWaiverReportsUI = function renderWaiverReportsUI(modal, waivers) {
                                 <tr>
                                     <td>${formatDate(w.date)}</td>
                                     <td><strong>${window.sanitizeInput(w.teachers?.full_name || 'N/A')}</strong></td>
-                                    <td>${w.schools?.name || w.school_code}</td>
+                                    <td>${window.sanitizeInput(w.schools?.name || w.school_code)}</td>
                                     <td>${sanitizeInput(w.reason)}</td>
                                     <td><span class="status-badge status-${w.status}">${w.status.toUpperCase()}</span></td>
                                 </tr>

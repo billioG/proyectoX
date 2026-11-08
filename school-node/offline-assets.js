@@ -28,8 +28,13 @@ export const CDN_NOT_VENDORED = ['pdf.js/3.11.174'];
 
 const PRECONNECT_LINK = /^[ \t]*<link rel="preconnect"[^>]*>\r?\n/gm;
 
+// La CSP de index.html permite los CDN; el nodo ya no les pide nada, así que se los quita (la política del nodo es más estricta que la de la nube).
+const CSP_META = /<meta http-equiv="Content-Security-Policy" content="[^"]*">/;
+const CDN_IN_CSP = /\s+https:\/\/(?:cdn\.jsdelivr\.net|cdnjs\.cloudflare\.com|fonts\.googleapis\.com|fonts\.gstatic\.com)/g;
+
 export function localizeIndexHtml(html) {
   let out = html.replace(PRECONNECT_LINK, '');
   for (const [from, to] of CDN_REPLACEMENTS) out = out.split(from).join(to);
+  out = out.replace(CSP_META, (meta) => meta.replace(CDN_IN_CSP, ''));
   return out;
 }

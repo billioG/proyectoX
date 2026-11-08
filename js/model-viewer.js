@@ -196,7 +196,7 @@ async function mountModelViewer(el) {
     el.insertAdjacentHTML('beforeend', `
       <div class="absolute bottom-2 left-2 right-2 flex items-center justify-between pointer-events-none">
         <span class="text-[0.6rem] font-bold uppercase tracking-widest text-white/60 bg-black/40 px-2 py-1 rounded-md"><i class="fas fa-hand-pointer"></i> Arrastra para girar</span>
-        ${dl ? `<a href="${dl}" class="pointer-events-auto text-[0.6rem] font-black uppercase tracking-widest text-white bg-black/50 hover:bg-primary px-2 py-1 rounded-md transition-colors"><i class="fas fa-download"></i> Descargar</a>` : ''}
+        ${dl ? `<a href="${window.safeUrl(dl)}" class="pointer-events-auto text-[0.6rem] font-black uppercase tracking-widest text-white bg-black/50 hover:bg-primary px-2 py-1 rounded-md transition-colors"><i class="fas fa-download"></i> Descargar</a>` : ''}
       </div>`);
 
     if (el.dataset.needsThumb && el.dataset.projectId) saveThumbFromViewer(el, renderer, scene, camera);
@@ -227,7 +227,7 @@ async function mountModelViewer(el) {
   } catch (err) {
     console.error('Error cargando modelo 3D:', err);
     const dl = downloadHref(url);
-    showViewerMessage(el, `<i class="fas fa-triangle-exclamation text-lg text-amber-400"></i><span>No se pudo mostrar el modelo 3D.</span>${dl ? `<a href="${dl}" class="text-primary font-bold underline">Descargar archivo</a>` : ''}`);
+    showViewerMessage(el, `<i class="fas fa-triangle-exclamation text-lg text-amber-400"></i><span>No se pudo mostrar el modelo 3D.</span>${dl ? `<a href="${window.safeUrl(dl)}" class="text-primary font-bold underline">Descargar archivo</a>` : ''}`);
   }
 }
 

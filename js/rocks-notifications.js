@@ -107,8 +107,8 @@ async function notifyRockApprovals() {
             if (typeof window.showToast === 'function') {
                 window.showToast(
                     isApproved
-                        ? `<i class="fas fa-circle-check"></i> Tarea "${completion.teacher_rocks.name}" aprobada (+${completion.teacher_rocks.xp_value} XP)`
-                        : `<i class="fas fa-circle-xmark"></i> Tarea "${completion.teacher_rocks.name}" rechazada${completion.rejection_reason ? ': ' + completion.rejection_reason : ''}`,
+                        ? `<i class="fas fa-circle-check"></i> Tarea "${window.sanitizeInput(completion.teacher_rocks.name)}" aprobada (+${completion.teacher_rocks.xp_value} XP)`
+                        : `<i class="fas fa-circle-xmark"></i> Tarea "${window.sanitizeInput(completion.teacher_rocks.name)}" rechazada${completion.rejection_reason ? ': ' + completion.rejection_reason : ''}`,
                     isApproved ? 'success' : 'error'
                 );
             }
@@ -131,8 +131,8 @@ window.showRocksNotificationModal = function showRocksNotificationModal(config) 
             <div class="p-6 bg-gradient-to-r ${type === 'deadline' ? 'from-rose-500 to-orange-500' : 'from-amber-500 to-orange-500'} text-white">
                 <div class="flex justify-between items-start">
                     <div>
-                        <h2 class="text-2xl font-black mb-2">${title}</h2>
-                        <p class="text-sm opacity-90">${message}</p>
+                        <h2 class="text-2xl font-black mb-2">${window.sanitizeInput(title)}</h2>
+                        <p class="text-sm opacity-90">${window.sanitizeInput(message)}</p>
                     </div>
                     <button onclick="this.closest('.fixed').remove()" class="w-9 h-9 rounded-xl bg-white/20 hover:bg-white/30 transition-all flex items-center justify-center shrink-0">
                         <i class="fas fa-times"></i>
@@ -148,10 +148,10 @@ window.showRocksNotificationModal = function showRocksNotificationModal(config) 
         return `
                             <div class="p-4 rounded-2xl border-2 ${isUrgent ? 'border-rose-200 dark:border-rose-900/30 bg-rose-50/30 dark:bg-rose-900/10' : 'border-amber-200 dark:border-amber-900/30 bg-amber-50/30 dark:bg-amber-900/10'}">
                                 <div class="flex items-start justify-between gap-3 mb-2">
-                                    <h3 class="text-sm font-black text-slate-800 dark:text-white flex-1">${rock.rock_name || rock.name}</h3>
+                                    <h3 class="text-sm font-black text-slate-800 dark:text-white flex-1">${window.sanitizeInput(rock.rock_name || rock.name)}</h3>
                                     ${isUrgent ? '<span class="text-xs font-black text-rose-500 uppercase">¡Urgente!</span>' : ''}
                                 </div>
-                                <p class="text-xs text-slate-600 dark:text-slate-400 mb-3">${rock.rock_description || rock.description}</p>
+                                <p class="text-xs text-slate-600 dark:text-slate-400 mb-3">${window.sanitizeInput(rock.rock_description || rock.description)}</p>
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center gap-3 text-[0.65rem] font-bold text-slate-500">
                                         <span class="flex items-center gap-1">
