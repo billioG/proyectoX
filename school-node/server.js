@@ -783,7 +783,14 @@ const api = {
 const mdns = (config.mdns ?? process.platform === 'win32') ? startMdns(config.hostName) : null;
 const portSuffix = () => ((config.port || 8080) === 80 ? '' : ':' + (config.port || 8080));
 // Nombre fácil (http://quetzal.local), o null si no se pudo publicar.
-const friendlyUrl = () => (mdns ? `http://${mdns.fqdn}${portSuffix()}` : null);
+// En la Raspberry el nombre lo anuncia avahi (no el nodo): se arma con el nombre del equipo. Si HTTPS ya está activo, el nombre fácil es https.
+const friendlyHost = () => mdns?.fqdn ?? (process.platform === 'linux' && /^[a-z0-9-]+$/i.test(os.hostname()) ? `${os.hostname().toLowerCase()}.local` : null);
+const friendlyUrl = () => {
+  const host = friendlyHost();
+  if (!host) return null;
+  if (httpsPortListening && config.httpsRedirect !== false) return `https://${host}${httpsPortListening === 443 ? '' : ':' + httpsPortListening}`;
+  return `http://${host}${portSuffix()}`;
+};
 
 // Direcciones de este equipo en la red local (las que escriben los celulares).
 function lanUrls() {
@@ -915,7 +922,22 @@ const requestHandler = async (req, res) => {
     sendJson(res, 500, { error: 'Error interno del nodo' });
   }
 };
-const server = http.createServer(requestHandler);
+// Con HTTPS activo, quien entra por el NOMBRE (quetzal.local) pasa a https://quetzal.local: es el que sirve aunque cambie la IP. Quien entra por una IP
+// se queda en http (el certificado se hizo para el nombre; la IP puede cambiar). /node-ca.crt siempre por http: es lo que se descarga para instalar el certificado.
+// "httpsRedirect": false en config.json lo apaga.
+let httpsPortListening = null;
+const httpsRedirectTarget = (req) => {
+  if (!httpsPortListening || config.httpsRedirect === false || (req.method !== 'GET' && req.method !== 'HEAD')) return null;
+  const host = String(req.headers.host || '').replace(/:\d+$/, '').toLowerCase();
+  if (!host.endsWith('.local')) return null;
+  if (String(req.url).split('?')[0] === '/node-ca.crt') return null;
+  return `https://${host}${httpsPortListening === 443 ? '' : ':' + httpsPortListening}${req.url}`;
+};
+const server = http.createServer((req, res) => {
+  const to = httpsRedirectTarget(req);
+  if (to) { res.writeHead(302, { Location: to, 'Cache-Control': 'no-store' }); return res.end(); }
+  return requestHandler(req, res);
+});
 
 server.requestTimeout = 30 * 60 * 1000; // un video grande por Wi-Fi tarda más que los 5 minutos que trae Node
 server.listen(config.port || 8080, () => {
@@ -933,7 +955,7 @@ if (fs.existsSync(path.join(httpsDir, 'server.crt')) && fs.existsSync(path.join(
     const httpsServer = https.createServer({ cert: fs.readFileSync(path.join(httpsDir, 'server.crt')), key: fs.readFileSync(path.join(httpsDir, 'server.key')) }, requestHandler);
     httpsServer.requestTimeout = 30 * 60 * 1000;
     httpsServer.on('error', (e) => console.error(`⚠️ HTTPS no arrancó (${e.code || e.message}); el nodo sigue con http.`));
-    httpsServer.listen(config.httpsPort || 443, () => console.log(`🔒 HTTPS activo en el puerto ${config.httpsPort || 443} (certificado de la escuela)`));
+    httpsServer.listen(config.httpsPort || 443, () => { httpsPortListening = config.httpsPort || 443; console.log(`🔒 HTTPS activo en el puerto ${httpsPortListening} (certificado de la escuela)${config.httpsRedirect === false ? '' : '; quetzal.local pasa solo a https'}`); });
   } catch (e) { console.error(`⚠️ No se pudo leer el certificado HTTPS (${e.message}); el nodo sigue con http.`); }
 }
 

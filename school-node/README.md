@@ -557,7 +557,15 @@ bash ~/quetzal/school-node/https-setup.sh
 
 Cada dispositivo debe instalar el certificado una vez (la app lo guía en Asistencia → «Configurar este dispositivo para usar la cámara») y luego abrir `https://quetzal.local`. El certificado del nodo dura ~2 años: `bash ~/quetzal/school-node/https-setup.sh --renovar` lo repite sin que los dispositivos tengan que instalar nada otra vez.
 
-Pendiente a propósito: redirigir `http://` → `https://` (los dispositivos sin el certificado instalado dejarían de entrar) y la prueba en una Raspberry real.
+**Redirección y nombre fijo (desde v1.0.251):** con HTTPS activo, quien escribe `quetzal.local` pasa solo a `https://quetzal.local`. El certificado es del **nombre**, así que sigue valiendo aunque el router le cambie la IP al nodo (avahi vuelve a anunciar el nombre solo). Reglas:
+- Por **IP** (`http://192.168...`) no se redirige: se queda en http (lista rápida, sin cámara).
+- `/node-ca.crt` siempre se entrega por http, para poder instalar el certificado.
+- Solo se redirigen las peticiones GET/HEAD.
+- Un dispositivo **sin** el certificado instalado verá un aviso de seguridad al entrar por el nombre: instálalo o entra por la IP. Para apagar la redirección: `"httpsRedirect": false` en config.json y reiniciar.
+- Para que la IP tampoco cambie, reserva una IP fija para el nodo en el router (opcional; el nombre ya no la necesita).
+- El cartel (`/cartel`) y el aviso al arrancar usan `https://quetzal.local`.
+
+Pendiente: la prueba en una Raspberry real.
 
 ## Seguridad
 
