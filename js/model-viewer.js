@@ -57,6 +57,7 @@ function showViewerMessage(el, html) {
 // Escena lista (luces, modelo centrado y escalado, cámara encuadrada). La usan
 // el visor interactivo y el generador de miniaturas.
 async function buildModelScene(url, ext, aspect) {
+  url = (await window.resolveMediaUrl?.(url)) || url; // si el modelo vive en un bucket privado, se pide con dirección firmada
   await loadThree(ext);
   const THREE = window.THREE;
 

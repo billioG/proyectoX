@@ -2,7 +2,7 @@
 // SERVICE WORKER - PROJECTX PWA
 // ================================================
 
-const CACHE_NAME = 'projectx-v1.0.245';
+const CACHE_NAME = 'projectx-v1.0.246';
 // Caché de archivos de lecciones (video/PDF/imagen/paquetes SCORM-H5P) --
 // separada de CACHE_NAME a propósito: CACHE_NAME se recrea y se BORRA
 // entera en cada deploy (bump de versión) para forzar JS/CSS frescos, pero
@@ -55,7 +55,7 @@ const LAZY_MODULES = [
 const EAGER_MODULES = [
   'js/main.js', 'js/auth.js', 'js/sync-manager.js', 'js/config.js',
   'js/data/badges.js', 'js/badges.js', 'js/data/quotes.js', 'js/data/challenges.js',
-  'js/data/student-challenges.js', 'js/kolibri-sync.js', 'js/offline-kit.js', 'js/node-mode.js', 'js/node-sync-chip.js', 'js/branding.js','js/notification-center.js',
+  'js/data/student-challenges.js', 'js/kolibri-sync.js', 'js/offline-kit.js', 'js/node-mode.js', 'js/node-sync-chip.js', 'js/branding.js', 'js/private-media.js', 'js/private-media-core.js','js/notification-center.js',
   'js/test-accounts-filter.js', 'js/onboarding.js', 'js/birthday-logic.js',
   'js/teacher-rocks.js', 'js/admin-rocks.js', 'js/rocks-notifications.js',
   'js/model-viewer.js', 'js/reactions.js', 'js/project-modals.js', 'js/ai-service.js', 'js/mascot-widget.js',
@@ -203,6 +203,12 @@ function isSupabaseStorageGet(url) {
   return url.includes('supabase.co') && url.includes('/storage/v1/object/');
 }
 
+// Medios privados (direcciones firmadas, que cambian y vencen): no se guardan en el dispositivo. Una tablet compartida no debe conservar fotos y videos de menores
+// ni acumular una copia por cada firma nueva. Las direcciones públicas de cursos siguen cacheándose para verlos sin internet.
+function isSignedStorageGet(url) {
+  return url.includes('supabase.co') && /\/storage\/v1\/object\/(sign|authenticated)\//.test(url);
+}
+
 // Estrategia de caché: Network First, fallback a Cache
 self.addEventListener('fetch', event => {
   const { request } = event;
@@ -211,6 +217,9 @@ self.addEventListener('fetch', event => {
   if (request.method !== 'GET') {
     return;
   }
+
+  // Direcciones firmadas: directo a la red, sin caché.
+  if (isSignedStorageGet(request.url)) return;
 
   const isMedia = isSupabaseStorageGet(request.url);
 

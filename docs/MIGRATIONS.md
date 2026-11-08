@@ -172,6 +172,8 @@ de producción.
 | 126 | 2026-11-07 | `node-manage.sql` | `rename_school_node` y `delete_school_node` (solo administrador): renombrar un servidor escolar y eliminarlo si está revocado o nunca se conectó. No cambia `node-sync` |
 | 127 | 2026-11-07 | `node-remote-update.sql` | `school_nodes.update_requested_at` y `request_node_update(escuela)` (solo administrador): el botón «Actualizar servidores» de «Servidor de la escuela» hace que cada Raspberry se actualice sola (git pull + reinicio). Después, volver a desplegar `node-sync` (cambian `index.ts` y `validators.ts`) |
 | 128 | 2026-11-07 | `guardian-portal-token.sql` | Portal de padres: `student_guardians.portal_token_expires_at` (los enlaces vencen a los 180 días; los existentes reciben 180 desde hoy) y `regenerate_guardian_portal_token(padre)` para generar un enlace nuevo (el anterior deja de servir). Después, redesplegar `guardian-portal` (`index.ts` y `portal-guard.ts`) |
+| 129 | 2026-11-07 | `storage-hardening.sql` | Paso 1 de 2 de los buckets de personas (`profile-photos`, `project-videos`, `comment-attachments`, `teacher-evidence`): quita las lecturas sin sesión (cierra el listado público), deja una sola lectura para `authenticated` y limita los tipos de archivo (sin HTML ni SVG). No toca escrituras. Las direcciones guardadas siguen funcionando |
+| 130 | 2026-11-07 | `storage-private-buckets.sql` | Paso 2 de 2: esos 4 buckets pasan a **privados**. Aplicar solo después del paso 1 y de publicar la app v1.0.246+ (firma las direcciones al mostrarlas). Límite: el servidor escolar no firma, así que fotos de otros alumnos que vengan de la nube dejan de verse en el nodo |
 
 ### Migraciones sin número en la tabla de arriba
 
@@ -207,7 +209,7 @@ no aparece en este documento.
 **Las migraciones de seguridad y rendimiento de noviembre (fases 5b y 5c) ya se aplicaron en producción**, según confirmó el
 administrador del proyecto. Este repositorio no puede comprobarlo por su cuenta: la forma de verificarlo sigue siendo pegar
 `migrations/verificar-migraciones.sql` en el SQL Editor (solo lee) y ver que todas las filas den `aplicada = true`.
-**Lo nuevo sin aplicar** es `school-branding.sql` (fila 125; fase 5d) , `node-manage.sql` (fila 126) , `node-remote-update.sql` (fila 127) y `guardian-portal-token.sql` (fila 128). `feedback-inbox.sql` se vuelve a ejecutar para mostrar el bimestre. Las secciones de abajo conservan el orden por si
+**Lo nuevo sin aplicar** es `school-branding.sql` (fila 125; fase 5d) , `node-manage.sql` (fila 126) , `node-remote-update.sql` (fila 127) , `guardian-portal-token.sql` (fila 128) y `storage-hardening.sql` (fila 129). `storage-private-buckets.sql` (fila 130) es opcional y va al final. `feedback-inbox.sql` se vuelve a ejecutar para mostrar el bimestre. Las secciones de abajo conservan el orden por si
 hay que reconstruir una base nueva.
 
 ## Orden seguro de lo pendiente

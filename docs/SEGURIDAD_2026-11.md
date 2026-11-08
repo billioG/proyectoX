@@ -278,3 +278,26 @@ antes y después; y `auth.uid()` envuelto sin cambiar lo que ve cada rol.
 - `frame-ancestors` (anti-clickjacking) no funciona por `<meta>`; hace falta una cabecera (por ejemplo, Cloudflare delante del dominio).
 
 **Pruebas.** `tests-unit/safe-html.test.mjs` (escapes, esquemas peligrosos, que las plantillas corregidas no vuelvan al código y que la CSP conserve sus cierres) y `tests/csp.spec.js` (con la CSP activa: la pantalla de entrada y ocho vistas con sesión de docente no disparan ningún bloqueo). El resto de las pruebas de navegador usan `bypassCSP` porque las esperas `waitForFunction` de Playwright evalúan texto como código.
+
+## 8. Fotos, videos y evidencias de personas (almacenamiento) — v1.0.246
+
+**Hallazgo.** Los buckets `profile-photos`, `project-videos`, `comment-attachments` y `teacher-evidence` eran públicos y, al menos en `comment-attachments`, con una política de lectura sin rol (`comment_attachments_public_read`): cualquiera con la clave pública del HTML podía **listar** todos los archivos sin iniciar sesión. Tampoco había límite de tipos (se podía subir HTML o SVG con scripts). Las políticas de los demás buckets se crearon desde el panel y **no están en el repositorio**; por eso la migración las busca en `pg_policies` en vez de suponerlas.
+
+**Qué se entrega, en dos pasos que se pueden aplicar por separado:**
+
+| Paso | Archivo | Efecto |
+|---|---|---|
+| 1 | `migrations/storage-hardening.sql` | Cierra el listado sin sesión y limita los tipos de archivo. Las direcciones guardadas siguen abriendo igual |
+| 2 | `migrations/storage-private-buckets.sql` | Hace privados los 4 buckets. Sin sesión nada se abre; con sesión, cada foto o video se muestra con una dirección **firmada que vence a las 2 horas** |
+
+**Cómo funciona en la app.** En la base se sigue guardando la dirección pública de siempre (no hay que migrar datos). `js/private-media.js` mira cada `<img>`, `<video>`, `<audio>`, `<source>`, `<iframe>` y `<a>` que aparece en la página; si apunta a uno de esos buckets, la cambia por una dirección firmada (en lotes, una llamada por bucket). Si firmar falla, deja la original, que sirve mientras el bucket sea público; por eso la app nueva funciona con los buckets públicos **y** privados. El visor 3D pide su archivo con `window.resolveMediaUrl`. El service worker no guarda en el dispositivo las direcciones firmadas (una tablet compartida no conserva fotos de menores).
+
+**Límites, dichos con franqueza:**
+
+- Quien tiene sesión (cualquier estudiante o docente) puede listar y firmar los archivos de esos buckets; es lo que permite ver las fotos de los compañeros y los proyectos del feed. Se cerró lo anónimo, no lo interno. Restringir por clase exigiría cambiar cómo se nombran los archivos.
+- **Servidor escolar:** no tiene sesión de Supabase y no firma. Con el paso 2, las fotos de otros alumnos que vengan de la nube dejan de verse en la Raspberry; las subidas en el propio nodo se siguen sirviendo desde él.
+- El bucket `course-content` (cursos del docente) sigue público a propósito: no es contenido de menores, y los cursos se ven sin internet.
+- Una dirección firmada que alguien copie sirve hasta que venza (2 h).
+- Nada de esto se probó contra tu Supabase real; el paso 2 trae su «Deshacer».
+
+**Pruebas.** `tests-unit/private-media.test.mjs`: reconocimiento de direcciones, firma en lotes, memoria con renovación, caída a la dirección original, descarga con nombre y el contenido de las dos migraciones.
