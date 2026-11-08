@@ -6,6 +6,8 @@ Al publicar una versión nueva, agrega una línea arriba de todo (ver CONTRIBUTI
 
 ## 2026-11-08
 
+- **Arreglo: los administradores no podían activar las notificaciones (v1.0.254).** `register_push_subscription` guarda el rol `admin` o `coordinador`, pero la restricción `push_subscriptions_role_check` solo admitía `estudiante` y `docente`, así que el registro daba error 400 (23514). Migración `push-sub-role-staff.sql` (docs/MIGRATIONS.md #131). Hay que correrla en Supabase.
+
 - **Asistencia rápida con «Guardar lista», aviso del certificado que ya no estorba y push más claro (v1.0.253).** En la lista rápida, marcar o quitar presentes solo cambia un borrador (con contador «N cambios sin guardar» y aviso al cambiar de clase o cerrar la página); la asistencia se registra al tocar «Guardar lista». El aviso «Configurar este dispositivo para usar la cámara»: ya no aparece en un dispositivo que confía en el certificado (muestra «Abrir con cámara»), se apaga solo cuando la cámara funciona por HTTPS y tiene «No volver a mostrar». Notificaciones: ante «Registration failed - push service error» (el navegador no llega a su servicio de push) se reintenta una vez y el aviso explica la causa en lugar del mensaje técnico.
 
 - **Nodo: entrar sin instalar el certificado (v1.0.252).** Página `http://quetzal.local/acceso` (sin redirección) con dos caminos: descargar el certificado y abrir con candado, o «Entrar sin cámara» (`/?http=1`), que recuerda al dispositivo en http con la lista rápida de asistencia (`/?http=0` lo deshace). El cartel imprime esa dirección. Pruebas: tests-unit/node-https-redirect.test.mjs.

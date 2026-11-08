@@ -174,6 +174,7 @@ de producción.
 | 128 | 2026-11-07 | `guardian-portal-token.sql` | Portal de padres: `student_guardians.portal_token_expires_at` (los enlaces vencen a los 180 días; los existentes reciben 180 desde hoy) y `regenerate_guardian_portal_token(padre)` para generar un enlace nuevo (el anterior deja de servir). Después, redesplegar `guardian-portal` (`index.ts` y `portal-guard.ts`) |
 | 129 | 2026-11-07 | `storage-hardening.sql` | Paso 1 de 2 de los buckets de personas (`profile-photos`, `project-videos`, `comment-attachments`, `teacher-evidence`): quita las lecturas sin sesión (cierra el listado público), deja una sola lectura para `authenticated` y limita los tipos de archivo (sin HTML ni SVG). No toca escrituras. Las direcciones guardadas siguen funcionando |
 | 130 | 2026-11-07 | `storage-private-buckets.sql` | Paso 2 de 2: esos 4 buckets pasan a **privados**. Aplicar solo después del paso 1 y de publicar la app v1.0.246+ (firma las direcciones al mostrarlas). Límite: el servidor escolar no firma, así que fotos de otros alumnos que vengan de la nube dejan de verse en el nodo |
+| 131 | 2026-11-08 | `push-sub-role-staff.sql` | La restricción `push_subscriptions_role_check` ahora acepta también `admin` y `coordinador` (la función ya los guardaba): un administrador no podía activar las notificaciones (error 400, código 23514) |
 
 ### Migraciones sin número en la tabla de arriba
 
