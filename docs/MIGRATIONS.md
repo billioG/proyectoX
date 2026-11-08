@@ -171,6 +171,7 @@ de producción.
 | 125 | 2026-11-06 | `school-branding.sql` | `schools.brand_name` y `schools.logo_data`: nombre y logo propios del colegio en el encabezado (el crédito «Hecho por Yo Aprendo · Quetzal LMS» siempre se muestra). Correr **antes** de redesplegar `node-sync` (ahora pide estas dos columnas) |
 | 126 | 2026-11-07 | `node-manage.sql` | `rename_school_node` y `delete_school_node` (solo administrador): renombrar un servidor escolar y eliminarlo si está revocado o nunca se conectó. No cambia `node-sync` |
 | 127 | 2026-11-07 | `node-remote-update.sql` | `school_nodes.update_requested_at` y `request_node_update(escuela)` (solo administrador): el botón «Actualizar servidores» de «Servidor de la escuela» hace que cada Raspberry se actualice sola (git pull + reinicio). Después, volver a desplegar `node-sync` (cambian `index.ts` y `validators.ts`) |
+| 128 | 2026-11-07 | `guardian-portal-token.sql` | Portal de padres: `student_guardians.portal_token_expires_at` (los enlaces vencen a los 180 días; los existentes reciben 180 desde hoy) y `regenerate_guardian_portal_token(padre)` para generar un enlace nuevo (el anterior deja de servir). Después, redesplegar `guardian-portal` (`index.ts` y `portal-guard.ts`) |
 
 ### Migraciones sin número en la tabla de arriba
 
@@ -206,7 +207,7 @@ no aparece en este documento.
 **Las migraciones de seguridad y rendimiento de noviembre (fases 5b y 5c) ya se aplicaron en producción**, según confirmó el
 administrador del proyecto. Este repositorio no puede comprobarlo por su cuenta: la forma de verificarlo sigue siendo pegar
 `migrations/verificar-migraciones.sql` en el SQL Editor (solo lee) y ver que todas las filas den `aplicada = true`.
-**Lo nuevo sin aplicar** es `school-branding.sql` (fila 125; fase 5d) , `node-manage.sql` (fila 126) y `node-remote-update.sql` (fila 127). `feedback-inbox.sql` se vuelve a ejecutar para mostrar el bimestre. Las secciones de abajo conservan el orden por si
+**Lo nuevo sin aplicar** es `school-branding.sql` (fila 125; fase 5d) , `node-manage.sql` (fila 126) , `node-remote-update.sql` (fila 127) y `guardian-portal-token.sql` (fila 128). `feedback-inbox.sql` se vuelve a ejecutar para mostrar el bimestre. Las secciones de abajo conservan el orden por si
 hay que reconstruir una base nueva.
 
 ## Orden seguro de lo pendiente

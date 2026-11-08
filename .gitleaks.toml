@@ -1,0 +1,15 @@
+# Escaneo de secretos (CI). La llave "anon" de Supabase es PÚBLICA por diseño (va en el HTML; lo que protege los datos es RLS), así que no es un hallazgo.
+# La llave de servicio (service_role), las llaves de IA y los tokens de nodos NO deben aparecer nunca en el repositorio.
+title = "Quetzal LMS"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Llave anon pública de Supabase"
+paths = ['''js/config\.js''', '''padres\.html''']
+regexes = ['''eyJhbGci[A-Za-z0-9_\-\.]+''']
+
+[[allowlists]]
+description = "Ejemplos y documentación"
+paths = ['''token\.txt\.ejemplo''', '''config\.example\.json''', '''docs/.*''', '''.*\.md''', '''tests/.*''', '''tests-unit/.*''']

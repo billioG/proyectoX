@@ -102,3 +102,34 @@ jobs:
             echo "::error file=css/tailwind.css::Desactualizado -- faltan clases nuevas. Correr: npx -y tailwindcss@3.4.17 -c tailwind.config.js -i css/tailwind.src.css -o css/tailwind.css --minify"
             exit 1
           fi
+
+  # ---------- Seguridad de la cadena de suministro ----------
+  # Informan sin bloquear (continue-on-error) hasta revisar el primer resultado; cuando esté limpio, quitar esa línea para que bloqueen.
+  dependency-audit:
+    name: Auditoría de dependencias (npm audit)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # El servidor escolar corre en las escuelas: sus dependencias de producción son lo que más importa.
+      - name: Servidor escolar (producción)
+        run: npm audit --omit=dev --audit-level=high --prefix school-node
+      - name: Herramientas de desarrollo
+        run: npm audit --audit-level=high
+
+  secret-scan:
+    name: Escaneo de secretos (gitleaks)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: gitleaks
+        run: |
+          set -e
+          curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.21.2/gitleaks_8.21.2_linux_x64.tar.gz | tar -xz gitleaks
+          ./gitleaks detect --source . --config .gitleaks.toml --redact --verbose

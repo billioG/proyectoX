@@ -1156,6 +1156,7 @@ window.openGuardiansModal = async function openGuardiansModal(studentId, student
               <div>
                 <div class="text-sm font-black text-slate-800 dark:text-white">${s(g.name)} <span class="text-[0.65rem] font-bold text-slate-400">${s(g.relation || '')}</span></div>
                 <div class="text-xs text-slate-500 font-mono">${s(g.phone || 'sin teléfono')}</div>
+                ${guardianLinkNote(g)}
               </div>
               <div class="flex flex-col items-end gap-1">
                 ${withPush.has(g.id) ? '<span class="text-[0.6rem] font-black text-emerald-500 uppercase">🔔 Notificaciones activas</span>' : '<span class="text-[0.6rem] font-black text-slate-400 uppercase">Sin notificaciones</span>'}
@@ -1172,6 +1173,7 @@ window.openGuardiansModal = async function openGuardiansModal(studentId, student
               ${wa ? `<a class="h-8 px-3 rounded-lg bg-green-50 text-green-700 text-[0.6rem] font-black uppercase inline-flex items-center gap-1" href="${wa}" target="_blank" rel="noopener"><i class="fab fa-whatsapp"></i> Por WhatsApp</a>` : ''}
               <button class="h-8 px-3 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[0.6rem] font-black uppercase" onclick="navigator.clipboard.writeText('${link}').then(() => window.showToast('<i class=&quot;fas fa-copy&quot;></i> Enlace copiado', 'success'))"><i class="fas fa-link"></i> Copiar enlace</button>
               <button class="h-8 px-3 rounded-lg bg-indigo-50 text-indigo-600 text-[0.6rem] font-black uppercase" onclick="window.promptGuardianMessage('${g.id}', '${window.sanitizeAttr(g.name)}')"><i class="fas fa-paper-plane"></i> Mensaje</button>
+              <button class="h-8 px-3 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[0.6rem] font-black uppercase" title="El enlace anterior deja de servir" onclick="window.regenerateGuardianLink('${g.id}', this)"><i class="fas fa-link-slash"></i> Enlace nuevo</button>
               <button class="h-8 px-3 rounded-lg text-rose-500 text-[0.6rem] font-black uppercase" onclick="window.deleteGuardian('${g.id}')"><i class="fas fa-trash"></i></button>
             </div>
           </div>`;
@@ -1242,6 +1244,36 @@ window.addGuardian = async function addGuardian(btn) {
 window.toggleGuardianSms = async function toggleGuardianSms(id, on) {
   const { error } = await window._supabase.from('student_guardians').update({ sms_enabled: on }).eq('id', id);
   if (error) window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
+};
+
+// Cuándo vence el enlace del portal (migrations/guardian-portal-token.sql). Sin fecha (migración pendiente): no muestra nada.
+function guardianLinkNote(g) {
+  if (!g.portal_token_expires_at) return '';
+  const t = Date.parse(g.portal_token_expires_at);
+  if (!Number.isFinite(t)) return '';
+  const days = Math.ceil((t - Date.now()) / 86_400_000);
+  const date = new Date(t).toLocaleDateString('es-GT', { day: 'numeric', month: 'short', year: 'numeric' });
+  if (days <= 0) return `<div class="text-[0.6rem] font-black text-rose-500 uppercase">Enlace vencido: genera uno nuevo</div>`;
+  return `<div class="text-[0.6rem] font-bold ${days <= 30 ? 'text-amber-500' : 'text-slate-400'}">Enlace vigente hasta ${date}</div>`;
+}
+
+// Reemplaza el enlace personal: el anterior deja de servir al instante. Dos toques para confirmar (la app no usa confirm() aquí).
+window.regenerateGuardianLink = async function regenerateGuardianLink(id, btn) {
+  if (btn && btn.dataset.armed !== '1') {
+    btn.dataset.armed = '1';
+    const label = btn.innerHTML;
+    btn.textContent = '¿Seguro? Toca de nuevo';
+    setTimeout(() => { if (btn.isConnected) { btn.dataset.armed = ''; btn.innerHTML = label; } }, 4000);
+    return;
+  }
+  if (btn) btn.disabled = true;
+  const { error } = await window._supabase.rpc('regenerate_guardian_portal_token', { p_guardian: id });
+  if (error) {
+    if (btn) btn.disabled = false;
+    return window.showToast('<i class="fas fa-circle-xmark"></i> ' + (/regenerate_guardian_portal_token|schema cache|does not exist|42883|PGRST20/i.test(`${error.message} ${error.code}`) ? 'Falta ejecutar la migración «guardian-portal-token» en Supabase.' : error.message), 'error');
+  }
+  window.showToast('<i class="fas fa-circle-check"></i> Enlace nuevo listo. El anterior ya no sirve: reenvíaselo al padre.', 'success');
+  reopenGuardians();
 };
 
 window.deleteGuardian = async function deleteGuardian(id) {

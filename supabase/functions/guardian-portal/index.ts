@@ -9,6 +9,7 @@
 // Verify JWT: OFF (el padre no inicia sesión).
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { isTokenExpired, rateKey, rateState } from './portal-guard.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -31,13 +32,31 @@ Deno.serve(async (req) => {
 
   try {
     const { token, action, subscription, endpoint, accepted } = await req.json();
-    if (typeof token !== 'string' || !/^[0-9a-f]{32}$/.test(token)) return json({ error: 'Enlace inválido' }, 400);
 
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
+
+    // Límite de intentos con enlaces inválidos, por IP (el token es largo y al azar, pero esta función es pública y no pide sesión).
+    // Solo cuentan los fallos: un padre con su enlace bueno nunca se bloquea.
+    const ip = rateKey((req.headers.get('x-forwarded-for') || '').split(',')[0].trim());
+    const now = new Date();
+    const { data: rl } = await admin.from('login_rate_limit').select('attempts, window_start').eq('ip', ip).maybeSingle();
+    const rate = rateState(rl, now);
+    if (rate.blocked) return json({ error: 'Demasiados intentos -- espera unos minutos y vuelve a intentar' }, 429);
+    const recordFailure = async () => {
+      if (rate.withinWindow && rl) await admin.from('login_rate_limit').update({ attempts: rl.attempts + 1 }).eq('ip', ip);
+      else await admin.from('login_rate_limit').upsert({ ip, attempts: 1, window_start: now.toISOString() });
+    };
+
+    if (typeof token !== 'string' || !/^[0-9a-f]{32}$/.test(token)) { await recordFailure(); return json({ error: 'Enlace inválido' }, 400); }
+
     const { data: g } = await admin.from('student_guardians')
       .select('id, name, student_id, consent_status, consent_version, students(full_name, school_code, schools(name))')
       .eq('portal_token', token).maybeSingle();
-    if (!g) return json({ error: 'Este enlace ya no es válido. Pídele uno nuevo al docente.' }, 404);
+    if (!g) { await recordFailure(); return json({ error: 'Este enlace ya no es válido. Pídele uno nuevo al docente.' }, 404); }
+
+    // Vencimiento del enlace (migrations/guardian-portal-token.sql). Se lee aparte y sin romper si la columna aún no existe.
+    const { data: exp } = await admin.from('student_guardians').select('portal_token_expires_at').eq('id', g.id).maybeSingle();
+    if (isTokenExpired(exp?.portal_token_expires_at, now)) return json({ error: 'Este enlace venció. Pídele uno nuevo al docente.' }, 410);
 
     if (action === 'subscribe') {
       const s = subscription;

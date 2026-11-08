@@ -1,0 +1,14 @@
+# Avisos semanales de dependencias con vulnerabilidades o versiones nuevas (abre un pull request por cada una; no cambia nada solo).
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+  - package-ecosystem: npm
+    directory: /school-node
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: monthly }
