@@ -168,7 +168,7 @@ export const HELP_TOPICS = {
       'Toca «Activar cámara» y acepta el permiso.',
       'Muestra a la cámara el QR de la credencial de cada estudiante: aparece ✓ y suben los «presentes».',
       'Al terminar toca «Detener».',
-      'Si la pantalla dice que no se puede usar la cámara, usa la lista rápida: toca a cada estudiante para marcarlo presente (otra vez para quitarlo) o «Marcar todos presentes».',
+      'Si la pantalla dice que no se puede usar la cámara, usa la lista rápida: toca a cada estudiante para marcarlo presente (otra vez para quitarlo) o «Marcar todos presentes», revisa la lista y toca «Guardar lista»: hasta entonces no queda registrada.',
     ],
     tips: [
       'Imprime las credenciales en «Impresión · Credenciales QR».',

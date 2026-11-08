@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {
   cameraSupport, cameraErrorKind, cameraIsUnavailable, probeCamera, attendanceMode, isSchoolNode, shouldOfferSetup, markCameraReady,
-  nodeCaAvailable, nodeHttpsReachable, buildAttendanceRow, mergePresent, platformOf, CA_GUIDE, CAMERA_READY_KEY, NODE_CA_URL, QUICK_MODE_NOTICE,
+  nodeCaAvailable, nodeHttpsReachable, dismissCameraSetup, CAMERA_SETUP_OFF_KEY, buildAttendanceRow, mergePresent, platformOf, CA_GUIDE, CAMERA_READY_KEY, NODE_CA_URL, QUICK_MODE_NOTICE,
 } from '../js/camera-support.js';
 
 const read = (p) => fs.readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
@@ -58,6 +58,12 @@ test('isSchoolNode y shouldOfferSetup: solo en el nodo, sin cámara y mientras n
   assert.equal(shouldOfferSetup({ location: { hostname: 'clases.yoaprendo.online' }, isSecureContext: false, navigator: {} }), false, 'en la nube no hay asistente');
   assert.equal(shouldOfferSetup({ ...node, localStorage: store(), isSecureContext: true, navigator: { mediaDevices: { getUserMedia() {} } } }), false, 'con cámara no hace falta');
   assert.doesNotThrow(() => markCameraReady({ localStorage: { setItem() { throw new Error('bloqueado'); } } }));
+  // «No volver a mostrar» también apaga el aviso.
+  const other = { location: { hostname: 'quetzal.local' }, isSecureContext: false, navigator: {}, localStorage: store() };
+  assert.equal(shouldOfferSetup(other), true);
+  dismissCameraSetup(other);
+  assert.equal(other.localStorage.getItem(CAMERA_SETUP_OFF_KEY), '1');
+  assert.equal(shouldOfferSetup(other), false);
 });
 
 test('buildAttendanceRow: la misma fila que arma el QR (mark_attendance)', () => {
@@ -99,6 +105,8 @@ test('attendance.js: lista rápida por la cola de siempre; el flujo QR, la ayuda
   assert.match(att, /_syncManager\.enqueue\('mark_attendance', buildAttendanceRow/, 'la lista rápida usa la misma cola');
   assert.match(att, /_syncManager\.enqueue\('mark_attendance', attendanceData\)/, 'el QR no cambió');
   assert.match(att, /markAllQuickAttendance/); assert.match(att, /Marcar todos presentes/);
+  assert.match(att, /saveQuickAttendance/); assert.match(att, /Guardar lista/);
+  assert.doesNotMatch(att.split('window.toggleQuickAttendance')[1].split('window.saveQuickAttendance')[0], /saveQuickStatus|enqueue/, 'marcar solo cambia el borrador');
   assert.match(att, /toggleQuickAttendance/);
   assert.match(att, /openHelp\('asistencia'\)/);
   assert.match(att, /friendlyError\(err, 'camera'\)/);

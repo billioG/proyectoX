@@ -36,7 +36,12 @@ async function openAttendance(page, { secure }) {
   await page.addInitScript((isSecure) => {
     try { localStorage.setItem('PX_TOUR_DONE', '1'); localStorage.setItem('onboarding_seen_s1', 'true'); } catch { /* sin almacenamiento */ }
     // El servidor de la escuela es «http»: el navegador dice que el contexto no es seguro.
-    if (!isSecure) Object.defineProperty(window, 'isSecureContext', { value: false, configurable: true });
+    if (!isSecure) {
+      Object.defineProperty(window, 'isSecureContext', { value: false, configurable: true });
+      // El nodo de prueba no tiene HTTPS: el intento por https falla como en un navegador real (así el resultado no depende de la red local).
+      const real = window.fetch.bind(window);
+      window.fetch = (u, o) => (String(u).startsWith('https:') ? Promise.reject(new TypeError('Failed to fetch')) : real(u, o));
+    }
   }, secure);
   await page.goto(node.base);
   await page.waitForSelector('#login-username');
@@ -79,24 +84,35 @@ test('nodo en http: la pantalla entra sola a la lista rápida, marca, quita y ma
   await expect(page.getByRole('button', { name: /Ayuda/ })).toBeVisible();
   await expect(page.locator('#attendance-present-count')).toHaveText('1 PRESENTES DE 3');
 
-  // Un toque marca presente.
+  const queued = () => page.evaluate(() => window.__queued.map((q) => [q.action, q.data.student_id, q.data.status, q.data.school_code, q.data.teacher_id]));
+  await expect(page.locator('#btn-save-attendance')).toBeDisabled();
+
+  // Un toque marca en el borrador; otro lo quita; NADA se registra todavía.
   await tap(page, page.locator('[data-quick-student="s1"]'));
   await expect(page.locator('#attendance-present-count')).toHaveText('2 PRESENTES DE 3');
   await expect(page.locator('[data-quick-student="s1"]')).toHaveAttribute('aria-pressed', 'true');
-  // Otro toque lo quita (se guarda «absent»: la nube no borra asistencia).
+  await expect(page.locator('#attendance-pending')).toHaveText('1 cambio sin guardar');
   await tap(page, page.locator('[data-quick-student="s1"]'));
   await expect(page.locator('#attendance-present-count')).toHaveText('1 PRESENTES DE 3');
-  // Marcar todos.
+  await expect(page.locator('#btn-save-attendance')).toBeDisabled();
+  // Marcar todos (también solo borrador).
   await tap(page, page.getByRole('button', { name: /Marcar todos presentes/ }));
   await expect(page.locator('#attendance-present-count')).toHaveText('3 PRESENTES DE 3');
+  await expect(page.locator('#attendance-pending')).toHaveText('2 cambios sin guardar');
+  expect(await queued(), 'sin «Guardar lista» no se registra nada').toEqual([]);
 
-  const queued = await page.evaluate(() => window.__queued.map((q) => [q.action, q.data.student_id, q.data.status, q.data.school_code, q.data.teacher_id]));
-  expect(queued).toEqual([
-    ['mark_attendance', 's1', 'present', 'ESC1', 't1'],
-    ['mark_attendance', 's1', 'absent', 'ESC1', 't1'],
+  // Guardar lista: recién ahora se encola, con la cola de siempre.
+  await tap(page, page.locator('#btn-save-attendance'));
+  await expect(page.locator('#attendance-pending')).toHaveText('Revisa la lista y guárdala');
+  expect(await queued()).toEqual([
     ['mark_attendance', 's1', 'present', 'ESC1', 't1'],
     ['mark_attendance', 's2', 'present', 'ESC1', 't1'],
   ]);
+  // Quitar un presente ya guardado: otro borrador, se guarda como «absent».
+  await tap(page, page.locator('[data-quick-student="s3"]'));
+  await expect(page.locator('#attendance-present-count')).toHaveText('2 PRESENTES DE 3');
+  await tap(page, page.locator('#btn-save-attendance'));
+  expect((await queued()).slice(2)).toEqual([['mark_attendance', 's3', 'absent', 'ESC1', 't1']]);
 
   // El asistente abre sin bloquear y, sin certificado en el servidor, lo dice sin dramatizar.
   await tap(page, page.getByRole('button', { name: /Configurar este dispositivo para usar la cámara/ }));
@@ -104,13 +120,15 @@ test('nodo en http: la pantalla entra sola a la lista rápida, marca, quita y ma
   await expect(modal).toContainText('debe confiar en el certificado del servidor de la escuela');
   await expect(modal).toContainText('todavía no tiene certificado para descargar');
   await expect(modal).toContainText('Android'); await expect(modal).toContainText('iPhone / iPad'); await expect(modal).toContainText('Windows');
-  // El nodo de prueba no tiene HTTPS: se simula lo que hace el navegador real (el intento por https falla) para que el resultado no dependa de la red local.
-  await page.evaluate(() => { const real = window.fetch.bind(window); window.fetch = (u, o) => (String(u).startsWith('https:') ? Promise.reject(new TypeError('Failed to fetch')) : real(u, o)); });
   await tap(page, modal.getByRole('button', { name: /Ya lo instalé, probar cámara/ }));
   await expect(modal).toContainText('no ofrece HTTPS', { timeout: 15_000 });
   expect(await page.evaluate(() => localStorage.getItem('node_camera_ready'))).toBeNull();
   await page.keyboard.press('Escape');
   await expect(modal).toHaveCount(0);
+  // «No volver a mostrar» deja de ofrecer la configuración en este dispositivo.
+  await tap(page, page.getByRole('button', { name: /No volver a mostrar/ }));
+  await expect(page.getByRole('button', { name: /Configurar este dispositivo para usar la cámara/ })).toHaveCount(0);
+  expect(await page.evaluate(() => localStorage.getItem('node_camera_setup_off'))).toBe('1');
   expect(errors, errors.join('\n')).toEqual([]);
 });
 

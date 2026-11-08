@@ -9,6 +9,8 @@
  */
 
 export const CAMERA_READY_KEY = 'node_camera_ready';
+/** El docente pidió no ver más el aviso de configurar la cámara en este dispositivo. */
+export const CAMERA_SETUP_OFF_KEY = 'node_camera_setup_off';
 /** Dónde publica el nodo el certificado público de la CA de la escuela (data/ca/quetzal-ca.crt en la Raspberry). Ver school-node/README.md. */
 export const NODE_CA_URL = '/node-ca.crt';
 
@@ -97,7 +99,11 @@ export const CA_GUIDE = {
 /** Al entrar por el nodo sin cámara, ¿hay que ofrecer el asistente? No si ya funcionó en este dispositivo ni si la cámara sí está disponible. */
 export function shouldOfferSetup(env = globalThis) {
   if (!isSchoolNode(env) || cameraSupport(env).ok) return false;
-  try { return env.localStorage?.getItem(CAMERA_READY_KEY) !== '1'; } catch { return true; }
+  try { return env.localStorage?.getItem(CAMERA_READY_KEY) !== '1' && env.localStorage?.getItem(CAMERA_SETUP_OFF_KEY) !== '1'; } catch { return true; }
+}
+
+export function dismissCameraSetup(env = globalThis) {
+  try { env.localStorage?.setItem(CAMERA_SETUP_OFF_KEY, '1'); } catch { /* sin almacenamiento */ }
 }
 
 export function markCameraReady(env = globalThis) {
@@ -143,15 +149,29 @@ if (typeof window !== 'undefined') {
   window.attendanceMode = () => attendanceMode(window);
   window.probeCamera = () => probeCamera(window);
   window.markCameraReady = () => markCameraReady(window);
+  window.dismissCameraSetup = () => { dismissCameraSetup(window); document.getElementById('camera-setup-slot')?.remove(); };
+  window.isSchoolNode = () => isSchoolNode(window);
   window.cameraIsUnavailable = cameraIsUnavailable;
   window.cameraErrorKind = cameraErrorKind;
   window.QUICK_MODE_NOTICE = QUICK_MODE_NOTICE;
 
   /** Aviso fijo de la lista rápida + botón del asistente (si corresponde). */
   window.quickModeNoticeHtml = function quickModeNoticeHtml() {
-    const setup = shouldOfferSetup(window)
-      ? `<button type="button" onclick="window.openCameraSetup()" class="btn-secondary-tw h-10 mt-3 text-[0.6rem] font-black uppercase tracking-widest"><i class="fas fa-shield-halved"></i> Configurar este dispositivo para usar la cámara</button>`
+    const offer = shouldOfferSetup(window);
+    const setup = offer
+      ? `<div id="camera-setup-slot" class="mt-3 flex flex-col items-start gap-2">
+          <button type="button" onclick="window.openCameraSetup()" class="btn-secondary-tw h-10 text-[0.6rem] font-black uppercase tracking-widest"><i class="fas fa-shield-halved"></i> Configurar este dispositivo para usar la cámara</button>
+          <button type="button" onclick="window.dismissCameraSetup()" class="text-[0.55rem] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-600">No volver a mostrar</button>
+        </div>`
       : '';
+    // Si este dispositivo YA confía en el certificado (el HTTPS responde), no hace falta configurar nada: solo abrir la página con candado.
+    if (offer) setTimeout(async () => {
+      if (!(await nodeHttpsReachable(window))) return;
+      const slot = document.getElementById('camera-setup-slot');
+      if (!slot) return;
+      slot.innerHTML = `<p class="text-[0.65rem] font-bold text-emerald-700 dark:text-emerald-300"><i class="fas fa-circle-check mr-1"></i>Este dispositivo ya confía en el certificado.</p>
+        <a href="https://${esc(location.host)}${esc(location.pathname)}" class="btn-primary-tw bg-emerald-500 hover:bg-emerald-600 h-10 px-4 inline-flex items-center text-[0.6rem] font-black uppercase tracking-widest"><i class="fas fa-camera mr-2"></i>Abrir con cámara</a>`;
+    }, 150);
     return `<div class="w-full p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-left">
       <p class="text-[0.7rem] font-bold text-amber-700 dark:text-amber-300 leading-snug"><i class="fas fa-circle-info mr-1"></i>${esc(QUICK_MODE_NOTICE)}</p>${setup}</div>`;
   };

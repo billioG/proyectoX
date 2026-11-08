@@ -8,6 +8,14 @@ let quickMarks = new Map();
 let quickMarksKey = '';
 let lastStudents = [];
 let lastServerPresent = new Set();
+// Borrador de la lista rápida: lo que el docente marca NO se registra hasta que toca «Guardar lista» (así puede revisarla). id -> 'present'|'absent'
+let draft = new Map();
+let draftKey = '';
+let prevAssignment = '';
+const classKeyOf = (opt) => (opt && opt.value ? `${opt.dataset.school}|${opt.dataset.grade}|${opt.dataset.section}|${new Date().toISOString().split('T')[0]}` : '');
+const basePresent = () => mergePresent(lastServerPresent, quickMarks);
+const draftChanges = () => [...draft].filter(([id, st]) => basePresent().has(id) !== (st === 'present'));
+window.addEventListener('beforeunload', (e) => { if (currentAttMode() === 'quick' && draftChanges().length) { e.preventDefault(); e.returnValue = ''; } });
 
 window.loadAttendance = async function loadAttendance() {
     const container = document.getElementById('attendance-container');
@@ -69,6 +77,8 @@ window.loadAttendanceInterface = async function loadAttendanceInterface() {
 // Columna izquierda: cámara QR (flujo de siempre) o aviso de la lista rápida. Se cambia sola si la cámara no abre.
 function cameraColumnHtml(mode) {
     if (mode === 'quick') return window.quickModeNoticeHtml();
+    // Ya está con candado y cámara disponible en el servidor de la escuela: no vuelve a ofrecerse la configuración en este dispositivo.
+    if (window.isSchoolNode?.()) markCameraReady(window);
     return `
                         <div id="qr-video-container" class="hidden relative w-full aspect-square rounded-[2rem] overflow-hidden border-8 border-slate-900 shadow-2xl bg-black">
                             <video id="qr-video" class="w-full h-full object-cover"></video>
@@ -329,6 +339,13 @@ window.loadStudentsForAttendance = async function loadStudentsForAttendance() {
     const opt = select.options[select.selectedIndex];
     if (!opt.value) return section.classList.add('hidden');
 
+    // Cambio de clase con una lista rápida sin guardar: se pregunta antes de perderla.
+    if (draftChanges().length && classKeyOf(opt) !== draftKey) {
+        if (!window.confirm('Tienes cambios sin guardar en la lista de asistencia. ¿Descartarlos y cambiar de clase?')) { select.value = prevAssignment; return; }
+        draft = new Map();
+    }
+    prevAssignment = select.value;
+
     section.classList.remove('hidden');
 
     // Loader si está vacío
@@ -364,16 +381,20 @@ window.renderStudentsAttendanceList = function renderStudentsAttendanceList(cont
     const opt = select?.options[select.selectedIndex];
     const key = opt ? `${opt.dataset.school}|${opt.dataset.grade}|${opt.dataset.section}|${new Date().toISOString().split('T')[0]}` : '';
     if (key !== quickMarksKey) { quickMarks = new Map(); quickMarksKey = key; }
+    if (key !== draftKey) { draft = new Map(); draftKey = key; }
     lastStudents = students;
     lastServerPresent = serverPresentIds;
-    const presentIds = mergePresent(serverPresentIds, quickMarks);
     const quick = currentAttMode() === 'quick';
+    // En la lista rápida se ve el borrador encima de lo ya registrado.
+    const presentIds = new Set(basePresent());
+    if (quick) for (const [id, st] of draft) { if (st === 'present') presentIds.add(id); else presentIds.delete(id); }
+    const pending = quick ? draftChanges().length : 0;
 
     container.innerHTML = `
         <div class="flex flex-wrap justify-between items-center gap-2 mb-4 border-b border-slate-100 dark:border-slate-800 pb-3">
             <span class="text-[0.6rem] font-black uppercase text-slate-400 tracking-widest">${students.length} ESTUDIANTES</span>
             <span id="attendance-present-count" class="bg-emerald-500/10 text-emerald-500 text-[0.55rem] font-black px-2 py-0.5 rounded-full">${presentIds.size} PRESENTES${quick ? ` DE ${students.length}` : ''}</span>
-            ${quick ? `<button type="button" onclick="window.markAllQuickAttendance()" class="btn-primary-tw bg-emerald-500 hover:bg-emerald-600 h-9 px-4 text-[0.6rem] font-black uppercase tracking-widest"><i class="fas fa-check-double"></i> Marcar todos presentes</button>` : ''}
+            ${quick ? `<button type="button" onclick="window.markAllQuickAttendance()" class="btn-secondary-tw h-9 px-4 text-[0.6rem] font-black uppercase tracking-widest"><i class="fas fa-check-double"></i> Marcar todos presentes</button>` : ''}
         </div>
         <div class="space-y-2">
             ${students.map(s => {
@@ -395,6 +416,10 @@ window.renderStudentsAttendanceList = function renderStudentsAttendanceList(cont
                     </button>`;
     }).join('')}
         </div>
+        ${quick ? `<div class="sticky bottom-0 mt-4 pt-3 flex flex-wrap items-center justify-between gap-2 bg-slate-50 dark:bg-slate-900">
+            <span id="attendance-pending" class="text-[0.6rem] font-black uppercase tracking-widest ${pending ? 'text-amber-600' : 'text-slate-400'}">${pending ? `${pending} ${pending === 1 ? 'cambio' : 'cambios'} sin guardar` : 'Revisa la lista y guárdala'}</span>
+            <button type="button" id="btn-save-attendance" onclick="window.saveQuickAttendance()" ${pending ? '' : 'disabled'} class="btn-primary-tw bg-emerald-500 hover:bg-emerald-600 h-10 px-5 text-[0.65rem] font-black uppercase tracking-widest ${pending ? '' : 'opacity-40 cursor-not-allowed'}"><i class="fas fa-floppy-disk"></i> Guardar lista</button>
+        </div>` : ''}
     `;
 }
 
@@ -417,21 +442,33 @@ async function saveQuickStatus(studentId, status) {
 
 const repaintQuick = () => { const c = document.getElementById('attendance-students-list'); if (c) renderStudentsAttendanceList(c, lastStudents, lastServerPresent); };
 
-window.toggleQuickAttendance = async function toggleQuickAttendance(studentId) {
-    const wasPresent = mergePresent(lastServerPresent, quickMarks).has(studentId);
-    if (await saveQuickStatus(studentId, wasPresent ? 'absent' : 'present')) repaintQuick();
+/** Un toque cambia el borrador (no registra nada todavía). */
+window.toggleQuickAttendance = function toggleQuickAttendance(studentId) {
+    const base = basePresent().has(studentId);
+    const nowPresent = draft.has(studentId) ? draft.get(studentId) === 'present' : base;
+    const next = nowPresent ? 'absent' : 'present';
+    if ((next === 'present') === base) draft.delete(studentId); else draft.set(studentId, next);
+    repaintQuick();
 }
 
-window.markAllQuickAttendance = async function markAllQuickAttendance() {
-    const have = mergePresent(lastServerPresent, quickMarks);
-    const todo = lastStudents.filter(s => !have.has(s.id));
-    if (!todo.length) return showToast('<i class="fas fa-circle-check"></i> Todos ya están presentes', 'info');
+window.markAllQuickAttendance = function markAllQuickAttendance() {
+    const base = basePresent();
+    lastStudents.forEach(s => { if (base.has(s.id)) draft.delete(s.id); else draft.set(s.id, 'present'); });
+    repaintQuick();
+}
+
+/** «Guardar lista»: recién aquí se registra, con la misma cola del QR (se sube sola cuando hay internet). */
+window.saveQuickAttendance = async function saveQuickAttendance() {
+    const changes = draftChanges();
+    if (!changes.length) return;
+    const btn = document.getElementById('btn-save-attendance');
+    if (btn) btn.disabled = true;
     let done = 0;
-    for (const s of todo) { if (await saveQuickStatus(s.id, 'present')) done++; else break; }
+    for (const [id, st] of changes) { if (await saveQuickStatus(id, st)) { draft.delete(id); done++; } else break; }
     repaintQuick();
     if (done) showToast(navigator.onLine
-        ? `<i class="fas fa-circle-check"></i> ${done} presentes registrados`
-        : `<i class="fas fa-circle-check"></i> ${done} presentes registrados. Se subirán solos cuando vuelva el internet.`, 'success');
+        ? `<i class="fas fa-circle-check"></i> Lista guardada (${done} ${done === 1 ? 'cambio' : 'cambios'})`
+        : `<i class="fas fa-circle-check"></i> Lista guardada (${done} ${done === 1 ? 'cambio' : 'cambios'}). Se subirá sola cuando vuelva el internet.`, 'success');
 }
 
 // WAIVER MODAL

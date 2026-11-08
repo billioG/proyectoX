@@ -121,10 +121,16 @@ window.enableEventNotifications = async function enableEventNotifications() {
     const registration = await navigator.serviceWorker.ready;
     let subscription = await registration.pushManager.getSubscription();
     if (!subscription) {
-      subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-      });
+      const subscribe = () => registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) });
+      try {
+        subscription = await subscribe();
+      } catch (first) {
+        // «Registration failed - push service error» = el navegador no logró hablar con su servicio de notificaciones (Google/FCM en Chrome y Edge).
+        // Un reintento a los 2 s cubre un corte corto; si sigue igual, es del navegador o de la red de esa computadora, no de Quetzal.
+        if (first?.name !== 'AbortError') throw first;
+        await new Promise(r => setTimeout(r, 2000));
+        subscription = await subscribe();
+      }
     }
 
     await window.syncPushSubscription(subscription);
@@ -133,7 +139,10 @@ window.enableEventNotifications = async function enableEventNotifications() {
     if (typeof window.renderEventNotificationToggle === 'function') window.renderEventNotificationToggle();
   } catch (err) {
     console.error('Error activando notificaciones:', err);
-    window.showToast('<i class="fas fa-circle-xmark"></i> No se pudo activar: ' + err.message, 'error');
+    const msg = err?.name === 'AbortError' || /push service error/i.test(String(err?.message))
+      ? 'Este navegador no pudo conectarse con su servicio de notificaciones. Revisa que tengas internet sin VPN ni bloqueo de «fcm.googleapis.com», que en el navegador esté activo «Usar servicios de Google para notificaciones push» (Brave: Ajustes → Privacidad), y vuelve a intentar. En el celular o la tablet suele funcionar.'
+      : 'No se pudo activar: ' + err.message;
+    window.showToast('<i class="fas fa-circle-xmark"></i> ' + msg, 'error');
   }
 }
 
