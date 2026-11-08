@@ -539,6 +539,18 @@ otra ruta, definir la variable de entorno `QUETZAL_USB_DIR`.
 - Hace falta volver a publicar `node-sync` (subiendo también `projects.ts`); si la función es la anterior, el
   Inicio muestra solo los proyectos propios guardados aquí.
 
+## HTTPS y cámara para pasar lista (preparado, falta la parte del servidor)
+
+La cámara del navegador solo funciona en HTTPS, y el nodo sirve `http://quetzal.local`. Mientras tanto **Tomar Asistencia** usa la **lista rápida** (sin cámara, misma cola offline).
+
+Lo que ya hay: el nodo entrega el certificado público de la CA de la escuela en `/node-ca.crt` si existe el archivo `data/ca/quetzal-ca.crt`, y la app tiene el asistente «Configurar este dispositivo para usar la cámara» (guía Android / iPhone / Windows y prueba de cámara).
+
+Lo que **falta** (TODO, no está hecho a propósito para no romper producción):
+1. Crear una CA de la escuela y un certificado para `quetzal.local` (y la IP) firmado por ella; guardar la CA pública en `data/ca/quetzal-ca.crt`.
+2. Servir HTTPS desde `server.js` (puerto 443 o 8443 con `https.createServer`) con ese certificado, o poner un proxy (Caddy) delante.
+3. Opcional: redirigir `http://` → `https://` cuando el certificado ya esté instalado en los dispositivos.
+4. Guardar la clave privada de la CA fuera del nodo (solo el certificado público va en `data/ca/`).
+
 ## Seguridad
 
 - El token del nodo solo da acceso a **su** escuela. Si se pierde la Raspberry,

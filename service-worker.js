@@ -2,7 +2,7 @@
 // SERVICE WORKER - PROJECTX PWA
 // ================================================
 
-const CACHE_NAME = 'projectx-v1.0.248';
+const CACHE_NAME = 'projectx-v1.0.249';
 // Caché de archivos de lecciones (video/PDF/imagen/paquetes SCORM-H5P) --
 // separada de CACHE_NAME a propósito: CACHE_NAME se recrea y se BORRA
 // entera en cada deploy (bump de versión) para forzar JS/CSS frescos, pero
@@ -35,7 +35,7 @@ const APP_JS = `js/app.js?v=${APP_VERSION.replace(/^v/, '')}`;
 const LAZY_MODULES = [
   'js/admin-attendance.js', 'js/admin-dashboard.js', 'js/admin-evaluations.js',
   'js/admin-performance.js', 'js/admin-reports.js', 'js/admin-success.js',
-  'js/admin-waivers.js', 'js/attendance-summary-view.js', 'js/attendance.js',
+  'js/admin-waivers.js', 'js/attendance-summary-view.js', 'js/attendance.js', 'js/camera-support.js',
   'js/badges.js', 'js/bonus-system.js', 'js/certificates.js', 'js/companion.js',
   'js/coordinator.js', 'js/data/challenges.js', 'js/debug-duel.js', 'js/duels.js',
   'js/exams.js', 'js/omr-core.js', 'js/evaluation-modals.js', 'js/evaluation-notifications.js', 'js/evaluation.js',
@@ -63,7 +63,7 @@ const EAGER_MODULES = [
   'js/activity-tracker.js', 'js/admin-dashboard.js', 'js/teachers.js',
   'js/student-presence.js', 'js/students.js', 'js/schools.js', 'js/ranking.js', 'js/bonus-system.js',
   'js/admin-success.js', 'js/evaluation.js', 'js/admin-evaluations.js',
-  'js/attendance.js', 'js/groups.js', 'js/gamification.js', 'js/profile.js',
+  'js/attendance.js', 'js/camera-support.js', 'js/groups.js', 'js/gamification.js', 'js/profile.js',
   'js/feed-ui.js', 'js/utils.js', 'js/safe-html.js', 'js/query-cache.js', 'js/help-messages.js', 'js/qrcode.min.js',
 ];
 

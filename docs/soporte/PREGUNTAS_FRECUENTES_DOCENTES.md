@@ -21,7 +21,7 @@ Según lo que diga el aviso:
 - **«Está en uso por otra aplicación»:** cierra la otra app (videollamada, cámara) o reinicia el navegador.
 - **«No tiene una cámara»:** usa otro celular o tablet.
 - **«El navegador no deja usar la cámara en esta dirección»:** estás en una dirección **«http»** (el servidor de la escuela, `quetzal.local`). El navegador solo
-  permite la cámara con **candado (https)**. Entra a **Quetzal en línea** con internet para pasar lista. Si no se puede, consulta a tu administrador (hoy la pantalla registra la asistencia con el QR de la credencial).
+  permite la cámara con **candado (https)**. En ese caso **Tomar Asistencia** cambia sola a la **lista rápida**: toca a cada estudiante para marcarlo presente (otra vez para quitarlo) o usa **Marcar todos presentes**. Se guarda igual que con el QR y se sube sola cuando hay internet. Para escanear QR entra a **Quetzal en línea**, o toca **Configurar este dispositivo para usar la cámara** (necesita que el servidor de la escuela tenga HTTPS; si todavía no lo tiene, el asistente lo dice y sigues con la lista rápida).
 
 ### 3. Mostré el QR y no pasó nada (o dice «Ese código QR no es de un estudiante de Quetzal»)
 - Primero **elige tu clase** en **Equipo en Aula**; sin eso no se registra (la app lo avisa).

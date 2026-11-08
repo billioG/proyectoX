@@ -73,7 +73,7 @@ export function friendlyError(err, ctx = 'generic', { online = true } = {}) {
     if (/notfounderror|devicesnotfound|overconstrained/.test(t)) return out('camera-missing', 'Este dispositivo no tiene una cámara que se pueda usar. Prueba con otro celular o tablet.');
     if (/notreadableerror|trackstarterror/.test(t)) return out('camera-busy', 'La cámara está en uso por otra aplicación. Ciérrala (o reinicia el navegador) y vuelve a intentar.');
     if (/securityerror|secure context|getusermedia/.test(t)) {
-      return out('camera-insecure', 'El navegador no deja usar la cámara en esta dirección (el servidor de la escuela usa «http», sin candado). Para pasar lista con la cámara entra a Quetzal en línea con internet; sin internet, pide al administrador un ajuste manual.');
+      return out('camera-insecure', 'El navegador no deja usar la cámara en esta dirección (el servidor de la escuela usa «http», sin candado). Usa la lista rápida de Asistencia, o entra a Quetzal en línea con internet para escanear QR; para usar la cámara en el servidor de la escuela hace falta HTTPS (pide al administrador).');
     }
     if (ctx === 'camera') return out('camera-unknown', 'No se pudo abrir la cámara. Cierra otras aplicaciones que la usen y vuelve a intentar; si sigue igual, avisa a soporte.');
   }
@@ -168,6 +168,7 @@ export const HELP_TOPICS = {
       'Toca «Activar cámara» y acepta el permiso.',
       'Muestra a la cámara el QR de la credencial de cada estudiante: aparece ✓ y suben los «presentes».',
       'Al terminar toca «Detener».',
+      'Si la pantalla dice que no se puede usar la cámara, usa la lista rápida: toca a cada estudiante para marcarlo presente (otra vez para quitarlo) o «Marcar todos presentes».',
     ],
     tips: [
       'Imprime las credenciales en «Impresión · Credenciales QR».',
@@ -176,7 +177,8 @@ export const HELP_TOPICS = {
       'Si ese día no hubo clase, usa «Suspensiones» (lo aprueba el administrador).',
     ],
     problems: [
-      ['La cámara no abre', 'Permite la cámara (candado junto a la dirección) y cierra otras apps que la usen. En el servidor de la escuela (dirección «http») el navegador no deja usarla: usa Quetzal en línea.'],
+      ['La cámara no abre', 'Permite la cámara (candado junto a la dirección) y cierra otras apps que la usen. En el servidor de la escuela (dirección «http») el navegador no deja usarla: la pantalla cambia sola a la lista rápida, que guarda igual y se sube sola cuando hay internet.'],
+      ['Quiero usar la cámara en el servidor de la escuela', 'Toca «Configurar este dispositivo para usar la cámara» y sigue los pasos: el dispositivo debe confiar en el certificado de la escuela y el servidor debe tener HTTPS. Si el servidor aún no lo tiene, usa la lista rápida.'],
       ['No aparece mi clase en «Equipo en Aula»', 'Tu administrador debe asignártela. Avísale tu nombre, establecimiento, grado y sección.'],
       ['El QR no se lee', 'Acércalo, con buena luz y sin brillo. Si la credencial está dañada, reimprímela.'],
     ],

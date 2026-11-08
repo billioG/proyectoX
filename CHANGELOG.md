@@ -4,6 +4,10 @@ Cambios publicados en Quetzal LMS, del más reciente al más antiguo. Cada líne
 
 Al publicar una versión nueva, agrega una línea arriba de todo (ver CONTRIBUTING.md).
 
+## 2026-11-08
+
+- **Asistencia rápida sin cámara y asistente del certificado del nodo (v1.0.249).** En el servidor de la escuela (`http://quetzal.local`) el navegador bloquea la cámara: ahora **Tomar Asistencia** lo detecta (contexto seguro + `getUserMedia`, o el error al abrirla) y cambia sola a la **lista rápida**: un toque por estudiante para marcar presente o quitarlo, «Marcar todos presentes» y contador. Guarda con la misma cola offline del QR (`mark_attendance`); quitar un presente guarda «absent», porque la nube no borra asistencia. Si la cámara funciona (HTTPS), vuelve al flujo QR. Nuevo asistente «Configurar este dispositivo para usar la cámara» (descarga del certificado, guía Android / iPhone / Windows, «Ya lo instalé, probar cámara» y la marca local `node_camera_ready`). El nodo publica `/node-ca.crt` solo si existe `data/ca/quetzal-ca.crt`; **no** genera certificados ni activa HTTPS (pendiente, ver school-node/README.md). Pruebas: tests-unit/camera-support.test.mjs.
+
 ## 2026-11-07
 
 - **Nodo: los videos y modelos 3D de los proyectos de la propia escuela se ven sin internet (v1.0.248).** Al sincronizar, el nodo baja a `data/project-mirror/` los videos de los proyectos de los estudiantes de su escuela (los más nuevos primero, con la firma de `node-sync`), y la app los recibe con la dirección local `/project-mirror/…` (con rangos para adelantar el video). Topes: 150 MB por archivo, 3 GB en total, 8 archivos por sincronización y nunca menos disco libre que `minFreeDiskMB`; lo borrado en la nube se libera del disco; no entra en los respaldos. Los proyectos de otras escuelas no se copian: solo se ven con internet. No cambia `node-sync` ni hay migración nueva. Pruebas: tests-unit/project-mirror.test.mjs.

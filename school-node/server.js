@@ -141,6 +141,7 @@ const APP_ALLOWED = [/^index\.html$/, /^manifest\.json$/, /^service-worker\.js$/
   /^css\//, /^js\//, /^vendor\//, /^assets\//, /^img\//, /^images\//];
 
 const MIME = {
+  '.crt': 'application/x-x509-ca-cert',
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
   '.json': 'application/json; charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
   '.gif': 'image/gif', '.svg': 'image/svg+xml', '.webp': 'image/webp', '.mp4': 'video/mp4', '.webm': 'video/webm',
@@ -877,6 +878,11 @@ const server = http.createServer(async (req, res) => {
       if (!rel) { res.writeHead(404); return res.end('No encontrado'); }
       if (!storageFile) return serveScormEntry(res, rel, req.headers.host);
       return serveFile(req, res, CONTENT_DIR, rel);
+    }
+    // Certificado PÚBLICO de la CA de la escuela (data/ca/quetzal-ca.crt), para que los dispositivos confíen en el HTTPS del nodo y la cámara pueda pasar lista.
+    // Solo se entrega ese archivo y solo si existe: el nodo NO genera certificados ni activa HTTPS por sí solo (ver school-node/README.md, «HTTPS y cámara»).
+    if (url.pathname === '/node-ca.crt' && (req.method === 'GET' || req.method === 'HEAD')) {
+      return serveFile(req, res, path.resolve(config.dataDir, 'ca'), 'quetzal-ca.crt');
     }
     // Videos y modelos 3D de los proyectos de esta escuela, guardados en el nodo (project-mirror.js): se sirven con rangos, sin internet.
     const mirrorName = /^\/project-mirror\/([^/]+)$/.exec(url.pathname)?.[1];

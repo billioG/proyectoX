@@ -1,6 +1,13 @@
 /**
  * ATTENDANCE - Gestión de Asistencia (Premium Edition)
  */
+import { cameraSupport, attendanceMode, cameraErrorKind, cameraIsUnavailable, markCameraReady, buildAttendanceRow, mergePresent } from './camera-support.js';
+
+// Asistencia rápida (sin cámara): lo marcado en ESTE dispositivo, por si aún está en la cola y la nube no lo devuelve. id -> 'present'|'absent'
+let quickMarks = new Map();
+let quickMarksKey = '';
+let lastStudents = [];
+let lastServerPresent = new Set();
 
 window.loadAttendance = async function loadAttendance() {
     const container = document.getElementById('attendance-container');
@@ -59,7 +66,43 @@ window.loadAttendanceInterface = async function loadAttendanceInterface() {
     });
 }
 
-window.renderAttendanceUI = window.renderAttendanceUI = function renderAttendanceUI(container, snapshot) {
+// Columna izquierda: cámara QR (flujo de siempre) o aviso de la lista rápida. Se cambia sola si la cámara no abre.
+function cameraColumnHtml(mode) {
+    if (mode === 'quick') return window.quickModeNoticeHtml();
+    return `
+                        <div id="qr-video-container" class="hidden relative w-full aspect-square rounded-[2rem] overflow-hidden border-8 border-slate-900 shadow-2xl bg-black">
+                            <video id="qr-video" class="w-full h-full object-cover"></video>
+                            <div class="absolute inset-0 border-[40px] border-black/40 pointer-events-none">
+                                <div class="w-full h-full border-2 border-emerald-400 border-dashed rounded-2xl animate-pulse"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-6 flex flex-col gap-3 w-full">
+                            <button onclick="window.startQRScanner()" id="btn-start-scanner" class="btn-primary-tw bg-emerald-500 hover:bg-emerald-600 h-12 uppercase tracking-widest text-xs font-black">
+                                <i class="fas fa-camera"></i> ACTIVAR CÁMARA
+                            </button>
+                            <button onclick="window.stopQRScanner()" id="btn-stop-scanner" class="hidden btn-secondary-tw bg-rose-500 text-white border-none h-12 uppercase tracking-widest text-xs font-black">
+                                <i class="fas fa-stop"></i> DETENER
+                            </button>
+                            <div id="scan-result" class="text-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 min-h-[40px] flex items-center justify-center">
+                                <span class="text-[0.55rem] font-black text-slate-400 tracking-widest uppercase">Listo para registro</span>
+                            </div>
+                        </div>`;
+}
+
+let attMode = null; // 'qr' | 'quick' (null = lo que diga cameraSupport al dibujar)
+const currentAttMode = () => attMode || attendanceMode(window);
+
+/** Cambia entre cámara QR y lista rápida sin recargar (cámara que no abre, o asistente que la dejó lista). */
+window.setAttendanceMode = function setAttendanceMode(mode) {
+    attMode = mode;
+    const col = document.getElementById('attendance-camera-col');
+    if (col) { if (mode !== 'quick') window.stopQRScanner?.(); col.innerHTML = cameraColumnHtml(mode); }
+    const list = document.getElementById('attendance-students-list');
+    if (list && lastStudents.length) renderStudentsAttendanceList(list, lastStudents, lastServerPresent);
+}
+
+window.renderAttendanceUI = function renderAttendanceUI(container, snapshot) {
     const sanitizeInput = window.sanitizeInput;
     const { assignments, todayWaivers, waiverCount } = snapshot;
     const hasWaivers = (waiverCount || 0) > 0;
@@ -96,26 +139,7 @@ window.renderAttendanceUI = window.renderAttendanceUI = function renderAttendanc
 
             <div id="qr-scanner-section" class="hidden animate-slideUp">
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-10">
-                    <div class="lg:col-span-4 flex flex-col items-center">
-                        <div id="qr-video-container" class="hidden relative w-full aspect-square rounded-[2rem] overflow-hidden border-8 border-slate-900 shadow-2xl bg-black">
-                            <video id="qr-video" class="w-full h-full object-cover"></video>
-                            <div class="absolute inset-0 border-[40px] border-black/40 pointer-events-none">
-                                <div class="w-full h-full border-2 border-emerald-400 border-dashed rounded-2xl animate-pulse"></div>
-                            </div>
-                        </div>
-                        
-                        <div class="mt-6 flex flex-col gap-3 w-full">
-                            <button onclick="window.startQRScanner()" id="btn-start-scanner" class="btn-primary-tw bg-emerald-500 hover:bg-emerald-600 h-12 uppercase tracking-widest text-xs font-black">
-                                <i class="fas fa-camera"></i> ACTIVAR CÁMARA
-                            </button>
-                            <button onclick="window.stopQRScanner()" id="btn-stop-scanner" class="hidden btn-secondary-tw bg-rose-500 text-white border-none h-12 uppercase tracking-widest text-xs font-black">
-                                <i class="fas fa-stop"></i> DETENER
-                            </button>
-                            <div id="scan-result" class="text-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 min-h-[40px] flex items-center justify-center">
-                                <span class="text-[0.55rem] font-black text-slate-400 tracking-widest uppercase">Listo para registro</span>
-                            </div>
-                        </div>
-                    </div>
+                    <div id="attendance-camera-col" class="lg:col-span-4 flex flex-col items-center">${cameraColumnHtml(currentAttMode())}</div>
                     
                     <div class="lg:col-span-8">
                         <div id="attendance-students-list" class="bg-slate-50 dark:bg-slate-800/40 rounded-[2rem] p-6 max-h-[500px] overflow-y-auto custom-scroll border border-slate-100 dark:border-slate-800">
@@ -181,6 +205,8 @@ window.startQRScanner = async function startQRScanner() {
     const btnStop = document.getElementById('btn-stop-scanner');
 
     if (!video || !container) return;
+    // Sin cámara en este servidor (http del nodo): directo a la lista rápida, sin error ni aviso rojo.
+    if (!cameraSupport(window).ok) return window.setAttendanceMode('quick');
     window.loadLib('jsqr');
 
     try {
@@ -192,12 +218,16 @@ window.startQRScanner = async function startQRScanner() {
         // resolver, tira un AbortError sin capturar en consola. Es un
         // race normal del navegador, no un error real.
         video.play().catch(() => {});
+        markCameraReady(window);
         container.classList.remove('hidden');
         btnStart.classList.add('hidden');
         btnStop.classList.remove('hidden');
 
         tickScanner();
     } catch (err) {
+        qrScanning = false;
+        // La cámara no existe o el servidor no es seguro: lista rápida (sin avisos rojos). Permiso negado u ocupada: se explica la causa y se queda la cámara.
+        if (cameraIsUnavailable(cameraErrorKind(err))) return window.setAttendanceMode('quick');
         console.error(err);
         // Dice POR QUÉ no abrió (permiso, sin cámara, en uso, o dirección «http» del servidor de la escuela) y qué hacer.
         const f = window.friendlyError ? window.friendlyError(err, 'camera') : { message: 'Error de cámara' };
@@ -279,6 +309,7 @@ window.handleQRCodeDetected = async function handleQRCodeDetected(data) {
 
         // USAR EL GESTOR DE SINCRONIZACIÓN (MODO KOLIBRI / OFFLINE)
         await _syncManager.enqueue('mark_attendance', attendanceData);
+        quickMarks.set(id, 'present');
 
         showToast(navigator.onLine
             ? '<i class="fas fa-circle-check"></i> Asistencia registrada'
@@ -315,11 +346,11 @@ window.loadStudentsForAttendance = async function loadStudentsForAttendance() {
             const today = new Date().toISOString().split('T')[0];
             const [students, att] = await Promise.all([
                 _supabase.from('students').select('id, full_name, username').eq('school_code', school).eq('grade', grade).eq('section', sec).order('full_name'),
-                _supabase.from('attendance').select('student_id').eq('date', today)
+                _supabase.from('attendance').select('student_id, status').eq('date', today)
             ]);
             return {
                 students: students.data || [],
-                presentIds: new Set((att.data || []).map(a => a.student_id))
+                presentIds: new Set((att.data || []).filter(a => !a.status || a.status === 'present').map(a => a.student_id))
             };
         }, (data) => {
             renderStudentsAttendanceList(container, data.students, data.presentIds);
@@ -327,29 +358,80 @@ window.loadStudentsForAttendance = async function loadStudentsForAttendance() {
     } catch (e) { console.error(e); }
 }
 
-window.renderStudentsAttendanceList = function renderStudentsAttendanceList(container, students, presentIds) {
+window.renderStudentsAttendanceList = function renderStudentsAttendanceList(container, students, serverPresentIds) {
+    // Lo marcado en este dispositivo manda sobre lo que devuelva la nube (puede estar todavía en la cola sin subir).
+    const select = document.getElementById('attendance-assignment');
+    const opt = select?.options[select.selectedIndex];
+    const key = opt ? `${opt.dataset.school}|${opt.dataset.grade}|${opt.dataset.section}|${new Date().toISOString().split('T')[0]}` : '';
+    if (key !== quickMarksKey) { quickMarks = new Map(); quickMarksKey = key; }
+    lastStudents = students;
+    lastServerPresent = serverPresentIds;
+    const presentIds = mergePresent(serverPresentIds, quickMarks);
+    const quick = currentAttMode() === 'quick';
+
     container.innerHTML = `
-        <div class="flex justify-between items-center mb-4 border-b border-slate-100 dark:border-slate-800 pb-3">
+        <div class="flex flex-wrap justify-between items-center gap-2 mb-4 border-b border-slate-100 dark:border-slate-800 pb-3">
             <span class="text-[0.6rem] font-black uppercase text-slate-400 tracking-widest">${students.length} ESTUDIANTES</span>
-            <span class="bg-emerald-500/10 text-emerald-500 text-[0.55rem] font-black px-2 py-0.5 rounded-full">${presentIds.size} PRESENTES</span>
+            <span id="attendance-present-count" class="bg-emerald-500/10 text-emerald-500 text-[0.55rem] font-black px-2 py-0.5 rounded-full">${presentIds.size} PRESENTES${quick ? ` DE ${students.length}` : ''}</span>
+            ${quick ? `<button type="button" onclick="window.markAllQuickAttendance()" class="btn-primary-tw bg-emerald-500 hover:bg-emerald-600 h-9 px-4 text-[0.6rem] font-black uppercase tracking-widest"><i class="fas fa-check-double"></i> Marcar todos presentes</button>` : ''}
         </div>
         <div class="space-y-2">
             ${students.map(s => {
         const isP = presentIds.has(s.id);
-        return `
-                    <div class="flex items-center gap-3 p-3 rounded-2xl bg-white dark:bg-slate-900 border ${isP ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-slate-100 dark:border-slate-800'} transition-all">
-                        <div class="w-8 h-8 rounded-lg ${isP ? 'bg-emerald-500' : 'bg-slate-100 dark:bg-slate-800'} text-white flex items-center justify-center text-xs">
+        const row = `
+                        <div class="w-8 h-8 rounded-lg ${isP ? 'bg-emerald-500' : 'bg-slate-100 dark:bg-slate-800'} ${isP ? 'text-white' : 'text-slate-400'} flex items-center justify-center text-xs">
                             <i class="fas ${isP ? 'fa-check' : 'fa-user'}"></i>
                         </div>
-                        <div class="grow min-w-0">
+                        <div class="grow min-w-0 text-left">
                             <p class="text-[0.7rem] font-black text-slate-800 dark:text-white truncate leading-none mb-1">${sanitizeInput(s.full_name)}</p>
                             <p class="text-[0.5rem] font-bold text-slate-400 uppercase tracking-widest">@${window.sanitizeInput(s.username)}</p>
-                        </div>
-                    </div>
-                `;
+                        </div>`;
+        if (!quick) return `<div class="flex items-center gap-3 p-3 rounded-2xl bg-white dark:bg-slate-900 border ${isP ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-slate-100 dark:border-slate-800'} transition-all">${row}</div>`;
+        // Un toque por estudiante: presente / no presente.
+        return `<button type="button" data-quick-student="${window.sanitizeInput(String(s.id))}" aria-pressed="${isP}" onclick="window.toggleQuickAttendance(this.dataset.quickStudent)"
+                        class="w-full flex items-center gap-3 p-3 rounded-2xl bg-white dark:bg-slate-900 border ${isP ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-slate-100 dark:border-slate-800'} transition-all active:scale-[0.99]">
+                        ${row}
+                        <span class="shrink-0 text-[0.55rem] font-black uppercase tracking-widest px-3 py-1.5 rounded-full ${isP ? 'bg-emerald-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}">${isP ? 'Presente' : 'Marcar'}</span>
+                    </button>`;
     }).join('')}
         </div>
     `;
+}
+
+/** Guarda un estado de asistencia con la MISMA cola del QR (se sube sola cuando hay internet). Quitar un presente = estado «absent» (la nube no borra asistencia). */
+async function saveQuickStatus(studentId, status) {
+    const select = document.getElementById('attendance-assignment');
+    const opt = select?.options[select.selectedIndex];
+    if (!opt || !opt.value) { showToast('<i class="fas fa-circle-xmark"></i> Primero elige tu clase en «Equipo en Aula».', 'error'); return false; }
+    try {
+        await _syncManager.enqueue('mark_attendance', buildAttendanceRow({ studentId, teacherId: currentUser.id, school: opt.dataset.school, grade: opt.dataset.grade, section: opt.dataset.section, status }));
+        quickMarks.set(studentId, status);
+        return true;
+    } catch (e) {
+        console.error('Error en asistencia rápida:', e);
+        const f = window.friendlyError ? window.friendlyError(e, 'attendance') : { message: 'No se pudo registrar la asistencia.' };
+        showToast('<i class="fas fa-circle-xmark"></i> ' + f.message, 'error');
+        return false;
+    }
+}
+
+const repaintQuick = () => { const c = document.getElementById('attendance-students-list'); if (c) renderStudentsAttendanceList(c, lastStudents, lastServerPresent); };
+
+window.toggleQuickAttendance = async function toggleQuickAttendance(studentId) {
+    const wasPresent = mergePresent(lastServerPresent, quickMarks).has(studentId);
+    if (await saveQuickStatus(studentId, wasPresent ? 'absent' : 'present')) repaintQuick();
+}
+
+window.markAllQuickAttendance = async function markAllQuickAttendance() {
+    const have = mergePresent(lastServerPresent, quickMarks);
+    const todo = lastStudents.filter(s => !have.has(s.id));
+    if (!todo.length) return showToast('<i class="fas fa-circle-check"></i> Todos ya están presentes', 'info');
+    let done = 0;
+    for (const s of todo) { if (await saveQuickStatus(s.id, 'present')) done++; else break; }
+    repaintQuick();
+    if (done) showToast(navigator.onLine
+        ? `<i class="fas fa-circle-check"></i> ${done} presentes registrados`
+        : `<i class="fas fa-circle-check"></i> ${done} presentes registrados. Se subirán solos cuando vuelva el internet.`, 'success');
 }
 
 // WAIVER MODAL

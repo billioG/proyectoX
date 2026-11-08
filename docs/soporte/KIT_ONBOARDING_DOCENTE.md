@@ -71,4 +71,4 @@ Solo evalúa el docente **asignado a esa clase**.
 3. Si sigue igual, avisa a soporte con lo que pide la guía: [`GUIA_RAPIDA_SOPORTE.md`](GUIA_RAPIDA_SOPORTE.md), sección *Qué mandar al escalar*.
 
 > **Si tu escuela usa el servidor escolar** (dirección tipo `http://quetzal.local`, sin internet): el nodo funciona sin internet, pero el navegador
-> **no deja usar la cámara** en direcciones «http». Para pasar lista con la cámara entra a Quetzal en línea. Más en la pregunta 10 de las preguntas frecuentes.
+> **no deja usar la cámara** en direcciones «http». Si no hay cámara, **Tomar Asistencia** cambia sola a la lista rápida; para escanear QR entra a Quetzal en línea. Más en la pregunta 10 de las preguntas frecuentes.
