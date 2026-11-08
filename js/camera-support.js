@@ -177,7 +177,7 @@ if (typeof window !== 'undefined') {
       <p class="text-sm text-slate-600 dark:text-slate-300 mb-4">Para escanear QR sin internet, este dispositivo debe confiar en el certificado del servidor de la escuela. Mientras tanto puedes seguir con la lista rápida.</p>
       ${hasCa
         ? `<a href="${NODE_CA_URL}" download class="btn-primary-tw bg-emerald-500 hover:bg-emerald-600 h-11 w-full flex items-center justify-center text-xs font-black uppercase tracking-widest mb-4"><i class="fas fa-download mr-2"></i>Descargar certificado</a>`
-        : `<p class="p-3 rounded-xl bg-amber-500/10 text-xs text-amber-700 dark:text-amber-300 mb-4"><i class="fas fa-circle-info mr-1"></i>Este servidor todavía no tiene certificado para descargar. Pide a quien administra el nodo que active el HTTPS (guía: school-node/README.md). Sigue con la lista rápida.</p>`}
+        : `<p class="p-3 rounded-xl bg-amber-500/10 text-xs text-amber-700 dark:text-amber-300 mb-4"><i class="fas fa-circle-info mr-1"></i>Este servidor todavía no tiene certificado para descargar. Pide a quien administra el nodo que active el HTTPS (en el nodo: bash ~/quetzal/school-node/https-setup.sh). Sigue con la lista rápida.</p>`}
       <div class="space-y-2 mb-4">${['android', 'ios', 'windows'].map(guide).join('')}</div>
       <button type="button" data-cs-test class="btn-secondary-tw h-11 w-full text-xs font-black uppercase tracking-widest"><i class="fas fa-camera mr-2"></i>Ya lo instalé, probar cámara</button>
       <p data-cs-msg class="mt-3 min-h-[1.2rem] text-xs font-bold text-slate-500 dark:text-slate-400"></p>

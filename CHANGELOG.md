@@ -6,6 +6,8 @@ Al publicar una versión nueva, agrega una línea arriba de todo (ver CONTRIBUTI
 
 ## 2026-11-08
 
+- **Nodo: HTTPS opcional para que la cámara pase lista (v1.0.250).** Nuevo `school-node/https-setup.sh`: crea la CA de la escuela y el certificado de `quetzal.local`, y el nodo sirve HTTPS en el puerto 443 solo si existen `data/ca/server.crt` y `server.key` (si falla, sigue con http). El certificado público de la CA se descarga en `/node-ca.crt`. Los paquetes SCORM usan el mismo esquema (http/https) de la página. Guía en school-node/README.md. Sin probar en una Raspberry real.
+
 - **Asistencia rápida sin cámara y asistente del certificado del nodo (v1.0.249).** En el servidor de la escuela (`http://quetzal.local`) el navegador bloquea la cámara: ahora **Tomar Asistencia** lo detecta (contexto seguro + `getUserMedia`, o el error al abrirla) y cambia sola a la **lista rápida**: un toque por estudiante para marcar presente o quitarlo, «Marcar todos presentes» y contador. Guarda con la misma cola offline del QR (`mark_attendance`); quitar un presente guarda «absent», porque la nube no borra asistencia. Si la cámara funciona (HTTPS), vuelve al flujo QR. Nuevo asistente «Configurar este dispositivo para usar la cámara» (descarga del certificado, guía Android / iPhone / Windows, «Ya lo instalé, probar cámara» y la marca local `node_camera_ready`). El nodo publica `/node-ca.crt` solo si existe `data/ca/quetzal-ca.crt`; **no** genera certificados ni activa HTTPS (pendiente, ver school-node/README.md). Pruebas: tests-unit/camera-support.test.mjs.
 
 ## 2026-11-07

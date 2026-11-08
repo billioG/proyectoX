@@ -111,7 +111,9 @@ test('el nodo publica el certificado solo si existe, el service worker cachea el
   const srv = read('school-node/server.js');
   assert.match(srv, /url\.pathname === '\/node-ca\.crt'/);
   assert.match(srv, /path\.resolve\(config\.dataDir, 'ca'\), 'quetzal-ca\.crt'/);
-  assert.doesNotMatch(srv, /createServer\([^)]*key/i, 'no se inventó HTTPS en el nodo');
+  assert.match(srv, /existsSync\(path\.join\(httpsDir, 'server\.crt'\)\) && fs\.existsSync\(path\.join\(httpsDir, 'server\.key'\)\)/, 'HTTPS solo si existen el certificado y la clave');
+  assert.match(srv, /el nodo sigue con http/, 'si HTTPS falla, el http no se toca');
+  assert.match(read('school-node/https-setup.sh'), /ca\.key/);
   assert.match(read('service-worker.js'), /'js\/camera-support\.js'/);
   assert.match(read('js/help-messages.js'), /lista rápida/);
   assert.match(read('school-node/README.md'), /HTTPS y cámara para pasar lista/);

@@ -3,6 +3,7 @@
 // para funcionar sin internet: login con PIN personal, cursos y progreso.
 // Se sincroniza con la nube cada vez que detecta internet (sync.js).
 import http from 'node:http';
+import https from 'node:https';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -207,11 +208,11 @@ function serveFile(req, res, baseDir, rel) {
 
 // Punto de entrada de un paquete SCORM/HTML5: como la función serve-scorm-entry de la nube, entrega el HTML con un <base href> hacia la carpeta del paquete
 // (la app lo mete en un iframe con srcdoc, y sin el <base> sus css/js relativos se buscarían en la raíz del servidor).
-function serveScormEntry(res, rel, host) {
+function serveScormEntry(res, rel, host, proto = 'http') {
   const file = path.resolve(CONTENT_DIR, rel);
   if (!file.startsWith(CONTENT_DIR + path.sep) || !fs.existsSync(file) || !fs.statSync(file).isFile()) { res.writeHead(404); return res.end('No encontrado'); }
   const folder = rel.slice(0, rel.lastIndexOf('/') + 1).split('/').map((x) => encodeURIComponent(x)).join('/');
-  const baseTag = `<base href="http://${host}/storage/v1/object/public/course-content/${folder}">`;
+  const baseTag = `<base href="${proto}://${host}/storage/v1/object/public/course-content/${folder}">`;
   let html = fs.readFileSync(file, 'utf8');
   html = /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, (m) => m + baseTag) : baseTag + html;
   const body = Buffer.from(html, 'utf8');
@@ -842,7 +843,7 @@ function nodeConfigScript() {
   })};`;
 }
 
-const server = http.createServer(async (req, res) => {
+const requestHandler = async (req, res) => {
   try {
     const url = new URL(req.url, 'http://node');
     if (await restRoutes.handle(req, res, url)) return;
@@ -876,7 +877,7 @@ const server = http.createServer(async (req, res) => {
       let rel = null;
       try { rel = storageFile ? decodeURIComponent(storageFile[1]) : url.searchParams.get('path'); } catch { rel = null; }
       if (!rel) { res.writeHead(404); return res.end('No encontrado'); }
-      if (!storageFile) return serveScormEntry(res, rel, req.headers.host);
+      if (!storageFile) return serveScormEntry(res, rel, req.headers.host, req.socket.encrypted ? 'https' : 'http');
       return serveFile(req, res, CONTENT_DIR, rel);
     }
     // Certificado PÚBLICO de la CA de la escuela (data/ca/quetzal-ca.crt), para que los dispositivos confíen en el HTTPS del nodo y la cámara pueda pasar lista.
@@ -913,7 +914,8 @@ const server = http.createServer(async (req, res) => {
     console.error(e);
     sendJson(res, 500, { error: 'Error interno del nodo' });
   }
-});
+};
+const server = http.createServer(requestHandler);
 
 server.requestTimeout = 30 * 60 * 1000; // un video grande por Wi-Fi tarda más que los 5 minutos que trae Node
 server.listen(config.port || 8080, () => {
@@ -922,6 +924,18 @@ server.listen(config.port || 8080, () => {
   if (friendlyUrl()) console.log(`   📱 Nombre fácil:        ${friendlyUrl()}   (si no abre, usa la IP)`);
   lanUrls().forEach(u => console.log(`   📱 Desde los celulares: ${u}   (cartel para imprimir: ${u}/cartel)`));
 });
+
+// HTTPS opcional (para que la cámara de los celulares pueda pasar lista): solo si existen data/ca/server.crt y data/ca/server.key
+// (los crea school-node/https-setup.sh). Sin esos archivos el nodo sigue igual, solo con http. El puerto es config.httpsPort (443 por defecto).
+const httpsDir = path.resolve(config.dataDir, 'ca');
+if (fs.existsSync(path.join(httpsDir, 'server.crt')) && fs.existsSync(path.join(httpsDir, 'server.key'))) {
+  try {
+    const httpsServer = https.createServer({ cert: fs.readFileSync(path.join(httpsDir, 'server.crt')), key: fs.readFileSync(path.join(httpsDir, 'server.key')) }, requestHandler);
+    httpsServer.requestTimeout = 30 * 60 * 1000;
+    httpsServer.on('error', (e) => console.error(`⚠️ HTTPS no arrancó (${e.code || e.message}); el nodo sigue con http.`));
+    httpsServer.listen(config.httpsPort || 443, () => console.log(`🔒 HTTPS activo en el puerto ${config.httpsPort || 443} (certificado de la escuela)`));
+  } catch (e) { console.error(`⚠️ No se pudo leer el certificado HTTPS (${e.message}); el nodo sigue con http.`); }
+}
 
 // Sync automático: cada N minutos, si hay internet.
 let syncing = false;

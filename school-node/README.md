@@ -539,17 +539,25 @@ otra ruta, definir la variable de entorno `QUETZAL_USB_DIR`.
 - Hace falta volver a publicar `node-sync` (subiendo también `projects.ts`); si la función es la anterior, el
   Inicio muestra solo los proyectos propios guardados aquí.
 
-## HTTPS y cámara para pasar lista (preparado, falta la parte del servidor)
+## HTTPS y cámara para pasar lista (desde v1.0.250)
 
-La cámara del navegador solo funciona en HTTPS, y el nodo sirve `http://quetzal.local`. Mientras tanto **Tomar Asistencia** usa la **lista rápida** (sin cámara, misma cola offline).
+La cámara del navegador solo funciona en HTTPS. Mientras el nodo no lo tenga, **Tomar Asistencia** usa la **lista rápida** (sin cámara, misma cola offline).
 
-Lo que ya hay: el nodo entrega el certificado público de la CA de la escuela en `/node-ca.crt` si existe el archivo `data/ca/quetzal-ca.crt`, y la app tiene el asistente «Configurar este dispositivo para usar la cámara» (guía Android / iPhone / Windows y prueba de cámara).
+Activarlo (una sola vez por escuela, por SSH en la Raspberry, después de actualizar el nodo):
 
-Lo que **falta** (TODO, no está hecho a propósito para no romper producción):
-1. Crear una CA de la escuela y un certificado para `quetzal.local` (y la IP) firmado por ella; guardar la CA pública en `data/ca/quetzal-ca.crt`.
-2. Servir HTTPS desde `server.js` (puerto 443 o 8443 con `https.createServer`) con ese certificado, o poner un proxy (Caddy) delante.
-3. Opcional: redirigir `http://` → `https://` cuando el certificado ya esté instalado en los dispositivos.
-4. Guardar la clave privada de la CA fuera del nodo (solo el certificado público va en `data/ca/`).
+```bash
+bash ~/quetzal/school-node/install.sh --update
+bash ~/quetzal/school-node/https-setup.sh
+```
+
+`https-setup.sh` crea la CA de la escuela y el certificado de `quetzal.local` (y las IP del nodo), y reinicia el nodo. Deja:
+- `~/quetzal-ca-privada/ca.key`: clave privada de la CA. **Cópiala a tu USB y no la compartas.**
+- `data/ca/quetzal-ca.crt`: certificado público; los dispositivos lo descargan en `http://quetzal.local/node-ca.crt`.
+- `data/ca/server.crt` y `server.key`: los usa el nodo para HTTPS en el puerto 443 (`httpsPort` en config.json lo cambia). Sin esos archivos el nodo sigue solo con http; si el HTTPS falla, el http no se toca.
+
+Cada dispositivo debe instalar el certificado una vez (la app lo guía en Asistencia → «Configurar este dispositivo para usar la cámara») y luego abrir `https://quetzal.local`. El certificado del nodo dura ~2 años: `bash ~/quetzal/school-node/https-setup.sh --renovar` lo repite sin que los dispositivos tengan que instalar nada otra vez.
+
+Pendiente a propósito: redirigir `http://` → `https://` (los dispositivos sin el certificado instalado dejarían de entrar) y la prueba en una Raspberry real.
 
 ## Seguridad
 
