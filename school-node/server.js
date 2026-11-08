@@ -33,6 +33,7 @@ import { checkInternet, createConnectivity } from './connectivity.js';
 import { createRemoteSync } from './remote-sync.js';
 import { createSelfUpdate } from './self-update.js';
 import { createMediaSigner, isPrivateCloudUrl } from './media-sign.js';
+import { createProjectMirror } from './project-mirror.js';
 import { wifiPageHtml } from './wifi-page.js';
 
 const NODE_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -122,6 +123,7 @@ const projectFilesHandler = createProjectFilesHandler({ store: projectFiles, aut
 // Fotos, videos y adjuntos de la nube en buckets privados: se piden firmados a node-sync (ver media-sign.js).
 const mediaSigner = createMediaSigner({ cloudUrl: config.cloudUrl, nodeToken: config.nodeToken });
 const photosStore = createPhotos({ db, dir: path.resolve(config.dataDir, 'photos') });
+const projectMirror = createProjectMirror({ db, dir: path.resolve(config.dataDir, 'project-mirror') });
 const teacherStore = createTeacherStore(db, { hashPin: (pin, salt) => hashPin(pin, salt), verifySetupCode: (code) => verifyTeacherCode(code) });
 projectStore.cleanup(); // borradores huérfanos de una subida cortada por un reinicio o un apagón
 setInterval(() => projectStore.cleanup(), 3600_000).unref();
@@ -876,6 +878,9 @@ const server = http.createServer(async (req, res) => {
       if (!storageFile) return serveScormEntry(res, rel, req.headers.host);
       return serveFile(req, res, CONTENT_DIR, rel);
     }
+    // Videos y modelos 3D de los proyectos de esta escuela, guardados en el nodo (project-mirror.js): se sirven con rangos, sin internet.
+    const mirrorName = /^\/project-mirror\/([^/]+)$/.exec(url.pathname)?.[1];
+    if (mirrorName && (req.method === 'GET' || req.method === 'HEAD')) return projectMirror.serve(req, res, mirrorName);
     // Un video o una foto de la nube que se ve en el nodo: el navegador pide /node-media?u=<dirección pública>; si hay internet, el nodo consigue la dirección firmada y lo redirige.
     if (url.pathname === '/node-media') {
       const target = url.searchParams.get('u') || '';

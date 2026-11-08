@@ -479,6 +479,7 @@ otra ruta, definir la variable de entorno `QUETZAL_USB_DIR`.
   Supabase Storage sea de 150 MB o más.
 - Opciones en `config.json` (todas opcionales): `maxPendingProjects` (5 por estudiante), `minFreeDiskMB` (2048: se
   rechaza si quedaría menos libre), `keepSyncedProjectDays` (7: se borra la copia local de lo ya subido).
+- **Videos y modelos 3D de los proyectos de TU escuela, sin internet (desde la v1.0.248).** Al sincronizar, el nodo baja a `data/project-mirror/` los videos de los proyectos de los estudiantes de esta escuela, los más nuevos primero, con la firma que le da `node-sync` (los buckets de la nube son privados). Topes: `projectMirrorMaxFileMB` (150 MB por archivo), `projectMirrorMaxMB` (3072 MB en total), `projectMirrorPerRun` (8 archivos por sincronización) y nunca deja menos disco libre que `minFreeDiskMB`. Lo que ya no existe en la nube se borra del disco. Los proyectos de **otras** escuelas no se copian: solo se ven con internet. Esta carpeta NO entra en los respaldos (se puede volver a bajar).
 - Aún no incluye: fotos como proyecto, aprobación previa del docente ni subida por USB.
 
 ### Docentes: PIN personal y evaluar proyectos

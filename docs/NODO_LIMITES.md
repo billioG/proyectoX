@@ -75,6 +75,7 @@ Para medir durante una clase real, desde la Raspberry (SSH): `top` (uso de CPU y
 | Tema | Límite | Detalle |
 |---|---|---|
 | Proyectos de estudiantes | **150 MB** por archivo; **5 pendientes** por estudiante | Video o modelo 3D; el nodo rechaza si queda **menos de 2 GB libres** (`minFreeDiskMB`) |
+| Videos de proyectos de la propia escuela (copia local) | **150 MB** por archivo, **3 GB** en total, **8 archivos** por sincronización (los más nuevos primero) | Se bajan al sincronizar para verse sin internet (`projectMirrorMaxFileMB`, `projectMirrorMaxMB`, `projectMirrorPerRun`); no entran en el respaldo; los de otras escuelas solo se ven con internet |
 | Proyectos ya subidos a la nube | Se borran del nodo a los **7 días** (`keepSyncedProjectDays`) | Para no llenar el disco |
 | Sincronización | Cada **10 minutos** con internet (`syncEveryMinutes`) y al detectar internet | Los cambios de ese intervalo se pierden si la tarjeta se daña antes de subir (ver `docs/NODO_RESPALDO.md`) |
 | Sin internet | **IA y notificaciones no funcionan** | Todo lo demás de la plataforma sí (`school-node/README.md`) |

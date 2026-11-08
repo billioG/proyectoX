@@ -7,6 +7,7 @@ import { createRestXp } from './xp.js';
 import { createRpcs } from './rpcs.js';
 import { createRestRoutes } from './routes.js';
 import { createPhotos } from './photos.js';
+import { createProjectMirror } from '../project-mirror.js';
 import { createReactionStore } from '../reactions.js';
 import { createCompanion } from './companion.js';
 import { createDuels, DUEL_TABLE } from './duels.js';
@@ -52,9 +53,13 @@ export function createRestLayer(db, { now = Date.now, random = Math.random, onCh
   const auth = createAuth({ store, now });
   const reactions = createReactionStore(db, { now });
   // Votos de cada proyecto con las reacciones pendientes de este nodo (para que todos vean el mismo número).
+  // Y los videos y modelos 3D de los proyectos de la propia escuela ya guardados en el nodo salen con la dirección local (project-mirror.js).
+  const projectMirror = createProjectMirror({ db });
   store.setView('projects', () => {
     const pending = new Set(reactions.pending().map((r) => Number(r.project_id)));
-    return pending.size ? (row) => (pending.has(Number(row.id)) ? { ...row, votes: reactions.adjustVotes(row.id, row.votes) } : row) : (row) => row;
+    const votes = pending.size ? (row) => (pending.has(Number(row.id)) ? { ...row, votes: reactions.adjustVotes(row.id, row.votes) } : row) : (row) => row;
+    const local = projectMirror.mapper();
+    return (row) => local(votes(row));
   });
   const rpcs = createRpcs({ store, xp, now, reactions, companion, duels, hangman, profilePhoto, inbox: createInbox({ store, now }) });
   const routes = createRestRoutes({

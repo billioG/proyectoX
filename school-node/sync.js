@@ -14,6 +14,7 @@ import { createEvaluationStore } from './evaluations.js';
 import { restStoreFor } from './rest/store.js';
 import { createPhotos } from './rest/photos.js';
 import { createMediaSigner } from './media-sign.js';
+import { createProjectMirror } from './project-mirror.js';
 import { restPush, applyRestPull } from './rest/sync.js';
 import { SCHEMA as REST_SCHEMA } from './rest/schema.js';
 import { createContentStore } from './content-upload.js';
@@ -88,6 +89,24 @@ export async function runSync(db, config, log = console.log, onStage = () => {})
     if (photos.downloaded) log(`🖼️  Fotos de perfil: ${photos.downloaded} descargadas.`);
   } catch (e) {
     log('⚠️ Fotos de perfil: no se pudo intentar la descarga:', e.message);
+  }
+
+  onStage('Descargando videos de proyectos de la escuela');
+  // Videos y modelos 3D de los proyectos de los estudiantes de ESTA escuela (los más nuevos primero, con topes de tamaño y de disco): se ven sin internet.
+  try {
+    const mirror = await createProjectMirror({ db, dir: path.join(config.dataDir, 'project-mirror') }).sync(restStoreFor(db, REST_SCHEMA), {
+      log, cloudUrl: config.cloudUrl, signer: createMediaSigner({ cloudUrl: config.cloudUrl, nodeToken: config.nodeToken }),
+      limits: {
+        ...(config.projectMirrorMaxFileMB ? { maxFileBytes: config.projectMirrorMaxFileMB * 1024 * 1024 } : {}),
+        ...(config.projectMirrorMaxMB ? { maxTotalBytes: config.projectMirrorMaxMB * 1024 * 1024 } : {}),
+        ...(config.projectMirrorPerRun ? { maxPerRun: config.projectMirrorPerRun } : {}),
+        ...(config.minFreeDiskMB ? { minFreeBytes: config.minFreeDiskMB * 1024 * 1024 } : {}),
+      },
+    });
+    if (mirror.downloaded) log(`🎬 Videos de proyectos: ${mirror.downloaded} descargados.`);
+    if (mirror.removed) log(`🧹 Videos de proyectos borrados que se liberaron: ${mirror.removed}.`);
+  } catch (e) {
+    log('⚠️ Videos de proyectos: no se pudo intentar la descarga:', e.message);
   }
 
   onStage('Subiendo proyectos');
