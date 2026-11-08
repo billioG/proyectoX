@@ -29,8 +29,8 @@ let certs = null;
 try { certs = makeCerts(); } catch { /* sin openssl */ }
 
 const freePort = () => new Promise((resolve) => { const s = net.createServer().listen(0, () => { const { port } = s.address(); s.close(() => resolve(port)); }); });
-const req = (port, { method = 'GET', pathName = '/', host }) => new Promise((resolve, reject) => {
-  const r = http.request({ host: '127.0.0.1', port, method, path: pathName, headers: { host } }, (res) => { res.resume(); res.on('end', () => resolve(res)); });
+const req = (port, { method = 'GET', pathName = '/', host, cookie }) => new Promise((resolve, reject) => {
+  const r = http.request({ host: '127.0.0.1', port, method, path: pathName, headers: { host, ...(cookie ? { cookie } : {}) } }, (res) => { res.resume(); res.on('end', () => resolve(res)); });
   r.on('error', reject); r.end();
 });
 const skip = (!sqliteAvailable() && 'better-sqlite3 no está instalado para este Node') || (!certs && 'no hay openssl');
@@ -80,4 +80,29 @@ test('"httpsRedirect": false apaga la redirección y sin certificado el nodo sig
   const r = await req(plain.port, { pathName: '/cartel', host: 'quetzal.local' });
   assert.equal(r.statusCode, 200, 'sin certificado no hay HTTPS ni redirección');
   assert.doesNotMatch(plain.log(), /HTTPS activo/);
+});
+
+test('quien no quiere instalar el certificado entra sin cámara: /acceso, ?http=1 se recuerda y ?http=0 lo deshace', { skip, timeout: 60000 }, async () => {
+  const { node } = await boot();
+  const host = 'quetzal.local';
+  const acceso = await req(node.port, { pathName: '/acceso', host });
+  assert.equal(acceso.statusCode, 200, '/acceso nunca se redirige');
+  assert.match(acceso.headers['content-type'], /text\/html/);
+
+  const enter = await req(node.port, { pathName: '/?http=1', host });
+  assert.equal(enter.statusCode, 200, 'entrar sin cámara no redirige ' + enter.headers.location);
+  assert.match(String(enter.headers['set-cookie']), /px_http=1; Path=\/; Max-Age=31536000/);
+
+  const again = await req(node.port, { pathName: '/cartel', host, cookie: 'px_http=1' });
+  assert.equal(again.statusCode, 200, 'con la cookie el dispositivo se queda en http');
+
+  const undo = await req(node.port, { pathName: '/?http=0', host, cookie: 'px_http=1' });
+  assert.equal(undo.statusCode, 302, 'http=0 vuelve a la redirección');
+  assert.match(String(undo.headers['set-cookie']), /px_http=; .*Max-Age=0/);
+
+  const other = await req(node.port, { pathName: '/cartel', host, cookie: 'otra=1' });
+  assert.equal(other.statusCode, 302);
+
+  const cartel = await new Promise((resolve, reject) => http.get({ host: '127.0.0.1', port: node.port, path: '/cartel', headers: { host: '192.168.1.5', cookie: '' } }, (r) => { let d = ''; r.on('data', (c) => (d += c)); r.on('end', () => resolve(d)); }).on('error', reject));
+  assert.match(cartel, /\/acceso/, 'el cartel explica a dónde entrar si sale el aviso de seguridad');
 });

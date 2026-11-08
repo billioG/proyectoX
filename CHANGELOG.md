@@ -6,6 +6,8 @@ Al publicar una versión nueva, agrega una línea arriba de todo (ver CONTRIBUTI
 
 ## 2026-11-08
 
+- **Nodo: entrar sin instalar el certificado (v1.0.252).** Página `http://quetzal.local/acceso` (sin redirección) con dos caminos: descargar el certificado y abrir con candado, o «Entrar sin cámara» (`/?http=1`), que recuerda al dispositivo en http con la lista rápida de asistencia (`/?http=0` lo deshace). El cartel imprime esa dirección. Pruebas: tests-unit/node-https-redirect.test.mjs.
+
 - **Nodo: `quetzal.local` pasa solo a https y funciona aunque cambie la IP (v1.0.251).** Con HTTPS activo, las visitas por el nombre `.local` se redirigen a `https://quetzal.local` (302); por IP se queda en http, `/node-ca.crt` siempre por http y solo GET/HEAD. `"httpsRedirect": false` lo apaga. En la Raspberry el cartel y los avisos ahora usan el nombre del equipo (`<hostname>.local`, que anuncia avahi) en vez de mostrar solo IP, y en https cuando está activo. Pruebas: tests-unit/node-https-redirect.test.mjs (servidor real con certificado de prueba).
 
 - **Nodo: HTTPS opcional para que la cámara pase lista (v1.0.250).** Nuevo `school-node/https-setup.sh`: crea la CA de la escuela y el certificado de `quetzal.local`, y el nodo sirve HTTPS en el puerto 443 solo si existen `data/ca/server.crt` y `server.key` (si falla, sigue con http). El certificado público de la CA se descarga en `/node-ca.crt`. Los paquetes SCORM usan el mismo esquema (http/https) de la página. Guía en school-node/README.md. Sin probar en una Raspberry real.

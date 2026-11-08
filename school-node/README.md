@@ -561,7 +561,8 @@ Cada dispositivo debe instalar el certificado una vez (la app lo guía en Asiste
 - Por **IP** (`http://192.168...`) no se redirige: se queda en http (lista rápida, sin cámara).
 - `/node-ca.crt` siempre se entrega por http, para poder instalar el certificado.
 - Solo se redirigen las peticiones GET/HEAD.
-- Un dispositivo **sin** el certificado instalado verá un aviso de seguridad al entrar por el nombre: instálalo o entra por la IP. Para apagar la redirección: `"httpsRedirect": false` en config.json y reiniciar.
+- Un dispositivo **sin** el certificado instalado verá un aviso de seguridad al entrar por el nombre. Para ese caso existe **`http://quetzal.local/acceso`** (nunca se redirige): ofrece «Descargar el certificado» (con cámara) o «Entrar sin cámara» (`/?http=1`; guarda la cookie `px_http=1` y ese dispositivo se queda en http con la lista rápida de asistencia). `/?http=0` lo deshace. El cartel imprime esa dirección.
+- Para apagar la redirección para todos: `"httpsRedirect": false` en config.json y reiniciar.
 - Para que la IP tampoco cambie, reserva una IP fija para el nodo en el router (opcional; el nombre ya no la necesita).
 - El cartel (`/cartel`) y el aviso al arrancar usan `https://quetzal.local`.
 

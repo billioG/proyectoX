@@ -823,10 +823,27 @@ button{font-size:18px;padding:10px 22px;margin-top:16px;cursor:pointer}@media pr
 <div id="qr"></div>
 ${others.length ? `<p class="otras">Si no abre, prueba con: ${others.map(escHtml).join(' · ')}</p>` : ''}
 <div class="steps">3. Elige tu nombre y escribe tu PIN.<br>No necesitas internet ni datos.</div>
+${httpsPortListening && config.httpsRedirect !== false ? `<p class="otras">¿Te sale un aviso de seguridad? Entra por <b>http://${escHtml(friendlyHost() || 'quetzal.local')}/acceso</b></p>` : ''}
 <button onclick="print()">Imprimir</button>
 <script src="/js/qrcode.min.js"></script>
 <script>new QRCode(document.getElementById('qr'), { text: ${JSON.stringify(main)}, width: 260, height: 260 });</script>
 </body></html>`;
+}
+
+function accesoHtml() {
+  const host = friendlyHost() || 'quetzal.local';
+  const secure = `https://${host}${httpsPortListening && httpsPortListening !== 443 ? ':' + httpsPortListening : ''}/`;
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Entrar a Quetzal</title><style>
+body{font-family:system-ui,Segoe UI,Arial,sans-serif;margin:0;padding:24px 16px;color:#111;background:#f8fafc}main{max-width:560px;margin:0 auto}
+h1{font-size:26px}p{font-size:17px;line-height:1.5}.card{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:18px;margin:16px 0}
+a.btn{display:block;text-align:center;padding:14px;border-radius:12px;font-weight:800;text-decoration:none;margin-top:10px;color:#fff;background:#10b981}a.btn.alt{background:#475569}
+</style></head><body><main><h1>¿Cómo quieres entrar?</h1>
+<div class="card"><b>Con cámara (escanear QR)</b><p>Este dispositivo debe confiar en el certificado de la escuela. Se instala una sola vez.</p>
+<a class="btn" href="/node-ca.crt">1. Descargar el certificado</a>
+<p style="font-size:15px;color:#475569">Instálalo en Ajustes (Android: Seguridad → Instalar un certificado → Certificado de CA; iPhone: Ajustes → Perfil descargado, y luego Información → Ajustes de confianza de certificados). Después entra a:</p>
+<a class="btn" href="${escHtml(secure)}">2. Abrir ${escHtml(host)} con candado</a></div>
+<div class="card"><b>Sin certificado</b><p>Funciona todo, pero sin cámara: la asistencia se pasa con la lista (tocas a cada estudiante). Este dispositivo lo recordará.</p>
+<a class="btn alt" href="/?http=1">Entrar sin cámara</a></div></main></body></html>`;
 }
 
 // Script que la app carga para saber que está en un nodo escolar.
@@ -868,6 +885,11 @@ const requestHandler = async (req, res) => {
     if (url.pathname === '/wifi') {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
       return res.end(wifiPageHtml());
+    }
+    // Para quien no tiene (o no quiere instalar) el certificado: dos caminos claros. Por http, sin redirección.
+    if (url.pathname === '/acceso') {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+      return res.end(accesoHtml());
     }
     if (url.pathname === '/cartel') {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
@@ -926,15 +948,22 @@ const requestHandler = async (req, res) => {
 // se queda en http (el certificado se hizo para el nombre; la IP puede cambiar). /node-ca.crt siempre por http: es lo que se descarga para instalar el certificado.
 // "httpsRedirect": false en config.json lo apaga.
 let httpsPortListening = null;
-const httpsRedirectTarget = (req) => {
+const httpsRedirectTarget = (req, forceHttp = null) => {
   if (!httpsPortListening || config.httpsRedirect === false || (req.method !== 'GET' && req.method !== 'HEAD')) return null;
   const host = String(req.headers.host || '').replace(/:\d+$/, '').toLowerCase();
   if (!host.endsWith('.local')) return null;
-  if (String(req.url).split('?')[0] === '/node-ca.crt') return null;
+  const pathOnly = String(req.url).split('?')[0];
+  if (pathOnly === '/node-ca.crt' || pathOnly === '/acceso') return null;
+  // «Entrar sin certificado»: la cookie px_http=1 (la pone /?http=1, la quita /?http=0) deja ese dispositivo en http, con la lista rápida de asistencia.
+  if (forceHttp === '1' || (forceHttp !== '0' && /(?:^|;\s*)px_http=1(?:;|$)/.test(String(req.headers.cookie || '')))) return null;
   return `https://${host}${httpsPortListening === 443 ? '' : ':' + httpsPortListening}${req.url}`;
 };
 const server = http.createServer((req, res) => {
-  const to = httpsRedirectTarget(req);
+  const choice = /^\/(?:\?|$)/.test(String(req.url)) && /[?&]http=([01])/.exec(String(req.url))?.[1];
+  if (choice) {
+    res.setHeader('Set-Cookie', choice === '1' ? 'px_http=1; Path=/; Max-Age=31536000; SameSite=Lax' : 'px_http=; Path=/; Max-Age=0; SameSite=Lax');
+  }
+  const to = httpsRedirectTarget(req, choice || null);
   if (to) { res.writeHead(302, { Location: to, 'Cache-Control': 'no-store' }); return res.end(); }
   return requestHandler(req, res);
 });
