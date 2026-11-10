@@ -4,6 +4,10 @@ Cambios publicados en Quetzal LMS, del más reciente al más antiguo. Cada líne
 
 Al publicar una versión nueva, agrega una línea arriba de todo (ver CONTRIBUTING.md).
 
+## 2026-11-10
+
+- **Arreglo: «Revancha» se puede enviar una sola vez (v1.0.256).** Tocar «Revancha» varias veces (también después de que el primer envío terminara) agregaba un reto idéntico por toque al mismo compañero. Ahora cada reto terminado admite una sola revancha, no se envía si ya hay un reto pendiente o activo contra ese compañero, y el botón pasa a «Revancha enviada». Vale para los 5 juegos.
+
 ## 2026-11-09
 
 - **Arreglo: «Retar» ya no crea retos repetidos (v1.0.255).** En un celular con red lenta, el formulario de reto tardaba en abrir, la persona volvía a tocar y se apilaban varios formularios iguales; cada uno enviaba su reto, y quedaban 3 retos idénticos al mismo compañero. Ahora el formulario se abre una sola vez (se limpian los apilados) y el envío ignora los toques repetidos mientras el primero sigue en curso, también en «Revancha» y «Reto rápido». Vale para los 5 juegos. Los retos repetidos que ya existen se quitan con «Cancelar».

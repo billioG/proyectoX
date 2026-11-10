@@ -259,15 +259,33 @@ window.GameArena = {
     return data.id;
   },
 
-  // Revancha: mismo juego, mismo rival, misma apuesta (topeada a tus gemas).
+  // Revancha: mismo juego, mismo rival, misma apuesta (topeada a tus gemas). UNA sola vez por reto terminado: si se pudiera repetir,
+  // cada toque agregaría otro reto idéntico al mismo compañero.
+  _rematched: new Set(),
+  _rivalId(d) { return d.challenger_id === window.currentUser.id ? d.opponent_id : d.challenger_id; },
+  // ¿Ya hay un reto pendiente o activo de este juego contra ese compañero?
+  _hasOpenDuelWith(game, rivalId) {
+    return (window[this.GAMES[game].cache] || []).some(x => (x.status === 'pending' || x.status === 'active') && this._rivalId(x) === rivalId);
+  },
+  rematchSent(game, d) {
+    return this._rematched.has(d.id) || this._hasOpenDuelWith(game, this._rivalId(d));
+  },
   async rematch(game, duelId) {
     const g = this.GAMES[game];
     const d = (window[g.cache] || []).find(x => x.id === duelId);
     if (!d) return;
-    const opponentId = d.challenger_id === window.currentUser.id ? d.opponent_id : d.challenger_id;
     const rival = d.challenger_id === window.currentUser.id ? d.opponent : d.challenger;
-    const id = await this.createChallenge(game, { opponentId, wager: d.wager_gems, topic: d.topic });
-    if (id) window.showToast(`<i class="fas fa-swords"></i> ¡Revancha enviada a ${(window.sanitizeInput || (v => v))(rival?.full_name || 'tu rival')}!`, 'success');
+    const rivalName = (window.sanitizeInput || (v => v))(rival?.full_name || 'tu rival');
+    if (this.rematchSent(game, d)) {
+      window.showToast(`<i class="fas fa-circle-info"></i> Ya le enviaste un reto a ${rivalName}. Espera su respuesta.`, 'info');
+      return;
+    }
+    const id = await this.createChallenge(game, { opponentId: this._rivalId(d), wager: d.wager_gems, topic: d.topic });
+    if (id) {
+      this._rematched.add(d.id);
+      window.showToast(`<i class="fas fa-swords"></i> ¡Revancha enviada a ${rivalName}!`, 'success');
+      if (typeof window[g.reload] === 'function') window[g.reload](); // vuelve a dibujar la lista: el botón pasa a «Revancha enviada»
+    }
   },
 
   // Reto rápido: un toque -- compañero al azar, tema al azar, 10 gemas.
@@ -427,6 +445,9 @@ window.GameArena = {
   },
 
   rematchBtnHtml(game, duel) {
+    if (this.rematchSent(game, duel)) {
+      return `<span class="h-8 px-3 rounded-lg text-[0.6rem] font-black uppercase mr-2 inline-flex items-center bg-white/10 text-slate-400"><i class="fas fa-check mr-1"></i> Revancha enviada</span>`;
+    }
     return `<button class="h-8 px-3 rounded-lg text-white text-[0.6rem] font-black uppercase mr-2" style="background:var(--brand-3)" onclick="window.GameArena.rematch('${game}', '${duel.id}')"><i class="fas fa-rotate-right"></i> Revancha</button>`;
   },
 

@@ -47,3 +47,42 @@ test('createChallenge (revancha y reto rápido) tampoco se duplica con toques re
   assert.equal(inserts, 1);
   assert.equal(ids.filter(Boolean).length, 1, 'solo uno recibe el id; los demás toques se ignoran');
 });
+
+// ---- Revancha: UNA sola vez por reto terminado (no basta con ignorar toques simultáneos) ----
+function rematchEnv() {
+  const env = load();
+  const w = env.window;
+  w.currentUser = { id: 'yo' };
+  let inserts = 0, reloads = 0;
+  w._supabase = { from: () => ({ insert: () => ({ select: () => ({ single: async () => { inserts++; return { data: { id: 'nuevo' + inserts }, error: null }; } }) }) }) };
+  w.loadHangmanSection = () => { reloads++; };
+  w._hangmanDuelsCache = [
+    { id: 'd1', status: 'completed', challenger_id: 'yo', opponent_id: 'rival', opponent: { full_name: 'Ana Rival' }, wager_gems: 10, topic: 'Tema', resolved_at: new Date().toISOString() },
+  ];
+  return { w, counts: () => ({ inserts, reloads }) };
+}
+
+test('«Revancha» envía un solo reto aunque se toque otra vez DESPUÉS de que terminó el primero', async () => {
+  const { w, counts } = rematchEnv();
+  await w.GameArena.rematch('hangman', 'd1');
+  await w.GameArena.rematch('hangman', 'd1');
+  await w.GameArena.rematch('hangman', 'd1');
+  assert.equal(counts().inserts, 1, 'solo una revancha por reto');
+});
+
+test('«Revancha» no se envía si ya hay un reto pendiente o activo contra ese mismo rival', async () => {
+  const { w, counts } = rematchEnv();
+  w._hangmanDuelsCache.push({ id: 'p1', status: 'pending', challenger_id: 'yo', opponent_id: 'rival', wager_gems: 10 });
+  await w.GameArena.rematch('hangman', 'd1');
+  assert.equal(counts().inserts, 0);
+});
+
+test('el botón de revancha pasa a «Revancha enviada» (sin onclick) cuando ya se envió', async () => {
+  const { w } = rematchEnv();
+  const duel = w._hangmanDuelsCache[0];
+  assert.match(w.GameArena.rematchBtnHtml('hangman', duel), /onclick="window\.GameArena\.rematch\('hangman', 'd1'\)"/);
+  await w.GameArena.rematch('hangman', 'd1');
+  const html = w.GameArena.rematchBtnHtml('hangman', duel);
+  assert.match(html, /Revancha enviada/);
+  assert.doesNotMatch(html, /onclick/);
+});
