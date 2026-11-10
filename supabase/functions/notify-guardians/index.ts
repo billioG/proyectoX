@@ -10,6 +10,7 @@
 // Verify JWT: ON (lo llama el docente logueado).
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.118.0';
+import { enforceRate, parseLimit } from '../_shared/rate-limit.ts';
 import webpush from 'npm:web-push@3.6.7';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -73,6 +74,10 @@ Deno.serve(async (req) => {
   const callerClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { global: { headers: { Authorization: authHeader } } });
   const { data: { user: caller }, error: authErr } = await callerClient.auth.getUser();
   if (authErr || !caller) return json({ error: 'Invalid token' }, 401);
+
+  // Tope de frecuencia por persona (ver migrations/rate-limits.sql): evita que una cuenta llene de avisos el teléfono de otra persona.
+  const rateLimited = await enforceRate(createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE), caller.id, 'notify-guardians', parseLimit(Deno.env.get('RATE_NOTIFY_GUARDIANS_PER_HOUR'), 60), 3600, CORS, { failOpen: false, what: 'envíos a familias' });
+  if (rateLimited) return rateLimited;
 
   const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
   const { data: teacher } = await admin.from('teachers').select('id').eq('id', caller.id).maybeSingle();

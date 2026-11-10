@@ -78,6 +78,13 @@ Después de redesplegar `node-sync`, cada nodo se actualiza con `bash ~/quetzal/
 
 Correr `duel-one-open-pair.sql` en el SQL Editor **después** de publicar la v1.0.257 (o antes: la app vieja solo vería el error en inglés del candado). Cancela los retos pendientes repetidos entre la misma pareja (conserva el más antiguo; no borra nada) y crea un índice único por juego. Si algún juego tiene retos **activos** repetidos, avisa con un NOTICE y no crea ese índice; se revisan a mano y se vuelve a correr. Al final debe mostrar 5 filas (`*_one_open_pair`). Después, `verificar-migraciones.sql` debe dar `true` en las filas 760 a 764.
 
+## 3a-bis. Límite de frecuencia de las funciones `notify-*` (v. 10/11/2026)
+
+1. Correr `migrations/rate-limits.sql` en el SQL Editor (crea `rate_limits` y `rate_limit_take`; al final debe mostrar 1 fila).
+2. **Después** redesplegar las 5 funciones (**Verify JWT ON** todas): `notify-duel`, `notify-announcement`, `notify-rock-pending`, `notify-reaction` y `notify-guardians`. Con la CLI: `npx supabase functions deploy <nombre> --use-api --yes --project-ref vyptkxudkmlpyfosppzh`; ahora cada una importa `_shared/rate-limit.ts` (la CLI lo incluye solo; para el editor del panel usa `node scripts/exportar-funciones.mjs <carpeta> <nombre>`).
+3. Topes por defecto (por persona): retos 60/hora y 4 por reto y tipo cada 10 min; avisos 30/hora y 3 por aviso/hora; tareas de docentes 20/hora; reacciones 120/hora; envíos a familias 60/hora. Se cambian sin redesplegar con los secretos `RATE_NOTIFY_DUEL_PER_HOUR`, `RATE_NOTIFY_DUEL_ITEM_PER_10MIN`, `RATE_NOTIFY_ANNOUNCEMENT_PER_HOUR`, `RATE_NOTIFY_ANNOUNCEMENT_ITEM_PER_HOUR`, `RATE_NOTIFY_ROCK_PER_HOUR`, `RATE_NOTIFY_REACTION_PER_HOUR` y `RATE_NOTIFY_GUARDIANS_PER_HOUR`.
+4. Si se pasa el tope, la función responde 429 («Demasiados avisos seguidos…») y no envía nada. Si la migración aún no está, las funciones dejan pasar y lo avisan en sus registros; `notify-guardians` (SMS, cuesta dinero) responde 503 si la base no puede contar.
+
 ## 3b. Lección: crea las Edge Functions con la CLI, no desde el editor del panel
 
 El editor del panel le pone un nombre aleatorio a una función nueva (`guardian-portal` quedó como `bright-responder` y `padres.html` recibía 404). Para una función **nueva**, usa `npx supabase functions deploy <nombre> --use-api --project-ref <ref>` (con `--no-verify-jwt` en las de JWT OFF). Para una que ya existe, el panel sirve para pegar código. Comprobación rápida de que todas responden por su nombre: llamar a `/functions/v1/<nombre>` y ver que no dé 404.

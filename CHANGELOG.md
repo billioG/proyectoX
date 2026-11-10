@@ -6,6 +6,8 @@ Al publicar una versión nueva, agrega una línea arriba de todo (ver CONTRIBUTI
 
 ## 2026-11-10
 
+- **Seguridad: límite de frecuencia en las funciones de notificaciones.** `notify-duel`, `notify-announcement`, `notify-rock-pending`, `notify-reaction` y `notify-guardians` ya no pueden usarse en bucle para llenar de avisos el teléfono de otra persona (ni para gastar SMS): tope por persona y, donde hay un recurso, por reto o por aviso. Nueva migración `rate-limits.sql` (contador atómico) y módulo `_shared/rate-limit.ts`. Si falta la migración las funciones siguen funcionando. Pasos: `docs/PASOS_MANUALES.md`. Sin cambios en la app ni versión nueva.
+
 - **Seguridad: integridad (SRI) de las librerías de CDN (v1.0.258).** Las 13 librerías que la página carga desde jsDelivr y cdnjs (supabase-js, Font Awesome, JSZip, driver.js, PDF.js, jsQR, confetti y los 5 archivos de three.js) llevan ahora su hash `sha384`: si una CDN cambiara un archivo, el navegador lo rechaza en vez de ejecutarlo. `driver.js` pasa de `@1` (versión flotante) a `1.11.0`, que es lo que ya se servía. El servidor escolar sigue usando sus copias locales (sin integridad). Nuevo `scripts/sri-hashes.mjs` (calcula y comprueba), prueba de navegador con las CDN reales (incluye que un hash equivocado se bloquea) y un trabajo informativo en el CI.
 
 - **Documentación: ensayo de demo y estado real.** Nuevo `docs/ENSAYO_DEMO.md` (comprobaciones, guion de 20 minutos con el plantel demo, qué no prometer y qué hacer si algo falla) y `PENDIENTES.md` al día: migraciones 125 a 131 verificadas, fase 3 de contraseñas confirmada, `main` protegida, Dependabot limpio y retos duplicados corregidos. Solo documentación.

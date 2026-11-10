@@ -49,5 +49,6 @@ guardian-portal-token
 storage-hardening
 push-sub-role-staff
 duel-one-open-pair
+rate-limits
 # Siempre al final: envuelve auth.uid() también en las políticas que crearon las migraciones anteriores (p. ej. feedback-inbox).
 rls-auth-uid-initplan

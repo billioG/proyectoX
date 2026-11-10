@@ -7,6 +7,7 @@
 // Máximo 1 push cada 10 min por (persona que reacciona, destinatario).
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.118.0';
+import { enforceRate, parseLimit } from '../_shared/rate-limit.ts';
 import webpush from 'npm:web-push@3.6.7';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -52,6 +53,10 @@ Deno.serve(async (req) => {
   });
   const { data: { user: caller }, error: authErr } = await callerClient.auth.getUser();
   if (authErr || !caller) return json({ error: 'Invalid token' }, 401);
+
+  // Tope de frecuencia por persona (ver migrations/rate-limits.sql): evita que una cuenta llene de avisos el teléfono de otra persona.
+  const rateLimited = await enforceRate(createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE), caller.id, 'notify-reaction', parseLimit(Deno.env.get('RATE_NOTIFY_REACTION_PER_HOUR'), 120), 3600, CORS, { failOpen: true, what: 'avisos de reacciones' });
+  if (rateLimited) return rateLimited;
 
   try {
     const { project_id } = await req.json();
