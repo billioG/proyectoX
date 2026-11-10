@@ -4,7 +4,7 @@
 // participantes (más aciertos, después más rápido) y reparte gem_pool
 // entre el top 5 (35/25/20/12/8%). No la llama ningún cliente.
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.118.0';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;

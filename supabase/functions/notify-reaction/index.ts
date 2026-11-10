@@ -6,7 +6,7 @@
 // real en ese proyecto, y el push NO incluye su nombre (menores).
 // Máximo 1 push cada 10 min por (persona que reacciona, destinatario).
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.118.0';
 import webpush from 'npm:web-push@3.6.7';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;

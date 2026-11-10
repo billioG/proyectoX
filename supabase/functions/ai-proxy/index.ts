@@ -2,7 +2,7 @@
 // Proxy seguro para Groq -- la clave nunca se expone al cliente.
 // Requiere JWT de usuario autenticado (no basta la anon key).
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.118.0';
 import { bucketFor, classifyRpcError, limitFor, limitMessage, parseTake, quotaRole } from './quota.ts';
 
 const GROQ_API_KEY   = Deno.env.get('GROQ_API_KEY')!;

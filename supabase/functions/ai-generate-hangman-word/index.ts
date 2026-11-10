@@ -5,7 +5,7 @@
 // Igual que ai-generate-quiz: se guarda con service role para que el alumno no
 // pueda inspeccionar la llamada y ver la palabra antes de jugar.
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.118.0';
 
 const GROQ_API_KEY = Deno.env.get('GROQ_API_KEY')!;
 const GROQ_MODEL = 'openai/gpt-oss-20b';

@@ -37,7 +37,8 @@ siguen mostrando la versión vieja guardada en caché.
 3. Si tocaste clases de Tailwind, recompilá `css/tailwind.css` (la CI lo verifica):
 
 ```bash
-npx -y tailwindcss@3.4.17 -c tailwind.config.js -i css/tailwind.src.css -o css/tailwind.css --minify
+npm ci
+npm run css
 ```
 
 4. Agregá una línea en [CHANGELOG.md](CHANGELOG.md).

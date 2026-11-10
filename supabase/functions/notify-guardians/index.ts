@@ -9,7 +9,7 @@
 // Si el push falla (el padre desinstaló o bloqueó) y tiene teléfono, cae a SMS.
 // Verify JWT: ON (lo llama el docente logueado).
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.118.0';
 import webpush from 'npm:web-push@3.6.7';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;

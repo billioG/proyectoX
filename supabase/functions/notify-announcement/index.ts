@@ -5,7 +5,7 @@
 // rojo en la campana si tenía la pestaña abierta en ese momento.
 // Requiere JWT del propio remitente del aviso.
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.118.0';
 import webpush from 'npm:web-push@3.6.7';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;

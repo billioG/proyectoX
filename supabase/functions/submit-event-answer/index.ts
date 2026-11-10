@@ -4,7 +4,7 @@
 // tuvo correctIndex -- ver get-event-questions) y se guarda el tiempo que
 // tardó en responder desde que se unió al evento.
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.118.0';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_ANON = Deno.env.get('SUPABASE_ANON_KEY')!;

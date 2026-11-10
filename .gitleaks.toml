@@ -1,15 +1,12 @@
 # Escaneo de secretos (CI). La llave "anon" de Supabase es PÚBLICA por diseño (va en el HTML; lo que protege los datos es RLS), así que no es un hallazgo.
 # La llave de servicio (service_role), las llaves de IA y los tokens de nodos NO deben aparecer nunca en el repositorio.
+# Nota: el CI usa gitleaks 8.21.x, que solo entiende la tabla singular [allowlist] (la forma [[allowlists]] es de versiones posteriores y aquí se ignoraba).
 title = "Quetzal LMS"
 
 [extend]
 useDefault = true
 
-[[allowlists]]
-description = "Llave anon pública de Supabase"
-paths = ['''js/config\.js''', '''padres\.html''']
-regexes = ['''eyJhbGci[A-Za-z0-9_\-\.]+''']
-
-[[allowlists]]
-description = "Ejemplos y documentación"
+[allowlist]
+description = "Llave anon pública de ESTE proyecto de Supabase (payload con role anon; está en js/config.js, padres.html y en el historial), y ejemplos y documentación. Una llave service_role tiene otro payload y SÍ se reporta."
+regexes = ['''eyJhbGci[A-Za-z0-9_\-]+\.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5cHRreHVka21scHlmb3NwcHpoIiwicm9sZSI6ImFub24i[A-Za-z0-9_\-\.]*''']
 paths = ['''token\.txt\.ejemplo''', '''config\.example\.json''', '''docs/.*''', '''.*\.md''', '''tests/.*''', '''tests-unit/.*''']
