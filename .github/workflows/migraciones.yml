@@ -39,6 +39,6 @@ jobs:
       PGPASSWORD: ci-desechable
       PGDATABASE: quetzal_ci
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Aplicar el esquema y las migraciones y verificar
         run: bash scripts/ci/verificar-migraciones.sh

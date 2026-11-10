@@ -18,7 +18,7 @@ jobs:
     name: Sintaxis JS (carpeta js/)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: node --check en cada archivo .js
         run: |
           set -e
@@ -35,7 +35,7 @@ jobs:
     name: Pruebas unitarias (preguntas JSON, nodo escolar)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -47,7 +47,7 @@ jobs:
     name: Tipos de Edge Functions (Deno)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: denoland/setup-deno@v1
         with:
           deno-version: v1.x
@@ -69,7 +69,7 @@ jobs:
     name: Las Edge Functions viven solo en supabase/functions
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Rechazar la carpeta espejo supabase-functions/
         run: |
           # Decisión de arquitectura (docs/DECISIONES.md, ADR-001): una sola fuente de verdad. La carpeta espejo
@@ -94,7 +94,7 @@ jobs:
     name: css/tailwind.css compilado al día
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -115,7 +115,7 @@ jobs:
     name: Auditoría de dependencias (npm audit)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -130,7 +130,7 @@ jobs:
     name: Escaneo de secretos (gitleaks)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: gitleaks
