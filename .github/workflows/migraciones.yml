@@ -1,0 +1,44 @@
+name: Migraciones
+
+# Aplica supabase/schema.sql y las migraciones (en el orden de scripts/ci/migraciones-orden.txt) sobre un PostgreSQL DESECHABLE del propio
+# CI y comprueba que migrations/verificar-migraciones.sql da true en todas las filas. Así el estado esperado de la base queda comprobado
+# por una máquina y PENDIENTES.md deja de ser la única referencia.
+#
+# Qué NO comprueba: la base real. Usa roles y esquemas de mentira (scripts/ci/supabase-stub.sql) y el volcado del 29/09/2026, que puede estar
+# atrasado. Para producción sigue valiendo pegar verificar-migraciones.sql en el SQL Editor de Supabase (docs/PASOS_MANUALES.md).
+# No lleva ningún secreto ni se conecta a Supabase.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  migraciones:
+    name: Migraciones aplican y se verifican (PostgreSQL 17)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: ci-desechable
+          POSTGRES_DB: quetzal_ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: ci-desechable
+      PGDATABASE: quetzal_ci
+    steps:
+      - uses: actions/checkout@v4
+      - name: Aplicar el esquema y las migraciones y verificar
+        run: bash scripts/ci/verificar-migraciones.sh

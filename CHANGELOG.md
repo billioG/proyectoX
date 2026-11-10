@@ -4,6 +4,18 @@ Cambios publicados en Quetzal LMS, del más reciente al más antiguo. Cada líne
 
 Al publicar una versión nueva, agrega una línea arriba de todo (ver CONTRIBUTING.md).
 
+## 2026-11-09
+
+- **Verificación de migraciones en el CI.** Nuevo trabajo «Migraciones» (`.github/workflows/migraciones.yml` y `scripts/ci/`): levanta PostgreSQL 17, aplica `supabase/schema.sql` y las migraciones en orden (dos veces, para comprobar que se pueden repetir) y exige que `migrations/verificar-migraciones.sql` dé true en todo. Encontró y corrigió dos migraciones que no se podían repetir (`fix-students-and-notifications-rls` y `fix-votes-and-evaluations-exposure`: ahora hacen `drop policy if exists` antes de crear; el resultado final es el mismo). `CONTRIBUTING.md` documenta la protección de `main`. Sin versión nueva.
+
+- **CI en verde y revisión de seguridad.** El CI de `main` llevaba 40 ejecuciones en rojo: se corrigen 3 errores de tipos en Edge Functions (`ai-generate-quiz`, `admin-set-class-password`, `notify-duel`; solo tipos), `supabase-js` queda fijado a 2.118.0 en las 29 funciones, la excepción de gitleaks (solo la llave anon pública) funciona y bloquea, tailwind se compara con la versión del lock y `npm audit` del servidor escolar bloquea. `docs/SEGURIDAD_2026-11.md` §9 recoge la verificación y la protección de las funciones sin JWT. Las funciones desplegadas no cambian hasta que se redespliegue cada una. Sin versión nueva (la app no cambia).
+
+- **Licencia: Copyright, todos los derechos reservados.** Nuevo `LICENSE` (© 2026 Billy Abraham Gómez Sac), `THIRD_PARTY_NOTICES.md` con las licencias de las librerías de terceros, y el README, `CONTRIBUTING.md` y los `package.json` lo reflejan (`UNLICENSED`). Solo documentación: la app no cambia (sin versión nueva).
+
+- **Auditoría de migraciones.** `PENDIENTES.md` reescrito con fecha y método, `migrations/verificar-migraciones.sql` comprueba también las migraciones 125 a 131 y `docs/PASOS_MANUALES.md` lista los pasos manuales en orden. Solo documentación y SQL de lectura (sin versión nueva).
+
+- **Limpieza de documentos internos.** Se quitan `docs/fondos/`, `docs/EQUIPO.md` y `docs/FORMALIZACION.md` (lo técnico de privacidad pasa a `docs/PRIVACIDAD_Y_CONSENTIMIENTO.md`) y se agrega `docs/REPO_PRIVADO_O_COPIA_LIMPIA.md`. Sin versión nueva.
+
 ## 2026-11-08
 
 - **Arreglo: los administradores no podían activar las notificaciones (v1.0.254).** `register_push_subscription` guarda el rol `admin` o `coordinador`, pero la restricción `push_subscriptions_role_check` solo admitía `estudiante` y `docente`, así que el registro daba error 400 (23514). Migración `push-sub-role-staff.sql` (docs/MIGRATIONS.md #131). Hay que correrla en Supabase.

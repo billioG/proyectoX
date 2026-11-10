@@ -49,7 +49,7 @@ después. El SQL exacto es el contenido del archivo con ese nombre en `migration
 | 16 | `node-remote-update.sql` | `school-nodes.sql` | **Después** redesplegar `node-sync` (`index.ts`, `validators.ts`) |
 | 17 | `guardian-portal-token.sql` | `guardians.sql` | **Después** redesplegar `guardian-portal` (**Verify JWT OFF**; `index.ts`, `portal-guard.ts`) |
 | 18 | `storage-hardening.sql` | — | **Después** redesplegar `node-sync` (`media.ts`) y actualizar cada nodo |
-| 19 | `feedback-inbox.sql` (volver a correr completa) | `school-nodes.sql` | Nada |
+| 19 | `feedback-inbox.sql` (volver a correr completa) | `school-nodes.sql` | Volver a correr `rls-auth-uid-initplan.sql` (la verificación lo marca `false` si quedan políticas con `auth.uid()` sin envolver; sale de esta migración) |
 | 20 | `push-sub-role-staff.sql` | `push-sub-role.sql` | Recargar la app y pulsar «Activar notificaciones push» como administrador |
 | 21 (opcional, al final) | `storage-private-buckets.sql` | 18 y la app **v1.0.246 o posterior** publicada | Probar que las fotos y los videos se ven con sesión. Se deshace con las líneas comentadas del propio archivo |
 

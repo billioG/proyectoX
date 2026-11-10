@@ -37,6 +37,7 @@ revoke all on function public.decrement_project_votes(bigint) from anon, authent
 
 drop policy if exists "evaluations_select_authenticated" on public.evaluations;
 
+drop policy if exists "evaluations_select_staff" on public.evaluations;
 create policy "evaluations_select_staff"
   on public.evaluations for select to authenticated
   using (public.is_staff());

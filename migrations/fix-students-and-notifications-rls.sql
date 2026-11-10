@@ -25,6 +25,7 @@
 
 drop policy if exists "students_select_authenticated" on public.students;
 
+drop policy if exists "students_select_self_staff_or_classmate" on public.students;
 create policy "students_select_self_staff_or_classmate"
   on public.students for select to authenticated
   using (
@@ -41,6 +42,7 @@ create policy "students_select_self_staff_or_classmate"
 
 drop policy if exists "teacher_notifications_insert_authenticated" on public.teacher_notifications;
 
+drop policy if exists "teacher_notifications_insert_staff" on public.teacher_notifications;
 create policy "teacher_notifications_insert_staff"
   on public.teacher_notifications for insert to authenticated
   with check (public.is_staff());
