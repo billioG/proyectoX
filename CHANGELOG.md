@@ -6,6 +6,8 @@ Al publicar una versión nueva, agrega una línea arriba de todo (ver CONTRIBUTI
 
 ## 2026-11-10
 
+- **Seguridad: integridad (SRI) de las librerías de CDN (v1.0.258).** Las 13 librerías que la página carga desde jsDelivr y cdnjs (supabase-js, Font Awesome, JSZip, driver.js, PDF.js, jsQR, confetti y los 5 archivos de three.js) llevan ahora su hash `sha384`: si una CDN cambiara un archivo, el navegador lo rechaza en vez de ejecutarlo. `driver.js` pasa de `@1` (versión flotante) a `1.11.0`, que es lo que ya se servía. El servidor escolar sigue usando sus copias locales (sin integridad). Nuevo `scripts/sri-hashes.mjs` (calcula y comprueba), prueba de navegador con las CDN reales (incluye que un hash equivocado se bloquea) y un trabajo informativo en el CI.
+
 - **Documentación: ensayo de demo y estado real.** Nuevo `docs/ENSAYO_DEMO.md` (comprobaciones, guion de 20 minutos con el plantel demo, qué no prometer y qué hacer si algo falla) y `PENDIENTES.md` al día: migraciones 125 a 131 verificadas, fase 3 de contraseñas confirmada, `main` protegida, Dependabot limpio y retos duplicados corregidos. Solo documentación.
 
 - **Candado en la base contra retos repetidos (v1.0.257).** Nueva migración `duel-one-open-pair.sql`: no puede haber dos retos pendientes o activos entre la misma pareja de compañeros en el mismo juego (índice único en las 5 tablas de retos). Antes cancela los «pendientes» repetidos que ya existan (conserva el más antiguo; no borra nada). La app explica el rechazo: «Ya tienes un reto abierto con ese compañero». Correr la migración en Supabase.

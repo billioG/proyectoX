@@ -1,0 +1,15 @@
+{
+  "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css": "sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0",
+  "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0": "sha384-UagCvVPT5XXA0Hx+nJYUAGBFseHT9zBgpJMSebsAxl9lciTwbT+39j5VfRjdP5Tp",
+  "https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js": "sha384-+mbV2IY1Zk/X1p/nWllGySJSUN8uMs+gUAN10Or95UBH0fpj6GfKgPmgC5EXieXG",
+  "https://cdn.jsdelivr.net/npm/driver.js@1.11.0/dist/driver.js.iife.js": "sha384-IYtZiDPxvr6nvRAL339SO8ZswcKYOVT1EqS0LfuS+uSMgZmi8cuSQcB7oR7Pf4zS",
+  "https://cdn.jsdelivr.net/npm/driver.js@1.11.0/dist/driver.css": "sha384-VwkY5zeG8ASxat2SbNtS/1cZMo1puySWI5Bc8njancMDAy0vty6q1aemwwTnxmuU",
+  "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js": "sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e",
+  "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js": "sha384-hStSInNIZ8ljtOVrmrgf7zdHMapaLBWoSnPTtF0nzsybp4+LuhDz6sHuEVpWIX8o",
+  "https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js": "sha384-xgNdoEQu0JeBEAN3/f7mrS+EPOsrmARCvhS7PEpk7QI2wvo4YOF3xY3EjQGKHAY9",
+  "https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js": "sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu",
+  "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js": "sha384-wagZhIFgY4hD+7awjQjR4e2E294y6J2HSnd8eTNc15ZubTeQeVRZwhQJ+W6hnBsf",
+  "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js": "sha384-QF8EmP6pyNE+i7WmcltzC4ddzFVKDxfn5WD5gXyKTSE4SCw0R25TI+q0LUlnf7tq",
+  "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js": "sha384-UWFC8mrevmKCZhKbJ/8/dqLrRAvHArRwJCKjwruJuXyhsebGMFsIK5zrn+R9r+fT",
+  "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js": "sha384-fljlqkjWlmSFjkESkQvm77heIZpoWmXEOzlCA7kOpGUH+95Zk0yGfQieWM2q136E"
+}

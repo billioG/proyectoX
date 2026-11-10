@@ -346,3 +346,39 @@ Las últimas 40 ejecuciones en `main` salían en rojo. Causas y qué se hizo:
 
 **No verificado:** que el CI de GitHub quede verde (no se puede ejecutar desde aquí); los pasos se reprodujeron con las mismas versiones (Deno 1.46.3,
 gitleaks 8.21.2, tailwind 3.4.17 desde el lock). Las Edge Functions desplegadas **no cambian** hasta que se redespliegue cada una.
+
+## 10. Integridad de las librerías de CDN y cabeceras de seguridad — v1.0.258
+
+### Integridad (SRI) — hecha
+
+Las 13 librerías que la página carga de jsDelivr y cdnjs llevan su hash `sha384` (`integrity`): supabase-js y Font Awesome en las etiquetas de `index.html`;
+JSZip, driver.js, PDF.js, jsQR y confetti en el cargador `window.loadLib`; los 5 archivos de three.js en `js/model-viewer.js`. Si una CDN cambiara un archivo
+(compromiso de la CDN o del paquete), el navegador lo rechaza y no lo ejecuta. Detalles:
+
+- `driver.js` estaba en `@1` (versión flotante: el contenido podía cambiar solo); ahora está fijado a `1.11.0`, que es lo que ya se servía. **No se puede verificar la integridad de algo que cambia**, por eso una prueba (`tests-unit/sri.test.mjs`) falla si una librería de CDN vuelve a usar una versión flotante.
+- `scripts/sri-hashes.mjs` calcula los hashes desde las CDN y, con `--check`, avisa si una CDN ya no sirve lo mismo (trabajo informativo del CI). La fuente de verdad es `scripts/sri-hashes.json`; `tests-unit/sri.test.mjs` comprueba que `index.html` y `model-viewer.js` llevan exactamente esos valores.
+- `tests/sri.spec.js` prueba con **Chrome real y las CDN reales** que cada hash es aceptado y que un hash equivocado se **bloquea** (la protección funciona de verdad).
+- **Servidor escolar:** usa copias locales de `vendor/` que no siempre son byte a byte las de la CDN (la de driver.js es de otra versión 1.x), así que el nodo quita los atributos de integridad de su `index.html` (`school-node/offline-assets.js`).
+- **Para subir la versión de una librería:** cambia la URL en `scripts/sri-hashes.mjs`, regenera (`node scripts/sri-hashes.mjs > scripts/sri-hashes.json`), copia el hash nuevo a `index.html` / `model-viewer.js` y actualiza `service-worker.js` y `vendor/cdn/` si aplica.
+- **Límites:** el worker de PDF.js (`pdf.worker.min.js`) y las tipografías se cargan desde dentro de otra librería y no llevan integridad; Google Fonts (CSS dinámico por navegador) tampoco puede llevarla.
+
+### Cabeceras de seguridad — falta, y requiere un cambio en el DNS
+
+Medido el 10/11/2026 (`curl -sI https://clases.yoaprendo.online/`): el sitio lo sirve GitHub Pages directamente (`Server: GitHub.com`) y **no manda ninguna cabecera de seguridad** (ni `X-Frame-Options`/`frame-ancestors`, ni `X-Content-Type-Options`, ni `Referrer-Policy`, ni `Permissions-Policy`, ni `Strict-Transport-Security`). GitHub Pages no permite configurarlas; la CSP de `index.html` por `<meta>` no puede dar `frame-ancestors` (§7). La salida es poner un proxy delante (Cloudflare, plan gratuito):
+
+1. Crear la cuenta en Cloudflare, agregar `yoaprendo.online` y cambiar los *nameservers* en el registrador. (**Antes**, anotar los registros DNS actuales, en especial los de correo SPF/DKIM/DMARC de `colegios@yoaprendo.online`; que sigan igual y **sin proxy** los de correo.)
+2. El registro de `clases` (CNAME a `billiog.github.io`) en modo *proxied* (nube naranja). En SSL/TLS: modo **Full (strict)**; activar «Always Use HTTPS».
+3. *Rules → Transform Rules → Modify Response Header*, para el nombre `clases.yoaprendo.online`, agregar:
+
+| Cabecera | Valor | Para qué |
+|---|---|---|
+| `Content-Security-Policy` | `frame-ancestors 'none'` | Nadie puede incrustar la app en otro sitio (clickjacking). Conviene empezar solo con esta directiva |
+| `X-Content-Type-Options` | `nosniff` | El navegador no adivina tipos de archivo |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` | Menos datos en el `Referer` |
+| `Permissions-Policy` | `camera=(self), microphone=(), geolocation=(), payment=(), usb=()` | La cámara se usa para el QR de asistencia y el escáner de exámenes, por eso `camera=(self)` |
+| `Strict-Transport-Security` | `max-age=31536000` | Sin `includeSubDomains` ni `preload` hasta confirmar que ningún subdominio necesita http |
+
+4. **Caché:** dejar que Cloudflare respete las cabeceras de GitHub Pages (`Cache-Control: max-age=600`); no usar «Cache Everything» para el HTML (el service worker y el número de versión dependen de que `index.html` y `service-worker.js` se vean nuevos cuando se publica).
+5. Comprobar: `curl -sI https://clases.yoaprendo.online/` debe mostrar las cabeceras; probar el ingreso, un duelo, la cámara de asistencia y la subida de un proyecto. Para volver atrás, poner el registro en «DNS only» (nube gris).
+
+**No afecta** al servidor escolar (red local, http/https propio) ni a las Edge Functions (otro dominio).
