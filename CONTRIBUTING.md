@@ -22,7 +22,38 @@ Primero leé [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) y seguí
 2. Hacé cambios pequeños y enfocados.
 3. Abrí un *pull request* hacia `main` completando la plantilla.
 4. Otra persona lo revisa. Nadie publica en `main` sin revisión.
-5. La CI de GitHub tiene que pasar en verde.
+5. La CI de GitHub tiene que pasar en verde (incluye «Migraciones aplican y se verifican»: si agregas una migración, anótala en `docs/MIGRATIONS.md` y en `scripts/ci/migraciones-orden.txt`).
+
+### Protección de la rama `main` (solo por pull request)
+
+`main` es lo que se publica en GitHub Pages (producción), así que **nadie empuja directo a `main`**: todo entra por pull request con la CI en verde.
+Es un ajuste de GitHub que hace el dueño del repositorio (el código no puede aplicarlo):
+
+1. GitHub → **Settings → Branches → Add branch protection rule** (o *Rulesets*) para `main`.
+2. Marcar: **Require a pull request before merging**; **Require status checks to pass before merging** y elegir los trabajos de la CI
+   (*Sintaxis JS*, *Pruebas unitarias*, *Tipos de Edge Functions (Deno)*, *Las Edge Functions viven solo en supabase/functions*,
+   *css/tailwind.css compilado al día*, *Escaneo de secretos (gitleaks)*, *Migraciones aplican y se verifican* y *Pruebas de humo*);
+   **Require branches to be up to date**; **Do not allow bypassing** si trabajas con más personas.
+3. Desmarcar *Allow force pushes* y *Allow deletions*.
+4. Aprobaciones: con una sola persona en el proyecto, 0 aprobaciones (si no, nadie puede fusionar); en cuanto haya equipo, **1 aprobación**.
+5. **Antes de exigir los trabajos, que estén en verde**: un trabajo requerido que falla bloquea todo. La lista de «Pendientes» recoge si la CI ya pasa.
+
+Equivalente por línea de comandos (con `gh` autenticado como dueño; ajusta los nombres de los trabajos a los que muestre la pestaña *Actions*):
+
+```bash
+gh api -X PUT repos/billioG/proyectoX/branches/main/protection --input - <<'JSON'
+{
+  "required_status_checks": { "strict": true, "contexts": [
+    "Sintaxis JS (carpeta js/)", "Pruebas unitarias (preguntas JSON, nodo escolar)", "Tipos de Edge Functions (Deno)",
+    "css/tailwind.css compilado al día", "Escaneo de secretos (gitleaks)", "Migraciones aplican y se verifican (PostgreSQL 17)" ] },
+  "enforce_admins": false,
+  "required_pull_request_reviews": { "required_approving_review_count": 0 },
+  "restrictions": null,
+  "allow_force_pushes": false,
+  "allow_deletions": false
+}
+JSON
+```
 
 Los mensajes de commit van en inglés, en modo imperativo y con la versión al
 final cuando corresponde: `Fix scrolling in arena overlays on phones (v1.0.96)`.

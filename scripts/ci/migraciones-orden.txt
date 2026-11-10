@@ -1,0 +1,52 @@
+# Migraciones que se aplican DESPUÉS de supabase/schema.sql (volcado del 29/09/2026), en el orden seguro de docs/MIGRATIONS.md.
+# Una por línea (sin .sql). Las que ya están en el volcado se pueden repetir sin dañar: todas son re-ejecutables.
+# Al agregar una migración nueva: va al final de docs/MIGRATIONS.md y aquí; una prueba (tests-unit/ci-migraciones.test.mjs) falla si falta alguna.
+fix-password-reset-rpc-exposure
+fix-students-and-notifications-rls
+fix-students-rls-recursion
+fix-votes-and-evaluations-exposure
+fix-is-staff-coordinador
+fix-coordinator-own-schools
+fix-cross-school-public-projects
+fix-toggle-project-like-integer
+sync-queue-idempotency
+student-pin-cloud
+hangman-word-bank
+timed-math-word-problems
+companion-panda
+duel-per-player-content
+project-reactions
+project-reactions-ranking-count
+project-reaction-notifications
+project-thumbnails
+exams
+practice-progress
+course-resource-weights
+security-hardening-2026-10
+ai-usage-limit
+student-password-hash
+student-password-drop-plaintext
+security-rls-audit-2026-11
+security-function-exposure-2026-11
+performance-2026-11
+random-event-settle-atomic
+school-branding
+xp-events
+node-reactions
+node-evaluations
+teacher-node-pin
+teacher-node-password
+node-companion
+node-timed-math-duel
+node-hangman-duel
+node-profile-photo
+node-feedback
+node-remote-sync
+feedback-inbox
+node-manage
+node-remote-update
+guardian-portal-token
+storage-hardening
+push-sub-role-staff
+# Siempre al final: envuelve auth.uid() también en las políticas que crearon las migraciones anteriores (p. ej. feedback-inbox).
+rls-auth-uid-initplan
