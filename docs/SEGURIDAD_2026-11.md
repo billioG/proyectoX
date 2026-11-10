@@ -5,9 +5,11 @@ Revisión de seguridad hecha **solo sobre el repositorio**: el código, las migr
 corren cada migración en un PostgreSQL de verdad (con roles `anon`, `authenticated` y `service_role` simulados), y eso es lo
 que respalda cada afirmación de aquí. Antes de aplicar en producción: hazlo primero en el proyecto de prueba (`docs/SETUP.md`).
 
-> **Estado (2026-11-06):** las migraciones de este documento **ya se aplicaron en producción**, según confirmó el administrador.
-> El repositorio no puede comprobarlo: para verificarlo, `migrations/verificar-migraciones.sql` (solo lee) debe dar `aplicada = true`
-> en todas las filas. Las columnas «Cuándo aplicar» de abajo quedan como referencia del orden (útil para una base nueva).
+> **Estado real (2026-11-09):** el administrador corrió `migrations/verificar-migraciones.sql` en producción: todo en `true` (la fila de `rls-auth-uid-initplan`
+> se corrigió volviendo a correr esa migración al final). **Excepción importante:** las contraseñas de alumnos (§3) estaban solo en la **fase 1**:
+> faltaba el secreto `PASSWORD_VAULT_KEY` y la función `staff-student-passwords` no estaba desplegada. El 9/11 se hicieron la **fase 2** (llave, función y cifrado
+> de los 15 alumnos con contraseña en texto, `pending: 0`, descifrado comprobado) y se dejó lista la **fase 3**, que es irreversible y se corre con la consulta de
+> comprobación de más abajo. Lo anterior del 6/11 («ya se aplicaron todas») no era exacto para ese punto.
 
 ## Resumen
 
@@ -135,6 +137,8 @@ select public.backfill_student_password_hashes(300);   -- repetir hasta que devu
      body: JSON.stringify({ action: 'backfill', batch: 200 }) });
    console.log(await r.json());   // { encrypted: 200, pending: 1234 } ... hasta pending: 0
    ```
+
+**Antes de la fase 3, comprobar (solo lee):** `select count(*) as alumnos, count(*) filter (where password_generated is not null and password_generated <> '') as con_texto_legible, count(*) filter (where password_hash is not null) as con_hash, count(*) filter (where password_enc is not null) as con_cifrado, count(*) filter (where password_generated is not null and password_generated <> '' and (password_hash is null or password_enc is null)) as faltan from public.students;` — `faltan` debe ser 0.
 
 **Fase 3 — SQL (la única irreversible).** `student-password-drop-plaintext.sql`. Se **niega a correr** mientras alguna contraseña no tenga
 hash **y** cifrado (dice cuántas faltan). Cuando corre, deja `password_generated` vacío (la columna se conserva). **Haz antes una copia
