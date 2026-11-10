@@ -5,6 +5,14 @@
  * window.model3DViewerHtml(url) en cualquier parte.
  */
 const THREE_BASE = 'https://cdn.jsdelivr.net/npm/three@0.128.0';
+// Integridad (SRI) de los archivos de three.js r128; se actualiza con scripts/sri-hashes.mjs.
+const THREE_SRI = {
+  'https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js': 'sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu',
+  'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js': 'sha384-wagZhIFgY4hD+7awjQjR4e2E294y6J2HSnd8eTNc15ZubTeQeVRZwhQJ+W6hnBsf',
+  'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js': 'sha384-QF8EmP6pyNE+i7WmcltzC4ddzFVKDxfn5WD5gXyKTSE4SCw0R25TI+q0LUlnf7tq',
+  'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js': 'sha384-UWFC8mrevmKCZhKbJ/8/dqLrRAvHArRwJCKjwruJuXyhsebGMFsIK5zrn+R9r+fT',
+  'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js': 'sha384-fljlqkjWlmSFjkESkQvm77heIZpoWmXEOzlCA7kOpGUH+95Zk0yGfQieWM2q136E'
+};
 const MODEL_EXTS = ['stl', 'obj', 'glb'];
 const LOADER_FILE = { stl: 'STLLoader', obj: 'OBJLoader', glb: 'GLTFLoader' };
 
@@ -14,6 +22,7 @@ function loadScript(src) {
     scriptPromises[src] = new Promise((resolve, reject) => {
       const s = document.createElement('script');
       s.src = src;
+      if (THREE_SRI[src]) { s.integrity = THREE_SRI[src]; s.crossOrigin = 'anonymous'; }
       s.onload = resolve;
       s.onerror = () => { delete scriptPromises[src]; reject(new Error('No se pudo cargar ' + src)); };
       document.head.appendChild(s);

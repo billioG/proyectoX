@@ -63,6 +63,8 @@ Detalle, orden y pruebas en `docs/SEGURIDAD_2026-11.md`.
 - [ ] Siguiente rotación de la llave `PASSWORD_VAULT_KEY`: si se cambia, hay que volver a cifrar (la anterior invalida lo cifrado); no hacerlo sin un plan (ver `docs/SEGURIDAD_2026-11.md`, §3).
 - [ ] Decidir si las otras funciones de IA (`ai-generate-*`, `ai-evaluate-*`) también llevan tope diario (`ai_usage_take` ya sirve).
 - [ ] Decidir las propuestas de seguridad que no se aplicaron (evaluaciones, equipos y asignaciones visibles entre escuelas): tabla al final del §4 de `docs/SEGURIDAD_2026-11.md`.
+- [x] Integridad (SRI) de las librerías de CDN (v1.0.258, 10/11/2026): ver `docs/SEGURIDAD_2026-11.md`, §10.
+- [ ] Cabeceras de seguridad (`frame-ancestors`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, HSTS): el sitio no manda ninguna porque lo sirve GitHub Pages; hace falta poner Cloudflare delante (pasos en §10; requiere cambiar los *nameservers*).
 - [ ] Quitar `unsafe-inline` de la CSP: exige reemplazar cientos de `onclick` por `addEventListener` (§7 del documento de seguridad).
 - [ ] Confirmar el plan de Supabase antes de sumar colegios: el gratuito admite 200 conexiones en tiempo real a la vez (≈ 200 alumnos conectados), 500 MB de base, 5 GB de transferencia al mes y se pausa tras 7 días sin uso. Para clientes pagando: plan Pro.
 - [x] `@supabase/supabase-js` fijado a `2.118.0` en las 29 Edge Functions (9/11/2026); se aplica en cada función cuando se vuelva a desplegar. Una prueba impide volver a importar sin versión exacta.

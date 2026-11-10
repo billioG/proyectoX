@@ -138,3 +138,16 @@ jobs:
           set -e
           curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.21.2/gitleaks_8.21.2_linux_x64.tar.gz | tar -xz gitleaks
           ./gitleaks detect --source . --config .gitleaks.toml --redact --verbose
+
+  # Las librerías de CDN llevan integridad (SRI). Si una CDN cambiara un archivo, la página lo rechazaría: este trabajo lo detecta antes. Solo informa
+  # (necesita internet y una CDN caída no debe bloquear una fusión); la prueba del navegador (tests/sri.spec.js) corre en «Pruebas de humo».
+  sri-cdn:
+    name: Integridad de las librerías de CDN (SRI)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - run: node scripts/sri-hashes.mjs --check
