@@ -5,6 +5,7 @@
 // leer push_subscriptions del OTRO participante, nunca para escribir nada.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.118.0';
+import { enforceRate, parseLimit } from '../_shared/rate-limit.ts';
 import webpush from 'npm:web-push@3.6.7';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -45,6 +46,10 @@ Deno.serve(async (req) => {
   const { data: { user: caller }, error: authErr } = await callerClient.auth.getUser();
   if (authErr || !caller) return json({ error: 'Invalid token' }, 401);
 
+  // Tope de frecuencia por persona (ver migrations/rate-limits.sql): evita que una cuenta llene de avisos el teléfono de otra persona.
+  const rateLimited = await enforceRate(createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE), caller.id, 'notify-duel', parseLimit(Deno.env.get('RATE_NOTIFY_DUEL_PER_HOUR'), 60), 3600, CORS, { failOpen: true, what: 'avisos de retos' });
+  if (rateLimited) return rateLimited;
+
   // 5 juegos 1v1 comparten esta misma función de notificación -- cada uno
   // vive en su propia tabla (challenger_id/opponent_id/wager_gems iguales
   // en las 5, "topic" solo en 4 de ellas). Antes esto estaba hardcodeado a
@@ -73,6 +78,10 @@ Deno.serve(async (req) => {
 
     // Solo un participante real de este duelo puede disparar su propia notificación.
     if (caller.id !== duel.challenger_id && caller.id !== duel.opponent_id) return json({ error: 'No autorizado para este duelo' }, 403);
+
+    // Y un tope por reto y tipo de aviso: repetir «challenge» o «accepted» sobre el mismo reto solo molesta al rival.
+    const perDuel = await enforceRate(admin, caller.id, `notify-duel:${duel_id}:${type}`, parseLimit(Deno.env.get('RATE_NOTIFY_DUEL_ITEM_PER_10MIN'), 4), 600, CORS, { what: 'avisos de este reto' });
+    if (perDuel) return perDuel;
 
     const challengerName = (Array.isArray(duel.challenger) ? duel.challenger[0] : duel.challenger)?.full_name || 'Alguien';
     const opponentName = (Array.isArray(duel.opponent) ? duel.opponent[0] : duel.opponent)?.full_name || 'Tu rival';

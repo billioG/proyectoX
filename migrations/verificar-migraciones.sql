@@ -84,7 +84,9 @@ with comprobaciones(orden, migracion, tipo, objeto, extra) as (values
   (761, 'duel-one-open-pair',                'indice',           'student_hangman_duels_one_open_pair', null),
   (762, 'duel-one-open-pair',                'indice',           'student_timed_math_duels_one_open_pair', null),
   (763, 'duel-one-open-pair',                'indice',           'student_debug_duels_one_open_pair', null),
-  (764, 'duel-one-open-pair',                'indice',           'student_spelling_duels_one_open_pair', null)
+  (764, 'duel-one-open-pair',                'indice',           'student_spelling_duels_one_open_pair', null),
+  (770, 'rate-limits',                       'tabla',            'rate_limits', null),
+  (771, 'rate-limits',                       'funcion',          'rate_limit_take', null)
 )
 select
   c.orden,

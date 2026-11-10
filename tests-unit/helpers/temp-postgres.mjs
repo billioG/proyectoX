@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import net from 'node:net';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 
 const exe = (n) => (process.platform === 'win32' ? `${n}.exe` : n);
 
@@ -40,6 +40,13 @@ export async function startTempPostgres() {
   if (start.status !== 0) throw new Error('pg_ctl start falló; revisa pg.log');
   return {
     psql: (file) => run('psql', ['-U', 'postgres', '-h', '127.0.0.1', '-p', String(port), '-v', 'ON_ERROR_STOP=1', '-q', '-t', '-A', '-f', file]),
+    // Igual que psql pero asíncrono: para lanzar varias sesiones A LA VEZ (pruebas de concurrencia).
+    psqlAsync: (file) => new Promise((resolve) => {
+      const p = spawn(path.join(bin, exe('psql')), ['-U', 'postgres', '-h', '127.0.0.1', '-p', String(port), '-v', 'ON_ERROR_STOP=1', '-q', '-t', '-A', '-f', file], { stdio: ['ignore', 'pipe', 'pipe'] });
+      let stdout = '', stderr = '';
+      p.stdout.on('data', (d) => { stdout += d; }); p.stderr.on('data', (d) => { stderr += d; });
+      p.on('close', (status) => resolve({ status, stdout, stderr }));
+    }),
     stop() {
       run('pg_ctl', ['-D', dataDir, '-m', 'immediate', 'stop']);
       fs.rmSync(dir, { recursive: true, force: true });

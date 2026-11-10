@@ -382,3 +382,21 @@ Medido el 10/11/2026 (`curl -sI https://clases.yoaprendo.online/`): el sitio lo 
 5. Comprobar: `curl -sI https://clases.yoaprendo.online/` debe mostrar las cabeceras; probar el ingreso, un duelo, la cámara de asistencia y la subida de un proyecto. Para volver atrás, poner el registro en «DNS only» (nube gris).
 
 **No afecta** al servidor escolar (red local, http/https propio) ni a las Edge Functions (otro dominio).
+
+## 11. Límite de frecuencia en las funciones `notify-*` — 10/11/2026
+
+**Hallazgo.** Las 5 funciones que mandan notificaciones (`notify-duel`, `notify-announcement`, `notify-rock-pending`, `notify-reaction`, `notify-guardians`) solo exigían una sesión válida. Una cuenta (hay miles de estudiantes) podía llamarlas en bucle y llenar de avisos el teléfono de un compañero o de la administración; en `notify-guardians`, además, gastar SMS. `notify-reaction` ya tenía su propio tope (1 aviso cada 10 min por pareja).
+
+**Qué se entrega.** `migrations/rate-limits.sql` (tabla `rate_limits` sin políticas y `rate_limit_take`, atómica y solo para `service_role`; probada con PostgreSQL real, incluidas 24 llamadas simultáneas con tope 10 → pasan exactamente 10) y `supabase/functions/_shared/rate-limit.ts` (`enforceRate`), usado por las 5 funciones justo después de validar la sesión y antes de tocar datos. Dos niveles: **por persona** y, donde hay un recurso, **por recurso** (por reto y tipo de aviso; por aviso), que se comprueba después de verificar que la persona es participante o dueña.
+
+| Función | Por persona | Por recurso |
+|---|---|---|
+| `notify-duel` | 60 / hora | 4 cada 10 min por reto y tipo |
+| `notify-announcement` | 30 / hora | 3 / hora por aviso |
+| `notify-rock-pending` | 20 / hora | — |
+| `notify-reaction` | 120 / hora | (el suyo: 1 cada 10 min por pareja) |
+| `notify-guardians` | 60 / hora | — |
+
+Los topes se cambian con secretos (`RATE_NOTIFY_*`, ver `docs/PASOS_MANUALES.md`). Al pasarse: HTTP 429 con `{ error, code: "rate_limited" }` y `Retry-After`. **Si falla el contador:** los avisos push dejan pasar (no perder notificaciones legítimas por una caída) y `notify-guardians` responde 503 (los SMS cuestan dinero). Si falta la migración, todas dejan pasar y avisan en sus registros, así que el orden de despliegue no rompe nada.
+
+**Límites, dichos con franqueza.** Es un tope por cuenta, no por persona real: quien tenga muchas cuentas multiplica el tope (el ingreso ya tiene su propio límite por IP). No cubre `notify-inactive-users`, `trigger-random-event` ni `settle-random-event` (se llaman con un secreto de cron, no con sesión). Las ventanas son fijas (empiezan en la primera llamada): en el borde de dos ventanas alguien puede enviar hasta el doble de golpe.

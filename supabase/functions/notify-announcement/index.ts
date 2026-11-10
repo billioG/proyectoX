@@ -6,6 +6,7 @@
 // Requiere JWT del propio remitente del aviso.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.118.0';
+import { enforceRate, parseLimit } from '../_shared/rate-limit.ts';
 import webpush from 'npm:web-push@3.6.7';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -46,6 +47,10 @@ Deno.serve(async (req) => {
   const { data: { user: caller }, error: authErr } = await callerClient.auth.getUser();
   if (authErr || !caller) return json({ error: 'Invalid token' }, 401);
 
+  // Tope de frecuencia por persona (ver migrations/rate-limits.sql): evita que una cuenta llene de avisos el teléfono de otra persona.
+  const rateLimited = await enforceRate(createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE), caller.id, 'notify-announcement', parseLimit(Deno.env.get('RATE_NOTIFY_ANNOUNCEMENT_PER_HOUR'), 30), 3600, CORS, { failOpen: true, what: 'avisos' });
+  if (rateLimited) return rateLimited;
+
   try {
     const { announcement_id } = await req.json();
     if (!announcement_id) return json({ error: 'announcement_id requerido' }, 400);
@@ -54,6 +59,10 @@ Deno.serve(async (req) => {
     const { data: ann } = await admin.from('announcements').select('*').eq('id', announcement_id).maybeSingle();
     if (!ann) return json({ error: 'Aviso no encontrado' }, 404);
     if (ann.sender_id !== caller.id) return json({ error: 'No autorizado para este aviso' }, 403);
+
+    // Y un tope por aviso: reenviar el mismo aviso una y otra vez solo satura a quien lo recibe.
+    const perAnn = await enforceRate(admin, caller.id, `notify-announcement:${announcement_id}`, parseLimit(Deno.env.get('RATE_NOTIFY_ANNOUNCEMENT_ITEM_PER_HOUR'), 3), 3600, CORS, { what: 'envíos de este aviso' });
+    if (perAnn) return perAnn;
 
     let targetUserIds: string[] | null = null;
     let targetRoles: string[] = [];
