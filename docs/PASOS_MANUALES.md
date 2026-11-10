@@ -1,6 +1,6 @@
 # Pasos manuales para el responsable
 
-Auditoría del 9 de noviembre de 2026. Estos pasos **solo los puede hacer quien tiene acceso al panel de Supabase**: el repositorio
+Auditoría del 9 de noviembre de 2026. **Actualización del mismo día:** el administrador ya aplicó las filas 1 a 20 y las funciones de la sección 2; quedan la fila 21 (opcional, ya aplicada según los buckets), la actualización de los nodos, y la fase 3 de contraseñas. Estos pasos **solo los puede hacer quien tiene acceso al panel de Supabase**: el repositorio
 no puede consultar producción. No se aplica nada a ciegas: primero se mide qué falta y después se corre solo eso.
 
 ## 0. Averiguar qué falta (solo lee)
@@ -73,6 +73,10 @@ Para pegar una función en el editor del panel: `node scripts/exportar-funciones
 
 Después de redesplegar `node-sync`, cada nodo se actualiza con `bash ~/quetzal/school-node/install.sh --update` o con el botón
 «Actualizar servidores» de la plataforma (requiere el paso 16).
+
+## 3b. Lección: crea las Edge Functions con la CLI, no desde el editor del panel
+
+El editor del panel le pone un nombre aleatorio a una función nueva (`guardian-portal` quedó como `bright-responder` y `padres.html` recibía 404). Para una función **nueva**, usa `npx supabase functions deploy <nombre> --use-api --project-ref <ref>` (con `--no-verify-jwt` en las de JWT OFF). Para una que ya existe, el panel sirve para pegar código. Comprobación rápida de que todas responden por su nombre: llamar a `/functions/v1/<nombre>` y ver que no dé 404.
 
 ## 4. Qué NO hay que hacer
 
