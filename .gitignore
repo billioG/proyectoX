@@ -12,3 +12,6 @@ blob-report/
 # Sistema
 .DS_Store
 Thumbs.db
+
+# Archivos temporales de la CLI de Supabase
+supabase/.temp/

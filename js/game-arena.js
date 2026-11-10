@@ -161,6 +161,40 @@ window.GameArena = {
     spelling: { table: 'student_spelling_duels', label: 'Ortografía', icon: 'fa-spell-check', cache: '_spellingDuelsCache', reload: 'loadSpellingSection', topic: true },
   },
 
+  // Función que envía el reto de cada juego (la que llama el botón «Retar» del formulario).
+  SENDERS: {
+    quiz: 'sendDuelChallenge', hangman: 'sendHangmanChallenge', timed_math: 'sendTimedMathChallenge',
+    debug: 'sendDebugChallenge', spelling: 'sendSpellingChallenge',
+  },
+
+  // Un toque, una acción. En un celular lento la red tarda y el toque parece no responder: la persona vuelve a tocar, se apilan varios
+  // formularios iguales y cada uno envía su reto (3 retos idénticos al mismo compañero). Con esto, mientras una acción con ese nombre
+  // sigue en curso, las repetidas se ignoran.
+  _busy: new Set(),
+  async once(key, fn) {
+    if (this._busy.has(key)) return null;
+    this._busy.add(key);
+    try { return await fn(); } finally { this._busy.delete(key); }
+  },
+
+  // Abre el formulario de reto UNA vez (limpia los que hubieran quedado apilados) y asegura que su envío tampoco se repita.
+  async openCreator(game) {
+    document.querySelectorAll('select[data-ga-opponents]').forEach((sel) => sel.closest('.fixed')?.remove());
+    const name = this.CREATORS[game];
+    await this.once('open-create', async () => { await window[name]?.(); });
+    this.guardSender(game);
+  },
+
+  guardSender(game) {
+    const name = this.SENDERS[game];
+    const original = name && window[name];
+    if (typeof original !== 'function' || original.__gaSingle) return;
+    const self = this;
+    const guarded = function guardedSender(...args) { return self.once('send-challenge', () => original.apply(this, args)); };
+    guarded.__gaSingle = true;
+    window[name] = guarded;
+  },
+
   // Función que abre el formulario de "retar a un compañero" de cada juego.
   CREATORS: {
     quiz: 'openCreateDuelModal', hangman: 'openCreateHangmanModal', timed_math: 'openCreateTimedMathModal',
@@ -198,10 +232,14 @@ window.GameArena = {
     modal.querySelector('[data-close]').onclick = close;
     modal.onclick = (e) => { if (e.target === modal) close(); };
     modal.querySelector('[data-mode="practice"]').onclick = () => { close(); window.PracticeMode?.start(game); };
-    modal.querySelector('[data-mode="duel"]').onclick = () => { close(); window[this.CREATORS[game]]?.(); };
+    modal.querySelector('[data-mode="duel"]').onclick = () => { close(); this.openCreator(game); };
   },
 
-  async createChallenge(game, { opponentId, wager, topic }) {
+  createChallenge(game, opts) {
+    return this.once('send-challenge', () => this._createChallenge(game, opts));
+  },
+
+  async _createChallenge(game, { opponentId, wager, topic }) {
     const g = this.GAMES[game];
     const gems = window.userData?.gems ?? 0;
     const safeWager = Math.max(0, Math.min(wager ?? 10, gems));
