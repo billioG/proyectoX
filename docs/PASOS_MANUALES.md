@@ -74,6 +74,10 @@ Para pegar una función en el editor del panel: `node scripts/exportar-funciones
 Después de redesplegar `node-sync`, cada nodo se actualiza con `bash ~/quetzal/school-node/install.sh --update` o con el botón
 «Actualizar servidores» de la plataforma (requiere el paso 16).
 
+## 3a. Candado de retos repetidos (v1.0.257)
+
+Correr `duel-one-open-pair.sql` en el SQL Editor **después** de publicar la v1.0.257 (o antes: la app vieja solo vería el error en inglés del candado). Cancela los retos pendientes repetidos entre la misma pareja (conserva el más antiguo; no borra nada) y crea un índice único por juego. Si algún juego tiene retos **activos** repetidos, avisa con un NOTICE y no crea ese índice; se revisan a mano y se vuelve a correr. Al final debe mostrar 5 filas (`*_one_open_pair`). Después, `verificar-migraciones.sql` debe dar `true` en las filas 760 a 764.
+
 ## 3b. Lección: crea las Edge Functions con la CLI, no desde el editor del panel
 
 El editor del panel le pone un nombre aleatorio a una función nueva (`guardian-portal` quedó como `bright-responder` y `padres.html` recibía 404). Para una función **nueva**, usa `npx supabase functions deploy <nombre> --use-api --project-ref <ref>` (con `--no-verify-jwt` en las de JWT OFF). Para una que ya existe, el panel sirve para pegar código. Comprobación rápida de que todas responden por su nombre: llamar a `/functions/v1/<nombre>` y ver que no dé 404.
