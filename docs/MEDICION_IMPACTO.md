@@ -47,7 +47,7 @@ terminar un período, comparando con un grupo que todavía no usa la plataforma.
 
 ### Ética
 
-- Consentimiento de las familias (ver [FORMALIZACION.md](FORMALIZACION.md)).
+- Consentimiento de las familias (ver [PRIVACIDAD_Y_CONSENTIMIENTO.md](PRIVACIDAD_Y_CONSENTIMIENTO.md)).
 - La prueba no cuenta para la nota del estudiante.
 - Los resultados se reportan agregados por grupo, nunca por nombre.
 - El grupo de comparación recibe la plataforma al terminar.

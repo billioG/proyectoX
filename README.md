@@ -33,11 +33,9 @@ En producción: [clases.yoaprendo.online](https://clases.yoaprendo.online)
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Reglas para colaborar y publicar versiones |
 | [CHANGELOG.md](CHANGELOG.md) | Historial de cambios |
 | [PENDIENTES.md](PENDIENTES.md) | Tareas abiertas y pasos manuales pendientes |
-| [docs/FORMALIZACION.md](docs/FORMALIZACION.md) | Privacidad, consentimiento, propiedad intelectual y figura legal |
+| [docs/PRIVACIDAD_Y_CONSENTIMIENTO.md](docs/PRIVACIDAD_Y_CONSENTIMIENTO.md) | Cómo se tratan los datos de menores y modelo de consentimiento en papel |
 | [docs/MEDICION_IMPACTO.md](docs/MEDICION_IMPACTO.md) | Tablero de impacto y prueba de entrada y salida |
 | [docs/PILOTO_RURAL.md](docs/PILOTO_RURAL.md) | Protocolo del piloto en escuelas sin internet |
-| [docs/fondos/KIT_POSTULACION.md](docs/fondos/KIT_POSTULACION.md) | Textos, presentación y presupuesto para postular a fondos |
-| [docs/EQUIPO.md](docs/EQUIPO.md) | Cómo sumar personas al equipo y primeras tareas |
 | [docs/soporte/](docs/soporte/README.md) | Kit de onboarding del docente, 10 preguntas frecuentes y guía rápida de soporte |
 | [privacidad.html](privacidad.html) | Política de privacidad |
 | [docs/METRICAS_ADMIN.md](docs/METRICAS_ADMIN.md) | Cómo se calculan las métricas del panel de administración |
