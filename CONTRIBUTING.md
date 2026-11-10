@@ -78,6 +78,6 @@ Ver las reglas completas en [docs/MIGRATIONS.md](docs/MIGRATIONS.md). En corto: 
 
 ## Licencia
 
-El proyecto todavía no tiene licencia definida. Hasta que exista, todo el
-código es propiedad de su autor (Billy Gómez) y al contribuir aceptás que tu
-aporte pasa a formar parte del proyecto bajo la licencia que se defina.
+El proyecto es © 2026 Billy Abraham Gómez Sac, **todos los derechos reservados** (ver [LICENSE](LICENSE)). Al contribuir aceptas que tu
+aporte pasa a formar parte del proyecto bajo esos mismos términos, y declaras que es obra tuya o que tienes derecho a aportarla. Si
+más adelante el autor decide publicar el proyecto bajo otra licencia, tu aporte se incluirá en ella.

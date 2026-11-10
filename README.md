@@ -72,5 +72,8 @@ docs/                 Documentación técnica
 
 ## Autor y licencia
 
-Proyecto creado por Billy Gómez (Guatemala). Todavía no tiene licencia
-definida: hasta entonces, todos los derechos están reservados por su autor.
+Proyecto creado por Billy Abraham Gómez Sac (Guatemala).
+
+Copyright (c) 2026 Billy Abraham Gómez Sac. **Todos los derechos reservados** (ver [LICENSE](LICENSE)). Que el código sea visible en
+GitHub no es una licencia de uso. Las librerías de terceros conservan sus licencias: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+Para pedir permiso: colegios@yoaprendo.online
