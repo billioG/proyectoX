@@ -4,9 +4,13 @@ Lista de tareas abiertas del proyecto. Marcá con `[x]` lo que vayas
 completando. Lo de "Urgente" son pasos que solo puede hacer el responsable
 del proyecto (necesitan contraseñas o acceso al panel de Supabase).
 
-Última actualización: 5 de noviembre de 2026 (las casillas de migraciones de abajo son anteriores a esa fecha: **no las uses
-para saber qué falta**). Para saber el estado real de la base, corre `migrations/verificar-migraciones.sql` (solo lee) y sigue el
-orden de `docs/MIGRATIONS.md`, sección «Orden seguro de lo pendiente».
+Última actualización: 9 de noviembre de 2026.
+
+**Método de la auditoría (9/11/2026):** lectura cruzada de `migrations/` (153 archivos), `docs/MIGRATIONS.md`, `docs/SEGURIDAD_2026-11.md`,
+`PENDIENTES.md` y `migrations/verificar-migraciones.sql`, más el código de `js/` y `supabase/functions/`. **No se consultó Supabase:** este
+repositorio no puede ver producción. Lo marcado como hecho tiene una de dos pruebas: está en el repositorio y probado, o lo **confirmó el
+administrador** (6/11: seguridad y rendimiento de noviembre ya aplicados). Lo demás es «por verificar»: pega `migrations/verificar-migraciones.sql`
+(solo lee) en el SQL Editor y corre solo las filas con `aplicada = false`. Pasos exactos en orden: [docs/PASOS_MANUALES.md](docs/PASOS_MANUALES.md).
 
 ## 🔴 Urgente
 
@@ -46,33 +50,19 @@ orden de `docs/MIGRATIONS.md`, sección «Orden seguro de lo pendiente».
 - [x] Nombre legal ante la SAT: Billy Abraham Gómez Sac. Falta inscripción FEL/facturas.
 - [ ] No prometer en demos el nodo escolar ni la importación SIRE hasta probarlos en vivo
 
-## 🔴 Seguridad -- auditoría 21/10/2026
+## 🔴 Seguridad -- auditoría 21/10/2026 y noviembre 2026
 
-- [ ] Correr `migrations/course-resource-weights.sql` (v1.0.173): ponderación por recurso y protección de notas (rango 0-100, se conserva la mejor). Sin ella la app funciona, pero el botón "Aprobar ponderación" avisa que falta actualizar la base. Las notas SCORM guardadas antes con escala equivocada (ej. 8 en vez de 80) no se corrigen solas: el estudiante debe repetir la actividad.
-- [ ] Publicar v1.0.172 y DESPUÉS correr `migrations/security-hardening-2026-10.sql` (al final muestra una fila: debe dar `false, false, true, true`). Si se corre antes de publicar, las versiones viejas de la app dan error al iniciar sesión.
-- [ ] Correr `migrations/practice-progress.sql` (v1.0.166): en producción la tabla `practice_results` todavía no existe (verificado el 21/10), así que los reportes de progreso por competencia no funcionan.
-- [ ] Correr `migrations/fix-is-staff-coordinador.sql` y compañía (siguen sin marcar abajo).
-- [x] Límite diario de uso de IA por usuario en `ai-proxy` (código listo, 5/11/2026): correr `migrations/ai-usage-limit.sql` y redesplegar `ai-proxy` (topes en `docs/SEGURIDAD_2026-11.md`). Falta decidir si las otras funciones de IA (`ai-generate-*`, `ai-evaluate-*`) también llevan tope.
-- [ ] `students.password_generated` sin texto legible (código listo, 5/11/2026): hash + cifrado en 3 fases (`student-password-hash.sql` → redesplegar `student-login`, `admin-bulk-import-students`, `staff-student-passwords` con el secreto `PASSWORD_VAULT_KEY` → `backfill` → `student-password-drop-plaintext.sql`). Ver `docs/SEGURIDAD_2026-11.md`, §3.
+Detalle, orden y pruebas en `docs/SEGURIDAD_2026-11.md`.
+
+- [x] Confirmado por el administrador el 6/11/2026 (verificar con `verificar-migraciones.sql`): `security-hardening-2026-10.sql` (versión revisada), `ai-usage-limit.sql` + `ai-proxy`, `student-password-hash.sql` y las 3 fases de contraseñas de alumnos, `security-rls-audit-2026-11.sql`, `security-function-exposure-2026-11.sql`, `rls-auth-uid-initplan.sql`, `performance-2026-11.sql`, `random-event-settle-atomic.sql`.
+- [ ] **Por verificar** (el administrador no las nombró; el verificador las comprueba, fases 1 a 5 de `docs/MIGRATIONS.md`): `fix-password-reset-rpc-exposure.sql` (**crítica**), `fix-students-and-notifications-rls.sql`, `fix-students-rls-recursion.sql`, `fix-votes-and-evaluations-exposure.sql`, `fix-is-staff-coordinador.sql`, `fix-coordinator-own-schools.sql`, `fix-cross-school-public-projects.sql`, `fix-toggle-project-like-integer.sql`, `sync-queue-idempotency.sql`, `student-pin-cloud.sql`, `hangman-word-bank.sql`, `timed-math-word-problems.sql`, `companion-panda.sql`, `course-resource-weights.sql`, `practice-progress.sql`.
+- [ ] **Por verificar**, retos y proyectos (fase 4): `duel-per-player-content.sql` (importante: cada jugador recibe su propio contenido; correrla **antes** de redesplegar las 4 `ai-generate-*`), `project-reactions.sql` → `project-reactions-ranking-count.sql` → `project-reaction-notifications.sql`, `project-thumbnails.sql`, `exams.sql`.
+- [ ] **Sin aplicar según `docs/MIGRATIONS.md`** (filas 125 a 131; el verificador las comprueba desde la fase 9): `school-branding.sql`, `node-manage.sql`, `node-remote-update.sql`, `guardian-portal-token.sql`, `storage-hardening.sql`, `push-sub-role-staff.sql` (**admin y coordinador no pueden activar notificaciones sin ella**) y, al final y opcional, `storage-private-buckets.sql`. Volver a correr completa `feedback-inbox.sql`. Después redesplegar `node-sync` (**Verify JWT OFF**; `index.ts`, `validators.ts`, `media.ts`) y `guardian-portal` (**Verify JWT OFF**; `index.ts`, `portal-guard.ts`) y actualizar cada nodo.
+- [ ] Decidir si las otras funciones de IA (`ai-generate-*`, `ai-evaluate-*`) también llevan tope diario (`ai_usage_take` ya sirve).
+- [ ] Decidir las propuestas de seguridad que no se aplicaron (evaluaciones, equipos y asignaciones visibles entre escuelas): tabla al final del §4 de `docs/SEGURIDAD_2026-11.md`.
+- [ ] Quitar `unsafe-inline` de la CSP: exige reemplazar cientos de `onclick` por `addEventListener` (§7 del documento de seguridad).
 - [ ] Confirmar el plan de Supabase antes de sumar colegios: el gratuito admite 200 conexiones en tiempo real a la vez (≈ 200 alumnos conectados), 500 MB de base, 5 GB de transferencia al mes y se pausa tras 7 días sin uso. Para clientes pagando: plan Pro.
-- [ ] Envolver `auth.uid()` en `(select auth.uid())` dentro de las políticas RLS: migración lista (`rls-auth-uid-initplan.sql`, 5/11/2026), falta correrla en el proyecto de prueba y después en producción.
 - [ ] Fijar también `@supabase/supabase-js@2` en las Edge Functions (`esm.sh/...@2`) a una versión exacta.
-
-## 🔴 Seguridad de noviembre 2026 (código listo, falta aplicar)
-
-Detalle, orden y pruebas en `docs/SEGURIDAD_2026-11.md`:
-
-- [ ] `security-hardening-2026-10.sql` (versión revisada: atómica y con comprobaciones previas).
-- [ ] `security-rls-audit-2026-11.sql`: cierra 4 escrituras abiertas (notificaciones y insignias de docentes) y 17 lecturas públicas.
-- [ ] `security-function-exposure-2026-11.sql`: 86 funciones `SECURITY DEFINER` dejan de ser ejecutables sin sesión (probar el ingreso de alumno y docente).
-- [ ] Decidir las propuestas que no se aplicaron (evaluaciones, equipos y asignaciones visibles entre escuelas): tabla al final del §4 del documento.
-
-## 🔴 Verificar que estas correcciones críticas de seguridad estén corridas
-
-No tenían casilla en esta lista pero existen en `migrations/` (septiembre-octubre 2026). Se verifican con `migrations/verificar-migraciones.sql`:
-
-- [ ] `fix-password-reset-rpc-exposure.sql` (**crítica**: sin ella cualquiera sin sesión podía cambiar la contraseña de otra cuenta) y, en este orden, `fix-students-and-notifications-rls.sql`, `fix-students-rls-recursion.sql`, `fix-votes-and-evaluations-exposure.sql`.
-- [ ] `fix-toggle-project-like-integer.sql`, `sync-queue-idempotency.sql`, `student-pin-cloud.sql`, `hangman-word-bank.sql`, `timed-math-word-problems.sql`, `companion-panda.sql` (esta lista tampoco las traía todas).
 
 ## 🟠 Migraciones y funciones de las últimas versiones
 
@@ -98,13 +88,7 @@ seguras de re-ejecutar):
 - [x] `migrations/hangman-word-bank.sql` (v1.0.123) — requiere `migrations/duel-facts.sql` ya corrida. Categoría "Vida silvestre de Guatemala" en Ahorcado, banco fijo de 20 palabras.
 - [x] `migrations/timed-math-word-problems.sql` (v1.0.125) — requiere `migrations/student-timed-math-duels.sql` ya corrida. Contrarreloj: los problemas de 4to grado en adelante salen como mini-historia con contexto real (misma cuenta, mismo número).
 - [x] `migrations/sync-queue-idempotency.sql` (v1.0.127) — junta evaluar proyecto en una sola función atómica y agrega `client_ref` a `tutor_attendance` para que un reintento de la cola offline no duplique el check-in.
-- [ ] `migrations/fix-is-staff-coordinador.sql`, `migrations/fix-coordinator-own-schools.sql`, `migrations/fix-cross-school-public-projects.sql` (v1.0.142-145) — coordinador con acceso de docente y proyectos públicos entre colegios.
-- [ ] `migrations/project-reactions.sql` y después `migrations/project-reactions-ranking-count.sql` (v1.0.147-150) — reacciones en proyectos; el Ranking cuenta Me gusta + Excelente A+.
-- [ ] `migrations/practice-progress.sql` (v1.0.166) — progreso por competencia: tabla `practice_results` y funciones `log_practice`, `get_my_progress`, `get_group_progress`, `get_groups_progress`. Requiere las migraciones de los 5 retos y `coordinador-role.sql` ya corridas. Sin esto, "Mi progreso" y "Progreso" salen vacías (la práctica sigue funcionando).
-- [ ] `migrations/duel-per-player-content.sql` (v1.0.163) — **importante** (re-correr en v1.0.164 para Comprensión Lectora): cada jugador de un reto recibe su propio contenido (nadie puede soplarle la respuesta al otro). Requiere las migraciones de los 5 retos ya corridas. Seguro de re-ejecutar.
-- [ ] `migrations/exams.sql` (v1.0.159) — Exámenes con hoja de respuestas (tablas `exams`/`exam_results`, permisos y `my_exam_results()`).
-- [ ] `migrations/project-thumbnails.sql` (v1.0.155) — miniatura de los proyectos con modelo 3D (columna `projects.thumbnail_url`).
-- [ ] `migrations/project-reaction-notifications.sql` (v1.0.153) — aviso en la campanita al dueño/equipo cuando reaccionan a su proyecto.
+- Las migraciones de los puntos anteriores que antes tenían casilla propia (`fix-is-staff-coordinador`, `project-reactions*`, `practice-progress`, `duel-per-player-content`, `exams`, `project-thumbnails`, `project-reaction-notifications`) están ahora en «Seguridad» arriba.
 
 Redesplegar estas Edge Functions (cambiaron en las últimas versiones):
 

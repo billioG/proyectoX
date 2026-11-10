@@ -68,7 +68,18 @@ with comprobaciones(orden, migracion, tipo, objeto, extra) as (values
   (540, 'rls-auth-uid-initplan',                  'sin_auth_uid_suelto','politicas', null),
   -- Fase 8: rendimiento de noviembre (docs/PERFORMANCE.md)
   (600, 'performance-2026-11',                    'funcion_contiene','record_active_heartbeat', 'on conflict'),
-  (601, 'random-event-settle-atomic',             'funcion',         'settle_random_event', null)
+  (601, 'random-event-settle-atomic',             'funcion',         'settle_random_event', null),
+  -- Fase 9: servidores escolares, marca, portal de padres y notificaciones (v1.0.231 a v1.0.254)
+  (700, 'school-nodes',                      'tabla',            'school_nodes', null),
+  (710, 'school-branding',                   'columna',          'schools.brand_name', null),
+  (711, 'school-branding',                   'columna',          'schools.brand_color3', null),
+  (720, 'node-manage',                       'funcion',          'rename_school_node', null),
+  (721, 'node-manage',                       'funcion',          'delete_school_node', null),
+  (730, 'node-remote-update',                'columna',          'school_nodes.update_requested_at', null),
+  (731, 'node-remote-update',                'funcion',          'request_node_update', null),
+  (740, 'guardian-portal-token',             'columna',          'student_guardians.portal_token_expires_at', null),
+  (741, 'guardian-portal-token',             'funcion',          'regenerate_guardian_portal_token', null),
+  (750, 'push-sub-role-staff',               'restriccion_contiene', 'push_subscriptions.push_subscriptions_role_check', 'coordinador')
 )
 select
   c.orden,
@@ -89,6 +100,11 @@ select
     when 'funcion_args' then exists (
       select 1 from pg_proc p join pg_namespace s on s.oid = p.pronamespace
       where s.nspname = 'public' and p.proname = c.objeto and pg_get_function_arguments(p.oid) ilike '%' || c.extra || '%')
+    when 'restriccion_contiene' then exists (
+      select 1 from pg_constraint k
+      join pg_class t on t.oid = k.conrelid join pg_namespace s on s.oid = t.relnamespace
+      where s.nspname = 'public' and t.relname = split_part(c.objeto, '.', 1) and k.conname = split_part(c.objeto, '.', 2)
+        and pg_get_constraintdef(k.oid) ilike '%' || c.extra || '%')
     when 'sin_politica' then not exists (
       select 1 from pg_policies o
       where o.schemaname = 'public' and o.tablename = split_part(c.objeto, '.', 1) and o.policyname = split_part(c.objeto, '.', 2))

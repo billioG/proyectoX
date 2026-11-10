@@ -67,6 +67,7 @@ test('verificar-migraciones.sql corre en PostgreSQL: base vacía = nada aplicado
     create function public.react_to_project(p int) returns int language sql as $$ select 1 -- excelente $$;
     create function public.toggle_project_like(p_project_id integer) returns int language sql as $$ select 1 $$;
     create function public.is_staff() returns boolean language sql as $$ select 'coordinador' = 'coordinador' $$;
+    create table public.push_subscriptions (role text, constraint push_subscriptions_role_check check (role in ('estudiante', 'docente', 'admin', 'coordinador')));
     create role anon;
     create function public.increment_votes() returns int language sql as $$ select 1 $$;
   `);
@@ -79,6 +80,7 @@ test('verificar-migraciones.sql corre en PostgreSQL: base vacía = nada aplicado
   assert.equal(get('|project-reactions-ranking-count|'), 't');
   assert.equal(get('toggle_project_like'), 't');
   assert.equal(get('|fix-is-staff-coordinador|'), 't');
+  assert.equal(get('|push-sub-role-staff|'), 't', 'restricción que ya admite coordinador');
   assert.equal(get('|fix-students-rls-recursion|'), 'f', 'lo que no se creó sigue en false');
   // increment_votes existe y anon (por defecto, PUBLIC puede ejecutar) lo puede llamar: la exposición NO está cerrada.
   assert.equal(get('sin_anon: increment_votes'), 'f');
