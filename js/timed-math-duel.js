@@ -190,7 +190,7 @@ window.sendTimedMathChallenge = async function sendTimedMathChallenge() {
   }).select('id').single();
 
   if (error) {
-    window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
+    window.showToast('<i class="fas fa-circle-xmark"></i> ' + (window.GameArena?.errorText?.(error) || error.message), 'error');
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-paper-plane"></i> Retar';
     return;

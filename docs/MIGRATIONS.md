@@ -175,6 +175,7 @@ de producción.
 | 129 | 2026-11-07 | `storage-hardening.sql` | Paso 1 de 2 de los buckets de personas (`profile-photos`, `project-videos`, `comment-attachments`, `teacher-evidence`): quita las lecturas sin sesión (cierra el listado público), deja una sola lectura para `authenticated` y limita los tipos de archivo (sin HTML ni SVG). No toca escrituras. Las direcciones guardadas siguen funcionando |
 | 130 | 2026-11-07 | `storage-private-buckets.sql` | Paso 2 de 2: esos 4 buckets pasan a **privados**. Aplicar solo después del paso 1 y de publicar la app v1.0.246+ (firma las direcciones al mostrarlas). Límite: el servidor escolar no firma, así que fotos de otros alumnos que vengan de la nube dejan de verse en el nodo |
 | 131 | 2026-11-08 | `push-sub-role-staff.sql` | La restricción `push_subscriptions_role_check` ahora acepta también `admin` y `coordinador` (la función ya los guardaba): un administrador no podía activar las notificaciones (error 400, código 23514) |
+| 132 | 2026-11-10 | `duel-one-open-pair.sql` | Candado: un solo reto abierto (pending/active) por pareja de compañeros y por juego (índice único parcial en las 5 tablas de retos). Antes cancela los «pending» repetidos que ya existan (conserva el más antiguo; no borra nada) |
 
 ### Migraciones sin número en la tabla de arriba
 

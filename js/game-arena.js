@@ -167,6 +167,12 @@ window.GameArena = {
     debug: 'sendDebugChallenge', spelling: 'sendSpellingChallenge',
   },
 
+  // Texto para el error al crear un reto. 23505 = el candado de la base (migrations/duel-one-open-pair.sql): ya hay un reto abierto con ese compañero.
+  errorText(error) {
+    if (error && (error.code === '23505' || /one_open_pair/.test(error.message || ''))) return 'Ya tienes un reto abierto con ese compañero. Espera su respuesta o cancélalo.';
+    return null;
+  },
+
   // Un toque, una acción. En un celular lento la red tarda y el toque parece no responder: la persona vuelve a tocar, se apilan varios
   // formularios iguales y cada uno envía su reto (3 retos idénticos al mismo compañero). Con esto, mientras una acción con ese nombre
   // sigue en curso, las repetidas se ignoran.
@@ -251,7 +257,7 @@ window.GameArena = {
 
     const { data, error } = await window._supabase.from(g.table).insert(row).select('id').single();
     if (error) {
-      window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
+      window.showToast('<i class="fas fa-circle-xmark"></i> ' + (window.GameArena?.errorText?.(error) || error.message), 'error');
       return null;
     }
     if (typeof window.sendDuelPushNotification === 'function') window.sendDuelPushNotification(data.id, 'challenge', game);

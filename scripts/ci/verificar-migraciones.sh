@@ -39,6 +39,7 @@ if [ "$version_num" -lt 170000 ]; then sed -i 's/,MAINTAIN//g' "$TMP/schema.sql"
 say "Migraciones, en el orden de scripts/ci/migraciones-orden.txt"
 applied=0
 while IFS= read -r name; do
+  name="${name%$'\r'}"   # tolera fin de línea de Windows
   [[ -z "$name" || "$name" == \#* ]] && continue
   file="$ROOT/migrations/$name.sql"
   [ -f "$file" ] || { echo "::error::No existe migrations/$name.sql"; exit 1; }
@@ -51,6 +52,7 @@ echo "$applied migraciones aplicadas sin errores"
 
 say "Segunda pasada (las migraciones deben poder repetirse)"
 while IFS= read -r name; do
+  name="${name%$'\r'}"   # tolera fin de línea de Windows
   [[ -z "$name" || "$name" == \#* ]] && continue
   if ! "${PSQL[@]}" -f "$ROOT/migrations/$name.sql" >/dev/null 2>"$TMP/mig.err"; then
     echo "::error file=migrations/$name.sql::No se puede volver a ejecutar"; cat "$TMP/mig.err"; exit 1

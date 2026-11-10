@@ -79,7 +79,12 @@ with comprobaciones(orden, migracion, tipo, objeto, extra) as (values
   (731, 'node-remote-update',                'funcion',          'request_node_update', null),
   (740, 'guardian-portal-token',             'columna',          'student_guardians.portal_token_expires_at', null),
   (741, 'guardian-portal-token',             'funcion',          'regenerate_guardian_portal_token', null),
-  (750, 'push-sub-role-staff',               'restriccion_contiene', 'push_subscriptions.push_subscriptions_role_check', 'coordinador')
+  (750, 'push-sub-role-staff',               'restriccion_contiene', 'push_subscriptions.push_subscriptions_role_check', 'coordinador'),
+  (760, 'duel-one-open-pair',                'indice',           'student_duels_one_open_pair', null),
+  (761, 'duel-one-open-pair',                'indice',           'student_hangman_duels_one_open_pair', null),
+  (762, 'duel-one-open-pair',                'indice',           'student_timed_math_duels_one_open_pair', null),
+  (763, 'duel-one-open-pair',                'indice',           'student_debug_duels_one_open_pair', null),
+  (764, 'duel-one-open-pair',                'indice',           'student_spelling_duels_one_open_pair', null)
 )
 select
   c.orden,
@@ -105,6 +110,8 @@ select
       join pg_class t on t.oid = k.conrelid join pg_namespace s on s.oid = t.relnamespace
       where s.nspname = 'public' and t.relname = split_part(c.objeto, '.', 1) and k.conname = split_part(c.objeto, '.', 2)
         and pg_get_constraintdef(k.oid) ilike '%' || c.extra || '%')
+    when 'indice' then exists (
+      select 1 from pg_indexes x where x.schemaname = 'public' and x.indexname = c.objeto)
     when 'sin_politica' then not exists (
       select 1 from pg_policies o
       where o.schemaname = 'public' and o.tablename = split_part(c.objeto, '.', 1) and o.policyname = split_part(c.objeto, '.', 2))
