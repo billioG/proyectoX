@@ -49,7 +49,7 @@ sincronizar, y el tiempo de acompañamiento.
 
 | Mes | Actividad |
 |---|---|
-| 0 | Selección de escuelas, convenio con el director, consentimientos de familias ([FORMALIZACION.md](FORMALIZACION.md)) |
+| 0 | Selección de escuelas, convenio con el director, consentimientos de familias ([PRIVACIDAD_Y_CONSENTIMIENTO.md](PRIVACIDAD_Y_CONSENTIMIENTO.md)) |
 | 1 | Instalar el nodo (`school-node/README.md`), cargar cursos, crear cuentas con PIN; capacitación 1; prueba de entrada |
 | 1–2 | Visita semanal o llamada; resolver problemas; registrar incidentes |
 | 3 | Capacitación 2 (uso avanzado: juegos, tema de la semana, avisos a padres por SMS) |

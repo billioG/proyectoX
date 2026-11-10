@@ -119,15 +119,15 @@ Redesplegar estas Edge Functions (cambiaron en las últimas versiones):
 
 ## 🟡 Hoja de ruta (pasos 2 a 6)
 
-### Paso 2 · Formalizar — guía: `docs/FORMALIZACION.md`
+### Paso 2 · Formalizar — privacidad: `docs/PRIVACIDAD_Y_CONSENTIMIENTO.md`
 - [x] Política de privacidad (`privacidad.html`), enlazada desde el login y el Portal de padres
 - [x] Consentimiento de padres en el portal, con fecha y versión; sin avisos a quien no acepta
 - [x] La IA recibe solo el primer nombre
 - [x] Poner el **correo de contacto** en `privacidad.html` (`colegios@yoaprendo.online`)
-- [ ] Revisar la política con un abogado (lista de preguntas en la guía)
+- [ ] Revisar la política con un abogado 
 - [ ] Registrar el software y la marca en el Registro de la Propiedad Intelectual
 - [ ] Elegir figura legal (asociación, empresa o ambas)
-- [ ] Convenio simple con cada escuela; consentimiento en papel donde no haya celular (modelo en la guía)
+- [ ] Convenio simple con cada escuela; consentimiento en papel donde no haya celular (modelo en `docs/PRIVACIDAD_Y_CONSENTIMIENTO.md`)
 
 ### Paso 3 · Medir — guía: `docs/MEDICION_IMPACTO.md`
 - [x] Tablero de impacto del admin (menú **Impacto**): uso, lecciones, duelos, asistencia, familias, tendencia; CSV y resumen para postulaciones
@@ -140,19 +140,17 @@ Redesplegar estas Edge Functions (cambiaron en las últimas versiones):
 - [ ] Imagen de tarjeta microSD lista para copiar
 - [ ] Presupuesto con precios locales; elegir escuelas y firmar convenios
 
-### Paso 5 · Postular — kit: `docs/fondos/KIT_POSTULACION.md`
+### Paso 5 · Postular
 - [x] Resumen de una página, respuestas tipo, guion de 10 diapositivas, presupuesto modelo, convocatorias y lista de control
 - [ ] Completar las cifras con el tablero de impacto y la formación/experiencia del equipo
 - [ ] Video de 2 minutos y cartas de apoyo de directores
 - [ ] Postular (SENACYT con universidad, HundrED, MIT Solve, UNICEF Venture Fund si la licencia es abierta, fundaciones locales)
 
-### Paso 6 · Sumar equipo — guía: `docs/EQUIPO.md`
+### Paso 6 · Sumar equipo
 - [x] Plan de primera semana, accesos mínimos y lista de primeras tareas
 - [x] Pruebas de humo automáticas (`npm test`, 12 pruebas en celular y computadora) que corren en GitHub en cada cambio
 - [ ] Convenio de práctica con una universidad o convocatoria de voluntariado
 - [ ] Reunión semanal corta con quien se sume
-
-Detalle en el dossier: https://claude.ai/artifact/BoLjSgRTYwfesywaZaxvEq
 
 ## 🔵 Nodo escolar (Raspberry Pi o computadora con Windows)
 
