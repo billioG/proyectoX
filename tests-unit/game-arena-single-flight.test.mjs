@@ -86,3 +86,11 @@ test('el botón de revancha pasa a «Revancha enviada» (sin onclick) cuando ya 
   assert.match(html, /Revancha enviada/);
   assert.doesNotMatch(html, /onclick/);
 });
+
+test('errorText: el candado de la base (23505) se explica en español; otros errores no se tocan', () => {
+  const { window } = load();
+  assert.match(window.GameArena.errorText({ code: '23505', message: 'duplicate key value violates unique constraint "student_hangman_duels_one_open_pair"' }), /Ya tienes un reto abierto con ese compañero/);
+  assert.match(window.GameArena.errorText({ message: 'violates unique constraint "x_one_open_pair"' }), /Ya tienes un reto abierto/);
+  assert.equal(window.GameArena.errorText({ code: '42501', message: 'permission denied' }), null, 'otros errores: se muestra el mensaje original');
+  assert.equal(window.GameArena.errorText(null), null);
+});

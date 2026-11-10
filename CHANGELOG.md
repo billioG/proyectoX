@@ -6,6 +6,8 @@ Al publicar una versión nueva, agrega una línea arriba de todo (ver CONTRIBUTI
 
 ## 2026-11-10
 
+- **Candado en la base contra retos repetidos (v1.0.257).** Nueva migración `duel-one-open-pair.sql`: no puede haber dos retos pendientes o activos entre la misma pareja de compañeros en el mismo juego (índice único en las 5 tablas de retos). Antes cancela los «pendientes» repetidos que ya existan (conserva el más antiguo; no borra nada). La app explica el rechazo: «Ya tienes un reto abierto con ese compañero». Correr la migración en Supabase.
+
 - **CI: acciones de GitHub al día.** `setup-node` 4 a 7, `upload-artifact` 4 a 7 y `setup-deno` 1 a 2 (las tres solicitudes de Dependabot, que habían quedado con conflictos tras actualizar `checkout`). Sin cambios en la app ni versión nueva.
 
 - **Arreglo: «Revancha» se puede enviar una sola vez (v1.0.256).** Tocar «Revancha» varias veces (también después de que el primer envío terminara) agregaba un reto idéntico por toque al mismo compañero. Ahora cada reto terminado admite una sola revancha, no se envía si ya hay un reto pendiente o activo contra ese compañero, y el botón pasa a «Revancha enviada». Vale para los 5 juegos.

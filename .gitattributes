@@ -1,3 +1,5 @@
 # Los scripts de la Raspberry tienen que tener fin de línea de Linux (LF);
 # con CRLF de Windows, bash falla con errores como "$'\r': command not found".
 *.sh text eol=lf
+scripts/ci/*.txt text eol=lf
+scripts/ci/*.sql text eol=lf
