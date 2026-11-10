@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "description": "Nodo escolar de Quetzal LMS para Raspberry Pi: sirve la app en la red local y sincroniza con la nube.",
+  "author": "Billy Abraham Gómez Sac",
+  "license": "UNLICENSED",
   "type": "module",
   "main": "server.js",
   "scripts": {

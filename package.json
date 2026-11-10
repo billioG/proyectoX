@@ -2,6 +2,8 @@
   "name": "quetzal-lms",
   "private": true,
   "description": "Quetzal LMS. La app no necesita build: este archivo solo existe para las herramientas de desarrollo (pruebas y estilos).",
+  "author": "Billy Abraham Gómez Sac",
+  "license": "UNLICENSED",
   "scripts": {
     "serve": "http-server -p 8080 -c-1",
     "css": "tailwindcss -c tailwind.config.js -i css/tailwind.src.css -o css/tailwind.css --minify",

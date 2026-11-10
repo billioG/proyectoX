@@ -115,7 +115,8 @@ Redesplegar estas Edge Functions (cambiaron en las últimas versiones):
 - [x] Subir `supabase/schema.sql` (ver Urgente, 29/09/2026)
 - [ ] Crear el **proyecto Supabase de prueba** siguiendo `docs/SETUP.md`
 - [ ] Proteger la rama `main` en GitHub (cambios solo por pull request revisado)
-- [ ] **Decidir la licencia** (propietaria, código abierto o núcleo abierto) y agregar el archivo `LICENSE`
+- [x] **Licencia decidida el 9/11/2026:** todos los derechos reservados (Copyright, ver `LICENSE`); MIT descartada por ahora. Si un fondo exige código abierto, se reevalúa (cambiar a MIT es solo reemplazar `LICENSE`, el README y `package.json`).
+- [ ] Confirmar la autoría de `icon-192.png`/`icon-512.png` y la versión de `vendor/h5p-standalone/` (ver `THIRD_PARTY_NOTICES.md`).
 
 ## 🟡 Hoja de ruta (pasos 2 a 6)
 

@@ -1,0 +1,29 @@
+Copyright (c) 2026 Billy Abraham Gómez Sac. Todos los derechos reservados.
+All rights reserved.
+
+Quetzal LMS (el código, la documentación, el diseño y el contenido de este repositorio) es
+propiedad de su autor. No se concede ninguna licencia de uso, copia, modificación,
+distribución ni creación de obras derivadas, salvo permiso previo y por escrito del autor.
+
+Que el repositorio sea visible públicamente no es una licencia. Se permite únicamente lo que
+los términos de GitHub otorgan a quien ve un repositorio público (ver el código y hacer un
+fork dentro de GitHub con el fin de proponer cambios al autor).
+
+Las librerías de terceros incluidas o usadas por el proyecto mantienen sus propias licencias,
+que no se ven alteradas por este archivo: ver THIRD_PARTY_NOTICES.md.
+
+Para pedir permiso o una licencia comercial o educativa: colegios@yoaprendo.online
+
+---
+
+Copyright (c) 2026 Billy Abraham Gómez Sac. All rights reserved.
+
+This software and its documentation are proprietary. No license is granted to use, copy,
+modify, distribute, or create derivative works without the author's prior written permission.
+Public visibility of this repository does not grant any license. Third-party components remain
+under their own licenses (see THIRD_PARTY_NOTICES.md).
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
+BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY ARISING FROM THE USE OF THE SOFTWARE.
