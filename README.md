@@ -30,6 +30,7 @@ En producción: [clases.yoaprendo.online](https://clases.yoaprendo.online)
 | [docs/SETUP.md](docs/SETUP.md) | Instalar una copia de prueba completa |
 | [docs/MIGRATIONS.md](docs/MIGRATIONS.md) | Base de datos: orden de migraciones y reglas |
 | [docs/PASOS_MANUALES.md](docs/PASOS_MANUALES.md) | Qué corre a mano el responsable en Supabase, en orden, y qué Edge Function redesplegar |
+| [docs/ENSAYO_DEMO.md](docs/ENSAYO_DEMO.md) | Guion de 20 minutos y lista de comprobación para presentar la plataforma a un colegio |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Reglas para colaborar y publicar versiones |
 | [CHANGELOG.md](CHANGELOG.md) | Historial de cambios |
 | [PENDIENTES.md](PENDIENTES.md) | Tareas abiertas y pasos manuales pendientes |

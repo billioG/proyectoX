@@ -48,7 +48,7 @@ administrador** (6/11: seguridad y rendimiento de noviembre ya aplicados). Lo de
 - [x] Plantel de demostración creado (`migrations/demo-school.sql`, 27/09/2026). Falta: asignarle una ruta publicada a las 2 clases. Nunca demostrar con un plantel con menores reales.
 - [x] Publicar la página para colegios y enlazarla desde el pie de Quetzal (`colegios.html`, v1.0.129)
 - [x] Nombre legal ante la SAT: Billy Abraham Gómez Sac. Falta inscripción FEL/facturas.
-- [ ] No prometer en demos el nodo escolar ni la importación SIRE hasta probarlos en vivo
+- [ ] No prometer en demos el nodo escolar ni la importación SIRE hasta probarlos en vivo. Guion y lista de comprobación: `docs/ENSAYO_DEMO.md`.
 
 ## 🔴 Seguridad -- auditoría 21/10/2026 y noviembre 2026
 
@@ -57,18 +57,21 @@ Detalle, orden y pruebas en `docs/SEGURIDAD_2026-11.md`.
 - [x] **Verificado el 9/11/2026** (el administrador corrió `verificar-migraciones.sql` en Supabase): fases 1 a 5, nodo escolar, `ai-usage-limit`, `student-password-hash` (fase 1), `security-rls-audit-2026-11`, `security-function-exposure-2026-11`, `performance-2026-11` y `random-event-settle-atomic` dan `true`. `rls-auth-uid-initplan` dio `false` por 2 políticas de `feedback-inbox`; se volvió a correr y quedó en `true`. También confirmado el 6/11: `ai-proxy` con tope diario.
 - [x] Las migraciones de las fases 1 a 5 (`fix-*`, `sync-queue-idempotency`, `student-pin-cloud`, `hangman-word-bank`, `timed-math-word-problems`, `companion-panda`, `course-resource-weights`, `practice-progress`) dan `true` en el verificador del 9/11/2026.
 - [x] Fase 4 (`duel-per-player-content`, `project-reactions*`, `project-reaction-notifications`, `project-thumbnails`, `exams`) también `true` el 9/11/2026.
-- [x] Migraciones 125 a 131 (`school-branding`, `node-manage`, `node-remote-update`, `guardian-portal-token`, `storage-hardening`, `push-sub-role-staff`) **corridas por el administrador el 9/11/2026**; `node-sync` y `guardian-portal` redesplegadas ese día (esta última con la CLI: el editor del panel le había dado el nombre aleatorio `bright-responder`). Falta: pegar el verificador actualizado (fase 9) para confirmarlas con datos, **actualizar cada nodo** y borrar `bright-responder` del panel. `storage-private-buckets.sql` ya está aplicada (los 4 buckets salen `public = false`).
+- [x] Migraciones 125 a 131 (`school-branding`, `node-manage`, `node-remote-update`, `guardian-portal-token`, `storage-hardening`, `push-sub-role-staff`) **aplicadas el 9/11/2026 y verificadas el 10/11** (`verificar-migraciones.sql` con la fase 9: todo `true`); los 4 buckets están privados (`storage-private-buckets`). `node-sync` y `guardian-portal` redesplegadas (esta última con la CLI: el editor del panel le había dado el nombre aleatorio `bright-responder`, ya borrado), nodos actualizados y portal de padres probado con un enlace real.
 - [x] Contraseñas de alumnos, **fase 2**: función `staff-student-passwords` desplegada, secreto `PASSWORD_VAULT_KEY` creado el 9/11/2026 (con copia que el administrador debe guardar en su gestor de contraseñas) y cifrado hecho (`pending: 0`; de 27 alumnos, 15 tenían contraseña en texto y los 15 tienen hash y cifrado). Probado: `fetchStudentPasswords` devuelve la contraseña descifrada.
-- [ ] Contraseñas de alumnos, **fase 3** (`student-password-drop-plaintext.sql`, irreversible): confirmar que corrió con `select count(*) filter (where password_generated is not null and password_generated <> '') from public.students;` (debe dar 0). Antes de borrar nada: llave guardada en el gestor y copia de seguridad.
-- [ ] Confirmar que la llave `PASSWORD_VAULT_KEY` quedó en el gestor de contraseñas y borrar `PASSWORD_VAULT_KEY.txt` de la carpeta de descargas.
+- [x] Contraseñas de alumnos, **fase 3** confirmada el 9/11/2026: `con_texto_legible = 0` y `con_cifrado = 15`. La llave `PASSWORD_VAULT_KEY` quedó guardada por el administrador en su gestor de contraseñas y se borró la copia de la carpeta de descargas (10/11).
+- [ ] Siguiente rotación de la llave `PASSWORD_VAULT_KEY`: si se cambia, hay que volver a cifrar (la anterior invalida lo cifrado); no hacerlo sin un plan (ver `docs/SEGURIDAD_2026-11.md`, §3).
 - [ ] Decidir si las otras funciones de IA (`ai-generate-*`, `ai-evaluate-*`) también llevan tope diario (`ai_usage_take` ya sirve).
 - [ ] Decidir las propuestas de seguridad que no se aplicaron (evaluaciones, equipos y asignaciones visibles entre escuelas): tabla al final del §4 de `docs/SEGURIDAD_2026-11.md`.
 - [ ] Quitar `unsafe-inline` de la CSP: exige reemplazar cientos de `onclick` por `addEventListener` (§7 del documento de seguridad).
 - [ ] Confirmar el plan de Supabase antes de sumar colegios: el gratuito admite 200 conexiones en tiempo real a la vez (≈ 200 alumnos conectados), 500 MB de base, 5 GB de transferencia al mes y se pausa tras 7 días sin uso. Para clientes pagando: plan Pro.
 - [x] `@supabase/supabase-js` fijado a `2.118.0` en las 29 Edge Functions (9/11/2026); se aplica en cada función cuando se vuelva a desplegar. Una prueba impide volver a importar sin versión exacta.
-- [ ] Subir `@playwright/test` (hoy 1.47.2) a una versión sin alerta de `npm audit` (≥1.55.1) y revisar las pruebas de navegador; solo afecta al desarrollo.
+- [x] `@playwright/test` subido a 1.65.0 (PR #5, 10/11/2026): sin alertas de `npm audit` en las herramientas de desarrollo.
 - [x] CI de `main` en verde (10/11/2026, incluidos «Migraciones» con PostgreSQL 17, gitleaks y Deno).
-- [ ] Activar la protección de la rama `main` (ver `CONTRIBUTING.md`) y exigir que el CI pase.
+- [x] Protección de `main` activa desde el 9/11/2026: solo por pull request, 0 aprobaciones (una sola persona), 6 chequeos obligatorios (Sintaxis JS, Pruebas unitarias, Tipos de Deno, gitleaks, Migraciones, tailwind), sin push forzado ni borrado. Al sumar equipo: pedir 1 aprobación (`CONTRIBUTING.md`).
+- [x] Dependabot al día (10/11/2026): fusionadas `checkout` 7, Playwright 1.65 y, en un solo PR, `setup-node` 7, `upload-artifact` 7 y `setup-deno` 2; cerradas con motivo `tailwindcss` 4, `better-sqlite3` 13 y `bcryptjs` 3 (cambios mayores que no se adoptan sin probar: el CSS compilado y el servidor escolar).
+- [x] Retos repetidos (9 y 10/11/2026): v1.0.255 (un toque, un reto) y v1.0.256 («Revancha» una sola vez). Falta aplicar la **migración `duel-one-open-pair.sql`** en Supabase (candado en la base, v1.0.257): cancela los pendientes repetidos que existan y evita nuevos. Ver `docs/PASOS_MANUALES.md`.
+- [ ] Revisar que no queden retos repetidos «pendientes» antes de correr `duel-one-open-pair.sql` (la propia migración los cancela, conservando el más antiguo).
 
 ## 🟠 Migraciones y funciones de las últimas versiones
 
