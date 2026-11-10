@@ -80,6 +80,8 @@ Correr `duel-one-open-pair.sql` en el SQL Editor **después** de publicar la v1.
 
 ## 3a-bis. Límite de frecuencia de las funciones `notify-*` (v. 10/11/2026)
 
+> **Hecho el 10/11/2026:** migración corrida y las 5 funciones redesplegadas (CLI). Queda confirmar las filas 770 y 771 del verificador.
+
 1. Correr `migrations/rate-limits.sql` en el SQL Editor (crea `rate_limits` y `rate_limit_take`; al final debe mostrar 1 fila).
 2. **Después** redesplegar las 5 funciones (**Verify JWT ON** todas): `notify-duel`, `notify-announcement`, `notify-rock-pending`, `notify-reaction` y `notify-guardians`. Con la CLI: `npx supabase functions deploy <nombre> --use-api --yes --project-ref vyptkxudkmlpyfosppzh`; ahora cada una importa `_shared/rate-limit.ts` (la CLI lo incluye solo; para el editor del panel usa `node scripts/exportar-funciones.mjs <carpeta> <nombre>`).
 3. Topes por defecto (por persona): retos 60/hora y 4 por reto y tipo cada 10 min; avisos 30/hora y 3 por aviso/hora; tareas de docentes 20/hora; reacciones 120/hora; envíos a familias 60/hora. Se cambian sin redesplegar con los secretos `RATE_NOTIFY_DUEL_PER_HOUR`, `RATE_NOTIFY_DUEL_ITEM_PER_10MIN`, `RATE_NOTIFY_ANNOUNCEMENT_PER_HOUR`, `RATE_NOTIFY_ANNOUNCEMENT_ITEM_PER_HOUR`, `RATE_NOTIFY_ROCK_PER_HOUR`, `RATE_NOTIFY_REACTION_PER_HOUR` y `RATE_NOTIFY_GUARDIANS_PER_HOUR`.

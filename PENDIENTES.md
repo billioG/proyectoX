@@ -47,7 +47,6 @@ administrador** (6/11: seguridad y rendimiento de noviembre ya aplicados). Lo de
 - [x] Correo de contacto y fecha de última revisión en `privacidad.html` (v1.0.108)
 - [x] Plantel de demostración creado (`migrations/demo-school.sql`, 27/09/2026). Falta: asignarle una ruta publicada a las 2 clases. Nunca demostrar con un plantel con menores reales.
 - [x] Publicar la página para colegios y enlazarla desde el pie de Quetzal (`colegios.html`, v1.0.129)
-- [x] Nombre legal ante la SAT: Billy Abraham Gómez Sac. Falta inscripción FEL/facturas.
 - [ ] No prometer en demos el nodo escolar ni la importación SIRE hasta probarlos en vivo. Guion y lista de comprobación: `docs/ENSAYO_DEMO.md`.
 
 ## 🔴 Seguridad -- auditoría 21/10/2026 y noviembre 2026
@@ -64,7 +63,7 @@ Detalle, orden y pruebas en `docs/SEGURIDAD_2026-11.md`.
 - [ ] Decidir si las otras funciones de IA (`ai-generate-*`, `ai-evaluate-*`) también llevan tope diario (`ai_usage_take` ya sirve).
 - [ ] Decidir las propuestas de seguridad que no se aplicaron (evaluaciones, equipos y asignaciones visibles entre escuelas): tabla al final del §4 de `docs/SEGURIDAD_2026-11.md`.
 - [x] Integridad (SRI) de las librerías de CDN (v1.0.258, 10/11/2026): ver `docs/SEGURIDAD_2026-11.md`, §10.
-- [ ] **Límite de frecuencia de las funciones `notify-*`** (código listo, 10/11/2026): correr `migrations/rate-limits.sql` y después redesplegar `notify-duel`, `notify-announcement`, `notify-rock-pending`, `notify-reaction` y `notify-guardians` (pasos en `docs/PASOS_MANUALES.md`; detalle en `docs/SEGURIDAD_2026-11.md` §11).
+- [x] **Límite de frecuencia de las funciones `notify-*`** (10/11/2026): migración `rate-limits.sql` corrida por el administrador y las 5 funciones (`notify-duel`, `notify-announcement`, `notify-rock-pending`, `notify-reaction`, `notify-guardians`) redesplegadas con la CLI. Falta confirmar las filas 770 y 771 del verificador. Detalle: `docs/SEGURIDAD_2026-11.md` §11.
 - [ ] Cabeceras de seguridad (`frame-ancestors`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, HSTS): el sitio no manda ninguna porque lo sirve GitHub Pages; hace falta poner Cloudflare delante (pasos en §10; requiere cambiar los *nameservers*).
 - [ ] Quitar `unsafe-inline` de la CSP: exige reemplazar cientos de `onclick` por `addEventListener` (§7 del documento de seguridad).
 - [ ] Confirmar el plan de Supabase antes de sumar colegios: el gratuito admite 200 conexiones en tiempo real a la vez (≈ 200 alumnos conectados), 500 MB de base, 5 GB de transferencia al mes y se pausa tras 7 días sin uso. Para clientes pagando: plan Pro.
@@ -130,40 +129,9 @@ Redesplegar estas Edge Functions (cambiaron en las últimas versiones):
 - [x] **Licencia decidida el 9/11/2026:** todos los derechos reservados (Copyright, ver `LICENSE`); MIT descartada por ahora. Si un fondo exige código abierto, se reevalúa (cambiar a MIT es solo reemplazar `LICENSE`, el README y `package.json`).
 - [ ] Confirmar la autoría de `icon-192.png`/`icon-512.png` y la versión de `vendor/h5p-standalone/` (ver `THIRD_PARTY_NOTICES.md`).
 
-## 🟡 Hoja de ruta (pasos 2 a 6)
+## 🟡 Hoja de ruta de gestión (fuera del repositorio)
 
-### Paso 2 · Formalizar — privacidad: `docs/PRIVACIDAD_Y_CONSENTIMIENTO.md`
-- [x] Política de privacidad (`privacidad.html`), enlazada desde el login y el Portal de padres
-- [x] Consentimiento de padres en el portal, con fecha y versión; sin avisos a quien no acepta
-- [x] La IA recibe solo el primer nombre
-- [x] Poner el **correo de contacto** en `privacidad.html` (`colegios@yoaprendo.online`)
-- [ ] Revisar la política con un abogado 
-- [ ] Registrar el software y la marca en el Registro de la Propiedad Intelectual
-- [ ] Elegir figura legal (asociación, empresa o ambas)
-- [ ] Convenio simple con cada escuela; consentimiento en papel donde no haya celular (modelo en `docs/PRIVACIDAD_Y_CONSENTIMIENTO.md`)
-
-### Paso 3 · Medir — guía: `docs/MEDICION_IMPACTO.md`
-- [x] Tablero de impacto del admin (menú **Impacto**): uso, lecciones, duelos, asistencia, familias, tendencia; CSV y resumen para postulaciones
-- [ ] Elegir área y grado para la prueba de entrada y salida y prepararla con docentes
-- [ ] Buscar una universidad aliada para el análisis
-
-### Paso 4 · Piloto rural — protocolo: `docs/PILOTO_RURAL.md`
-- [x] Protocolo: criterios de escuelas, equipo y costos, calendario, roles, riesgos, criterios de éxito
-- [ ] Terminar el nodo escolar (ver sección "Nodo escolar")
-- [ ] Imagen de tarjeta microSD lista para copiar
-- [ ] Presupuesto con precios locales; elegir escuelas y firmar convenios
-
-### Paso 5 · Postular
-- [x] Resumen de una página, respuestas tipo, guion de 10 diapositivas, presupuesto modelo, convocatorias y lista de control
-- [ ] Completar las cifras con el tablero de impacto y la formación/experiencia del equipo
-- [ ] Video de 2 minutos y cartas de apoyo de directores
-- [ ] Postular (SENACYT con universidad, HundrED, MIT Solve, UNICEF Venture Fund si la licencia es abierta, fundaciones locales)
-
-### Paso 6 · Sumar equipo
-- [x] Plan de primera semana, accesos mínimos y lista de primeras tareas
-- [x] Pruebas de humo automáticas (`npm test`, 12 pruebas en celular y computadora) que corren en GitHub en cada cambio
-- [ ] Convenio de práctica con una universidad o convocatoria de voluntariado
-- [ ] Reunión semanal corta con quien se sume
+La hoja de ruta de gestión (formalización legal, medición con universidades, piloto rural, postulaciones a fondos y equipo) y las tareas fiscales se llevan **fuera de este repositorio público**. En el repositorio quedan las guías técnicas: `docs/PRIVACIDAD_Y_CONSENTIMIENTO.md`, `docs/MEDICION_IMPACTO.md` y `docs/PILOTO_RURAL.md`.
 
 ## 🔵 Nodo escolar (Raspberry Pi o computadora con Windows)
 
