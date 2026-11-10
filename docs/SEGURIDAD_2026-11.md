@@ -301,3 +301,44 @@ antes y después; y `auth.uid()` envuelto sin cambiar lo que ve cada rol.
 - Nada de esto se probó contra tu Supabase real; el paso 2 trae su «Deshacer».
 
 **Pruebas.** `tests-unit/private-media.test.mjs`: reconocimiento de direcciones, firma en lotes, memoria con renovación, caída a la dirección original, descarga con nombre y el contenido de las dos migraciones.
+
+## 9. Verificación del repositorio y del CI — 9 de noviembre de 2026
+
+Revisión hecha leyendo el código y corriendo las pruebas y las herramientas del CI en local. **No se consultó producción**: que las migraciones estén
+aplicadas lo confirmó el administrador (6/11) y se comprueba con `migrations/verificar-migraciones.sql`.
+
+### Lo que el documento marca como «código listo»
+
+| Tema | Qué se comprobó en el código | Pruebas |
+|---|---|---|
+| Tope diario de IA | `ai-proxy` llama a `ai_usage_take` **antes** del modelo; 429 `daily_limit`; 503 si no se pudo contar; el rol sale de la base. La función y la tabla solo las ejecuta `service_role` (`revoke … from public, anon, authenticated`) | `tests-unit/ai-usage-limit.test.mjs` |
+| Contraseñas de alumnos (3 fases) | Fase 1 `student-password-hash.sql` (hash bcrypt + cifrado, columnas sin `select` para la app, `student_password_ok` y `set_student_password` solo `service_role`); fase 2 `student-login`, `admin-bulk-import-students` y `staff-student-passwords` (cifra con `PASSWORD_VAULT_KEY`, descifra solo con permiso `can_manage_student`, registra quién pidió ver contraseñas); fase 3 `student-password-drop-plaintext.sql` se niega si falta algún hash o cifrado | `tests-unit/student-password-sql.test.mjs` |
+| `auth.uid()` envuelto | `rls-auth-uid-initplan.sql` reescribe las políticas en `select`; la prueba comprueba que no queda ninguna sin envolver y que cada rol ve las mismas filas | `tests-unit/security-rls-sql.test.mjs` |
+| Funciones expuestas | `security-function-exposure-2026-11.sql` quita `EXECUTE` a `PUBLIC` y `anon` salvo las 2 del ingreso y conserva `authenticated`/`service_role` | `tests-unit/security-rls-sql.test.mjs` |
+
+Limitaciones que siguen: `student-login` conserva un respaldo con el texto antiguo mientras la función `student_password_ok` no exista (por diseño, para
+no dejar a nadie fuera durante las fases); tras la fase 3 ese respaldo ya no coincide con nada.
+
+### Funciones con Verify JWT OFF: con qué se protege cada una
+
+| Función | Protección en el código | Observación |
+|---|---|---|
+| `guardian-portal` | Token personal de 32 caracteres, vence a los 180 días (`portal-guard.ts`), límite de intentos inválidos por IP | — |
+| `node-sync` | Token del nodo (`x-node-token`, solo se guarda su hash en `school_nodes`) | La subida por USB usa su propia autorización (ver `index.ts`) |
+| `student-login` | Límite de intentos por IP (`login_rate_limit`), contraseña de clase y personal, magic link de una sola vez | — |
+| `trigger-random-event`, `settle-random-event`, `notify-inactive-users` | Cabecera `x-cron-secret` contra `CRON_SECRET` (401 si no coincide) | Compara con `!==` (no en tiempo constante): riesgo bajo, anotado |
+| `serve-scorm-entry` | **Sin autenticación**: devuelve cualquier `.html` del bucket `course-content` | Es público a propósito (los cursos se ven sin sesión y sin internet) y solo lee ese bucket; el HTML de un paquete SCORM ejecuta sus scripts por diseño. No sirve para leer los buckets de personas |
+
+### CI (`.github/workflows/ci.yml`)
+
+Las últimas 40 ejecuciones en `main` salían en rojo. Causas y qué se hizo:
+
+| Trabajo | Causa | Qué se hizo |
+|---|---|---|
+| Tipos de Edge Functions (Deno) | 3 funciones con errores de tipos reales (`ai-generate-quiz`, `admin-set-class-password`, `notify-duel`), independientes de la versión de `supabase-js` | Anotaciones de tipos (sin cambiar lo que hacen); `supabase-js` fijado a `2.118.0` en las 29 funciones y una prueba (`tests-unit/edge-imports-pinned.test.mjs`) que falla si se vuelve a importar sin versión exacta |
+| Escaneo de secretos (gitleaks) | 4 alertas, todas la llave **anon** pública (en `js/config.js`/`padres.html` y su historial). La excepción usaba `[[allowlists]]`, que gitleaks 8.21 ignora | Excepción reescrita en `[allowlist]` y limitada al payload `anon` de este proyecto (una llave `service_role` sigue detectándose: probado). Ahora bloquea el CI. Historial limpio: 509 commits, 0 hallazgos |
+| `css/tailwind.css` al día | El CI regeneraba con `npx -y tailwindcss@3.4.17` (dependencias sueltas) y el resultado no coincidía con lo generado en local | Usa `npm ci` y la versión fijada por `package-lock.json` (en local, el archivo versionado coincide byte a byte) |
+| `npm audit` | Herramientas de desarrollo con 6 alertas | `npm audit fix` (sin `--force`) arregló las transitivas; queda 1 alta de Playwright (<1.55.1) que exige subir el ejecutor de pruebas de versión mayor: el trabajo de desarrollo solo informa. El del servidor escolar (producción) da 0 y **bloquea** |
+
+**No verificado:** que el CI de GitHub quede verde (no se puede ejecutar desde aquí); los pasos se reprodujeron con las mismas versiones (Deno 1.46.3,
+gitleaks 8.21.2, tailwind 3.4.17 desde el lock). Las Edge Functions desplegadas **no cambian** hasta que se redespliegue cada una.

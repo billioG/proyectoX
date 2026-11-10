@@ -3,7 +3,7 @@
 // del proyecto -- la IA no puede ver el video) usando la misma rúbrica que
 // usa el docente. Requiere JWT de un usuario docente/admin autenticado.
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.118.0';
 
 const GROQ_API_KEY = Deno.env.get('GROQ_API_KEY')!;
 const GROQ_MODEL = 'openai/gpt-oss-20b';

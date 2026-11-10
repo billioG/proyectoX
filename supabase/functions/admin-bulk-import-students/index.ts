@@ -5,7 +5,7 @@
 // de una vez. Esta función usa la Admin API (service role), que no tiene
 // ese límite, y corre server-side gateada por is_admin() real.
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.118.0';
 import { encryptPassword, importKey } from '../_shared/vault.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;

@@ -5,7 +5,7 @@
 // usa para leer push_subscriptions role='admin', nunca para escribir nada
 // fuera de limpiar suscripciones muertas.
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.118.0';
 import webpush from 'npm:web-push@3.6.7';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;

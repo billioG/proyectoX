@@ -4,7 +4,7 @@
 // estudiante que acaba de retar/aceptar) -- solo usa el service role para
 // leer push_subscriptions del OTRO participante, nunca para escribir nada.
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.118.0';
 import webpush from 'npm:web-push@3.6.7';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -67,7 +67,7 @@ Deno.serve(async (req) => {
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
     const selectCols = `challenger_id, opponent_id, wager_gems, status, winner_id, result_notified_at${config.hasTopic ? ', topic' : ''}, challenger:students!challenger_id(full_name), opponent:students!opponent_id(full_name)`;
     const { data: duel } = await admin.from(config.table)
-      .select(selectCols)
+      .select(selectCols as '*')
       .eq('id', duel_id).maybeSingle();
     if (!duel) return json({ error: 'Desafío no encontrado' }, 404);
 

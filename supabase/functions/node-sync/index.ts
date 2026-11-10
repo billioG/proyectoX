@@ -24,7 +24,7 @@
 // escuela, las fichas de proyectos de la clase (sin videos ni rutas de Storage, para el Inicio del
 // nodo), más cuántas cosas se aplicaron del push.
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.118.0';
 import { buildFeedProjects, FEED_LIMIT, nextRoles, validateProjectPush, validateUploadRequest } from './projects.ts';
 import { computeStudentXp, validateXpEvent } from './xp.ts';
 import { validateReactionEvent } from './validators.ts';

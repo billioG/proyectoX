@@ -62,7 +62,10 @@ Detalle, orden y pruebas en `docs/SEGURIDAD_2026-11.md`.
 - [ ] Decidir las propuestas de seguridad que no se aplicaron (evaluaciones, equipos y asignaciones visibles entre escuelas): tabla al final del §4 de `docs/SEGURIDAD_2026-11.md`.
 - [ ] Quitar `unsafe-inline` de la CSP: exige reemplazar cientos de `onclick` por `addEventListener` (§7 del documento de seguridad).
 - [ ] Confirmar el plan de Supabase antes de sumar colegios: el gratuito admite 200 conexiones en tiempo real a la vez (≈ 200 alumnos conectados), 500 MB de base, 5 GB de transferencia al mes y se pausa tras 7 días sin uso. Para clientes pagando: plan Pro.
-- [ ] Fijar también `@supabase/supabase-js@2` en las Edge Functions (`esm.sh/...@2`) a una versión exacta.
+- [x] `@supabase/supabase-js` fijado a `2.118.0` en las 29 Edge Functions (9/11/2026); se aplica en cada función cuando se vuelva a desplegar. Una prueba impide volver a importar sin versión exacta.
+- [ ] Subir `@playwright/test` (hoy 1.47.2) a una versión sin alerta de `npm audit` (≥1.55.1) y revisar las pruebas de navegador; solo afecta al desarrollo.
+- [ ] Comprobar que el CI de `main` quede en verde tras fusionar `feat/seguridad-pendientes` (en las últimas 40 ejecuciones salía rojo).
+- [ ] Activar la protección de la rama `main` (ver `CONTRIBUTING.md`) y exigir que el CI pase.
 
 ## 🟠 Migraciones y funciones de las últimas versiones
 

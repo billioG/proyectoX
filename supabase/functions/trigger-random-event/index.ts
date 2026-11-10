@@ -5,7 +5,7 @@
 // dispositivos suscritos (push_subscriptions). No la llama ningún cliente
 // -- se protege con un secreto compartido, no con JWT de usuario.
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.118.0';
 import webpush from 'npm:web-push@3.6.7';
 
 const GROQ_API_KEY = Deno.env.get('GROQ_API_KEY')!;

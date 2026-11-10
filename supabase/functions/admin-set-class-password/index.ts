@@ -5,7 +5,7 @@
 // mismo cambio a TODAS las clases de un establecimiento de una sola vez
 // (apply_to_whole_school: true, sin necesidad de mandar grade/section).
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.118.0';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
@@ -27,7 +27,8 @@ function genPassword(): string {
 }
 
 async function applyOneClass(
-  admin: ReturnType<typeof createClient>,
+  // deno-lint-ignore no-explicit-any
+  admin: any, // sin tipos generados de la base: el cliente se usa como en el resto de las funciones
   callerId: string,
   school_code: string, grade: string, section: string,
   requires_password: boolean, password: string | null,

@@ -9,7 +9,7 @@
 //        -> { "encrypted": n, "pending": m }   cifra las contraseñas que todavía solo existen en texto (fase 2). Repetir hasta pending = 0.
 //
 // Secretos: PASSWORD_VAULT_KEY (32 bytes en base64:  openssl rand -base64 32). SUPABASE_URL / SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY ya existen.
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.118.0';
 import { errorResponse, internalError, jsonResponse } from '../_shared/http.ts';
 import { decryptPassword, encryptPassword, importKey, VaultError } from '../_shared/vault.ts';
 

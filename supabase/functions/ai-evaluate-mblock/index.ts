@@ -5,7 +5,7 @@
 // 0-100 + feedback por criterio. No persiste nada -- el cliente guarda el
 // resultado en ai_code_evaluations con su propio JWT (RLS decide si puede).
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.118.0';
 import JSZip from 'https://esm.sh/jszip@3.10.1';
 
 const GROQ_API_KEY = Deno.env.get('GROQ_API_KEY')!;

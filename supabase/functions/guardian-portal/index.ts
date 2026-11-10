@@ -8,7 +8,7 @@
 //   unsubscribe -> la borra.
 // Verify JWT: OFF (el padre no inicia sesión).
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.118.0';
 import { isTokenExpired, rateKey, rateState } from './portal-guard.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;

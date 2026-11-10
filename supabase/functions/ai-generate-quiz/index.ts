@@ -11,7 +11,7 @@
 // que las pide no puede inspeccionar la llamada para ver las respuestas
 // correctas antes de jugar -- solo se guardan en la fila del duelo).
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.118.0';
 
 const GROQ_API_KEY = Deno.env.get('GROQ_API_KEY')!;
 const GROQ_MODEL = 'openai/gpt-oss-20b';
@@ -82,7 +82,7 @@ function cleanQuestions(raw: any[], n: number): Q[] {
   const seenQ = new Set<string>();
   for (const q of raw || []) {
     const question = String(q?.question || '').trim();
-    const options = Array.isArray(q?.options) ? q.options.slice(0, 4).map((o: unknown) => String(o).trim()) : [];
+    const options: string[] = Array.isArray(q?.options) ? q.options.slice(0, 4).map((o: unknown) => String(o).trim()) : [];
     if (!question || options.length !== 4 || options.some((o) => !o) || new Set(options.map(norm)).size !== 4) continue;
     if (seenQ.has(norm(question))) continue;
     seenQ.add(norm(question));
