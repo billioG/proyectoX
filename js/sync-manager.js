@@ -483,7 +483,7 @@ class SyncManager {
                 delete data._fileBlob;
             } else if (!data[urlField]) {
                 // Fallback si no hay archivo ni URL
-                data[urlField] = 'https://via.placeholder.com/400x300?text=Offline+Upload';
+                data[urlField] = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect width="400" height="300" fill="#e2e8f0"/><text x="200" y="155" font-family="sans-serif" font-size="20" fill="#64748b" text-anchor="middle">Subida sin conexión</text></svg>');
             }
 
             // 3. Insertar registro final

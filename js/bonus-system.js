@@ -13,7 +13,7 @@ window.openBonusOnboarding = function openBonusOnboarding() {
     modal.innerHTML = `
         <div class="glass-card w-full max-w-4xl max-h-[90vh] overflow-y-auto p-0 shadow-2xl animate-slideUp border-primary/20">
             <div class="p-10 text-center bg-gradient-to-br from-primary to-indigo-700 text-white relative">
-                 <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+                 <div class="absolute inset-0 px-pattern-cubes opacity-10"></div>
                  <div class="w-16 h-16 rounded-3xl bg-white/20 flex items-center justify-center text-3xl mx-auto mb-4 animate-bounce">
                     <i class="fas fa-magic"></i>
                  </div>

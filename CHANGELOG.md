@@ -6,6 +6,7 @@ Al publicar una versión nueva, agrega una línea arriba de todo (ver CONTRIBUTI
 
 ## 2026-11-11
 
+- **Auditoría de ilustraciones y recursos gráficos (v1.0.263).** Nuevo `docs/AUDITORIA_ILUSTRACIONES.md`: el repositorio solo contiene 2 imágenes (los íconos de la app); mascotas, ilustraciones y sonidos están hechos en código. Se quitaron los dos recursos de terceros que había: la trama de fondo de `transparenttextures.com` (certificados, reportes, perfil y bonos) pasó a una clase CSS propia, y la imagen de relleno de `via.placeholder.com` de las subidas sin conexión pasó a un SVG propio. Ya no se pide nada a esos sitios y las tramas se ven también sin internet.
 - **Equipos: un fallo momentáneo ya no se muestra como «Sin asignaciones» (v1.0.262).** Si la consulta de las clases del docente fallaba (red, sesión recién iniciada), la pantalla de Equipos decía «Sin asignaciones para gestionar equipos» y guardaba ese vacío en la caché. Ahora muestra el error con un botón «Reintentar» y no guarda nada. Era la causa de los fallos al azar de `node-teams` en el CI.
 
 ## 2026-11-10

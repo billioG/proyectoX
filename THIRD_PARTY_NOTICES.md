@@ -41,7 +41,7 @@ las lista.
 
 `icon-192.png`, `icon-512.png` y la mascota quetzal son la identidad de marca de Quetzal LMS, producto de Yo Aprendo; el titular
 (Billy Abraham Gómez Sac) lo confirmó el 11/11/2026. Son parte de la obra protegida por la licencia del repositorio (todos los derechos
-reservados). Pendiente de confirmar: el resto de ilustraciones y mascotas de los cursos.
+reservados). El resto de mascotas e ilustraciones están dibujadas en código; ver `docs/AUDITORIA_ILUSTRACIONES.md` (revisión del 11/11/2026).
 
 ## Pendiente de confirmar por el autor
 
