@@ -5,6 +5,7 @@
 // el usuario quedaban "tomados" para siempre, ni se podían reimportar).
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.118.0';
+import { logAudit } from '../_shared/audit.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
@@ -72,6 +73,9 @@ Deno.serve(async (req) => {
       }
     }
 
+    if (deleted > 0 || errors.length) {
+      await logAudit(admin, { actor: caller.id, action: 'students_deleted', targetType: 'student', details: { count: deleted, requested: ids.length, errors: errors.length, sample_ids: ids.slice(0, 20) }, source: 'edge:admin-delete-students' });
+    }
     return json({ ok: true, deleted, errors });
 
   } catch (e) {

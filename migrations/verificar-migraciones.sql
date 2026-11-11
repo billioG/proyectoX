@@ -86,7 +86,11 @@ with comprobaciones(orden, migracion, tipo, objeto, extra) as (values
   (763, 'duel-one-open-pair',                'indice',           'student_debug_duels_one_open_pair', null),
   (764, 'duel-one-open-pair',                'indice',           'student_spelling_duels_one_open_pair', null),
   (770, 'rate-limits',                       'tabla',            'rate_limits', null),
-  (771, 'rate-limits',                       'funcion',          'rate_limit_take', null)
+  (771, 'rate-limits',                       'funcion',          'rate_limit_take', null),
+  (780, 'security-audit-log',                'tabla',            'security_audit_log', null),
+  (781, 'security-audit-log',                'funcion',          'log_security_event', null),
+  (782, 'security-audit-log',                'funcion',          'get_security_audit_log', null),
+  (783, 'security-audit-log',                'funcion_contiene', 'admin_reset_user_password', 'log_security_event')
 )
 select
   c.orden,

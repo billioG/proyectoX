@@ -400,3 +400,26 @@ Medido el 10/11/2026 (`curl -sI https://clases.yoaprendo.online/`): el sitio lo 
 Los topes se cambian con secretos (`RATE_NOTIFY_*`, ver `docs/PASOS_MANUALES.md`). Al pasarse: HTTP 429 con `{ error, code: "rate_limited" }` y `Retry-After`. **Si falla el contador:** los avisos push dejan pasar (no perder notificaciones legítimas por una caída) y `notify-guardians` responde 503 (los SMS cuestan dinero). Si falta la migración, todas dejan pasar y avisan en sus registros, así que el orden de despliegue no rompe nada.
 
 **Límites, dichos con franqueza.** Es un tope por cuenta, no por persona real: quien tenga muchas cuentas multiplica el tope (el ingreso ya tiene su propio límite por IP). No cubre `notify-inactive-users`, `trigger-random-event` ni `settle-random-event` (se llaman con un secreto de cron, no con sesión). Las ventanas son fijas (empiezan en la primera llamada): en el borde de dos ventanas alguien puede enviar hasta el doble de golpe.
+
+## 12. Bitácora de seguridad — 10/11/2026
+
+**Hallazgo.** Si alguien eliminaba alumnos, creaba un docente, cambiaba un rol o la contraseña de una clase, no quedaba rastro consultable (solo los registros efímeros de las Edge Functions). Sin eso no se puede responder «¿quién lo hizo y cuándo?» ni investigar un incidente.
+
+**Qué se entrega** (`migrations/security-audit-log.sql`, `supabase/functions/_shared/audit.ts`):
+
+| Pieza | Qué hace |
+|---|---|
+| `security_audit_log` | Tabla de **solo agregar**: un trigger impide `UPDATE`, `DELETE` y `TRUNCATE` (también al `service_role`). La app no puede insertar; **solo un administrador la lee** (política RLS) |
+| `log_security_event` | La única forma de escribir; solo `service_role` y funciones de la base. **Quita llaves que parezcan secretos** (password, token, clave, hash, cui…) y recorta lo enorme |
+| Triggers | `teacher_created/deleted/role_changed`, `students_deleted` (una fila por sentencia: cuántos, de qué colegios y una muestra de ids), `school_deleted`, `school_node_registered/revoked/deleted`, `guardian_portal_link_regenerated`, `class_password_changed`. Registran quién fue (`auth.uid()`); **no guardan contraseñas, enlaces ni nombres de menores** |
+| Edge Functions | `admin-create-teacher`, `admin-delete-students`, `admin-force-delete-school`, `admin-set-class-password`, `admin-bulk-import-students` y `staff-student-passwords` (revelar y cifrar contraseñas) dejan constancia de **quién las pidió**. Como usan service role, los triggers no las ven (sin sesión): así no se duplica |
+| Reinicios de contraseña | `admin_reset_user_password` y `reset_password_via_admin` (ya existían) ahora registran `user_password_reset` |
+| `get_security_audit_log` | Lectura paginada para administradores (la usa la pantalla «Bitácora») |
+
+**Probado con PostgreSQL real:** cada acción deja una fila con quién fue; no aparece ningún secreto ni nombre de menor; sin sesión los triggers no registran; la tabla no se puede modificar, borrar ni vaciar ni por el dueño; `anon`/`authenticated` no pueden escribir; un docente no ve filas ni ejecuta la lectura; el filtro de secretos de `log_security_event` (con una prueba de mutación: sin el filtro, la prueba falla).
+
+**Límites, dichos con franqueza.**
+- Registra lo que pasa **por la aplicación y sus funciones**. Un cambio hecho directamente en el **SQL Editor de Supabase** no tiene sesión y no queda en la bitácora (los triggers la ignoran a propósito, para no duplicar lo de las Edge Functions); quien tiene acceso al panel de Supabase puede hacer cualquier cosa. Para eso sirven los *Logs* propios de Supabase, no esta bitácora.
+- Un superusuario de la base podría quitar los triggers: la bitácora protege contra cuentas de la app y contra errores, no contra quien administra la base.
+- No registra lecturas (quién vio qué), salvo la revelación de contraseñas; ni los ingresos fallidos (eso lo limita `login_rate_limit`).
+- Crece sin límite (son pocas filas: solo acciones sensibles). Si algún día pesa, se archiva por año con una migración, no a mano.

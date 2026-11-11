@@ -7,6 +7,7 @@
 // eliminación" que exige escribir el nombre exacto del establecimiento.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.118.0';
+import { logAudit } from '../_shared/audit.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
@@ -111,6 +112,7 @@ Deno.serve(async (req) => {
     const { error: schoolDelErr } = await admin.from('schools').delete().eq('id', schoolId);
     if (schoolDelErr) return json({ error: schoolDelErr.message, removed }, 500);
 
+    await logAudit(admin, { actor: caller.id, action: 'school_deleted', targetType: 'school', targetId: code, school: code, details: { name: school.name, forced: true, removed }, source: 'edge:admin-force-delete-school' });
     return json({ ok: true, removed });
 
   } catch (e) {
