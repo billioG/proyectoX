@@ -46,7 +46,7 @@ test('con sesión de docente: recorrer las vistas principales no dispara bloqueo
   const blocked = [];
   page.on('console', (m) => { if (isCsp(m.text())) blocked.push(m.text()); });
   await page.route(/^https?:\/\/(?!localhost|127\.0\.0\.1)/, (r) => r.abort('failed'));
-  await page.addInitScript(() => { try { localStorage.setItem('PX_TOUR_DONE', '1'); localStorage.setItem('onboarding_seen_t1', 'true'); } catch { /* sin almacenamiento */ } });
+  await page.addInitScript(() => { try { localStorage.setItem('PX_TOUR_DONE', '1'); localStorage.setItem('PX_NO_CHEST', '1'); localStorage.setItem('onboarding_seen_t1', 'true'); } catch { /* sin almacenamiento */ } });
   await page.goto(node.base);
   await page.waitForSelector('#login-username');
   await page.fill('#login-username', 'marta@escuela.com');

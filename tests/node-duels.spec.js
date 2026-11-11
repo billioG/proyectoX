@@ -36,7 +36,7 @@ async function session(browser, user) {
   const context = await browser.newContext({ baseURL: node.base });
   const page = await context.newPage();
   await page.route(/^https?:\/\/(?!localhost|127\.0\.0\.1)/, r => r.abort('failed'));
-  await page.addInitScript(() => { try { localStorage.setItem('PX_TOUR_DONE', '1'); localStorage.setItem('gamecenter_onboarding_seen_s1', 'true'); localStorage.setItem('gamecenter_onboarding_seen_s2', 'true'); } catch { /* sin almacenamiento */ } });
+  await page.addInitScript(() => { try { localStorage.setItem('PX_TOUR_DONE', '1'); localStorage.setItem('PX_NO_CHEST', '1'); localStorage.setItem('gamecenter_onboarding_seen_s1', 'true'); localStorage.setItem('gamecenter_onboarding_seen_s2', 'true'); } catch { /* sin almacenamiento */ } });
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
   await page.goto(node.base);

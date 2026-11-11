@@ -42,7 +42,7 @@ test('el docente lee el buzón: promedio, comentarios y sugerencias de su clase,
   const failed = [];
   page.on('response', r => { if (/get_feedback_inbox|get_my_ratings|teacher_ratings|student_suggestions/.test(r.url()) && r.status() >= 400) failed.push(`${r.status()} ${r.url()}`); });
   await page.route(/^https?:\/\/(?!localhost|127\.0\.0\.1)/, r => r.abort('failed'));
-  await page.addInitScript(() => { try { localStorage.setItem('PX_TOUR_DONE', '1'); localStorage.setItem('onboarding_seen_t1', 'true'); } catch { /* sin almacenamiento */ } });
+  await page.addInitScript(() => { try { localStorage.setItem('PX_TOUR_DONE', '1'); localStorage.setItem('PX_NO_CHEST', '1'); localStorage.setItem('onboarding_seen_t1', 'true'); } catch { /* sin almacenamiento */ } });
   await page.goto(node.base);
   await page.waitForSelector('#login-username');
   await page.fill('#login-username', 'marta@escuela.com');
@@ -85,7 +85,7 @@ test('el administrador ve quién escribió cada mensaje y a qué docente; puede 
   };
   await page.route(/^https?:\/\/(?!localhost|127\.0\.0\.1)/, r => r.abort('failed'));
   await page.route('**/rest/v1/rpc/get_feedback_inbox', async (r) => { calls.push(r.request().postDataJSON()); await r.fulfill({ contentType: 'application/json', body: JSON.stringify(data) }); });
-  await page.addInitScript(() => { try { localStorage.setItem('PX_TOUR_DONE', '1'); localStorage.setItem('onboarding_seen_t1', 'true'); } catch { /* sin almacenamiento */ } });
+  await page.addInitScript(() => { try { localStorage.setItem('PX_TOUR_DONE', '1'); localStorage.setItem('PX_NO_CHEST', '1'); localStorage.setItem('onboarding_seen_t1', 'true'); } catch { /* sin almacenamiento */ } });
   await page.goto(node.base);
   await page.waitForSelector('#login-username');
   await page.fill('#login-username', 'marta@escuela.com');

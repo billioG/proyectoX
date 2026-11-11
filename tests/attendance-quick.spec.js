@@ -34,7 +34,7 @@ async function openAttendance(page, { secure }) {
   page.on('pageerror', (e) => errors.push(e.message));
   await page.route(/^https?:\/\/(?!localhost|127\.0\.0\.1)/, (r) => r.abort('failed'));
   await page.addInitScript((isSecure) => {
-    try { localStorage.setItem('PX_TOUR_DONE', '1'); localStorage.setItem('onboarding_seen_s1', 'true'); } catch { /* sin almacenamiento */ }
+    try { localStorage.setItem('PX_TOUR_DONE', '1'); localStorage.setItem('PX_NO_CHEST', '1'); localStorage.setItem('onboarding_seen_s1', 'true'); } catch { /* sin almacenamiento */ }
     // El servidor de la escuela es «http»: el navegador dice que el contexto no es seguro.
     if (!isSecure) {
       Object.defineProperty(window, 'isSecureContext', { value: false, configurable: true });
