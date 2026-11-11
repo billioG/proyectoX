@@ -28,7 +28,7 @@ function showCertificateClaim(type, data) {
     modal.innerHTML = `
         <div class="glass-card w-full max-w-lg p-0 overflow-hidden shadow-2xl animate-slideUp border-amber-500/30 border-2">
             <div class="p-12 text-center bg-gradient-to-br from-amber-500 to-orange-700 text-white relative">
-                 <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+                 <div class="absolute inset-0 px-pattern-cubes opacity-10"></div>
                  <i class="fas fa-certificate text-7xl mb-6 animate-pulse text-amber-200"></i>
                  <h2 class="text-3xl font-black uppercase tracking-tighter">¡LOGRO DESBLOQUEADO!</h2>
                  <p class="text-amber-100 text-sm mt-2 font-bold uppercase tracking-widest">Has ganado un Reconocimiento Oficial</p>

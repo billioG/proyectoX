@@ -99,7 +99,7 @@ window.showXPInfoModal = function () {
   modal.innerHTML = `
         <div class="glass-card w-full max-w-sm p-0 overflow-hidden shadow-2xl animate-slideUp bg-white dark:bg-slate-900 border border-primary/20">
             <div class="bg-gradient-to-br from-primary to-indigo-600 p-8 text-center relative overflow-hidden">
-                <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+                <div class="absolute inset-0 px-pattern-cubes opacity-10"></div>
                 <div class="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-4xl text-white mx-auto mb-4 shadow-lg ring-4 ring-white/10">
                     <i class="fas fa-gamepad"></i>
                 </div>
