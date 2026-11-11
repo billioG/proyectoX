@@ -128,7 +128,7 @@ Redesplegar estas Edge Functions (cambiaron en las últimas versiones):
 - [ ] Crear el **proyecto Supabase de prueba** siguiendo `docs/SETUP.md`
 - [ ] Proteger la rama `main` en GitHub (cambios solo por pull request): pasos y comando en `CONTRIBUTING.md`, «Protección de la rama `main`». Antes, que la CI esté en verde.
 - [x] **Licencia decidida el 9/11/2026:** todos los derechos reservados (Copyright, ver `LICENSE`); MIT descartada por ahora. Si un fondo exige código abierto, se reevalúa (cambiar a MIT es solo reemplazar `LICENSE`, el README y `package.json`).
-- [ ] Confirmar la autoría de `icon-192.png`/`icon-512.png` y la versión de `vendor/h5p-standalone/` (ver `THIRD_PARTY_NOTICES.md`).
+- [x] Autoría de `icon-192.png`/`icon-512.png`: confirmada como identidad de Quetzal LMS / Yo Aprendo (11/11/2026). Queda anotar la versión y el enlace al `LICENSE` de `vendor/h5p-standalone/` (ver `THIRD_PARTY_NOTICES.md`).
 
 ## 🟡 Hoja de ruta de gestión (fuera del repositorio)
 
