@@ -63,8 +63,9 @@ final cuando corresponde: `Fix scrolling in arena overlays on phones (v1.0.96)`.
 Cada cambio que llega a los usuarios sube la versión. Si no, los teléfonos
 siguen mostrando la versión vieja guardada en caché.
 
-1. En `index.html`, cambiá `1.0.X` por `1.0.Y` (aparece **4 veces**).
+1. En `index.html`, cambiá `1.0.X` por `1.0.Y` (aparece **8 veces**: las dos etiquetas visibles `v1.0.X`, `js/app.js?v=` y los cinco scripts del `<head>` con `?v=`), y en `js/version.js` el `window.APP_VERSION`. `tests-unit/js-inventory.test.mjs` falla si alguno no coincide.
 2. En `service-worker.js`, cambiá `CACHE_NAME = 'projectx-v1.0.X'`.
+   Si agregaste un `onclick` que llama a una función que ningún botón llamaba, corré también `node scripts/handlers-audit.mjs --write` (ver `docs/SEGURIDAD_2026-11.md` §7).
 3. Si tocaste clases de Tailwind, recompilá `css/tailwind.css` (la CI lo verifica):
 
 ```bash

@@ -2,7 +2,7 @@
 // SERVICE WORKER - PROJECTX PWA
 // ================================================
 
-const CACHE_NAME = 'projectx-v1.0.259';
+const CACHE_NAME = 'projectx-v1.0.260';
 // Caché de archivos de lecciones (video/PDF/imagen/paquetes SCORM-H5P) --
 // separada de CACHE_NAME a propósito: CACHE_NAME se recrea y se BORRA
 // entera en cada deploy (bump de versión) para forzar JS/CSS frescos, pero
@@ -32,6 +32,9 @@ const APP_VERSION = CACHE_NAME.replace('projectx-', ''); // 'v1.0.X'
 // index.html carga app.js con ?v=1.0.X (SIN la "v"): antes se precacheaba
 // con "v" y, sin internet, el pedido real no encontraba su copia.
 const APP_JS = `js/app.js?v=${APP_VERSION.replace(/^v/, '')}`;
+// Scripts clásicos del <head> de index.html (manejadores sin 'unsafe-inline', versión, arranque): sin ellos la pantalla de login no responde.
+const HEAD_SCRIPTS = ['js/handler-allowlist.js', 'js/safe-handlers.js', 'js/openers.js', 'js/version.js', 'js/boot.js']
+  .map(f => `${f}?v=${APP_VERSION.replace(/^v/, '')}`);
 const LAZY_MODULES = [
   'js/admin-attendance.js', 'js/admin-dashboard.js', 'js/admin-evaluations.js',
   'js/admin-performance.js', 'js/admin-reports.js', 'js/admin-success.js',
@@ -75,6 +78,7 @@ const urlsToCache = [
   './icon-192.png',
   './icon-512.png',
   APP_JS,
+  ...HEAD_SCRIPTS,
   ...EAGER_MODULES,
   // loadModule() (main.js) pide "?v=" + window.APP_VERSION ('v1.0.X').
   ...LAZY_MODULES.map(f => `${f}?v=${APP_VERSION}`),
@@ -107,6 +111,7 @@ const urlsToCache = [
 const CRITICAL_SHELL_URLS = [
   './index.html',
   APP_JS,
+  ...HEAD_SCRIPTS,
   './css/styles.css',
   './css/tailwind.css',
 ];

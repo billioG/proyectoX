@@ -42,10 +42,11 @@ test('todo módulo de js/ está cargado por index.html, main.js, app.js u otro m
   assert.deepEqual(orphans, [], 'estos módulos no los carga nadie: si ya no se usan, bórralos (y quítalos del service worker); si se usan, agrégalos al mapa de main.js');
 });
 
-test('la versión coincide en index.html (4 sitios), el service worker y app.js', () => {
-  const v = /window\.APP_VERSION = 'v([0-9.]+)'/.exec(html)?.[1];
+test('la versión coincide en js/version.js, index.html (scripts y etiquetas), el service worker y app.js', () => {
+  const v = /window\.APP_VERSION = 'v([0-9.]+)'/.exec(fs.readFileSync(new URL('../js/version.js', import.meta.url), 'utf8'))?.[1];
   assert.ok(v, 'no se encontró APP_VERSION');
   assert.equal(/CACHE_NAME = 'projectx-v([0-9.]+)'/.exec(sw)?.[1], v, 'service-worker.js');
   assert.equal(/js\/app\.js\?v=([0-9.]+)/.exec(html)?.[1], v, 'index.html app.js?v=');
+  for (const f of ['handler-allowlist', 'safe-handlers', 'openers', 'version', 'boot']) assert.equal(new RegExp(`js/${f}\\.js\\?v=([0-9.]+)`).exec(html)?.[1], v, `index.html ${f}.js?v=`);
   assert.equal(html.split(`v${v}</span>`).length - 1, 2, 'las dos etiquetas de versión visibles de index.html');
 });

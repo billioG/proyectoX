@@ -50,6 +50,12 @@ window.renderAdminPanel = function renderAdminPanel() {
   `;
 }
 
+// Solo estas dos pantallas se pueden abrir desde el banner (el botón pasa el nombre; así el HTML no elige una función cualquiera).
+window.openChallengeBanner = function openChallengeBanner(fnName, id) {
+  if (fnName !== 'openChallengeEvidenceModal' && fnName !== 'openStudentChallengeModal') return;
+  if (typeof window[fnName] === 'function') window[fnName](id);
+};
+
 window.renderChallengeBanner = function renderChallengeBanner(activeChallenge, hasCompleted, openFn = 'openChallengeEvidenceModal') {
   if (!activeChallenge) return '';
   // El banner naranja + punto pulsando siempre gritaba "pendiente", incluso
@@ -65,7 +71,7 @@ window.renderChallengeBanner = function renderChallengeBanner(activeChallenge, h
   const label = hasCompleted ? 'Reto Completado' : 'Reto Activo';
 
   return `
-    <div onclick="window.${openFn} && window.${openFn}('${activeChallenge.id}')" class="flex items-center gap-3 px-4 py-2 ${colorClasses} rounded-xl border cursor-pointer transition-all group/challenge relative" title="${window.sanitizeAttr(activeChallenge.description || '')}">
+    <div onclick="window.openChallengeBanner('${openFn}', '${activeChallenge.id}')" class="flex items-center gap-3 px-4 py-2 ${colorClasses} rounded-xl border cursor-pointer transition-all group/challenge relative" title="${window.sanitizeAttr(activeChallenge.description || '')}">
       ${dotHtml}
       <span class="text-[0.8rem] font-semibold ${textClass} uppercase tracking-widest">${label}: ${window.sanitizeInput(activeChallenge.name || '')}</span>
     </div>
