@@ -26,6 +26,15 @@ export const ACTIONS = {
   student_passwords_backfill: ['Contraseñas de alumnos cifradas', 'fa-shield-halved', 'sky'],
 };
 
+/** Color -> clases de Tailwind COMPLETAS (el compilador no ve clases armadas con variables, como bg-${color}-500). */
+const TONE = {
+  emerald: 'bg-emerald-500/10 text-emerald-500',
+  rose: 'bg-rose-500/10 text-rose-500',
+  amber: 'bg-amber-500/10 text-amber-500',
+  sky: 'bg-sky-500/10 text-sky-500',
+  slate: 'bg-slate-500/10 text-slate-500',
+};
+
 export function actionLabel(action) {
   return ACTIONS[action]?.[0] || String(action || 'Acción');
 }
@@ -83,7 +92,7 @@ export function rowHtml(r) {
   const target = [r.school_code, r.target_type && r.target_id && r.target_type !== 'school' ? `${r.target_type}: ${String(r.target_id).slice(0, 36)}` : ''].filter(Boolean).join(' · ');
   return `
     <div class="glass-card p-4 flex items-start gap-3" data-audit-id="${esc(r.id)}">
-      <div class="w-9 h-9 rounded-xl bg-${color}-500/10 text-${color}-500 flex items-center justify-center shrink-0"><i class="fas ${esc(icon)}"></i></div>
+      <div class="w-9 h-9 rounded-xl ${TONE[color] || TONE.slate} flex items-center justify-center shrink-0"><i class="fas ${esc(icon)}"></i></div>
       <div class="min-w-0 flex-1">
         <div class="flex flex-wrap items-center justify-between gap-x-3">
           <p class="text-sm font-black text-slate-800 dark:text-white">${esc(label)}</p>
