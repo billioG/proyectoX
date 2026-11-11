@@ -74,7 +74,7 @@ Detalle, orden y pruebas en `docs/SEGURIDAD_2026-11.md`.
 - [x] Protección de `main` activa desde el 9/11/2026: solo por pull request, 0 aprobaciones (una sola persona), 6 chequeos obligatorios (Sintaxis JS, Pruebas unitarias, Tipos de Deno, gitleaks, Migraciones, tailwind), sin push forzado ni borrado. Al sumar equipo: pedir 1 aprobación (`CONTRIBUTING.md`).
 - [x] Dependabot al día (10/11/2026): fusionadas `checkout` 7, Playwright 1.65 y, en un solo PR, `setup-node` 7, `upload-artifact` 7 y `setup-deno` 2; cerradas con motivo `tailwindcss` 4, `better-sqlite3` 13 y `bcryptjs` 3 (cambios mayores que no se adoptan sin probar: el CSS compilado y el servidor escolar).
 - [x] Retos repetidos (9 y 10/11/2026): v1.0.255 (un toque, un reto) y v1.0.256 («Revancha» una sola vez). Falta aplicar la **migración `duel-one-open-pair.sql`** en Supabase (candado en la base, v1.0.257): cancela los pendientes repetidos que existan y evita nuevos. Ver `docs/PASOS_MANUALES.md`.
-- [ ] Revisar que no queden retos repetidos «pendientes» antes de correr `duel-one-open-pair.sql` (la propia migración los cancela, conservando el más antiguo).
+- [x] Retos repetidos «pendientes» y duelos de Ahorcado activos repetidos revisados (11/11/2026): el verificador ya no muestra duplicados, así que el candado `duel-one-open-pair.sql` quedó aplicado completo.
 
 ## 🟠 Migraciones y funciones de las últimas versiones
 
