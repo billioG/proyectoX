@@ -4,6 +4,10 @@ Cambios publicados en Quetzal LMS, del más reciente al más antiguo. Cada líne
 
 Al publicar una versión nueva, agrega una línea arriba de todo (ver CONTRIBUTING.md).
 
+## 2026-11-11
+
+- **Equipos: un fallo momentáneo ya no se muestra como «Sin asignaciones» (v1.0.262).** Si la consulta de las clases del docente fallaba (red, sesión recién iniciada), la pantalla de Equipos decía «Sin asignaciones para gestionar equipos» y guardaba ese vacío en la caché. Ahora muestra el error con un botón «Reintentar» y no guarda nada. Era la causa de los fallos al azar de `node-teams` en el CI.
+
 ## 2026-11-10
 
 - **Pruebas de navegador estables (v1.0.261).** El cofre diario aparece 1,5-2 s después de entrar y, según la carga de la máquina, tapaba botones y hacía fallar al azar las pruebas (`help`, `node-teams`, `nav-config-group`). Nueva opción de depuración `localStorage.PX_NO_CHEST = '1'` (no muestra el cofre solo); las pruebas la activan, salvo la del cofre en `node-projects`. Sin cambios para los usuarios.
