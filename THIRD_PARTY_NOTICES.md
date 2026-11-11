@@ -37,9 +37,13 @@ las lista.
 
 `@playwright/test` (Apache-2.0), `http-server` (MIT), `tailwindcss` (MIT).
 
+## Identidad visual
+
+`icon-192.png`, `icon-512.png` y la mascota quetzal son la identidad de marca de Quetzal LMS, producto de Yo Aprendo; el titular
+(Billy Abraham Gómez Sac) lo confirmó el 11/11/2026. Son parte de la obra protegida por la licencia del repositorio (todos los derechos
+reservados). Pendiente de confirmar: el resto de ilustraciones y mascotas de los cursos.
+
 ## Pendiente de confirmar por el autor
 
-- `icon-192.png`, `icon-512.png` y la identidad visual (mascotas, ilustraciones, cursos): confirmar que son obra propia o que se
-  tiene permiso de uso.
 - Copia de `vendor/h5p-standalone/`: anotar la versión y el enlace al `LICENSE` de ese proyecto.
 - Contenido de cursos: vive en Supabase, no en este repositorio; cada docente responde por el material que sube.
