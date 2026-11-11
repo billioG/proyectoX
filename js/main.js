@@ -20,6 +20,7 @@ const MODULE_MAP = {
     'progress': ['js/progress.js'],
     'school-servers': ['js/school-servers.js'],
     'inbox': ['js/inbox.js'],
+    'audit-log': ['js/audit-log.js'],
     'attendance': ['js/attendance.js', 'js/data/challenges.js'],
     'admin-attendance-report': ['js/admin-attendance.js', 'js/attendance-summary-view.js'],
     'admin-eval-report': ['js/admin-evaluations.js'],
@@ -363,6 +364,9 @@ export function loadViewContent(view) {
         case 'inbox':
             if (userRole === 'admin' || userRole === 'docente') callViewLoader(view, window.loadInbox);
             break;
+        case 'audit-log':
+            if (userRole === 'admin') callViewLoader(view, window.loadAuditLog);
+            break;
         case 'school-servers':
             if (userRole === 'admin' || userRole === 'docente') callViewLoader(view, window.loadSchoolServers);
             break;
@@ -412,7 +416,7 @@ window.loadModule = loadModule;
 // la última vista de un docente/admin).
 const ADMIN_ONLY_VIEWS = new Set([
     'admin-dashboard', 'admin-teacher-performance', 'admin-success', 'admin-rocks',
-    'schools', 'teachers', 'admin-attendance-report', 'admin-eval-report'
+    'schools', 'teachers', 'admin-attendance-report', 'admin-eval-report', 'audit-log'
 ]);
 const STAFF_ONLY_VIEWS = new Set(['students', 'exams', 'progress', 'school-servers', 'inbox']);
 const COORDINADOR_ONLY_VIEWS = new Set(['coordinator-dashboard', 'coordinator-reports']);

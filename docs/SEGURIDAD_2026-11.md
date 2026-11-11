@@ -414,7 +414,7 @@ Los topes se cambian con secretos (`RATE_NOTIFY_*`, ver `docs/PASOS_MANUALES.md`
 | Triggers | `teacher_created/deleted/role_changed`, `students_deleted` (una fila por sentencia: cuántos, de qué colegios y una muestra de ids), `school_deleted`, `school_node_registered/revoked/deleted`, `guardian_portal_link_regenerated`, `class_password_changed`. Registran quién fue (`auth.uid()`); **no guardan contraseñas, enlaces ni nombres de menores** |
 | Edge Functions | `admin-create-teacher`, `admin-delete-students`, `admin-force-delete-school`, `admin-set-class-password`, `admin-bulk-import-students` y `staff-student-passwords` (revelar y cifrar contraseñas) dejan constancia de **quién las pidió**. Como usan service role, los triggers no las ven (sin sesión): así no se duplica |
 | Reinicios de contraseña | `admin_reset_user_password` y `reset_password_via_admin` (ya existían) ahora registran `user_password_reset` |
-| `get_security_audit_log` | Lectura paginada para administradores (la usa la pantalla «Bitácora») |
+| `get_security_audit_log` y pantalla | Lectura paginada para administradores. En la app: menú del administrador → **Bitácora de seguridad** (`js/audit-log.js`; filtro por acción y «Ver más antiguas»; todo texto escapado; probada en navegador y con pruebas unitarias) |
 
 **Probado con PostgreSQL real:** cada acción deja una fila con quién fue; no aparece ningún secreto ni nombre de menor; sin sesión los triggers no registran; la tabla no se puede modificar, borrar ni vaciar ni por el dueño; `anon`/`authenticated` no pueden escribir; un docente no ve filas ni ejecuta la lectura; el filtro de secretos de `log_security_event` (con una prueba de mutación: sin el filtro, la prueba falla).
 

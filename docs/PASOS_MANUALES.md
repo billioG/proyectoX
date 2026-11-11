@@ -91,7 +91,7 @@ Correr `duel-one-open-pair.sql` en el SQL Editor **después** de publicar la v1.
 
 1. Correr `migrations/security-audit-log.sql` en el SQL Editor (al final muestra `triggers_auditoria = 6` y `triggers_solo_agregar = 2`).
 2. **Después** redesplegar las 6 Edge Functions que registran quién pidió cada acción: `admin-create-teacher`, `admin-delete-students`, `admin-force-delete-school`, `admin-set-class-password`, `admin-bulk-import-students` y `staff-student-passwords` (todas **Verify JWT ON**). Con la CLI: `npx supabase functions deploy <nombre> --use-api --yes --project-ref vyptkxudkmlpyfosppzh`. Si no se redesplegan, siguen funcionando igual pero sin registrar.
-3. Ver la bitácora: en la pantalla «Bitácora» de la app (solo administrador) o, mientras esa pantalla no exista, en el SQL Editor: `select created_at, actor_role, action, target_type, target_id, school_code, details, source from public.security_audit_log order by id desc limit 100;`
+3. Ver la bitácora: en la app, menú del administrador → **Bitácora de seguridad** (desde la v1.0.259) o, en el SQL Editor: `select created_at, actor_role, action, target_type, target_id, school_code, details, source from public.security_audit_log order by id desc limit 100;`
 4. La bitácora **no se puede modificar ni borrar** (ni siquiera con `service_role`); vaciarla exigiría quitar a propósito los triggers `trg_security_audit_*`.
 
 ## 3b. Lección: crea las Edge Functions con la CLI, no desde el editor del panel
