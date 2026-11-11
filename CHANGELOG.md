@@ -6,6 +6,8 @@ Al publicar una versión nueva, agrega una línea arriba de todo (ver CONTRIBUTI
 
 ## 2026-11-10
 
+- **Pantalla «Bitácora de seguridad» para el administrador (v1.0.259).** Nuevo acceso en el menú del administrador: lista, en español, quién hizo qué y cuándo (alumnos o colegios eliminados, docentes creados o con rol cambiado, contraseñas de clase, enlaces del portal de padres, servidores escolares, contraseñas de alumnos consultadas), con filtro por acción y «Ver más antiguas». Solo lectura; solo la ve un administrador; todo texto se escapa. Necesita la migración `security-audit-log.sql`; sin ella muestra un aviso claro. Recarga la app dos veces.
+
 - **Seguridad: bitácora de acciones sensibles.** Nueva tabla `security_audit_log` (solo agregar, solo la lee un administrador, sin secretos ni nombres de menores) que registra quién eliminó alumnos o colegios, creó docentes, cambió roles, contraseñas de clase, enlaces del portal de padres, servidores escolares, y quién vio o cifró contraseñas de alumnos. Migración `security-audit-log.sql`, módulo `_shared/audit.ts` y 6 Edge Functions que registran. Si falta la migración, nada se rompe. Sin cambios en la app ni versión nueva (la pantalla «Bitácora» va aparte).
 
 - **`PENDIENTES.md` solo con lo técnico.** La hoja de ruta de gestión (formalización, postulaciones, equipo) y las tareas fiscales salen del repositorio público; quedan las guías técnicas de `docs/`. Además se anota el límite de frecuencia de las funciones `notify-*` como aplicado. Solo documentación.

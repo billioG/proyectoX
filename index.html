@@ -78,7 +78,7 @@
          index.html pero el navegador puede seguir sirviendo desde caché HTTP
          una versión vieja de un módulo lazy-loaded (ej. pdf-processor.js),
          aunque el tag de versión visible ya muestre la última. -->
-    <script>window.APP_VERSION = 'v1.0.258';</script>
+    <script>window.APP_VERSION = 'v1.0.259';</script>
 
     <!-- Silenciar console.log/info/debug en producción (activar con localStorage.PX_DEBUG='true').
          Va antes de todo lo demás porque los console.log de cada módulo corren
@@ -696,7 +696,7 @@
                     <img id="login-brand-logo" class="hidden w-14 h-14 rounded-2xl object-contain bg-white shrink-0" alt="Logo del colegio">
                     <span id="login-brand-name">Quetzal <span class="text-primary-dark dark:text-primary">LMS</span></span>
                 </div>
-                <span id="app-version-tag" class="text-[0.65rem] text-slate-500 dark:text-slate-400 font-medium mt-1">v1.0.258</span>
+                <span id="app-version-tag" class="text-[0.65rem] text-slate-500 dark:text-slate-400 font-medium mt-1">v1.0.259</span>
                 <span class="text-[0.65rem] text-slate-400 font-medium mt-0.5">Hecho por Yo Aprendo</span>
             </div>
 
@@ -759,7 +759,7 @@
                     <div id="brand-name" class="text-2xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent transform hover:scale-105 transition-transform leading-none truncate">
                         Quetzal LMS
                     </div>
-                    <span class="text-[0.6rem] text-slate-400 font-medium mt-0.5 truncate"><span id="brand-credit" class="hidden">Hecho por Yo Aprendo · Quetzal LMS · </span>v1.0.258</span>
+                    <span class="text-[0.6rem] text-slate-400 font-medium mt-0.5 truncate"><span id="brand-credit" class="hidden">Hecho por Yo Aprendo · Quetzal LMS · </span>v1.0.259</span>
                 </div>
             </div>
 
@@ -1010,6 +1010,10 @@
                                 <i class="fas fa-server"></i>
                                 <span>Servidores y sincronización</span>
                             </div>
+                            <div class="nav-item" onclick="nav('audit-log')">
+                                <i class="fas fa-clipboard-list"></i>
+                                <span>Bitácora de seguridad</span>
+                            </div>
                             <div class="nav-item" onclick="nav('bonus-system')">
                                 <i class="fas fa-medal"></i>
                                 <span>Incentivos y Pagos</span>
@@ -1075,6 +1079,13 @@
                 <div class="flex items-center gap-3 mb-2"><div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center text-lg shrink-0"><i class="fas fa-server"></i></div><h2 class="mb-0">Servidor de la escuela</h2></div>
                 <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">Conecta la Raspberry por cable al router con internet: se sincroniza sola. Aquí ves cómo va y, si quieres, tocas «Sincronizar ahora». No necesitas la dirección IP.</p>
                 <div id="school-servers-container"></div>
+            </section>
+
+            <!-- BITÁCORA DE SEGURIDAD (solo administrador): quién hizo qué en las acciones sensibles; no se puede modificar ni borrar -->
+            <section id="view-audit-log" class="view-section" style="display: none;">
+                <div class="flex items-center gap-3 mb-2"><div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center text-lg shrink-0"><i class="fas fa-clipboard-list"></i></div><h2 class="text-2xl font-black text-slate-800 dark:text-white tracking-tight">Bitácora de seguridad</h2></div>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">Las acciones sensibles de la plataforma, con quién las hizo y cuándo.</p>
+                <div id="audit-log-container"></div>
             </section>
 
             <!-- REPORTES DEL COORDINADOR (SU ESTABLECIMIENTO) -->
@@ -1442,7 +1453,7 @@
     <!-- Librerías externas: confetti, QR, PDF, JSZip y driver.js se cargan con loadLib() (ver <head>). -->
 
     <!-- Punto de Entrada del Sistema -->
-    <script type="module" src="js/app.js?v=1.0.258"></script>
+    <script type="module" src="js/app.js?v=1.0.259"></script>
 
     <meta name="mobile-web-app-capable" content="yes">
 </body>
