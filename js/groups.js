@@ -27,7 +27,9 @@ window.loadGroups = async function loadGroups() {
       // 1. Obtener asignaciones si es docente
       let assignments = [];
       if (userRole === 'docente') {
-        const { data } = await _supabase.from('teacher_assignments').select('school_code, grade, section, schools(name)').eq('teacher_id', currentUser.id);
+        const { data, error: assignError } = await _supabase.from('teacher_assignments').select('school_code, grade, section, schools(name)').eq('teacher_id', currentUser.id);
+        // Un fallo momentáneo (red, sesión que recién arranca) NO es «sin asignaciones»: antes se guardaba ese vacío en la caché y la pantalla mentía.
+        if (assignError) throw assignError;
         assignments = data || [];
         if (assignments.length === 0) return { groups: [], assignments: [] };
       }
@@ -59,7 +61,7 @@ window.loadGroups = async function loadGroups() {
 
   } catch (err) {
     console.error(err);
-    container.innerHTML = '<div class="glass-card p-10 text-rose-500 font-bold text-center text-[0.65rem]"><i class="fas fa-circle-xmark"></i> Error cargando el sistema de equipos</div>';
+    container.innerHTML = '<div class="glass-card p-10 text-rose-500 font-bold text-center text-[0.65rem] flex flex-col items-center gap-4"><span><i class="fas fa-circle-xmark"></i> Error cargando el sistema de equipos</span><button type="button" class="btn-secondary-tw h-10 px-4 text-xs uppercase font-bold" onclick="window.loadGroups()"><i class="fas fa-rotate mr-1"></i> Reintentar</button></div>';
   }
 }
 
