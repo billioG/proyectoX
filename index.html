@@ -8,7 +8,14 @@
          siguen permitidos; lo que SÍ cierra es: plugins (object), <base> y formularios hacia otros sitios, y scripts de cualquier sitio que no sea
          la app o sus dos CDN (jsDelivr y cdnjs). Las conexiones y las imágenes no se limitan porque la app habla con Supabase, la Raspberry de la
          escuela (http en la red local) y recursos de cursos de cualquier sitio. Detalle y límites: docs/SEGURIDAD_2026-11.md. -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; img-src 'self' data: blob: https: http:; media-src 'self' blob: https: http:; connect-src 'self' https: wss: http: ws: blob: data:; frame-src 'self' https: http: blob:; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; img-src 'self' data: blob: https: http:; media-src 'self' blob: https: http:; connect-src 'self' https: wss: http: ws: blob: data:; frame-src 'self' https: http: blob:; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+    <!-- Manejadores onclick="..." sin 'unsafe-inline': js/safe-handlers.js los ejecuta con un intérprete mínimo y SOLO puede llamar a las funciones
+         de js/handler-allowlist.js (generada por scripts/handlers-audit.mjs). Va primero para estar listo antes de cualquier botón o evento de carga. -->
+    <script src="js/handler-allowlist.js?v=1.0.260"></script>
+    <script src="js/safe-handlers.js?v=1.0.260"></script>
+    <script src="js/openers.js?v=1.0.260"></script>
+    <script src="js/version.js?v=1.0.260"></script>
+    <script src="js/boot.js?v=1.0.260"></script>
     <title>Quetzal LMS | Plataforma Educativa con Gamificación para Escuelas en Guatemala</title>
     <meta name="description"
         content="Quetzal LMS es un sistema de gestión de aprendizaje (LMS) para escuelas en Guatemala: cursos, evaluación de proyectos, retos 1v1 y gamificación para motivar a tus estudiantes.">
@@ -78,16 +85,12 @@
          index.html pero el navegador puede seguir sirviendo desde caché HTTP
          una versión vieja de un módulo lazy-loaded (ej. pdf-processor.js),
          aunque el tag de versión visible ya muestre la última. -->
-    <script>window.APP_VERSION = 'v1.0.259';</script>
+    
 
     <!-- Silenciar console.log/info/debug en producción (activar con localStorage.PX_DEBUG='true').
          Va antes de todo lo demás porque los console.log de cada módulo corren
          al importarse, antes de que cualquier script propio pueda interceptarlos. -->
-    <script>
-        if (localStorage.getItem('PX_DEBUG') !== 'true') {
-            console.log = console.info = console.debug = function () {};
-        }
-    </script>
+    
 
     <!-- Supabase: es lo único que hace falta para mostrar el login. defer = no
          bloquea el pintado y corre antes que el módulo js/app.js. -->
@@ -97,76 +100,14 @@
     <!-- La pantalla de login ahora se pinta antes de que terminen de cargar los módulos. Hasta que
          auth.js defina las funciones reales, estas versiones mínimas evitan el error al tocar el ojo
          de la contraseña o salir del campo de usuario muy rápido. auth.js las reemplaza. -->
-    <script>
-        window.checkLoginPasswordMode = function () { };
-        window.toggleLoginPasswordVisibility = function () {
-            var i = document.getElementById('login-password'), e = document.getElementById('login-password-eye');
-            if (!i || !e) return;
-            var h = i.type === 'password'; i.type = h ? 'text' : 'password'; e.className = h ? 'fas fa-eye-slash' : 'fas fa-eye';
-        };
-    </script>
+    
 
     <!-- Cargador de librerías pesadas bajo demanda: JSZip, driver.js (tour),
          PDF.js, jsQR, QRCode y confetti ya no bloquean el primer pintado.
          window.loadLib('jszip', ...) devuelve una promesa (true si quedaron
          disponibles). Los módulos que las usan hacen `await loadLib(...)`.
          Las livianas (confetti, QR) se precargan cuando el navegador está libre. -->
-    <script>
-        (function () {
-            var J = 'https://cdn.jsdelivr.net/npm/', C = 'https://cdnjs.cloudflare.com/ajax/libs/';
-            var LIBS = {
-                jszip: { js: J + 'jszip@3.10.1/dist/jszip.min.js', t: 'JSZip' },
-                driver: { js: J + 'driver.js@1.11.0/dist/driver.js.iife.js', css: J + 'driver.js@1.11.0/dist/driver.css', t: 'driver' },
-                pdfjs: {
-                    js: C + 'pdf.js/3.11.174/pdf.min.js', t: 'pdfjsLib',
-                    done: function () { window.pdfjsLib.GlobalWorkerOptions.workerSrc = C + 'pdf.js/3.11.174/pdf.worker.min.js'; }
-                },
-                jsqr: { js: J + 'jsqr@1.4.0/dist/jsQR.min.js', t: 'jsQR' },
-                qrcode: { js: 'js/qrcode.min.js', t: 'QRCode' },
-                confetti: { js: J + 'canvas-confetti@1.9.2/dist/confetti.browser.min.js', t: 'confetti' }
-            };
-            // Integridad (SRI): si una CDN cambiara un archivo, el navegador lo rechaza. Se actualiza con scripts/sri-hashes.mjs.
-            // Solo se aplica a lo que viene de https (en el nodo escolar se usan copias locales de vendor/, que no llevan integrity).
-            var SRI = {
-                jszip: 'sha384-+mbV2IY1Zk/X1p/nWllGySJSUN8uMs+gUAN10Or95UBH0fpj6GfKgPmgC5EXieXG',
-                driver: 'sha384-IYtZiDPxvr6nvRAL339SO8ZswcKYOVT1EqS0LfuS+uSMgZmi8cuSQcB7oR7Pf4zS',
-                driverCss: 'sha384-VwkY5zeG8ASxat2SbNtS/1cZMo1puySWI5Bc8njancMDAy0vty6q1aemwwTnxmuU',
-                pdfjs: 'sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e',
-                jsqr: 'sha384-hStSInNIZ8ljtOVrmrgf7zdHMapaLBWoSnPTtF0nzsybp4+LuhDz6sHuEVpWIX8o',
-                confetti: 'sha384-xgNdoEQu0JeBEAN3/f7mrS+EPOsrmARCvhS7PEpk7QI2wvo4YOF3xY3EjQGKHAY9'
-            };
-            var jobs = {};
-            function one(name) {
-                var L = LIBS[name];
-                if (!L) return Promise.resolve(false);
-                if (window[L.t]) return Promise.resolve(true);
-                if (jobs[name]) return jobs[name];
-                if (L.css) {
-                    var l = document.createElement('link');
-                    l.rel = 'stylesheet'; l.href = L.css;
-                    if (SRI[name + 'Css'] && /^https:/.test(L.css)) { l.integrity = SRI[name + 'Css']; l.crossOrigin = 'anonymous'; }
-                    document.head.appendChild(l);
-                }
-                jobs[name] = new Promise(function (ok) {
-                    var sc = document.createElement('script');
-                    sc.src = L.js; sc.async = true;
-                    if (SRI[name] && /^https:/.test(L.js)) { sc.integrity = SRI[name]; sc.crossOrigin = 'anonymous'; }
-                    sc.onload = function () { try { if (L.done) L.done(); } catch (e) { } ok(true); };
-                    sc.onerror = function () { delete jobs[name]; sc.remove(); ok(false); };
-                    document.head.appendChild(sc);
-                });
-                return jobs[name];
-            }
-            window.loadLib = function () {
-                return Promise.all([].slice.call(arguments).map(one)).then(function (r) { return r.every(Boolean); });
-            };
-            window.addEventListener('load', function () {
-                var go = function () { window.loadLib('confetti', 'qrcode', 'jsqr'); };
-                if (window.requestIdleCallback) window.requestIdleCallback(go, { timeout: 4000 });
-                else setTimeout(go, 2000);
-            });
-        })();
-    </script>
+    
     <!-- El reproductor H5P (autoalojado en vendor/h5p-standalone) ya no se
     carga acá: cada contenido corre aislado en vendor/h5p-standalone/player.html. -->
 
@@ -696,7 +637,7 @@
                     <img id="login-brand-logo" class="hidden w-14 h-14 rounded-2xl object-contain bg-white shrink-0" alt="Logo del colegio">
                     <span id="login-brand-name">Quetzal <span class="text-primary-dark dark:text-primary">LMS</span></span>
                 </div>
-                <span id="app-version-tag" class="text-[0.65rem] text-slate-500 dark:text-slate-400 font-medium mt-1">v1.0.259</span>
+                <span id="app-version-tag" class="text-[0.65rem] text-slate-500 dark:text-slate-400 font-medium mt-1">v1.0.260</span>
                 <span class="text-[0.65rem] text-slate-400 font-medium mt-0.5">Hecho por Yo Aprendo</span>
             </div>
 
@@ -759,7 +700,7 @@
                     <div id="brand-name" class="text-2xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent transform hover:scale-105 transition-transform leading-none truncate">
                         Quetzal LMS
                     </div>
-                    <span class="text-[0.6rem] text-slate-400 font-medium mt-0.5 truncate"><span id="brand-credit" class="hidden">Hecho por Yo Aprendo · Quetzal LMS · </span>v1.0.259</span>
+                    <span class="text-[0.6rem] text-slate-400 font-medium mt-0.5 truncate"><span id="brand-credit" class="hidden">Hecho por Yo Aprendo · Quetzal LMS · </span>v1.0.260</span>
                 </div>
             </div>
 
@@ -936,7 +877,7 @@
                                 <i class="fas fa-bullseye"></i>
                                 <span>Bonos y Desempeño</span>
                             </div>
-                            <div class="nav-item nav-node-usb" onclick="(async () => { if (typeof window.openNodeUsbSync !== 'function') await import('./js/node-usb.js'); window.openNodeUsbSync(); })()">
+                            <div class="nav-item nav-node-usb" onclick="window.lazyOpenNodeUsbSync()">
                                 <i class="fab fa-usb"></i>
                                 <span>Nodo escolar (USB)</span>
                             </div>
@@ -970,7 +911,7 @@
                         <i class="fas fa-calendar-check"></i>
                         <span>Asistencia Global</span>
                     </div>
-                    <div class="nav-item" onclick="(async () => { if (typeof window.openImpactDashboard !== 'function') await import('./js/impact.js'); window.openImpactDashboard(); })()">
+                    <div class="nav-item" onclick="window.lazyOpenImpactDashboard()">
                         <i class="fas fa-seedling"></i>
                         <span>Impacto</span>
                     </div>
@@ -1018,15 +959,15 @@
                                 <i class="fas fa-medal"></i>
                                 <span>Incentivos y Pagos</span>
                             </div>
-                            <div class="nav-item" onclick="(async () => { if (typeof window.openQuetzadexAdmin !== 'function') await window.loadModule('profile'); window.openQuetzadexAdmin(); })()">
+                            <div class="nav-item" onclick="window.lazyOpenQuetzadexAdmin()">
                                 <i class="fas fa-film"></i>
                                 <span>Videos Quetzadex</span>
                             </div>
-                            <div class="nav-item" onclick="(async () => { if (typeof window.openNodeAdmin !== 'function') await import('./js/node-admin.js?v=' + (window.APP_VERSION || '')); window.openNodeAdmin(); })()">
+                            <div class="nav-item" onclick="window.lazyOpenNodeAdmin()">
                                 <i class="fas fa-server"></i>
                                 <span>Registrar nodo escolar</span>
                             </div>
-                            <div class="nav-item nav-node-usb" onclick="(async () => { if (typeof window.openNodeUsbSync !== 'function') await import('./js/node-usb.js'); window.openNodeUsbSync(); })()">
+                            <div class="nav-item nav-node-usb" onclick="window.lazyOpenNodeUsbSync()">
                                 <i class="fab fa-usb"></i>
                                 <span>Nodo escolar (USB)</span>
                             </div>
@@ -1413,35 +1354,7 @@
         .flip-card-back { transform: rotateY(180deg); }
     </style>
 
-    <script>
-        // Mostrar herramientas dev si está activado -- solo admin
-        window.addEventListener('DOMContentLoaded', () => {
-            if (window.userRole === 'admin' && localStorage.getItem('PX_DEV_MODE') === 'true') {
-                const devTools = document.getElementById('dev-tools');
-                if (devTools) devTools.style.display = 'block';
-            }
-        });
-
-        // Atajo: Shift + D para activar modo dev -- solo admin
-        window.addEventListener('keydown', (e) => {
-            if (e.shiftKey && e.key === 'D' && window.userRole === 'admin') {
-                // Toggle dev mode
-                const isDevMode = localStorage.getItem('PX_DEV_MODE') === 'true';
-                localStorage.setItem('PX_DEV_MODE', !isDevMode);
-
-                const devTools = document.getElementById('dev-tools');
-                if (devTools) {
-                    if (!isDevMode) {
-                        devTools.style.display = 'block';
-                        showToast('<i class="fas fa-screwdriver-wrench"></i>️ Modo Desarrollador Activado', 'success');
-                    } else {
-                        devTools.style.display = 'none';
-                        showToast('<i class="fas fa-screwdriver-wrench"></i>️ Modo Desarrollador Desactivado', 'default');
-                    }
-                }
-            }
-        });
-    </script>
+    
     <!-- ============================================ -->
     <!-- SCRIPTS -->
     <!-- ============================================ -->
@@ -1453,7 +1366,7 @@
     <!-- Librerías externas: confetti, QR, PDF, JSZip y driver.js se cargan con loadLib() (ver <head>). -->
 
     <!-- Punto de Entrada del Sistema -->
-    <script type="module" src="js/app.js?v=1.0.259"></script>
+    <script type="module" src="js/app.js?v=1.0.260"></script>
 
     <meta name="mobile-web-app-capable" content="yes">
 </body>

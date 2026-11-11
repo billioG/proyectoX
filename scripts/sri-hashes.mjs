@@ -1,7 +1,7 @@
 // Integridad (SRI, sha384) de las librerías que la página carga desde CDN.
 //   node scripts/sri-hashes.mjs            calcula los hashes desde las CDN y los imprime (JSON); redirige a scripts/sri-hashes.json para actualizarlos
 //   node scripts/sri-hashes.mjs --check    compara la CDN con scripts/sri-hashes.json y falla si una CDN cambió un archivo
-// Al subir la versión de una librería: cambia la URL aquí, regenera el JSON y copia el hash nuevo a index.html y js/model-viewer.js
+// Al subir la versión de una librería: cambia la URL aquí, regenera el JSON y copia el hash nuevo a js/boot.js (cargador), index.html y js/model-viewer.js
 // (tests-unit/sri.test.mjs falla si alguno de los tres no coincide).
 import crypto from 'node:crypto';
 import fs from 'node:fs';

@@ -14,7 +14,7 @@ import { openDb, getMeta, setMeta } from './db.js';
 import { runSync, loadConfig } from './sync.js';
 import { runUsbSync } from './usb-sync.js';
 import { startMdns } from './mdns.js';
-import { localizeIndexHtml } from './offline-assets.js';
+import { localizeIndexHtml, localizeBootScript } from './offline-assets.js';
 import { createProjectStore, ProjectError } from './projects.js';
 import { PROJECT_LIMITS } from './project-rules.js';
 import { buildStudentFeed } from './feed.js';
@@ -223,6 +223,12 @@ function serveScormEntry(res, rel, host, proto = 'http') {
 // index.html se entrega con las librerías de CDN cambiadas por las copias locales
 // (vendor/cdn/), para que la app arranque sin internet. Ver offline-assets.js.
 let indexCache = { mtimeMs: 0, html: '', gz: null };
+// js/boot.js lleva el cargador de librerías: se entrega con las copias locales de vendor/cdn/ igual que index.html.
+function serveBoot(req, res) {
+  const body = Buffer.from(localizeBootScript(fs.readFileSync(path.join(APP_DIR, 'js', 'boot.js'), 'utf8')), 'utf8');
+  res.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Content-Length': body.length, 'Cache-Control': 'no-cache' });
+  res.end(body);
+}
 function serveIndex(req, res) {
   const file = path.join(APP_DIR, 'index.html');
   const { mtimeMs } = fs.statSync(file);
@@ -938,6 +944,7 @@ const requestHandler = async (req, res) => {
     const rel = decodeURIComponent(url.pathname.replace(/^\/+/, '')) || 'index.html';
     if (!APP_ALLOWED.some(rx => rx.test(rel))) { res.writeHead(404); return res.end('No encontrado'); }
     if (rel === 'index.html') return serveIndex(req, res);
+    if (rel === 'js/boot.js') return serveBoot(req, res);
     serveFile(req, res, APP_DIR, rel);
   } catch (e) {
     console.error(e);
@@ -1022,7 +1029,7 @@ const connectivity = createConnectivity({ intervalMs: (config.connectivitySecond
 if (hasToken()) connectivity.start();
 
 // Sincronizar desde la plataforma en línea: cada 30 s (con internet) el servidor avisa a la nube con su estado y atiende el «Sincronizar ahora» que el docente tocó allá (remote-sync.js).
-const APP_VERSION = (() => { try { return /APP_VERSION = '([^']+)'/.exec(fs.readFileSync(path.join(APP_DIR, 'index.html'), 'utf8'))?.[1] ?? null; } catch { return null; } })();
+const APP_VERSION = (() => { try { return /APP_VERSION = '([^']+)'/.exec(fs.readFileSync(path.join(APP_DIR, 'js', 'version.js'), 'utf8'))?.[1] ?? null; } catch { return null; } })();
 // Actualizar desde la plataforma («Actualizar servidores»): git pull + dependencias si cambiaron, y reinicio (systemd lo levanta). Ver self-update.js.
 const selfUpdate = createSelfUpdate({ appDir: APP_DIR });
 let updating = false;

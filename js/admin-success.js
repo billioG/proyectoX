@@ -780,7 +780,7 @@ window.renderExecutiveReportView = function renderExecutiveReportView(container,
                           <h4 class="text-[0.6rem] font-black uppercase text-emerald-400 tracking-[0.2em] mb-4">Próxima Sesión</h4>
                           <div class="text-2xl font-black text-white mb-6 leading-tight uppercase tracking-tighter">${dynamicData.next}</div>
                           <div class="space-y-4">
-                               <button onclick="window.open('https://calendar.app.google/X8DMwgVgMLY2yKCx7', '_blank')" class="inline-block mx-auto bg-emerald-500 text-slate-950 px-8 py-3 rounded-xl text-[0.7rem] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg shadow-emerald-500/20 no-print">
+                               <button onclick="window.openCalendarBooking()" class="inline-block mx-auto bg-emerald-500 text-slate-950 px-8 py-3 rounded-xl text-[0.7rem] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg shadow-emerald-500/20 no-print">
                                     <i class="fas fa-calendar-check mr-2"></i> AGENDAR AHORA
                                </button>
                                

@@ -4,7 +4,9 @@ const { test, expect } = require('@playwright/test');
 
 test.use({ bypassCSP: false, serviceWorkers: 'block' });
 
-const isCsp = (text) => /Content Security Policy|Refused to (load|execute|connect|frame|apply|create)/i.test(text);
+// El aviso «Executing inline event handler violates...» es ESPERADO: la política ya no admite onclick="..." nativos y el navegador lo avisa una vez por elemento;
+// quien los ejecuta es js/safe-handlers.js (tests/csp-handlers.spec.js prueba que funcionan y que lo inyectado no corre).
+const isCsp = (text) => /Content Security Policy|Refused to (load|execute|connect|frame|apply|create)/i.test(text) && !/inline event handler/i.test(text);
 
 test('pantalla de entrada: ningún recurso de la app es bloqueado por la CSP', async ({ page }) => {
   const blocked = [];

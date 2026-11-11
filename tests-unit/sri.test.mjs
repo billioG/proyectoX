@@ -4,11 +4,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { localizeIndexHtml } from '../school-node/offline-assets.js';
+import { localizeIndexHtml, localizeBootScript } from '../school-node/offline-assets.js';
 
 const read = (p) => fs.readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 const TABLE = JSON.parse(read('scripts/sri-hashes.json'));
 const index = read('index.html');
+const boot = read('js/boot.js'); // el cargador de librerías (window.loadLib) y su tabla SRI viven aquí
 const viewer = read('js/model-viewer.js');
 const sw = read('service-worker.js');
 
@@ -31,13 +32,13 @@ test('index.html: cada hash que lleva es el de la tabla, y cada librería de CDN
     jszip: J + 'jszip@3.10.1/dist/jszip.min.js', driver: J + 'driver.js@1.11.0/dist/driver.js.iife.js', driverCss: J + 'driver.js@1.11.0/dist/driver.css',
     pdfjs: C + 'pdf.js/3.11.174/pdf.min.js', jsqr: J + 'jsqr@1.4.0/dist/jsQR.min.js', confetti: J + 'canvas-confetti@1.9.2/dist/confetti.browser.min.js',
   };
-  const loader = index.slice(index.indexOf('var SRI = {'), index.indexOf('var jobs = {}'));
+  const loader = boot.slice(boot.indexOf('var SRI = {'), boot.indexOf('var jobs = {}'));
   for (const [name, url] of Object.entries(byName)) {
     assert.ok(TABLE[url], `${url} está en la tabla`);
     assert.ok(loader.includes(`${name}: '${TABLE[url]}'`), `el cargador lleva el hash de ${name}`);
   }
-  assert.match(index, /SRI\[name\] && \/\^https:\/\.test\(L\.js\)/, 'solo lo que viene de https lleva integrity (el nodo usa copias locales)');
-  assert.match(index, /SRI\[name \+ 'Css'\] && \/\^https:\/\.test\(L\.css\)/);
+  assert.match(boot, /SRI\[name\] && \/\^https:\/\.test\(L\.js\)/, 'solo lo que viene de https lleva integrity (el nodo usa copias locales)');
+  assert.match(boot, /SRI\[name \+ 'Css'\] && \/\^https:\/\.test\(L\.css\)/);
 });
 
 test('model-viewer.js: los 5 archivos de three.js r128 llevan el hash de la tabla', () => {
@@ -50,7 +51,7 @@ test('model-viewer.js: los 5 archivos de three.js r128 llevan el hash de la tabl
 });
 
 test('ninguna librería de CDN usa una versión flotante (no se puede verificar la integridad de algo que cambia)', () => {
-  for (const [name, src] of [['index.html', index], ['js/model-viewer.js', viewer], ['service-worker.js', sw]]) {
+  for (const [name, src] of [['index.html', index], ['js/boot.js', boot], ['js/model-viewer.js', viewer], ['service-worker.js', sw]]) {
     const urls = src.match(/(?:cdn\.jsdelivr\.net\/npm\/|J \+ ')[^'"\s)]+/g) || [];
     for (const u of urls) {
       const spec = u.replace(/^.*npm\//, '').replace(/^J \+ '/, '');
@@ -61,7 +62,7 @@ test('ninguna librería de CDN usa una versión flotante (no se puede verificar 
 });
 
 test('nodo escolar: sus copias locales no llevan integrity ni crossorigin (no son byte a byte las de la CDN)', () => {
-  const local = localizeIndexHtml(index);
+  const local = localizeIndexHtml(index) + localizeBootScript(boot);
   assert.doesNotMatch(local, /integrity="/);
   assert.doesNotMatch(local, /crossorigin="anonymous"/);
   assert.match(local, /vendor\/cdn\/supabase-js-2\.118\.0\.js/);

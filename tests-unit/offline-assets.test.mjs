@@ -5,13 +5,15 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { localizeIndexHtml, CDN_REPLACEMENTS, CDN_NOT_VENDORED } from '../school-node/offline-assets.js';
+import { localizeIndexHtml, localizeBootScript, CDN_REPLACEMENTS, CDN_NOT_VENDORED } from '../school-node/offline-assets.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+// El cargador de librerías vive en js/boot.js (antes era un <script> en línea de index.html).
+const boot = fs.readFileSync(path.join(ROOT, 'js/boot.js'), 'utf8');
 
 test('cada reemplazo aparece en index.html (si se cambia una librería, esta prueba avisa)', () => {
-  for (const [from] of CDN_REPLACEMENTS) assert.ok(html.includes(from), `index.html ya no contiene: ${from}`);
+  for (const [from] of CDN_REPLACEMENTS) assert.ok((html + boot).includes(from), `index.html y js/boot.js ya no contienen: ${from}`);
 });
 
 test('cada archivo local al que apunta un reemplazo existe', () => {
@@ -22,7 +24,7 @@ test('cada archivo local al que apunta un reemplazo existe', () => {
 });
 
 test('el index.html del nodo ya no pide nada a un CDN (salvo PDF.js)', () => {
-  const out = localizeIndexHtml(html);
+  const out = localizeIndexHtml(html) + localizeBootScript(boot);
   const allowed = (u) => CDN_NOT_VENDORED.some(ok => u.includes(ok));
   // 1) Direcciones completas. Los dos prefijos J y C del cargador de librerías se revisan en el punto 2.
   const prefixes = ['https://cdn.jsdelivr.net/npm/', 'https://cdnjs.cloudflare.com/ajax/libs/'];
@@ -39,7 +41,8 @@ test('la CSP que entrega el nodo no menciona ningún CDN, pero conserva el resto
   const csp = /http-equiv="Content-Security-Policy" content="([^"]+)"/.exec(localizeIndexHtml(html))?.[1];
   assert.ok(csp, 'el nodo entrega index.html con CSP');
   assert.doesNotMatch(csp, /jsdelivr|cdnjs|googleapis|gstatic/);
-  assert.match(csp, /script-src 'self' 'unsafe-inline';/);
+  assert.match(csp, /script-src 'self';/);
+  assert.doesNotMatch(csp, /script-src[^;]*'unsafe-inline'/);
   assert.match(csp, /object-src 'none'/);
   assert.match(csp, /base-uri 'self'/);
 });

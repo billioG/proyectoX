@@ -40,3 +40,10 @@ export function localizeIndexHtml(html) {
   out = out.replace(CSP_META, (meta) => meta.replace(CDN_IN_CSP, ''));
   return out;
 }
+
+/** js/boot.js (cargador de librerías) lleva las mismas direcciones de CDN que antes estaban en index.html: el nodo lo entrega con las copias locales. */
+export function localizeBootScript(js) {
+  let out = js;
+  for (const [from, to] of CDN_REPLACEMENTS) out = out.split(from).join(to);
+  return out;
+}
