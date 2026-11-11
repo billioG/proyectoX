@@ -6,6 +6,8 @@ Al publicar una versión nueva, agrega una línea arriba de todo (ver CONTRIBUTI
 
 ## 2026-11-10
 
+- **Seguridad: bitácora de acciones sensibles.** Nueva tabla `security_audit_log` (solo agregar, solo la lee un administrador, sin secretos ni nombres de menores) que registra quién eliminó alumnos o colegios, creó docentes, cambió roles, contraseñas de clase, enlaces del portal de padres, servidores escolares, y quién vio o cifró contraseñas de alumnos. Migración `security-audit-log.sql`, módulo `_shared/audit.ts` y 6 Edge Functions que registran. Si falta la migración, nada se rompe. Sin cambios en la app ni versión nueva (la pantalla «Bitácora» va aparte).
+
 - **`PENDIENTES.md` solo con lo técnico.** La hoja de ruta de gestión (formalización, postulaciones, equipo) y las tareas fiscales salen del repositorio público; quedan las guías técnicas de `docs/`. Además se anota el límite de frecuencia de las funciones `notify-*` como aplicado. Solo documentación.
 
 - **Seguridad: límite de frecuencia en las funciones de notificaciones.** `notify-duel`, `notify-announcement`, `notify-rock-pending`, `notify-reaction` y `notify-guardians` ya no pueden usarse en bucle para llenar de avisos el teléfono de otra persona (ni para gastar SMS): tope por persona y, donde hay un recurso, por reto o por aviso. Nueva migración `rate-limits.sql` (contador atómico) y módulo `_shared/rate-limit.ts`. Si falta la migración las funciones siguen funcionando. Pasos: `docs/PASOS_MANUALES.md`. Sin cambios en la app ni versión nueva.

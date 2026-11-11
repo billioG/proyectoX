@@ -177,6 +177,7 @@ de producción.
 | 131 | 2026-11-08 | `push-sub-role-staff.sql` | La restricción `push_subscriptions_role_check` ahora acepta también `admin` y `coordinador` (la función ya los guardaba): un administrador no podía activar las notificaciones (error 400, código 23514) |
 | 132 | 2026-11-10 | `duel-one-open-pair.sql` | Candado: un solo reto abierto (pending/active) por pareja de compañeros y por juego (índice único parcial en las 5 tablas de retos). Antes cancela los «pending» repetidos que ya existan (conserva el más antiguo; no borra nada) |
 | 133 | 2026-11-10 | `rate-limits.sql` | Límite de frecuencia por usuario para las funciones `notify-*`: tabla `rate_limits` (sin políticas) y `rate_limit_take(usuario, clave, tope, segundos)` atómica (solo `service_role`). Correrla **antes** de redesplegar `notify-duel`, `notify-announcement`, `notify-rock-pending`, `notify-reaction` y `notify-guardians` |
+| 134 | 2026-11-10 | `security-audit-log.sql` | Bitácora de seguridad: `security_audit_log` (solo agregar, solo la lee un administrador), `log_security_event` (solo `service_role`), triggers de auditoría (docentes, alumnos eliminados, colegios, servidores escolares, enlaces del portal de padres, contraseñas de clase), `get_security_audit_log` para administradores y registro en `admin_reset_user_password` / `reset_password_via_admin`. Correrla **antes** de redesplegar las 6 Edge Functions que registran |
 
 ### Migraciones sin número en la tabla de arriba
 

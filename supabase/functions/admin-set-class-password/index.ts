@@ -6,6 +6,7 @@
 // (apply_to_whole_school: true, sin necesidad de mandar grade/section).
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.118.0';
+import { logAudit } from '../_shared/audit.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
@@ -132,6 +133,7 @@ Deno.serve(async (req) => {
         classesApplied.push(`${combo.grade} ${combo.section}`);
       }
 
+      await logAudit(admin, { actor: caller.id, action: 'class_password_changed', targetType: 'school', targetId: school_code, school: school_code, details: { classes: classesApplied.length, whole_school: true, protegida: requires_password, students_updated: totalUpdated }, source: 'edge:admin-set-class-password' });
       return json({ ok: true, updated: totalUpdated, errors: allErrors, classes: classesApplied, password: requires_password ? password : null });
     }
 
@@ -140,6 +142,7 @@ Deno.serve(async (req) => {
     if (!grade || !section) return json({ error: 'grade y section son requeridos (o manda apply_to_whole_school: true)' }, 400);
 
     const { updated, errors } = await applyOneClass(admin, caller.id, school_code, grade, section, requires_password, password);
+    await logAudit(admin, { actor: caller.id, action: 'class_password_changed', targetType: 'class', targetId: `${school_code}|${grade}|${section}`, school: school_code, details: { grade, section, protegida: requires_password, students_updated: updated }, source: 'edge:admin-set-class-password' });
     return json({ ok: true, updated, errors, password: requires_password ? password : null });
 
   } catch (e) {

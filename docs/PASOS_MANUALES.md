@@ -87,6 +87,13 @@ Correr `duel-one-open-pair.sql` en el SQL Editor **después** de publicar la v1.
 3. Topes por defecto (por persona): retos 60/hora y 4 por reto y tipo cada 10 min; avisos 30/hora y 3 por aviso/hora; tareas de docentes 20/hora; reacciones 120/hora; envíos a familias 60/hora. Se cambian sin redesplegar con los secretos `RATE_NOTIFY_DUEL_PER_HOUR`, `RATE_NOTIFY_DUEL_ITEM_PER_10MIN`, `RATE_NOTIFY_ANNOUNCEMENT_PER_HOUR`, `RATE_NOTIFY_ANNOUNCEMENT_ITEM_PER_HOUR`, `RATE_NOTIFY_ROCK_PER_HOUR`, `RATE_NOTIFY_REACTION_PER_HOUR` y `RATE_NOTIFY_GUARDIANS_PER_HOUR`.
 4. Si se pasa el tope, la función responde 429 («Demasiados avisos seguidos…») y no envía nada. Si la migración aún no está, las funciones dejan pasar y lo avisan en sus registros; `notify-guardians` (SMS, cuesta dinero) responde 503 si la base no puede contar.
 
+## 3a-ter. Bitácora de seguridad (10/11/2026)
+
+1. Correr `migrations/security-audit-log.sql` en el SQL Editor (al final muestra `triggers_auditoria = 6` y `triggers_solo_agregar = 2`).
+2. **Después** redesplegar las 6 Edge Functions que registran quién pidió cada acción: `admin-create-teacher`, `admin-delete-students`, `admin-force-delete-school`, `admin-set-class-password`, `admin-bulk-import-students` y `staff-student-passwords` (todas **Verify JWT ON**). Con la CLI: `npx supabase functions deploy <nombre> --use-api --yes --project-ref vyptkxudkmlpyfosppzh`. Si no se redesplegan, siguen funcionando igual pero sin registrar.
+3. Ver la bitácora: en la pantalla «Bitácora» de la app (solo administrador) o, mientras esa pantalla no exista, en el SQL Editor: `select created_at, actor_role, action, target_type, target_id, school_code, details, source from public.security_audit_log order by id desc limit 100;`
+4. La bitácora **no se puede modificar ni borrar** (ni siquiera con `service_role`); vaciarla exigiría quitar a propósito los triggers `trg_security_audit_*`.
+
 ## 3b. Lección: crea las Edge Functions con la CLI, no desde el editor del panel
 
 El editor del panel le pone un nombre aleatorio a una función nueva (`guardian-portal` quedó como `bright-responder` y `padres.html` recibía 404). Para una función **nueva**, usa `npx supabase functions deploy <nombre> --use-api --project-ref <ref>` (con `--no-verify-jwt` en las de JWT OFF). Para una que ya existe, el panel sirve para pegar código. Comprobación rápida de que todas responden por su nombre: llamar a `/functions/v1/<nombre>` y ver que no dé 404.

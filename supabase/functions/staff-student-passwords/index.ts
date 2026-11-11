@@ -10,6 +10,7 @@
 //
 // Secretos: PASSWORD_VAULT_KEY (32 bytes en base64:  openssl rand -base64 32). SUPABASE_URL / SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY ya existen.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.118.0';
+import { logAudit } from '../_shared/audit.ts';
 import { errorResponse, internalError, jsonResponse } from '../_shared/http.ts';
 import { decryptPassword, encryptPassword, importKey, VaultError } from '../_shared/vault.ts';
 
@@ -68,6 +69,7 @@ Deno.serve(async (req) => {
       }
       // Registro de auditoría en los logs de la función: quién pidió ver contraseñas y de cuántos alumnos (nunca las contraseñas).
       console.log(`staff-student-passwords: reveal user=${user.id} pedidos=${ids.length} entregados=${Object.values(passwords).filter((p) => p !== null).length}`);
+      await logAudit(createClient(SUPABASE_URL, SUPABASE_SERVICE), { actor: user.id, action: 'student_passwords_revealed', targetType: 'student', details: { requested: ids.length, delivered: Object.values(passwords).filter((p) => p !== null).length }, source: 'edge:staff-student-passwords' });
       return jsonResponse({ passwords }, 200, CORS);
     }
 
@@ -88,6 +90,7 @@ Deno.serve(async (req) => {
       const { count } = await admin.from('students').select('id', { count: 'exact', head: true })
         .is('password_enc', null).not('password_generated', 'is', null).neq('password_generated', '');
       console.log(`staff-student-passwords: backfill user=${user.id} cifradas=${encrypted} pendientes=${count ?? '?'}`);
+      await logAudit(admin, { actor: user.id, action: 'student_passwords_backfill', targetType: 'student', details: { encrypted, pending: count ?? 0 }, source: 'edge:staff-student-passwords' });
       return jsonResponse({ encrypted, pending: count ?? 0 }, 200, CORS);
     }
 

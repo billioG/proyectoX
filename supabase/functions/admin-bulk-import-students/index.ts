@@ -6,6 +6,7 @@
 // ese límite, y corre server-side gateada por is_admin() real.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.118.0';
+import { logAudit } from '../_shared/audit.ts';
 import { encryptPassword, importKey } from '../_shared/vault.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -229,6 +230,8 @@ Deno.serve(async (req) => {
 
     // Clases a las que se les generó contraseña recién: el cliente avisa
     // dónde verla/cambiarla.
+    const createdCount = results.filter((r: any) => r.status === 'created').length;
+    await logAudit(admin, { actor: caller.id, action: 'students_imported', targetType: 'student', details: { created: createdCount, errors: results.length - createdCount, classes_with_new_password: classesWithNewPassword.size }, source: 'edge:admin-bulk-import-students' });
     return json({ ok: true, results, classes_new_password: [...classesWithNewPassword] });
 
   } catch (e) {
