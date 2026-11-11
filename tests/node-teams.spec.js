@@ -38,7 +38,7 @@ test('el docente maneja los equipos de su clase con la pantalla de siempre, sin 
   page.on('response', r => { if (r.url().includes('/rest/v1/') && r.status() >= 400 && /group/.test(r.url())) failedGroups.push(`${r.status()} ${decodeURIComponent(r.url())}`); });
   page.on('dialog', d => d.accept()); // confirmar «disolver equipo»
   await page.route(/^https?:\/\/(?!localhost|127\.0\.0\.1)/, r => r.abort('failed'));
-  await page.addInitScript(() => { try { localStorage.setItem('PX_TOUR_DONE', '1'); } catch { /* sin almacenamiento */ } });
+  await page.addInitScript(() => { try { localStorage.setItem('PX_TOUR_DONE', '1'); localStorage.setItem('PX_NO_CHEST', '1'); } catch { /* sin almacenamiento */ } });
   await page.goto(node.base);
   await page.waitForSelector('#login-username');
   await page.fill('#login-username', 'marta@escuela.com');

@@ -34,7 +34,7 @@ test('la barra muestra el avance cuando el servidor sincroniza solo al detectar 
   test.setTimeout(90_000);
   let current = { ...base, syncing: false, last_sync_at: '2026-11-05T09:00:00Z' };
   await page.route('**/api/node/status', (route) => route.fulfill({ contentType: 'application/json', body: JSON.stringify(current) }));
-  await page.addInitScript(() => { try { localStorage.setItem('PX_TOUR_DONE', '1'); localStorage.setItem('onboarding_seen_t1', 'true'); localStorage.setItem('onboarding_seen_s1', 'true'); } catch { /* sin almacenamiento */ } });
+  await page.addInitScript(() => { try { localStorage.setItem('PX_TOUR_DONE', '1'); localStorage.setItem('PX_NO_CHEST', '1'); localStorage.setItem('onboarding_seen_t1', 'true'); localStorage.setItem('onboarding_seen_s1', 'true'); } catch { /* sin almacenamiento */ } });
   await page.goto(node.base);
   await page.waitForSelector('#login-username');
   const chip = page.locator('#node-sync-chip');
@@ -73,7 +73,7 @@ test('la barra de sincronización no la ve una estudiante, y el menú sigue func
   test.skip(!node, skipReason);
   test.setTimeout(90_000);
   await page.route('**/api/node/status', (route) => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ ...base, syncing: false, last_sync_at: '2026-11-05T09:00:00Z' }) }));
-  await page.addInitScript(() => { try { localStorage.setItem('PX_TOUR_DONE', '1'); localStorage.setItem('onboarding_seen_s1', 'true'); localStorage.setItem('gamecenter_onboarding_seen_s1', 'true'); } catch { /* sin almacenamiento */ } });
+  await page.addInitScript(() => { try { localStorage.setItem('PX_TOUR_DONE', '1'); localStorage.setItem('PX_NO_CHEST', '1'); localStorage.setItem('onboarding_seen_s1', 'true'); localStorage.setItem('gamecenter_onboarding_seen_s1', 'true'); } catch { /* sin almacenamiento */ } });
   await page.goto(node.base);
   await page.waitForSelector('#login-username');
   await page.fill('#login-username', 'ana1');

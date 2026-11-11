@@ -27,7 +27,7 @@ test.afterAll(async () => { if (node) await node.stop(); });
 test('el encabezado muestra el nombre y el logo del colegio, y el crédito de Yo Aprendo siempre está', async ({ page }) => {
   test.skip(!node, skipReason);
   test.setTimeout(90_000);
-  await page.addInitScript(() => { try { localStorage.setItem('PX_TOUR_DONE', '1'); localStorage.setItem('onboarding_seen_s1', 'true'); localStorage.setItem('gamecenter_onboarding_seen_s1', 'true'); } catch { /* sin almacenamiento */ } });
+  await page.addInitScript(() => { try { localStorage.setItem('PX_TOUR_DONE', '1'); localStorage.setItem('PX_NO_CHEST', '1'); localStorage.setItem('onboarding_seen_s1', 'true'); localStorage.setItem('gamecenter_onboarding_seen_s1', 'true'); } catch { /* sin almacenamiento */ } });
   await page.goto(node.base);
   await page.waitForSelector('#login-username');
   // Antes de entrar: en el nodo de un solo colegio ya se ve su nombre, su logo y su color; el crédito de Yo Aprendo está siempre.

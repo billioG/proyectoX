@@ -30,7 +30,7 @@ test('la estudiante cambia su foto sin internet con el modal de la app y la ve a
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
   await page.route(/^https?:\/\/(?!localhost|127\.0\.0\.1)/, r => r.abort('failed'));
-  await page.addInitScript(() => { try { localStorage.setItem('PX_TOUR_DONE', '1'); localStorage.setItem('onboarding_seen_s1', 'true'); } catch { /* sin almacenamiento */ } });
+  await page.addInitScript(() => { try { localStorage.setItem('PX_TOUR_DONE', '1'); localStorage.setItem('PX_NO_CHEST', '1'); localStorage.setItem('onboarding_seen_s1', 'true'); } catch { /* sin almacenamiento */ } });
   await page.goto(node.base);
   await page.waitForSelector('#login-username');
   await page.fill('#login-username', 'ana1');

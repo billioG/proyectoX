@@ -561,6 +561,9 @@ window.refreshMyWalletSoon = function refreshMyWalletSoon() {
 };
 
 window.checkDailyChest = function checkDailyChest() {
+  // Opción de depuración/pruebas (como PX_DEBUG): localStorage.PX_NO_CHEST = '1' no muestra el cofre diario solo; las pruebas de navegador lo usan
+  // porque el cofre aparece 1,5-2 s después de entrar y tapaba los botones según la carga de la máquina.
+  try { if (localStorage.getItem('PX_NO_CHEST') === '1') return; } catch { /* sin almacenamiento */ }
   // Nodo escolar (sin internet): la disponibilidad del cofre la dice el propio nodo (/api/xp); no hay sesión de Supabase.
   if (window.isNodeSession) {
     window.nodeApi('/api/xp').then((x) => {

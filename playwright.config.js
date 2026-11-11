@@ -5,7 +5,7 @@ const { defineConfig, devices } = require('@playwright/test');
 
 module.exports = defineConfig({
   testDir: 'tests',
-  timeout: 30_000,
+  timeout: 60_000, // las pruebas con servidor escolar compiten por CPU cuando corren en paralelo: 30 s se quedaba corto al azar
   retries: process.env.CI ? 1 : 0,
   use: {
     baseURL: 'http://localhost:8080',

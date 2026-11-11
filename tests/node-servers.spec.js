@@ -27,7 +27,7 @@ test.beforeAll(async () => {
 test.afterAll(async () => { if (node) await node.stop(); });
 
 async function openAsTeacher(page) {
-  await page.addInitScript(() => { try { localStorage.setItem('PX_TOUR_DONE', '1'); localStorage.setItem('onboarding_seen_t1', 'true'); } catch { /* sin almacenamiento */ } });
+  await page.addInitScript(() => { try { localStorage.setItem('PX_TOUR_DONE', '1'); localStorage.setItem('PX_NO_CHEST', '1'); localStorage.setItem('onboarding_seen_t1', 'true'); } catch { /* sin almacenamiento */ } });
   await page.goto(node.base);
   await page.waitForSelector('#login-username');
   await page.fill('#login-username', 'marta@escuela.com');
