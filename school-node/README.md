@@ -290,6 +290,10 @@ Un nodo con **Windows** se actualiza con `actualizar-windows.cmd` (no necesita S
 8. **Imprime el cartel** (`http://IP-DEL-NODO/cartel`) desde esa red: si cambias de router, la dirección cambia y hay que
    imprimirlo otra vez.
 
+## Kit de router + Raspberry (el docente solo enchufa)
+
+Desde v1.0.265 el nodo trae un servidor de nombres (`dns.js`): si el router del kit entrega la IP de la Raspberry como DNS, `quetzal.local` abre en **cualquier** dispositivo (también Android 11 o anterior, que no entiende mDNS) y, sin internet, el nodo contesta las comprobaciones de «¿hay internet?» de los celulares. El router se prepara una sola vez: **`docs/NODO_KIT_ROUTER.md`**. Sin preparar el router no cambia nada. Con `--hotspot`, la red propia ya resuelve `quetzal.local`.
+
 ## Conectar la Raspberry a Wi-Fi
 
 **Lo más fácil (desde v1.0.206): la página `/wifi`.** En el servidor abre `http://IP-DEL-SERVIDOR/wifi` (o toca **Wi-Fi** en la barra de estado), entra con tu
@@ -363,6 +367,7 @@ detenido o cambia `"hostName"` en uno de los `config.json`.
 | Al comentar sale «No tienes permiso, avisa al administrador» | Versiones anteriores a v1.0.198 mostraban ese texto. Los comentarios y notas **no existen sin internet**. | Actualiza: ahora dice «Esto no está disponible sin internet». Comenta cuando el nodo tenga internet. Lo mismo con subir proyecto y reaccionar, que de momento solo funcionan en `/?modo=pin`. |
 | La **foto de perfil** no se ve | Las fotos se descargan en la sincronización; sin ella se ve el ícono. | Sincroniza **con internet** (v1.0.198 o posterior) y recarga la app. |
 | El **docente** entra con «credenciales inválidas» | Escribió una contraseña distinta a la de su cuenta, o el nodo todavía no recibió su huella. | Debe usar **su correo y la contraseña con que entra a Quetzal en línea**. En la nube debe estar corrida `migrations/teacher-node-password.sql` y desplegado `node-sync` completo. Un docente que no esté **asignado a una clase de esa escuela** no entra. Sincroniza con internet y revisa en la Raspberry: `cd ~/quetzal/school-node && node -e "const D=require('better-sqlite3');const db=new D('data/node.db',{readonly:true});console.log('con contraseña:',db.prepare('select count(*) n from rest_teacher_logins where bcrypt is not null').get().n,'| docentes:',db.prepare('select count(*) n from rest_rows where tbl=?').get('teachers').n)"`. Si «con contraseña» es 0, la nube no mandó las huellas (falta la migración o el despliegue); si «docentes» es 0, ese docente no tiene clases asignadas en esa escuela. |
+| `quetzal.local` no abre en tablets con Android viejo (sí con la IP) | Android 11 o anterior no entiende mDNS: le pregunta el nombre al DNS que da el router. | Prepara el router del kit para que entregue la IP de la Raspberry como DNS (`docs/NODO_KIT_ROUTER.md`). Se comprueba en `/api/node/status`: `dns.clients` mayor que 0. |
 | Fecha u hora incorrecta tras un apagón | La Raspberry no tiene reloj propio y sin internet puede desfasarse. | Cuando vuelva el internet se corrige sola. Mientras tanto afecta el día del cofre diario y la fecha de los avisos. |
 
 ## Requisitos

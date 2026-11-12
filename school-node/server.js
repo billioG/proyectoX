@@ -14,6 +14,7 @@ import { openDb, getMeta, setMeta } from './db.js';
 import { runSync, loadConfig } from './sync.js';
 import { runUsbSync } from './usb-sync.js';
 import { startMdns } from './mdns.js';
+import { startDns, probeResponse } from './dns.js';
 import { localizeIndexHtml, localizeBootScript } from './offline-assets.js';
 import { createProjectStore, ProjectError } from './projects.js';
 import { PROJECT_LIMITS } from './project-rules.js';
@@ -479,6 +480,8 @@ const api = {
     // Si el servidor llega a la nube (revisado cada 15 s) y, si no, por qué; y las direcciones por las que se abre ahora (cambian al cambiar de red).
     internet: { online: connectivity.state.online, detail: connectivity.state.detail, checked_at: connectivity.state.checked_at },
     urls: lanUrls(),
+    // Servidor de nombres del kit (dns.js): en qué IP escucha y cuántos dispositivos le han preguntado (si es 0, el router no entrega esta IP como DNS).
+    dns: dns ? dns.state : null,
     sync_error: lastSyncError ? lastSyncError.message : null,
     pending: {
       completions: db.prepare('SELECT COUNT(*) n FROM completions WHERE dirty = 1').get().n,
@@ -970,6 +973,9 @@ const server = http.createServer((req, res) => {
   if (choice) {
     res.setHeader('Set-Cookie', choice === '1' ? 'px_http=1; Path=/; Max-Age=31536000; SameSite=Lax' : 'px_http=; Path=/; Max-Age=0; SameSite=Lax');
   }
+  // Sin internet, las comprobaciones de «¿esta red tiene internet?» de los dispositivos llegan aquí (dns.js): se les contesta lo que esperan.
+  const probe = dns && connectivity.state.online !== true ? probeResponse(req.headers.host) : null;
+  if (probe) { res.writeHead(probe.status, probe.headers); return res.end(probe.body); }
   const to = httpsRedirectTarget(req, choice || null);
   if (to) { res.writeHead(302, { Location: to, 'Cache-Control': 'no-store' }); return res.end(); }
   return requestHandler(req, res);
@@ -1027,6 +1033,10 @@ setInterval(() => trySync('timer'), (config.syncEveryMinutes || 10) * 60 * 1000)
 // Vigilante de conexión: cada 15 s mira si el servidor llega a la nube; en cuanto la tiene (se conectó el cable al router con internet, o la Wi-Fi) sincroniza solo, sin que el docente pulse nada.
 const connectivity = createConnectivity({ intervalMs: (config.connectivitySeconds || 15) * 1000, minGapMs: (config.connectivityMinGapSeconds || 60) * 1000, check: internetCheck, onOnline: (why) => { if (hasToken()) { lastSyncError = null; return trySync(why); } } });
 if (hasToken()) connectivity.start();
+// Servidor de nombres para el kit de router + Raspberry (dns.js). Por defecto solo en una instalación real de Linux (puerto 80); "dns": true/false en config.json lo fuerza.
+const dns = (config.dns ?? (process.platform === 'linux' && (config.port || 8080) === 80))
+  ? startDns({ hostName: config.hostName ?? (process.platform === 'linux' ? os.hostname() : undefined), port: config.dnsPort || 53, upstream: config.dnsUpstream || [], isOffline: () => connectivity.state.online === false })
+  : null;
 
 // Sincronizar desde la plataforma en línea: cada 30 s (con internet) el servidor avisa a la nube con su estado y atiende el «Sincronizar ahora» que el docente tocó allá (remote-sync.js).
 const APP_VERSION = (() => { try { return /APP_VERSION = '([^']+)'/.exec(fs.readFileSync(path.join(APP_DIR, 'js', 'version.js'), 'utf8'))?.[1] ?? null; } catch { return null; } })();

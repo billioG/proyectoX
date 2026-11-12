@@ -47,6 +47,8 @@ Datos del colegio: nombre _______________  código _______  fecha _______  quié
 
 ## D. Red
 
+- [ ] **Router del kit preparado** (IP reservada **y** DNS apuntando a la Raspberry): `docs/NODO_KIT_ROUTER.md`. *Se comprueba:*
+      `http://quetzal.local/api/node/status` muestra `dns.clients` mayor que 0 y `quetzal.local` abre en una tablet con Android viejo.
 - [ ] **IP de la Raspberry reservada en el router** (reserva DHCP por dirección MAC). *Se comprueba:* tras reiniciar el
       router, la Raspberry conserva la IP.
 - [ ] `http://quetzal.local` abre desde una tablet Android y desde un celular; si alguna no abre, anotar la IP
