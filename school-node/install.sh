@@ -243,6 +243,10 @@ if [ "$HOTSPOT" -eq 1 ]; then
   say "Red Wi-Fi propia: Quetzal-Escuela"
   WIFI_PASS="$(LC_ALL=C tr -dc 'a-z0-9' < /dev/urandom | head -c 10 || true)"
   sudo nmcli connection delete quetzal-hotspot >/dev/null 2>&1 || true
+  # En la red propia el DNS es el de NetworkManager: se le enseña el nombre, para los Android que no entienden mDNS.
+  sudo mkdir -p /etc/NetworkManager/dnsmasq-shared.d
+  printf 'address=/quetzal.local/10.42.0.1
+' | sudo tee /etc/NetworkManager/dnsmasq-shared.d/quetzal.conf >/dev/null
   sudo nmcli connection add type wifi ifname wlan0 con-name quetzal-hotspot autoconnect yes ssid Quetzal-Escuela \
     mode ap ipv4.method shared wifi-sec.key-mgmt wpa-psk wifi-sec.psk "$WIFI_PASS"
   sudo nmcli connection up quetzal-hotspot
@@ -308,7 +312,7 @@ if [ "$AUTO" -eq 1 ]; then
 cat <<EOF
 
   Falta hacer a mano (el instalador no puede):
-    1. Reservar la IP de la Raspberry en el router (reserva DHCP).
+    1. Preparar el router del kit una sola vez (IP reservada y DNS apuntando a la Raspberry): docs/NODO_KIT_ROUTER.md.
     2. Imprimir el cartel con el QR: http://quetzal.local/cartel
     3. Comprobar en Quetzal que TODAS las clases tengan contraseña de clase.
     4. Cada docente crea, con internet, su PIN de 6 números en su Perfil.
