@@ -6,6 +6,7 @@ Al publicar una versión nueva, agrega una línea arriba de todo (ver CONTRIBUTI
 
 ## 2026-11-12
 
+- **Arreglo urgente: el pase de temporada, los retos y otros botones no respondían (v1.0.264).** Desde v1.0.260 (CSP sin `unsafe-inline`) la lista de funciones permitidas para los `onclick` solo incluía los que estaban escritos directamente en el HTML; los botones cuyo texto se arma en código (`onclick: 'window.openSeasonPass()'`, los modos de reto `GameArena.chooseMode(...)`, el guardarropa y el Quetzadex, y los accesos de «Tu semana») quedaron fuera y no hacían nada. La auditoría (`scripts/handlers-audit.mjs`) ahora también lee esas propiedades, **rechaza** los manejadores armados en ejecución que no puede auditar (en vez de dejarlos pasar como `0`) y admite pistas `// handlers-audit:` donde el nombre se elige con una variable. Pruebas nuevas en `tests-unit/csp-handlers.test.mjs` y `tests/csp-handlers.spec.js`.
 - **Guía de Cloudflare, verificador de cabeceras y avisos de terceros al día (sin cambio de versión).** Nuevo `docs/CLOUDFLARE_PASO_A_PASO.md` (con el DNS real de `yoaprendo.online`) y `scripts/verificar-cabeceras.mjs`. Se corrigió la `Permissions-Policy` propuesta: `geolocation=(self)`, porque reportes y bonos de visita usan la ubicación. `vendor/h5p-standalone/` identificado como 3.7.0 (MIT) con su `LICENSE` copiada; mascotas confirmadas como obra propia.
 
 ## 2026-11-11

@@ -94,3 +94,23 @@ test('los dos botones que llaman a una pantalla perezosa existen y su función g
   const names = await page.evaluate(() => ['lazyOpenNodeUsbSync', 'lazyOpenImpactDashboard', 'lazyOpenQuetzadexAdmin', 'lazyOpenNodeAdmin', 'openCalendarBooking'].map((n) => typeof window[n]));
   expect(names).toEqual(['function', 'function', 'function', 'function', 'function']);
 });
+
+test('tarjetas con el texto del onclick armado por código (pase de temporada, modos de reto) responden con la CSP activa', async ({ page }) => {
+  const { handlerErrors } = await open(page);
+  const r = await page.evaluate(async () => {
+    await import('/js/game-arena.js');
+    window.__hits = [];
+    window.openSeasonPass = () => window.__hits.push('pase');
+    window.GameArena.chooseMode = (m) => window.__hits.push('modo:' + m);
+    const box = document.createElement('div');
+    box.id = 'hero-box';
+    box.innerHTML = window.GameArena.heroHtml({ title: 'Pase', subtitle: 's', icon: 'fa-star', tone: 'a', onclick: 'window.openSeasonPass()' })
+      + window.GameArena.heroHtml({ title: 'Reto', subtitle: 's', icon: 'fa-bolt', tone: 'b', onclick: "window.GameArena.chooseMode('quiz')" });
+    document.body.appendChild(box);
+    const heroes = [...box.querySelectorAll('.ga-hero')];
+    heroes.forEach((h) => h.click());
+    return window.__hits;
+  });
+  expect(r).toEqual(['pase', 'modo:quiz']);
+  expect(handlerErrors, handlerErrors.join(' | ')).toEqual([]);
+});

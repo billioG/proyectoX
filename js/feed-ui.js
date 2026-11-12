@@ -278,6 +278,7 @@ window.renderTeacherWeekCard = async function renderTeacherWeekCard() {
 
   const pending = items.filter(i => i.tone === 'amber').length;
   const toneCls = { amber: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300', green: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300' };
+  // handlers-audit: nav('attendance') ;; nav('exams') ;; nav('progress') -- (los «go» de arriba; el botón de cada tarjeta los escribe en onclick)
   box.innerHTML = `
     <div class="glass-card p-5 sm:p-6 mb-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
       <div class="flex items-center justify-between gap-3 mb-4">

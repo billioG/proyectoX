@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
-import { audit, allowlistSource, extractHandlers, materialize } from '../scripts/handlers-audit.mjs';
+import { audit, allowlistSource, extractHandlers, extractPropHandlers, dynamicProblem, materialize } from '../scripts/handlers-audit.mjs';
 
 const require = createRequire(import.meta.url);
 const SH = require('../js/safe-handlers.js');
@@ -100,4 +100,21 @@ test('el nodo escolar entrega js/boot.js sin direcciones de CDN y su CSP sigue s
   const { localizeBootScript, localizeIndexHtml } = await import('../school-node/offline-assets.js');
   assert.doesNotMatch(localizeBootScript(read('js/boot.js')), /J \+ '(jszip|driver|jsqr|canvas-confetti)/);
   assert.doesNotMatch(/script-src[^;]*/.exec(localizeIndexHtml(html))[0], /unsafe-inline/);
+});
+
+test('manejadores guardados como texto (propiedades onclick y go) también entran a la lista: pases de temporada, modos de reto, mascotas', () => {
+  const allow = read('js/handler-allowlist.js');
+  for (const n of ['openSeasonPass', 'openWardrobe', 'openQuetzadex', 'GameArena.chooseMode', 'nav', 'GameArena.quickChallenge', 'GameArena.openChallengeFor']) {
+    assert.ok(allow.includes(`'${n}'`), `falta ${n} en js/handler-allowlist.js: el botón no haría nada con la CSP activa`);
+  }
+  const props = extractPropHandlers("const a = { onclick: 'window.openSeasonPass()', go: \"nav('exams')\", x: 1 };");
+  assert.deepEqual(props.map((p) => p.raw), ['window.openSeasonPass()', "nav('exams')"]);
+});
+
+test('un manejador armado en ejecución (el nombre de la función o todo el texto) se rechaza en la auditoría: con la lista no se puede saber qué llamará', () => {
+  assert.match(dynamicProblem('§'), /entero en ejecución/);
+  assert.match(dynamicProblem("window.§('a')"), /nombre de función/);
+  assert.match(dynamicProblem('window.fn§()'), /nombre de función/);
+  assert.equal(dynamicProblem("window.respondDuel('§', true)"), '', 'un dato entre comillas está bien');
+  assert.equal(dynamicProblem('window.openX(§, §)'), '', 'un número o valor como argumento está bien');
 });

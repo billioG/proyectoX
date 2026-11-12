@@ -69,6 +69,15 @@ export function extractHandlers(src) {
   return out;
 }
 
+/** Manejadores guardados como texto en una propiedad (onclick: 'window.fn()') que después se escribe en un atributo (p. ej. GameArena.heroHtml). */
+export function extractPropHandlers(src) {
+  const out = [];
+  const re = /(?:^|[\s{,])(?:on([a-z]+)|(go))\s*:\s*(["'])((?:\\.|(?!\3)[^\\\n])*)\3/g;
+  let m;
+  while ((m = re.exec(src))) out.push({ ev: m[1] || 'click', raw: m[4], line: src.slice(0, m.index).split(String.fromCharCode(10)).length });
+  return out;
+}
+
 /** Lo que el navegador le entregaría al manejador: entidades HTML decodificadas y cada «§» (valor que llega en ejecución) sustituido por un literal. */
 export function materialize(raw) {
   const decoded = raw.replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
@@ -82,15 +91,40 @@ export function materialize(raw) {
   return out.trim();
 }
 
+/** Un «§» (valor que llega en ejecución) donde va el CÓDIGO del manejador (no un dato entre comillas) no se puede auditar: se rechaza. */
+export function dynamicProblem(raw) {
+  let quote = null;
+  for (let i = 0; i < raw.length; i++) {
+    const c = raw[i];
+    if (quote) { if (c === '\\') { i++; continue; } if (c === quote) quote = null; continue; }
+    if (c === '"' || c === "'") { quote = c; continue; }
+    if (c !== '§') continue;
+    const before = raw.slice(0, i).trim(), after = raw[i + 1] || '';
+    if (!before) return 'el manejador se arma entero en ejecución (no se puede auditar): usar un texto fijo o una función con nombre';
+    if (/[\w.$]$/.test(raw.slice(0, i)) || /[\w.$]/.test(after) && after !== '' && !/\s/.test(after) && after !== '(' ) return 'un nombre de función se arma en ejecución (no se puede auditar)';
+    if (after === '(') return 'un nombre de función se arma en ejecución (no se puede auditar)';
+  }
+  return '';
+}
+
 export function audit() {
   const handlers = [], failures = [];
   const calls = new Set(), reads = new Set(), methods = new Set();
   for (const f of sourceFiles()) {
     const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
-    for (const h of extractHandlers(src)) {
+    const lines = src.split(/\r?\n/);
+    // Pistas: «// handlers-audit: código ;; código -- explicación» declara los manejadores que un trozo de código arma en ejecución (nombres de función que se
+    // eligen con una variable). Se auditan igual que los demás. Sin código después de los dos puntos solo avisa que las fuentes ya están auditadas aparte.
+    const hints = [];
+    lines.forEach((l, i) => { const m = /handlers-audit:\s*(.*?)(?:\s+--\s.*)?$/.exec(l); if (m) m[1].split(';;').map((x) => x.trim()).filter(Boolean).forEach((code) => hints.push({ ev: 'click', raw: code, line: i + 1, hint: true })); });
+    const hintAt = (line) => lines.slice(Math.max(0, line - 60), line).some((l) => /handlers-audit:/.test(l));
+    for (const h of [...extractHandlers(src), ...extractPropHandlers(src), ...hints]) {
       const code = materialize(h.raw);
       const where = `${f}:${h.line}`;
       handlers.push({ where, ev: h.ev, code });
+      const dyn = h.hint ? '' : dynamicProblem(h.raw);
+      if (dyn && hintAt(h.line)) continue; // armado en ejecución, pero declarado con una pista justo arriba
+      if (dyn) { failures.push({ where, code: h.raw, why: dyn + ' (o declararlo con una pista «// handlers-audit: código» justo arriba)' }); continue; }
       if (!code) { failures.push({ where, code: h.raw, why: 'vacío (probablemente el atributo completo se arma en ejecución: revisar a mano)' }); continue; }
       try {
         const info = SH.analyze(SH.parse(code));

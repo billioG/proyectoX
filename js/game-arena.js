@@ -141,6 +141,7 @@ window.GameArena = {
     return (n % 3) + 1;
   },
 
+  // handlers-audit: ;; -- el texto de onclick llega de cada modo (onclick: 'window.GameArena.chooseMode(...)' en duels.js, hangman-duel.js, etc.) y ya se audita como propiedad onclick:
   heroHtml({ title, subtitle, icon, tone, onclick, cta = '<i class="fas fa-bolt"></i> Retar a alguien' }) {
     this.ensureStyles();
     return `
