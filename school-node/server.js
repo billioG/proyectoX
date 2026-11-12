@@ -797,7 +797,7 @@ const friendlyHost = () => mdns?.fqdn ?? (process.platform === 'linux' && /^[a-z
 const friendlyUrl = () => {
   const host = friendlyHost();
   if (!host) return null;
-  if (httpsPortListening && config.httpsRedirect !== false) return `https://${host}${httpsPortListening === 443 ? '' : ':' + httpsPortListening}`;
+  if (httpsPortListening && httpsRedirectOn()) return `https://${host}${httpsPortListening === 443 ? '' : ':' + httpsPortListening}`;
   return `http://${host}${portSuffix()}`;
 };
 
@@ -832,7 +832,7 @@ button{font-size:18px;padding:10px 22px;margin-top:16px;cursor:pointer}@media pr
 <div id="qr"></div>
 ${others.length ? `<p class="otras">Si no abre, prueba con: ${others.map(escHtml).join(' · ')}</p>` : ''}
 <div class="steps">3. Elige tu nombre y escribe tu PIN.<br>No necesitas internet ni datos.</div>
-${httpsPortListening && config.httpsRedirect !== false ? `<p class="otras">¿Te sale un aviso de seguridad? Entra por <b>http://${escHtml(friendlyHost() || 'quetzal.local')}/acceso</b></p>` : ''}
+${httpsPortListening && httpsRedirectOn() ? `<p class="otras">¿Te sale un aviso de seguridad? Entra por <b>http://${escHtml(friendlyHost() || 'quetzal.local')}/acceso</b></p>` : ''}
 <button onclick="print()">Imprimir</button>
 <script src="/js/qrcode.min.js"></script>
 <script>new QRCode(document.getElementById('qr'), { text: ${JSON.stringify(main)}, width: 260, height: 260 });</script>
@@ -956,10 +956,12 @@ const requestHandler = async (req, res) => {
 };
 // Con HTTPS activo, quien entra por el NOMBRE (quetzal.local) pasa a https://quetzal.local: es el que sirve aunque cambie la IP. Quien entra por una IP
 // se queda en http (el certificado se hizo para el nombre; la IP puede cambiar). /node-ca.crt siempre por http: es lo que se descarga para instalar el certificado.
-// "httpsRedirect": false en config.json lo apaga.
+// Por defecto NO se redirige (v1.0.267): un dispositivo sin el certificado instalado vería un aviso de seguridad, y el docente no debe configurar nada para que
+// los estudiantes entren. La cámara del docente se activa a propósito desde la app (js/camera-support.js) o desde /acceso. "httpsRedirect": true en config.json lo enciende.
+const httpsRedirectOn = () => config.httpsRedirect === true;
 let httpsPortListening = null;
 const httpsRedirectTarget = (req, forceHttp = null) => {
-  if (!httpsPortListening || config.httpsRedirect === false || (req.method !== 'GET' && req.method !== 'HEAD')) return null;
+  if (!httpsPortListening || !httpsRedirectOn() || (req.method !== 'GET' && req.method !== 'HEAD')) return null;
   const host = String(req.headers.host || '').replace(/:\d+$/, '').toLowerCase();
   if (!host.endsWith('.local')) return null;
   const pathOnly = String(req.url).split('?')[0];
@@ -997,7 +999,7 @@ if (fs.existsSync(path.join(httpsDir, 'server.crt')) && fs.existsSync(path.join(
     const httpsServer = https.createServer({ cert: fs.readFileSync(path.join(httpsDir, 'server.crt')), key: fs.readFileSync(path.join(httpsDir, 'server.key')) }, requestHandler);
     httpsServer.requestTimeout = 30 * 60 * 1000;
     httpsServer.on('error', (e) => console.error(`⚠️ HTTPS no arrancó (${e.code || e.message}); el nodo sigue con http.`));
-    httpsServer.listen(config.httpsPort || 443, () => { httpsPortListening = config.httpsPort || 443; console.log(`🔒 HTTPS activo en el puerto ${httpsPortListening} (certificado de la escuela)${config.httpsRedirect === false ? '' : '; quetzal.local pasa solo a https'}`); });
+    httpsServer.listen(config.httpsPort || 443, () => { httpsPortListening = config.httpsPort || 443; console.log(`🔒 HTTPS activo en el puerto ${httpsPortListening} (certificado de la escuela)${httpsRedirectOn() ? '; quetzal.local pasa solo a https' : '; quetzal.local se queda en http (la cámara se activa desde la app o /acceso)'}`); });
   } catch (e) { console.error(`⚠️ No se pudo leer el certificado HTTPS (${e.message}); el nodo sigue con http.`); }
 }
 

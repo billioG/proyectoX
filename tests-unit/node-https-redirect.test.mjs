@@ -44,7 +44,7 @@ async function boot(config = {}) {
 }
 
 test('por el nombre .local pasa a https; por IP se queda en http; el certificado se descarga por http; solo GET', { skip, timeout: 60000 }, async () => {
-  const { node, httpsPort } = await boot();
+  const { node, httpsPort } = await boot({ httpsRedirect: true });
   assert.match(node.log(), /HTTPS activo/);
 
   const named = await req(node.port, { pathName: '/cartel?x=1', host: `quetzal.local:${node.port}` });
@@ -71,10 +71,19 @@ test('por el nombre .local pasa a https; por IP se queda en http; el certificado
   assert.equal(JSON.parse(body.data).node, true);
 });
 
-test('"httpsRedirect": false apaga la redirección y sin certificado el nodo sigue solo con http', { skip, timeout: 60000 }, async () => {
-  const { node } = await boot({ httpsRedirect: false });
+test('por defecto NO redirige (el kit no debe pedir configuración): quetzal.local se queda en http aunque haya HTTPS, y la dirección del cartel es http; sin certificado el nodo sigue solo con http', { skip, timeout: 60000 }, async () => {
+  const { node, httpsPort } = await boot();
+  assert.match(node.log(), /HTTPS activo/);
   const res = await req(node.port, { pathName: '/cartel', host: 'quetzal.local' });
-  assert.equal(res.statusCode, 200);
+  assert.equal(res.statusCode, 200, 'sin redirección por defecto');
+  const home = await req(node.port, { pathName: '/', host: 'quetzal.local' });
+  assert.equal(home.statusCode, 200);
+  const cartel = await new Promise((resolve, reject) => http.get({ host: '127.0.0.1', port: node.port, path: '/cartel', headers: { host: 'quetzal.local' } }, (r2) => { let d = ''; r2.on('data', (c) => (d += c)); r2.on('end', () => resolve(d)); }).on('error', reject));
+  assert.doesNotMatch(cartel, /class="url">https:/, 'el cartel ya no manda a https');
+  assert.match(cartel, /class="url">http:/, 'la dirección del cartel es http');
+  const secure = await new Promise((resolve, reject) => https.get({ host: '127.0.0.1', port: httpsPort, path: '/api/node/status', servername: 'quetzal.local', headers: { host: 'quetzal.local' }, ca: certs.ca }, (x) => { x.resume(); resolve(x.statusCode); }).on('error', reject));
+  assert.equal(secure, 200, 'el HTTPS sigue disponible para quien activa la cámara');
+  assert.match(node.log(), /se queda en http/);
 
   const plain = await startNode({});
   const r = await req(plain.port, { pathName: '/cartel', host: 'quetzal.local' });
@@ -83,7 +92,7 @@ test('"httpsRedirect": false apaga la redirección y sin certificado el nodo sig
 });
 
 test('quien no quiere instalar el certificado entra sin cámara: /acceso, ?http=1 se recuerda y ?http=0 lo deshace', { skip, timeout: 60000 }, async () => {
-  const { node } = await boot();
+  const { node } = await boot({ httpsRedirect: true });
   const host = 'quetzal.local';
   const acceso = await req(node.port, { pathName: '/acceso', host });
   assert.equal(acceso.statusCode, 200, '/acceso nunca se redirige');

@@ -562,14 +562,14 @@ bash ~/quetzal/school-node/https-setup.sh
 
 Cada dispositivo debe instalar el certificado una vez (la app lo guía en Asistencia → «Configurar este dispositivo para usar la cámara») y luego abrir `https://quetzal.local`. El certificado del nodo dura ~2 años: `bash ~/quetzal/school-node/https-setup.sh --renovar` lo repite sin que los dispositivos tengan que instalar nada otra vez.
 
-**Redirección y nombre fijo (desde v1.0.251):** con HTTPS activo, quien escribe `quetzal.local` pasa solo a `https://quetzal.local`. El certificado es del **nombre**, así que sigue valiendo aunque el router le cambie la IP al nodo (avahi vuelve a anunciar el nombre solo). Reglas:
+**Redirección (apagada por defecto desde v1.0.267):** aunque el nodo tenga HTTPS, `http://quetzal.local` **ya no redirige** a https: un celular sin el certificado instalado vería un aviso de seguridad, y el kit debe funcionar sin configurar nada. El HTTPS sigue disponible: el docente lo activa a propósito desde la app («Configurar este dispositivo para usar la cámara») o entrando por `http://quetzal.local/acceso`. Para volver a redirigir a todos (v1.0.251): `"httpsRedirect": true` en config.json y reiniciar. Lo que sigue describe ese modo. El certificado es del **nombre**, así que sigue valiendo aunque el router le cambie la IP al nodo (avahi vuelve a anunciar el nombre solo). Reglas:
 - Por **IP** (`http://192.168...`) no se redirige: se queda en http (lista rápida, sin cámara).
 - `/node-ca.crt` siempre se entrega por http, para poder instalar el certificado.
 - Solo se redirigen las peticiones GET/HEAD.
 - Un dispositivo **sin** el certificado instalado verá un aviso de seguridad al entrar por el nombre. Para ese caso existe **`http://quetzal.local/acceso`** (nunca se redirige): ofrece «Descargar el certificado» (con cámara) o «Entrar sin cámara» (`/?http=1`; guarda la cookie `px_http=1` y ese dispositivo se queda en http con la lista rápida de asistencia). `/?http=0` lo deshace. El cartel imprime esa dirección.
-- Para apagar la redirección para todos: `"httpsRedirect": false` en config.json y reiniciar.
+- Para encender o apagar la redirección para todos: `"httpsRedirect": true` (enciende) o quitarlo (apaga) en config.json y reiniciar.
 - Para que la IP tampoco cambie, reserva una IP fija para el nodo en el router (opcional; el nombre ya no la necesita).
-- El cartel (`/cartel`) y el aviso al arrancar usan `https://quetzal.local`.
+- Con la redirección encendida, el cartel (`/cartel`) y el aviso al arrancar usan `https://quetzal.local`; apagada (lo normal), usan `http://quetzal.local`.
 
 Pendiente: la prueba en una Raspberry real.
 
