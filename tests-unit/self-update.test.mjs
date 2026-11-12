@@ -6,12 +6,14 @@ import { createSelfUpdate } from '../school-node/self-update.js';
 import { createRemoteSync } from '../school-node/remote-sync.js';
 
 // Un git falso: cada llamada a «rev-parse» devuelve el siguiente hash de la lista.
-function fakeGit({ heads = ['aaa', 'bbb'], pullOk = true, npmOk = true, isRepo = true } = {}) {
+function fakeGit({ heads = ['aaa', 'bbb'], pullOk = true, npmOk = true, isRepo = true, dirty = '', stashOk = true } = {}) {
   const calls = [];
   const queue = [...heads];
   const run = async (cmd, args) => {
     calls.push([cmd, ...args]);
     if (cmd === 'git' && args.includes('rev-parse')) return isRepo ? { ok: true, stdout: queue.shift() ?? heads.at(-1) } : { ok: false, stdout: '', stderr: 'fatal: not a git repository' };
+    if (cmd === 'git' && args.includes('status')) return { ok: true, stdout: dirty };
+    if (cmd === 'git' && args.includes('stash')) return stashOk ? { ok: true, stdout: 'Saved' } : { ok: false, stderr: 'fatal: no se pudo' };
     if (cmd === 'git' && args.includes('pull')) return pullOk ? { ok: true, stdout: 'ok' } : { ok: false, stderr: 'fatal: Not possible to fast-forward' };
     if (/^npm/.test(cmd)) return npmOk ? { ok: true, stdout: '' } : { ok: false, stderr: 'npm ERR! build failed' };
     return { ok: true, stdout: '' };
@@ -55,6 +57,22 @@ test('fallos claros: git pull rechazado o servidor que no se instaló con git', 
   const nogit = await createSelfUpdate({ appDir: '/app', run: fakeGit({ isRepo: false }).run, readFile: () => '' }).update();
   assert.equal(nogit.ok, false);
   assert.match(nogit.error, /install\.sh --update/);
+});
+
+test('archivos del programa modificados en el servidor: se guardan aparte (stash) ANTES de descargar, y la actualización sigue', async () => {
+  const g = fakeGit({ dirty: ' M school-node/package-lock.json' });
+  const out = await createSelfUpdate({ appDir: '/app', run: g.run, readFile: () => 'igual' }).update();
+  assert.deepEqual(out, { ok: true, changed: true, from: 'aaa', to: 'bbb' });
+  const stash = g.calls.findIndex((c) => c.includes('stash') && c.includes('push'));
+  const pull = g.calls.findIndex((c) => c.includes('pull'));
+  assert.ok(stash >= 0 && stash < pull, 'primero guarda, luego descarga');
+  assert.ok(!g.calls.some((c) => c.includes('reset') && c.includes('--hard') && !c.includes('aaa')), 'nada se borra a la fuerza');
+  const clean = fakeGit();
+  await createSelfUpdate({ appDir: '/app', run: clean.run, readFile: () => 'igual' }).update();
+  assert.ok(!clean.calls.some((c) => c.includes('stash')), 'sin cambios locales no toca nada');
+  const noSave = await createSelfUpdate({ appDir: '/app', run: fakeGit({ dirty: ' M x', stashOk: false }).run, readFile: () => '' }).update();
+  assert.equal(noSave.ok, false);
+  assert.match(noSave.error, /cambios locales/);
 });
 
 // ---------- la petición que llega por el aviso ----------

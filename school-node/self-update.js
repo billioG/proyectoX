@@ -28,6 +28,14 @@ export function createSelfUpdate({ appDir, nodeDir = path.join(appDir, 'school-n
     const from = head.stdout;
     const lockBefore = lockSignature();
 
+    // Si el servidor tiene archivos del programa modificados (una instalación anterior que reescribió package-lock.json, otro fin de línea, una
+    // prueba a mano...), `git pull` se niega y el nodo queda para siempre en su versión. Esos cambios nunca son del programa oficial: se guardan
+    // aparte con `git stash` (se pueden recuperar con `git stash list`) y se actualiza. config.json y data/ no se tocan (no están en git).
+    const dirty = await run('git', ['-C', appDir, 'status', '--porcelain', '--untracked-files=no']);
+    if (dirty.ok && dirty.stdout) {
+      const saved = await run('git', ['-C', appDir, 'stash', 'push', '-m', `quetzal-antes-de-actualizar-${new Date().toISOString().slice(0, 10)}`]);
+      if (!saved.ok) return { ok: false, changed: false, from, error: `El servidor tiene cambios locales y no se pudieron guardar aparte: ${short(saved.stderr || saved.stdout || saved.error?.message)}` };
+    }
     const pull = await run('git', ['-C', appDir, 'pull', '--ff-only']);
     if (!pull.ok) return { ok: false, changed: false, from, error: `No se pudo descargar la versión nueva: ${short(pull.stderr || pull.stdout || pull.error?.message)}` };
 
