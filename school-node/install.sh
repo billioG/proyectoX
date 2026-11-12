@@ -136,13 +136,19 @@ sudo systemctl enable --now quetzal-backup.timer
 # ---------- 2. Código ----------
 if [ -d "$APP_DIR/.git" ]; then
   say "Actualizando el código en $APP_DIR"
+  # Cambios locales en archivos del programa (p. ej. package-lock.json) harían fallar el pull: se guardan aparte con git stash (config.json y data/ no están en git).
+  if [ -n "$(git -C "$APP_DIR" status --porcelain --untracked-files=no)" ]; then
+    warn "Había cambios locales en el programa: se guardaron aparte (git stash) para poder actualizar."
+    git -C "$APP_DIR" stash push -m "quetzal-antes-de-actualizar-$(date +%F)"
+  fi
   git -C "$APP_DIR" pull --ff-only
 else
   say "Descargando el código en $APP_DIR"
   git clone --depth 1 "$REPO_URL" "$APP_DIR"
 fi
 cd "$NODE_DIR"
-npm install --omit=dev --no-audit --no-fund
+# npm ci (no npm install): instala exactamente lo del package-lock.json y no lo reescribe, así git no lo ve como «modificado».
+npm ci --omit=dev --no-audit --no-fund || npm install --omit=dev --no-audit --no-fund
 
 if [ "$UPDATE_ONLY" -eq 1 ]; then
   install_backup_timer

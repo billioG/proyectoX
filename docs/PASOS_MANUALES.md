@@ -74,6 +74,14 @@ Para pegar una función en el editor del panel: `node scripts/exportar-funciones
 Después de redesplegar `node-sync`, cada nodo se actualiza con `bash ~/quetzal/school-node/install.sh --update` o con el botón
 «Actualizar servidores» de la plataforma (requiere el paso 16).
 
+**Nodo atascado en una versión vieja** (la plataforma dice «Your local changes to the following files would be overwritten by merge»): el nodo tiene archivos modificados y el código viejo no sabe apartarlos. Una sola vez, en la Raspberry (por SSH):
+
+```bash
+cd ~/quetzal && git stash push -m antes-de-actualizar && git pull --ff-only && bash school-node/install.sh --update
+```
+
+Desde la v1.0.266 el botón y `install.sh --update` lo hacen solos. En un nodo con Windows: doble clic a `actualizar-windows.cmd`.
+
 ## 3a. Candado de retos repetidos (v1.0.257)
 
 Correr `duel-one-open-pair.sql` en el SQL Editor **después** de publicar la v1.0.257 (o antes: la app vieja solo vería el error en inglés del candado). Cancela los retos pendientes repetidos entre la misma pareja (conserva el más antiguo; no borra nada) y crea un índice único por juego. Si algún juego tiene retos **activos** repetidos, avisa con un NOTICE y no crea ese índice; se revisan a mano y se vuelve a correr. Al final debe mostrar 5 filas (`*_one_open_pair`). Después, `verificar-migraciones.sql` debe dar `true` en las filas 760 a 764.
