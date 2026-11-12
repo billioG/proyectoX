@@ -14,7 +14,7 @@ Se encontraron y **corrigieron 2 recursos de terceros** (una trama de fondo y un
 | Qué | Dónde está | Origen | Estado |
 |---|---|---|---|
 | Ícono de la app (192 y 512 px) y mascota quetzal | `icon-192.png`, `icon-512.png` | Identidad de Quetzal LMS / Yo Aprendo, confirmada por el titular el 11/11/2026 | OK |
-| Mascotas (quetzal, jaguar, manatí, panda, danta y demás especies), huevos, etapas, aura, corona, accesorios | `js/companion.js`, `js/mascot-widget.js` | SVG dibujado en código (formas planas) | OK: obra del proyecto. La especie «panda» se hizo a pedido del titular siguiendo una referencia tipo clipart (solo el estilo; no se copió ningún archivo). Conviene que el titular confirme que no usó una imagen ajena como calco. |
+| Mascotas (quetzal, jaguar, manatí, panda, danta y demás especies), huevos, etapas, aura, corona, accesorios | `js/companion.js`, `js/mascot-widget.js` | SVG dibujado en código (formas planas) | OK: obra del proyecto. La especie «panda» se hizo a pedido del titular siguiendo una referencia tipo clipart (solo el estilo; no se copió ningún archivo). El titular confirmó el 12/11/2026 que el panda y las demás mascotas son obra propia. |
 | Nombres de especies y datos del Quetzadex | `js/companion.js` | Animales reales de Guatemala; estado de conservación según la UICN (dato público) | OK. Ninguna mascota usa nombres ni diseños de personajes comerciales. |
 | Colores de los ODS (ONU) | `js/companion.js` (`ODS`) | Solo el color oficial y el nombre del objetivo; **no** se usan los logotipos ni los íconos de los ODS | OK. Si algún día se muestran los íconos oficiales de los ODS, hay que seguir las reglas de uso de las Naciones Unidas (no comerciales sin permiso). |
 | Íconos de interfaz | Font Awesome Free 6.4.0 (`fa-*`) | Íconos CC BY 4.0 (atribución en la cabecera de `all.min.css` y en `THIRD_PARTY_NOTICES.md`) | OK |
@@ -26,7 +26,7 @@ Se encontraron y **corrigieron 2 recursos de terceros** (una trama de fondo y un
 | Imagen de relleno de una subida sin conexión | era `https://via.placeholder.com/400x300` | Servicio de terceros (ya fuera de uso) | **Corregido en v1.0.263**: imagen SVG propia incrustada en `js/sync-manager.js` |
 | Videos de YouTube / TinkerCAD (enlaces) | Textos de ayuda y cursos | Enlaces a contenido ajeno (no se copia) | OK |
 | Contenido de cursos (imágenes, videos, SCORM/H5P que suben los docentes) | Supabase Storage, no este repositorio | Cada docente responde por lo que sube | Ver `docs/PRIVACIDAD_Y_CONSENTIMIENTO.md` y los términos de uso |
-| `vendor/h5p-standalone/` | Reproductor H5P (MIT) | Falta anotar la versión exacta y el enlace a su `LICENSE` | Pendiente (ver `THIRD_PARTY_NOTICES.md`) |
+| `vendor/h5p-standalone/` | Reproductor H5P 3.7.0 (MIT, © Tunapanda) | Identificada comparando con el paquete npm (los bundles coinciden byte a byte, salvo 2 bytes finales); `LICENSE` copiada a la carpeta | OK |
 
 ## Cómo se revisó (para repetirlo)
 
@@ -40,6 +40,4 @@ y los propios del proyecto. Cualquier dominio de imágenes, íconos o texturas n
 
 ## Pendientes del titular
 
-1. Confirmar que la mascota «panda» (y cualquier otra) se dibujó desde cero y no calcando una imagen ajena.
-2. Si se agregan imágenes o ilustraciones por encargo a terceros: pedir por escrito la cesión o licencia y guardarla.
-3. Anotar la versión y el `LICENSE` de `vendor/h5p-standalone/`.
+Ninguno por ahora. Si se agregan imágenes o ilustraciones por encargo a terceros: pedir por escrito la cesión o licencia y guardarla.

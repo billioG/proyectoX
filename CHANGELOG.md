@@ -4,6 +4,10 @@ Cambios publicados en Quetzal LMS, del más reciente al más antiguo. Cada líne
 
 Al publicar una versión nueva, agrega una línea arriba de todo (ver CONTRIBUTING.md).
 
+## 2026-11-12
+
+- **Guía de Cloudflare, verificador de cabeceras y avisos de terceros al día (sin cambio de versión).** Nuevo `docs/CLOUDFLARE_PASO_A_PASO.md` (con el DNS real de `yoaprendo.online`) y `scripts/verificar-cabeceras.mjs`. Se corrigió la `Permissions-Policy` propuesta: `geolocation=(self)`, porque reportes y bonos de visita usan la ubicación. `vendor/h5p-standalone/` identificado como 3.7.0 (MIT) con su `LICENSE` copiada; mascotas confirmadas como obra propia.
+
 ## 2026-11-11
 
 - **Auditoría de ilustraciones y recursos gráficos (v1.0.263).** Nuevo `docs/AUDITORIA_ILUSTRACIONES.md`: el repositorio solo contiene 2 imágenes (los íconos de la app); mascotas, ilustraciones y sonidos están hechos en código. Se quitaron los dos recursos de terceros que había: la trama de fondo de `transparenttextures.com` (certificados, reportes, perfil y bonos) pasó a una clase CSS propia, y la imagen de relleno de `via.placeholder.com` de las subidas sin conexión pasó a un SVG propio. Ya no se pide nada a esos sitios y las tramas se ven también sin internet.

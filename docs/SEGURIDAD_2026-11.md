@@ -364,6 +364,8 @@ JSZip, driver.js, PDF.js, jsQR y confetti en el cargador `window.loadLib`; los 5
 
 ### Cabeceras de seguridad — falta, y requiere un cambio en el DNS
 
+> Paso a paso con los registros DNS reales de `yoaprendo.online` y la verificación: **`docs/CLOUDFLARE_PASO_A_PASO.md`**.
+
 Medido el 10/11/2026 (`curl -sI https://clases.yoaprendo.online/`): el sitio lo sirve GitHub Pages directamente (`Server: GitHub.com`) y **no manda ninguna cabecera de seguridad** (ni `X-Frame-Options`/`frame-ancestors`, ni `X-Content-Type-Options`, ni `Referrer-Policy`, ni `Permissions-Policy`, ni `Strict-Transport-Security`). GitHub Pages no permite configurarlas; la CSP de `index.html` por `<meta>` no puede dar `frame-ancestors` (§7). La salida es poner un proxy delante (Cloudflare, plan gratuito):
 
 1. Crear la cuenta en Cloudflare, agregar `yoaprendo.online` y cambiar los *nameservers* en el registrador. (**Antes**, anotar los registros DNS actuales, en especial los de correo SPF/DKIM/DMARC de `colegios@yoaprendo.online`; que sigan igual y **sin proxy** los de correo.)
@@ -375,7 +377,7 @@ Medido el 10/11/2026 (`curl -sI https://clases.yoaprendo.online/`): el sitio lo 
 | `Content-Security-Policy` | `frame-ancestors 'none'` | Nadie puede incrustar la app en otro sitio (clickjacking). Conviene empezar solo con esta directiva |
 | `X-Content-Type-Options` | `nosniff` | El navegador no adivina tipos de archivo |
 | `Referrer-Policy` | `strict-origin-when-cross-origin` | Menos datos en el `Referer` |
-| `Permissions-Policy` | `camera=(self), microphone=(), geolocation=(), payment=(), usb=()` | La cámara se usa para el QR de asistencia y el escáner de exámenes, por eso `camera=(self)` |
+| `Permissions-Policy` | `camera=(self), geolocation=(self), microphone=(), payment=(), usb=()` | La cámara se usa para el QR de asistencia y el escáner de exámenes (`camera=(self)`), y la ubicación en reportes y bonos de visita (`geolocation=(self)`: antes de 12/11/2026 esta tabla la bloqueaba por error y habría roto esas dos pantallas) |
 | `Strict-Transport-Security` | `max-age=31536000` | Sin `includeSubDomains` ni `preload` hasta confirmar que ningún subdominio necesita http |
 
 4. **Caché:** dejar que Cloudflare respete las cabeceras de GitHub Pages (`Cache-Control: max-age=600`); no usar «Cache Everything» para el HTML (el service worker y el número de versión dependen de que `index.html` y `service-worker.js` se vean nuevos cuando se publica).
