@@ -264,8 +264,8 @@ primera sincronización o si alguna clase no tiene contraseña de clase (el nodo
 
 **Antes de actualizar, en la nube** (una vez por versión, si la nota de versión lo pide): ejecutar las migraciones nuevas en
 el SQL Editor de Supabase y volver a desplegar la función `node-sync` con **todos** sus archivos
-(`index.ts`, `tables.ts`, `practice.ts`, `completions.ts`, `announcements.ts`, `evaluations.ts`, `projects.ts`, `xp.ts`,
-`reactions.ts`) y **Verify JWT en OFF**. Ver `docs/MIGRATIONS.md`.
+(los 15 que hay hoy en `supabase/functions/node-sync/`: `index.ts`, `tables.ts`, `content.ts`, `validators.ts`, `duels.ts`, `social.ts`,
+`groups.ts`, `exams.ts`, `waivers.ts`, `attendance.ts`, `announcements.ts`, `evaluations.ts`, `projects.ts`, `media.ts`, `xp.ts`; el editor de Supabase admite como máximo 16 archivos por función) y **Verify JWT en OFF**. Ver `docs/MIGRATIONS.md`.
 
 Un nodo con **Windows** se actualiza con `actualizar-windows.cmd` (no necesita SSH).
 

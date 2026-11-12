@@ -92,6 +92,9 @@ estudiantes ni token**.
    `school-node/config.json`). Guárdalo.
 5. El token se borró solo de `quetzal.txt` (queda `(ya usado)`), y la clave del Wi-Fi también.
 6. Sigue con el **checklist** (`docs/CHECKLIST_NUEVO_COLEGIO.md`): reservar la IP en el router, imprimir el cartel, etc.
+   Si la escuela usa el **kit de router + Raspberry**, prepara el router una vez según `docs/NODO_KIT_ROUTER.md` para que
+   `quetzal.local` abra también en tablets Android 11 o anteriores. El servidor de nombres viene en el nodo (desde v1.0.265),
+   así que la imagen lo incluye si se generó después; esa parte **tampoco se ha probado con hardware real**.
 
 El primer encendido corre **una sola vez**. Si necesitas repetirlo en una tarjeta ya usada: `sudo rm -rf /var/lib/quetzal`
 y reinicia (no borra `config.json`: si existe, se respeta).
@@ -111,7 +114,10 @@ y reinicia (no borra `config.json`: si existe, se respeta).
 
 ## 5. Actualizar la imagen y los nodos
 
-- **Nodos ya instalados:** `bash ~/quetzal/school-node/install.sh --update` (no hace falta cambiar tarjetas).
+- **Nodos ya instalados:** `bash ~/quetzal/school-node/install.sh --update` (no hace falta cambiar tarjetas), o el botón
+  «Actualizar servidores» del administrador en la plataforma. Desde v1.0.266 la actualización tolera archivos del programa
+  modificados en el nodo (los guarda aparte con `git stash`; `config.json` y `data/` no se tocan) y `install.sh` usa `npm ci`.
+  Un nodo que ya estaba atascado por ese motivo necesita **una** actualización a mano (ver `docs/PASOS_MANUALES.md`).
 - **Imagen:** regenérala solo cuando cambie algo del sistema (versión mayor de Raspberry Pi OS o de Node.js). Las
   tarjetas nuevas se actualizan igual con `--update` al llegar a la escuela. Guarda las imágenes con fecha:
   `quetzal-nodo-2026-11.img.xz`.

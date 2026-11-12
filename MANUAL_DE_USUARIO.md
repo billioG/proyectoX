@@ -61,24 +61,27 @@ No necesitas revisar perfil por perfil.
 ---
 
 ## 4. 📡 Trabajar sin internet (Nodo escolar)
-Si tu escuela tiene un **nodo escolar** (una computadora o Raspberry Pi con la app), puedes seguir usando Quetzal **sin internet**. Conéctate al Wi-Fi de la escuela y abre la dirección del cartel (por ejemplo `http://quetzal.local`).
+Si tu escuela tiene un **nodo escolar** (una computadora o Raspberry Pi con la app), puedes seguir usando Quetzal **sin internet**. Conéctate al Wi-Fi de la escuela y abre la dirección del cartel (por ejemplo `http://quetzal.local`). Si la escuela usa el **kit de router + Raspberry** (preparado una sola vez antes de entregarlo, ver `docs/NODO_KIT_ROUTER.md`), `quetzal.local` abre en cualquier dispositivo, también en tablets Android viejas; con otro router, esas tablets necesitan la dirección con números (`http://192.168...`) que muestra el cartel. Ese servidor de nombres del kit tiene pruebas automáticas, pero **aún no se ha probado con un router y tablets reales**.
 
 ### 🎓 Estudiantes
 *   **Entrar:** con tu **usuario** y la **contraseña de tu clase**, igual que con internet.
-*   **Qué puedes hacer:** ver Inicio, Cursos y tu Perfil, completar lecciones (+10 XP al instante), abrir tu **cofre diario** y jugar la **Práctica** del Centro de Juego.
-*   **Qué no hay sin internet:** retos contra compañeros, asistente con IA y notificaciones. Esas pantallas salen vacías.
+*   **Qué puedes hacer:** ver Inicio, Cursos y tu Perfil, completar lecciones (+10 XP al instante), abrir tu **cofre diario**, jugar la **Práctica** del Centro de Juego, **subir tu proyecto** (video o modelo 3D, hasta 150 MB) y reaccionar a los de tus compañeros, comentar en las lecciones, usar tu **mascota** (elegir, comprar huevos y accesorios) y retar a un compañero de tu escuela en **Contrarreloj** y **Ahorcado**. Todo se sube a la nube cuando el nodo tenga internet.
+*   **Qué no hay sin internet:** el asistente con IA, los retos de comprensión, ortografía y depuración (necesitan IA para crear su contenido), la tienda, el pase de temporada, el chat de la mascota, adjuntar imágenes a un comentario y las notificaciones. Esas pantallas salen vacías o avisan «Esto no está disponible sin internet». La racha diaria tampoco sube sin internet.
 *   **Los cursos y las fotos:** los videos y PDF salen del nodo; las **fotos de perfil** aparecen después de que el nodo se sincronice con internet al menos una vez.
 *   **Aviso de abajo a la izquierda:** te dice si ya se subió todo a la nube. Se sincroniza solo cuando hay internet; también puedes tocar **Sincronizar ahora**.
 
 ### 👨‍🏫 Docentes
 *   **Crear clases sin internet:** en el servidor escolar usa **Cursos → Nuevo curso → Agregar recurso**, igual que en línea. Sube tus videos, PDF o paquetes (hasta 150 MB cada archivo); tus estudiantes los ven al momento y todo se sube solo a la nube cuando el servidor tenga internet. Con **Compartir** el curso va a la Biblioteca Compartida.
 *   **Entrar al nodo:** con tu **correo** y **la misma contraseña** con que entras a Quetzal en línea. No hay PIN aparte; el servidor la recibe cifrada cuando se sincroniza.
-*   **Evaluar proyectos y enviar avisos** a tus grupos funcionan igual que con internet. Lo que hagas se sube solo al volver la señal.
+*   **Evaluar proyectos y enviar avisos** a tus grupos funcionan igual que con internet. También puedes **pasar lista**, **armar equipos**, crear **exámenes con hoja de respuestas** y leer el **Buzón de la clase**. Lo que hagas se sube solo al volver la señal.
+*   **Pasar lista sin cámara:** en `http://quetzal.local` el navegador bloquea la cámara; **Tomar Asistencia** cambia sola a una **lista rápida** (un toque por estudiante y «Guardar lista»). La cámara con QR solo funciona si el nodo tiene HTTPS activado (opcional, `school-node/README.md`; no se ha probado en una Raspberry real).
 *   **Limitaciones:** no puedes borrar ni editar un aviso sin internet; los avisos a padres y las notificaciones push se envían cuando el nodo se sincroniza con internet.
-*   **¿No fijaste tu PIN?** Entra con el enlace **Docente** del aviso de abajo (`/?modo=pin`) y usa el código de docente del nodo, o pide ayuda a tu administrador.
+*   **¿Aún no entras con tu contraseña?** Si el nodo todavía no ha sincronizado o alguna clase no tiene contraseña de clase, la escuela queda en el modo anterior (PIN). Entra con el enlace **Docente** del aviso de abajo (`/?modo=pin`) y usa el código de docente del nodo, o pide ayuda a tu administrador.
 
 ### ⚖️ Administrador / quien instala el nodo
-*   Instalar o actualizar el nodo (Windows o Raspberry por SSH): ver `school-node/README.md`.
+*   Instalar o actualizar el nodo (Windows o Raspberry por SSH): ver `school-node/README.md`. En «Servidor de la escuela» el administrador puede tocar **Actualizar servidores** y cada Raspberry se actualiza sola; desde v1.0.266 esto funciona aunque el nodo tenga archivos del programa modificados (los guarda aparte y sigue; `config.json` y los datos no se tocan).
+*   Preparar el router del kit para que `quetzal.local` abra en todos los dispositivos: `docs/NODO_KIT_ROUTER.md`. Antes de la entrega, revisa la lista de `docs/CHECKLIST_NUEVO_COLEGIO.md`.
+*   Para ver quién hizo qué en la plataforma (alumnos o colegios eliminados, docentes creados, cambios de rol, contraseñas de clase, enlaces del portal de padres, servidores escolares), abre **Bitácora de seguridad** en el menú del administrador (requiere la migración `security-audit-log.sql`; solo lectura).
 *   Cada vez que se publique una versión con cambios de nodo, ejecuta las migraciones nuevas en Supabase y vuelve a desplegar `node-sync` (ver `docs/MIGRATIONS.md`).
 *   Para que la app real funcione en el nodo, **todas las clases deben tener contraseña de clase**; si una no la tiene, el nodo usa el modo anterior (PIN) para toda la escuela.
 

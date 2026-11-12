@@ -15,7 +15,7 @@ Este módulo mide la **salud operativa** de cada colegio basada en su capacidad 
 *   **Próxima Sesión (Sugerencia):** Se calcula automáticamente según la salud:
     *   **Crítico (<40%):** Agendar en **3 días** (Intervención urgente).
     *   **Medio (40-79%):** Agendar en **7 días** (Seguimiento estándar).
-    *   **Excelente (>80%):** Agendar en **15 días** (Mantenimiento de éxito).
+    *   **Excelente (80% o más):** Agendar en **15 días** (Mantenimiento de éxito). (Según `js/admin-success.js`: menos de 40 es 3 días, de 40 a 79 es 7 días y desde 80 es 15 días.)
 
 ### 💡 Cómo usarlo:
 *   Utiliza el botón **"Reporte"** para generar un PDF ejecutivo para los directores.
@@ -32,6 +32,8 @@ Mide la **consistencia de la participación** de los estudiantes en el programa.
 *   **Asistencias Totales:** Suma de todos los estados `present` (presente) capturados por el escáner QR.
 *   **Tardanzas:** Suma de estados `late`.
 *   **Ausencias:** Suma de estados `absent`.
+
+*   **Vista por mes:** desde v1.0.227 la pantalla pide y muestra **un solo mes a la vez** (con flechas para cambiar de mes), completo y sin el límite de 1000 filas; antes traía toda la historia y las cifras podían salir incompletas. El CSV por docente exporta el mes en pantalla.
 
 ### 💡 Cómo interpretarlo:
 *   Si un colegio tiene 35 alumnos y solo escaneaste a 3, aunque los 3 estén presentes, la tasa será del **8.5%**. Esto indica que el docente aún no ha terminado de pasar asistencia a todo el grupo.
@@ -62,6 +64,11 @@ Mide el **compromiso y satisfacción** de los líderes educativos.
 *   **Calificación Stu.:** Promedio de las estrellas (1-5) que los alumnos le dan a su docente semanalmente.
 *   **Alertas de Salud (Churn):** Colegios que llevan más de **15 días sin subir un solo proyecto** o tienen una producción mínima histórica.
 *   **Satisfacción Docente:** Un cruce entre la nota de los alumnos y la cantidad de proyectos que el docente ha calificado (volumen de trabajo).
+
+---
+
+## 🔒 5. Bitácora de seguridad (no es una métrica de colegios)
+Desde v1.0.259 el menú del administrador tiene **Bitácora de seguridad**: lista, en español, quién hizo qué y cuándo (alumnos o colegios eliminados, docentes creados o con rol cambiado, contraseñas de clase, enlaces del portal de padres, servidores escolares, contraseñas de alumnos consultadas). Es solo lectura, con filtro por acción y «Ver más antiguas»; necesita la migración `security-audit-log.sql`. No registra lo que se haga directamente en el SQL Editor de Supabase (`docs/SEGURIDAD_2026-11.md`, §12).
 
 ---
 

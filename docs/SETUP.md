@@ -11,7 +11,7 @@ Tiempo estimado: 1 a 2 horas la primera vez.
 | Herramienta | Para qué | Cómo obtenerla |
 |---|---|---|
 | Git | Clonar el repositorio | git-scm.com |
-| Node.js 18 o superior | Servidor local, Tailwind, CLI de Supabase | nodejs.org |
+| Node.js 18 o superior (la CI y el nodo escolar usan Node.js 22) | Servidor local, Tailwind, CLI de Supabase, pruebas | nodejs.org |
 | Cuenta de Supabase | Base de datos, login, archivos, funciones | supabase.com (plan gratis) |
 | Cuenta de Groq | IA (quizzes, tutor, evaluaciones) | console.groq.com (tiene plan gratis) |
 | Deno (opcional) | Revisar tipos de las funciones como la CI | deno.land |
@@ -80,6 +80,7 @@ Project Settings → Edge Functions → **Secrets**. `SUPABASE_URL`,
 | `CRON_SECRET` | Protege las tareas programadas | 48 caracteres al azar, por ejemplo `openssl rand -hex 24` |
 | `RESEND_API_KEY` / `REENGAGEMENT_FROM_EMAIL` | Correos de reenganche (opcional) | resend.com |
 | `SMSGATE_USER` / `SMSGATE_PASS` / `SMSGATE_URL` | SMS a padres (opcional) | App "SMS Gateway for Android" en modo nube; ver sección 10 |
+| `PASSWORD_VAULT_KEY` | Llave con que `staff-student-passwords` cifra y muestra las contraseñas de alumnos | `openssl rand -base64 32` (ver `docs/SEGURIDAD_2026-11.md` y `docs/PASOS_MANUALES.md`) |
 
 La clave pública VAPID también está escrita en el cliente
 (`js/random-events.js` y `padres.html`): si generás un par nuevo, cambiala ahí
@@ -96,7 +97,7 @@ La mayoría usa la sesión del usuario (**Verify JWT: ON**):
 
 ```bash
 for f in admin-bulk-import-students admin-create-teacher admin-delete-students \
-  admin-force-delete-school admin-set-class-password ai-proxy ai-generate-quiz \
+  admin-force-delete-school admin-set-class-password staff-student-passwords ai-proxy ai-generate-quiz \
   ai-generate-hangman-word ai-generate-spelling-word ai-generate-debug-steps \
   ai-evaluate-project ai-evaluate-mblock ai-generate-general-report \
   generate-team-match-quiz submit-team-match-answer submit-event-answer \
@@ -149,12 +150,15 @@ npx -y http-server -p 8080 -c-1
 
 ## 10. Opcionales
 
-- **Nodo escolar (Raspberry Pi)**: `school-node/README.md`.
+- **Nodo escolar (Raspberry Pi)**: `school-node/README.md`. Para que `quetzal.local` abra en cualquier dispositivo con el kit de router + Raspberry: `docs/NODO_KIT_ROUTER.md`. Para instalar un colegio de principio a fin: `docs/CHECKLIST_NUEVO_COLEGIO.md`.
+- **Cabeceras de seguridad** (anti-clickjacking, HSTS): `docs/CLOUDFLARE_PASO_A_PASO.md` (guía; `node scripts/verificar-cabeceras.mjs` comprueba el resultado).
+- **Bitácora de seguridad:** requiere la migración `security-audit-log.sql` (ver `docs/PASOS_MANUALES.md`); sin ella la pantalla lo avisa y nada se rompe.
 - **SMS a padres**: instalar "SMS Gateway for Android" (proyecto `capcom6/android-sms-gateway`) en un celular con plan de SMS, activar *Cloud server* y cargar su usuario y contraseña como `SMSGATE_USER` y `SMSGATE_PASS`.
 
 ## 11. Producción
 
 - La aplicación se publica con **GitHub Pages** desde la rama `main` (dominio `clases.yoaprendo.online`).
-- Las funciones se despliegan a mano con la CLI (sección 7) contra el proyecto de producción.
+- Las funciones se despliegan a mano con la CLI (sección 7) contra el proyecto de producción. Desde el panel de Supabase el nombre de la función puede salir distinto del esperado (`guardian-portal` quedó como `bright-responder` y daba 404); por eso se prefiere la CLI.
+- La política de contenido (CSP) no permite scripts en línea: si agregas un botón con `onclick`, corre `node scripts/handlers-audit.mjs --write` para que su función entre en la lista permitida (`js/handler-allowlist.js`).
 - Las migraciones se corren a mano en el SQL Editor de producción, en el orden de [MIGRATIONS.md](MIGRATIONS.md).
 - Antes de publicar, seguí la lista de [CONTRIBUTING.md](../CONTRIBUTING.md).

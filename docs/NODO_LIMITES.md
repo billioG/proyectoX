@@ -6,6 +6,8 @@ Qué aguanta el nodo, qué no hace y cómo medirlo en cada escuela. Léelo antes
 > (`docs/PILOTO_RURAL.md`): *15 a 20 tablets a la vez, cómodo*. Los demás valores de abajo son **cálculos y
 > recomendaciones prudentes**, marcados como tales. La herramienta `school-node/herramientas/prueba-de-carga.mjs`
 > permite medir de verdad en cada instalación (sección 3); cuando tengas mediciones reales, anótalas en la tabla 2.
+> Tampoco se han probado en hardware real el servidor de nombres del kit de router (`docs/NODO_KIT_ROUTER.md`) ni la
+> imagen de microSD (`docs/NODO_IMAGEN_MICROSD.md`), y **no hay ninguna medición con más de 20 tablets reales** (la simulación de 60 de la sección 2 corrió en una PC, sin Wi-Fi).
 
 ## 1. Capacidad recomendada
 
@@ -22,13 +24,13 @@ turnos de 20 está dentro de lo recomendado.
 
 Lo que se sabe del diseño, de menor a mayor importancia práctica:
 
-1. **El Wi-Fi, casi siempre antes que la Raspberry.** El código de la app (JavaScript, CSS y página) pesa 2,3 MB (medido en el repositorio),
-   más unas librerías en `vendor/`. Desde esta versión el nodo entrega ese texto **comprimido (gzip): 0,6 MB** (medido). Pero un estudiante que
+1. **El Wi-Fi, casi siempre antes que la Raspberry.** El código de la app (JavaScript, CSS y página) pesa 2,6 MB (recontado el 12/11/2026 en el repositorio; el 5/11 eran 2,3 MB),
+   más unas librerías en `vendor/`. El nodo entrega ese texto **comprimido (gzip): 0,6 MB** (medido con `gzip -6`; el nodo puede comprimir con otro nivel). Pero un estudiante que
    abre la app por primera vez (o después de una actualización) la baja completa:
    | Tablets abriendo a la vez | Datos a servir (≈0,6 MB cada una, estimado) | Tiempo con 30 Mbit/s reales de Wi-Fi compartido |
    |---|---|---|
-   | 20 | ≈ 12 MB | ≈ 3 s |
-   | 40 | ≈ 24 MB | ≈ 6 s |
+   | 20 | ≈ 13 MB | ≈ 3 s |
+   | 40 | ≈ 26 MB | ≈ 7 s |
    Es un **cálculo**; el Wi-Fi real en un salón (paredes, interferencia, tablets viejas) rinde menos. Los videos de los
    cursos pesan mucho más que la app: 20 tablets viendo un video de 100 MB al mismo tiempo mueven 2 GB. **Escalona las
    actividades con video** o usa tablets con los videos ya descargados.
@@ -37,8 +39,8 @@ Lo que se sabe del diseño, de menor a mayor importancia práctica:
    acceso** aparte (la Raspberry por cable) se llega a la capacidad recomendada.
 3. **El almacenamiento.** Una microSD barata es lenta para leer muchos videos a la vez y se daña con cortes de luz. Un
    **SSD por USB** (o microSD «high endurance») es la mejora más barata de rendimiento y duración.
-4. **Un solo proceso.** El servidor es una sola aplicación de Node: el trabajo de CPU (iniciar sesión con PIN usa un
-   cálculo deliberadamente costoso, 150 000 vueltas) se hace de uno en uno. **Muchos estudiantes iniciando sesión en el
+4. **Un solo proceso.** El servidor es una sola aplicación de Node: el trabajo de CPU (iniciar sesión con la contraseña de clase o el PIN usa un
+   cálculo deliberadamente costoso, 150 000 vueltas; el de los docentes usa bcrypt) se hace de uno en uno. **Muchos estudiantes iniciando sesión en el
    mismo segundo** se forman en fila: si el salón entero entra a la vez, espera unos segundos. Pide que entren **de a
    grupos** o que dejen la sesión abierta (se conserva).
 5. **La base es SQLite.** Escribe de a una operación a la vez (modo WAL): cómodo para decenas de estudiantes, no para
@@ -78,14 +80,15 @@ Para medir durante una clase real, desde la Raspberry (SSH): `top` (uso de CPU y
 | Videos de proyectos de la propia escuela (copia local) | **150 MB** por archivo, **3 GB** en total, **8 archivos** por sincronización (los más nuevos primero) | Se bajan al sincronizar para verse sin internet (`projectMirrorMaxFileMB`, `projectMirrorMaxMB`, `projectMirrorPerRun`); no entran en el respaldo; los de otras escuelas solo se ven con internet |
 | Proyectos ya subidos a la nube | Se borran del nodo a los **7 días** (`keepSyncedProjectDays`) | Para no llenar el disco |
 | Sincronización | Cada **10 minutos** con internet (`syncEveryMinutes`) y al detectar internet | Los cambios de ese intervalo se pierden si la tarjeta se daña antes de subir (ver `docs/NODO_RESPALDO.md`) |
-| Sin internet | **IA y notificaciones no funcionan** | Todo lo demás de la plataforma sí (`school-node/README.md`) |
+| Sin internet | **No funcionan:** el asistente con IA, los retos de comprensión, ortografía y depuración (la IA crea su contenido), la tienda, el pase de temporada, el chat de la mascota y las notificaciones | Lo demás sí: cursos, proyectos, asistencia, exámenes, equipos, mascota, Práctica y los retos Contrarreloj y Ahorcado (`school-node/README.md`) |
 | Comentarios con imagen adjunta, algunos catálogos | Requieren internet | Mensaje claro en pantalla |
 | Reloj | La Raspberry **no tiene reloj propio** | Tras un apagón sin internet la hora puede desfasarse (afecta el cofre diario y fechas de avisos); se corrige sola con internet |
 | Código de docente | **5 intentos** fallidos bloquean 5 minutos | Protección contra adivinar el código |
 | Cursos y videos | Ocupan disco | El instalador exige **2 GB libres** como mínimo; planifica **32 GB o más** según cuántos cursos con video baje la escuela |
-| Dirección del nodo | `quetzal.local` funciona en la mayoría de tablets Android modernas y iPhone | Algunas Android viejas no resuelven `.local`: usar la IP (reservada en el router) |
+| Dirección del nodo | `quetzal.local` funciona por mDNS en iPhone, Windows, Chromebook y Android 12 o posterior | Android 11 o anterior no resuelve `.local`: con el **kit de router + Raspberry** (`docs/NODO_KIT_ROUTER.md`, v1.0.265) el servidor de nombres del nodo lo resuelve; **no se ha probado todavía con router y tablets reales**. Sin preparar el router, usar la IP (reservada en el router) |
 | Una Raspberry por escuela | Dos nodos en la misma red chocan en el nombre `quetzal` | Cambiar `hostName` en `config.json` si fuera necesario |
-| HTTPS | El nodo sirve por HTTP | Suficiente para la red local; funciones que exigen HTTPS (cámara) no están disponibles |
+| HTTPS | Por defecto el nodo sirve por HTTP; HTTPS es opcional (`school-node/https-setup.sh`, v1.0.250), **sin probar en una Raspberry real** | Suficiente para la red local; sin HTTPS no hay cámara y la asistencia usa la **lista rápida** (un toque por estudiante) |
+| Actualización | «Actualizar servidores» (nube) o `install.sh --update` | Desde v1.0.266 tolera cambios locales (los guarda con `git stash`); `config.json` y `data/` no se tocan. Un nodo ya atascado necesita una actualización a mano |
 | Cortes de luz | La base resiste cortes (WAL), pero **cada corte brusco de energía acerca el daño de la microSD** | Usar regulador/UPS o SSD |
 
 ## 5. Señales de que el nodo está pasado

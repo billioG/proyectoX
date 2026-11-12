@@ -14,7 +14,7 @@ Raspberry de una escuela, sin necesidad de saber de bases de datos.
 | Estudiantes, cursos, avance y recursos **ya sincronizados** | Nube (Supabase) y copia en el nodo | **No**: se vuelve a bajar al sincronizar |
 | Avance, PIN, evaluaciones, asistencia, retos, etc. **hechos en el nodo y todavía sin subir** | `data/node.db` | **Sí**, hasta que se sincronicen |
 | Proyectos (videos/modelos 3D) y fotos subidos **y todavía sin subir** | `data/projects`, `data/project-uploads`, `data/photos` | **Sí** |
-| PIN de estudiantes y docentes del nodo | `data/node.db` | Sí (se pueden volver a crear, pero los estudiantes tendrían que elegir PIN otra vez) |
+| PIN de estudiantes y docentes del nodo (solo en el modo anterior, `/?modo=pin`) | `data/node.db` | Sí (se pueden volver a crear, pero tendrían que elegir PIN otra vez). Con la app real, estudiantes y docentes entran con la contraseña de clase y la de su cuenta, que se vuelven a bajar al sincronizar |
 | Token del nodo y código de docente | `config.json` | Sí (el token se vuelve a copiar del panel de Servidores; el código de docente se genera nuevo) |
 | Cursos y videos descargados | `data/content` | No: se vuelven a bajar |
 
@@ -110,8 +110,12 @@ Después de restaurar, comprueba: entra a `http://quetzal.local`, abre `http://q
 4. Arranca el servicio y deja sincronizar.
 
 **Si no tienes ningún respaldo:** el nodo vuelve a bajar de la nube estudiantes, cursos y avance sincronizado en la
-primera sincronización. Lo que se hizo sin conexión y no se había subido se perdió, y los estudiantes tendrán que crear
-su PIN otra vez.
+primera sincronización. Lo que se hizo sin conexión y no se había subido se perdió; si la escuela usaba el modo anterior
+(PIN), los estudiantes tendrán que crear su PIN otra vez.
+
+**Si cambias de Raspberry** y la escuela usa el kit de router, el servidor de nombres viene con el nodo (desde v1.0.265),
+pero la reserva de IP del router es por dirección MAC: hay que reservar la IP de la Raspberry nueva y comprobar que el
+router la siga entregando como DNS (`docs/NODO_KIT_ROUTER.md`, secciones 2 y 3).
 
 ### 5.3 Windows
 
@@ -143,5 +147,5 @@ en tu computadora con el nodo instalado):
 | `El respaldo no pasó la revisión` | La base estaba dañada (corte de luz grave, microSD fallando) | Cambia la microSD pronto; usa el respaldo anterior |
 | `Detén primero el servicio` | Intentaste restaurar con el nodo encendido | `sudo systemctl stop quetzal-node` y repite |
 | `Ese archivo no sirve para restaurar` | Archivo dañado o no es un respaldo del nodo | Prueba con el anterior; revisa `--list` |
-| El temporizador no aparece en `list-timers` | Nodo instalado antes de esta versión | `bash ~/quetzal/school-node/install.sh --update` |
+| El temporizador no aparece en `list-timers` | Nodo instalado antes de esta versión | `bash ~/quetzal/school-node/install.sh --update` (desde v1.0.266 funciona aunque el nodo tenga cambios locales) |
 | No hay copia en la USB | La USB no estaba conectada a las 2:30 | Conéctala y corre `sudo systemctl start quetzal-backup.service` |

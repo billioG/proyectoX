@@ -16,7 +16,7 @@ Datos del colegio: nombre _______________  código _______  fecha _______  quié
       su **token** (64 letras y números). No compartas el token por chats públicos.
 - [ ] **Migraciones y funciones de la nube al día** (las hace el dueño del proyecto; ver `docs/MIGRATIONS.md`).
       *Se comprueba:* todas las filas de `docs/MIGRATIONS.md` están ejecutadas y la función `node-sync` está desplegada
-      con los 14 archivos actuales.
+      con **todos** sus archivos (hoy son 15 en `supabase/functions/node-sync/`, recontado el 12/11/2026) y Verify JWT en OFF.
 - [ ] **Cursos asignados** a los grados de la escuela (para que se descarguen al nodo).
 
 ## B. Equipo
@@ -52,7 +52,8 @@ Datos del colegio: nombre _______________  código _______  fecha _______  quié
 - [ ] **IP de la Raspberry reservada en el router** (reserva DHCP por dirección MAC). *Se comprueba:* tras reiniciar el
       router, la Raspberry conserva la IP.
 - [ ] `http://quetzal.local` abre desde una tablet Android y desde un celular; si alguna no abre, anotar la IP
-      (`http://IP`) como respaldo.
+      (`http://IP`) como respaldo. Sin cámara (HTTP), **Tomar Asistencia** usa la lista rápida; HTTPS es opcional
+      (`school-node/https-setup.sh`, sin probar en una Raspberry real).
 - [ ] Si usa **hotspot** (`--hotspot`): anotada la contraseña que se mostró al final.
 - [ ] **Cartel con QR** impreso (`http://quetzal.local/cartel`) y pegado en el salón.
 - [ ] El router **no tiene aislamiento de clientes** (las tablets deben ver a la Raspberry).
@@ -62,10 +63,13 @@ Datos del colegio: nombre _______________  código _______  fecha _______  quié
 - [ ] **Primera sincronización terminada.** *Se comprueba:* el chip de estado del nodo dice sincronizado, o en Quetzal
       → «Servidor de la escuela» aparece **En línea** y `pending_changes` en 0.
 - [ ] **Cursos y archivos descargados.** *Se comprueba:* `http://quetzal.local/api/node/status` con `pending.files` en `0`.
-- [ ] Un **estudiante de prueba** entra con su PIN, abre un curso con video/PDF **sin internet** (desconectando el
-      router del internet) y termina una lección.
-- [ ] Cada **docente** crea, con internet, su PIN de 6 números en su Perfil. *Se comprueba:* entra al nodo con correo y
-      PIN.
+- [ ] Un **estudiante de prueba** entra con su usuario y la **contraseña de su clase**, abre un curso con video/PDF **sin
+      internet** (desconectando el router del internet) y termina una lección. *Se comprueba:* `"rest": true` en
+      `/api/node/status` (si es `false`, falta la primera sincronización o alguna clase no tiene contraseña de clase).
+- [ ] Cada **docente** entra al nodo con su **correo y la misma contraseña** de Quetzal en línea (sin PIN aparte; el nodo la
+      recibe cifrada al sincronizar con internet). *Se comprueba:* entra sin internet.
+- [ ] Lo que **no** funciona sin internet se explicó al docente: asistente con IA, retos de comprensión, ortografía y
+      depuración, tienda, pase de temporada y chat de la mascota.
 - [ ] Se probó **sincronizar desde Quetzal en línea** (botón «Sincronizar ahora» en «Servidor de la escuela»).
 
 ## F. Respaldo y seguridad
@@ -82,6 +86,7 @@ Datos del colegio: nombre _______________  código _______  fecha _______  quié
 
 - [ ] **Prueba de carga** desde otra computadora con el número de tablets que usará la escuela
       (`docs/NODO_LIMITES.md`, sección 3): veredicto «BIEN». Anotada en la tabla de mediciones.
+- [ ] Lo único medido en una escuela real son **15 a 20 tablets a la vez**; con más no hay medición real.
 - [ ] Si superan **20 tablets a la vez**: SSD por USB, router/punto de acceso por cable y escalonar los videos.
 - [ ] `vcgencmd get_throttled` da `0x0` durante una clase real.
 
@@ -99,7 +104,7 @@ Datos del colegio: nombre _______________  código _______  fecha _______  quié
 | Cada semana | Mirar «Servidor de la escuela» en Quetzal: En línea, sin errores, `pending_changes` bajo | |
 | Cada mes | Llevarse una copia del respaldo (USB) y revisar espacio libre (`df -h /`) | |
 | Cada trimestre | **Prueba de restauración** en una Raspberry de prueba (`docs/NODO_RESPALDO.md`, sección 6). Anotar fecha y resultado: | |
-| Con cada versión nueva | `bash ~/quetzal/school-node/install.sh --update` (conserva estudiantes y configuración) | |
+| Con cada versión nueva | «Actualizar servidores» (administrador, en la plataforma) o `bash ~/quetzal/school-node/install.sh --update` (conserva estudiantes y configuración; desde v1.0.266 tolera cambios locales en el programa) | |
 | Cada año | Cambiar la microSD por una nueva (las microSD se desgastan) | |
 
 Firmas: instalador _______________   responsable del colegio _______________
