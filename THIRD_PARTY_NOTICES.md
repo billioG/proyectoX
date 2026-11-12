@@ -22,7 +22,7 @@ las lista.
 | Font Awesome Free | 6.4.0 | Íconos CC BY 4.0 · fuentes SIL OFL 1.1 · código MIT | CDN y `vendor/cdn/` (la cabecera de `all.min.css` conserva la atribución) |
 | Inter | — | SIL OFL 1.1 | Google Fonts y `vendor/cdn/` |
 | Outfit | — | SIL OFL 1.1 | Google Fonts |
-| h5p-standalone | — | MIT (proyecto upstream; **confirmar la versión exacta de la copia**) | `vendor/h5p-standalone/` |
+| h5p-standalone | 3.7.0 | MIT (© 2015 Tunapanda; copia del texto en `vendor/h5p-standalone/LICENSE`) | `vendor/h5p-standalone/` |
 | Tailwind CSS | 3.4.17 | MIT | genera `css/tailwind.css` (no se distribuye el código de Tailwind) |
 
 ## Servidor escolar (`school-node/`, dependencias de producción)
@@ -45,5 +45,4 @@ reservados). El resto de mascotas e ilustraciones están dibujadas en código; v
 
 ## Pendiente de confirmar por el autor
 
-- Copia de `vendor/h5p-standalone/`: anotar la versión y el enlace al `LICENSE` de ese proyecto.
 - Contenido de cursos: vive en Supabase, no en este repositorio; cada docente responde por el material que sube.
