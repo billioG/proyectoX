@@ -2420,6 +2420,7 @@ window.renderCourseSidebar = function renderCourseSidebar() {
   const activeCourse = window._activeCourse?.course;
   const w = activeCourse ? computeCourseWeighting(activeCourse, items) : null;
   const approvedWeighting = w?.mode === 'approved' ? w : null;
+  // handlers-audit: window.selectCourseResource(0) ;; window.showToast('x', 'info') -- (onclick de cada recurso del curso, según esté bloqueado o no)
   sidebarEl.innerHTML = items.map((l, i) => {
     const done = isLessonReallyDone(completions.get(l.id));
     const unlocked = isCourseResourceUnlocked(items, i);
@@ -2546,6 +2547,7 @@ window.selectCourseResource = function selectCourseResource(index) {
 // Construye el árbol de comentarios (top-level + respuestas anidadas) con
 // like por comentario -- lo usan tanto el panel del estudiante como el del
 // docente, cada uno pasando sus propios likeFn/replyFn.
+// handlers-audit: window.toggleTeacherCommentLike('x', 'x', 0) ;; window.postTeacherResourceComment('x', 'x') ;; window.toggleResourceCommentLike('x', 'x', 0) ;; window.postResourceComment('x', 'x', 'x') -- (likeFn/replyFn que pasan los dos llamadores)
 window.buildResourceCommentsHtml = function buildResourceCommentsHtml(comments, likeRows, fns) {
   const sanitizeInput = window.sanitizeInput || ((v) => v);
   const currentUserId = window.currentUser?.id;
