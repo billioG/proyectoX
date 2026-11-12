@@ -36,7 +36,7 @@ se publica. El único paso de build es Tailwind (`css/tailwind.src.css` →
 
 ## Arranque de la aplicación
 
-1. `index.html` carga Supabase, `js/config.js` (URL y clave pública) y `js/app.js`.
+1. `index.html` carga Supabase, `js/config.js` (URL y clave pública) y `js/app.js`. Desde v1.0.260 no hay `<script>` en línea: lo que antes estaba escrito en `index.html` vive en `js/boot.js` y `js/version.js`, y los botones (`onclick`) los ejecuta `js/safe-handlers.js` (ver «Seguridad»).
 2. `app.js` importa los módulos base y llama a `initAuth()` (`js/auth.js`).
 3. `initAuth()` decide el modo:
    - **Nodo escolar**: si la app se abrió desde una Raspberry con la réplica lista (`window.QUETZAL_NODE.rest`), `js/config.js` apunta el cliente de Supabase al propio nodo y corre la **app real** sin internet (ver `school-node/README.md`). Si la réplica aún no está lista (o con `/?modo=pin`), `detectQuetzalNode` activa el modo anterior de `js/node-mode.js`.
@@ -76,6 +76,9 @@ manda el navegador.
 | `supabase/functions/node-sync/attendance.ts`, `groups.ts`, `school-node/rest/progress.js` | Asistencia y equipos hechos en el nodo (validación en la nube) y progreso de práctica calculado en el nodo |
 | `notification-center.js` | Refresca los contadores (campana, evaluar, duelos) |
 | `activity-tracker.js` | Tiempo activo (latido cada 30 s, calculado en servidor) |
+| `boot.js`, `version.js` | Arranque y número de versión (antes eran `<script>` en línea de `index.html`) |
+| `safe-handlers.js`, `handler-allowlist.js`, `openers.js` | Ejecución de los `onclick` bajo la CSP: un intérprete mínimo que solo llama a las funciones de la lista permitida (`handler-allowlist.js`, generada con `node scripts/handlers-audit.mjs --write`); `openers.js` agrupa funciones con nombre para botones asíncronos |
+| `query-cache.js`, `private-media.js` | Caché con vigencia y direcciones firmadas para fotos y videos privados |
 
 ### Aprendizaje
 | Archivo | Responsabilidad |
@@ -110,11 +113,12 @@ manda el navegador.
 | `announcements.js`, `surveys.js` | Avisos y encuestas |
 | `admin-*.js`, `kpi-engine.js`, `bonus-system.js` | Tableros, reportes y bonos del admin |
 | `inbox.js` | Buzón de la clase: el docente lee sugerencias y evaluaciones de forma anónima; el administrador, con nombres |
-| `school-servers.js` | «Servidor de la escuela»: estado de la Raspberry y «Sincronizar ahora» desde la plataforma en línea |
+| `school-servers.js` | «Servidor de la escuela»: estado de la Raspberry, «Sincronizar ahora» y, para el administrador, «Actualizar servidores» desde la plataforma en línea |
+| `audit-log.js` | «Bitácora de seguridad» (solo administrador, solo lectura): quién hizo qué y cuándo, desde la tabla `security_audit_log` |
 
 ### Plan de reorganización de `js/`
 
-`js/` es una carpeta plana de ~85 archivos y 37 000 líneas. Los scripts son clásicos (funciones en `window`) y se cargan por demanda con
+`js/` es una carpeta plana de 98 archivos y unas 40 000 líneas (recontado el 12/11/2026). Los scripts son clásicos (funciones en `window`) y se cargan por demanda con
 `MODULE_MAP` de `main.js`, así que **mover o partir un archivo toca cuatro lugares a la vez**: `MODULE_MAP`, la lista de caché de
 `service-worker.js`, las etiquetas de `index.html` y las pruebas que lo nombran. Por eso la reorganización va por pasos pequeños, y
 la guardia `tests-unit/js-inventory.test.mjs` revisa en cada cambio que (1) todo lo que el service worker lista existe, (2) todo
@@ -150,6 +154,7 @@ Esto es un plan: **ningún módulo grande se ha partido todavía** (solo se borr
 | `admin-delete-students` | Borra alumnos y sus cuentas | JWT (admin) |
 | `admin-force-delete-school` | Borra un establecimiento completo | JWT (admin) |
 | `admin-set-class-password` | Contraseña compartida de una clase | JWT |
+| `staff-student-passwords` | Muestra o imprime la contraseña de alumnos descifrándola con una llave que solo existe en la función (admin, o docente de la clase); el admin puede cifrar las que faltan | JWT |
 | `ai-proxy` | Chat del asistente (modo tutor para alumnos) | JWT |
 | `ai-generate-quiz` / `-hangman-word` / `-spelling-word` / `-debug-steps` | Contenido de los retos (`ai-generate-quiz` = Comprensión Lectora: texto + preguntas): 2 contenidos distintos por duelo (uno por jugador), sin repetir lo que ya jugaron; con `{practice:true}` devuelven contenido para el modo Práctica sin guardar nada | JWT |
 | `ai-evaluate-project`, `ai-evaluate-mblock`, `ai-generate-general-report` | IA para docentes y admin | JWT |
@@ -179,6 +184,11 @@ falla si reaparece). Para pegarlas en el editor del panel de Supabase: `node scr
 - **Service role solo en Edge Functions.** Nunca en el cliente ni en el repositorio.
 - **Menores de edad**: nada de nombres completos en lo que se comparte fuera (tarjeta de mascota, portal de padres).
 - **Fecha de Guatemala** (`America/Guatemala`) para rachas, cofres y topes diarios.
+- **Política de contenido (CSP) sin `'unsafe-inline'` en scripts (v1.0.260 a v1.0.264).** Un `onclick` inyectado ya no corre: `js/safe-handlers.js` solo llama a funciones de `js/handler-allowlist.js`, y `scripts/handlers-audit.mjs` (con pruebas `tests-unit/csp-handlers.test.mjs` y `tests/csp-handlers.spec.js`) rechaza los manejadores armados en ejecución que no puede auditar. Los estilos en línea (`style-src`) siguen permitidos. Detalle y límites en `docs/SEGURIDAD_2026-11.md`.
+- **Integridad de librerías de CDN (SRI, v1.0.258):** las 13 librerías de jsDelivr y cdnjs llevan hash `sha384` (`scripts/sri-hashes.mjs`).
+- **Bitácora de seguridad:** la tabla `security_audit_log` (solo agregar, solo la lee un administrador, sin secretos ni nombres de menores) registra eliminaciones de alumnos y colegios, docentes creados, cambios de rol, contraseñas de clase, enlaces del portal de padres, servidores escolares y consultas de contraseñas de alumnos. Los triggers y 6 Edge Functions escriben en ella (`_shared/audit.ts`); no registra lo hecho directamente en el SQL Editor de Supabase.
+- **Límite de frecuencia** en las funciones `notify-*` (`_shared/rate-limit.ts`, migración `rate-limits.sql`).
+- **Cabeceras HTTP (`frame-ancestors`, `nosniff`, HSTS):** GitHub Pages no las permite; la forma de añadirlas es Cloudflare delante del dominio (`docs/CLOUDFLARE_PASO_A_PASO.md`, `scripts/verificar-cabeceras.mjs`). **Es una guía; no está aplicada.**
 
 ## Sin conexión
 
@@ -187,6 +197,10 @@ Hay tres niveles:
 1. **Caché de la app** (`service-worker.js`): la aplicación abre sin internet. `CACHE_NAME` cambia en cada versión.
 2. **Tablet sin internet** (`offline-kit.js`, `sync-manager.js`): cuentas guardadas con PIN, cursos descargados, cambios en cola hasta que vuelve la señal.
 3. **Nodo escolar** (`school-node/`): una Raspberry sirve la app y el contenido a toda la escuela por Wi-Fi local. Habla el «idioma» de Supabase (`/rest/v1`, `/auth/v1`, `/functions/v1/student-login`, en `school-node/rest/`) sobre una réplica SQLite de las tablas de la escuela, con las mismas reglas de acceso que la nube (RLS en código), una **bandeja de salida** con lo que se hace sin internet, y sincroniza con `node-sync` cuando tiene señal (la nube valida de nuevo todo lo que sube). Ver `school-node/README.md`.
+   - **Qué requiere internet aunque haya nodo:** el asistente con IA, los retos de comprensión, ortografía y depuración (su contenido lo crea la IA), la tienda, el pase de temporada, el chat de la mascota, las notificaciones en tiempo real y adjuntar imágenes a un comentario. Contrarreloj y Ahorcado (banco fijo de palabras), exámenes, asistencia, equipos, proyectos, mascota (elegir, huevos, accesorios) y el buzón sí funcionan sin internet.
+   - **Nombre `quetzal.local`:** el nodo lo anuncia por mDNS y, desde v1.0.265, trae un servidor de nombres (`school-node/dns.js`, activo por defecto en la Raspberry) para el kit de router + Raspberry: si el router entrega la IP de la Raspberry como DNS, el nombre abre en cualquier dispositivo, también Android 11 o anterior (`docs/NODO_KIT_ROUTER.md`). Tiene pruebas automáticas; **no se ha probado con router y tablets reales**.
+   - **HTTPS opcional** (`school-node/https-setup.sh`, v1.0.250) para que la cámara funcione; sin él, la asistencia usa la lista rápida. Sin probar en una Raspberry real.
+   - **Actualización:** el administrador toca «Actualizar servidores» y cada Raspberry hace `git pull`; desde v1.0.266 guarda aparte (`git stash`) los cambios locales en lugar de fallar, y `install.sh` usa `npm ci`.
 
 ## Gamificación y economía
 

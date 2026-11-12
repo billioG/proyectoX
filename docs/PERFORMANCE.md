@@ -63,7 +63,7 @@ tienen índice** (sección 5). Lo que la hace crecer es lo que cada pedido cuest
 | Latido (`record_active_heartbeat`) | 4 consultas por llamada, 2 llamadas por minuto por usuario, y se podía contar doble con dos pestañas | **Hecho** (migración): 2 consultas, una sola sentencia atómica |
 | Feed de proyectos del Inicio (`js/projects.js`) | Trae **todos** los proyectos visibles (sin límite) con autor, escuela, equipo y evaluaciones, **incluida la miniatura en base64 de los modelos 3D (10–20 KB cada una)**; el filtrado y el orden se hacen en el navegador. Es la carga más grande por estudiante y crece con la cantidad de proyectos | **Parcial:** `schools(*)` → `schools(name, code)`. **Pendiente (recomendado):** una función `get_feed(limite, desplazamiento)` en el servidor que pagine y deje las miniaturas para cuando se vean |
 | Tablero del administrador (`js/admin-dashboard.js`) | Trae `projects`, `evaluations`, `teacher_ratings`, `active_time_tracking` (una fila por usuario y día) y `teachers`/`schools` con `select('*')`, sin límite (solo `students` está paginada) | **Pendiente:** una función que devuelva ya los totales (el administrador es uno o dos usuarios, así que no es un problema de concurrencia, pero sí de exactitud pasadas las 1000 filas) |
-| `select('*')` | 99 usos en 30 archivos (lessons, bonus-system, admin-success…) | **Pendiente:** listar columnas en las que más datos devuelven |
+| `select('*')` | 74 usos en 24 archivos (recontado el 12/11/2026; el 6/11 eran 99 en 30) (lessons, bonus-system, admin-success…) | **Pendiente:** listar columnas en las que más datos devuelven |
 
 ### 4.2 N+1 y consultas repetidas
 
@@ -124,7 +124,8 @@ evaluación) ni a las pantallas que se recargan tras guardar (escuelas, docentes
 
 ### El nodo escolar (resumen; detalle en `docs/NODO_LIMITES.md`)
 
-- La app (JavaScript, CSS y página) pesa 2,3 MB y el nodo la entrega **comprimida (0,6 MB)**; en la nube la comprime GitHub Pages. La primera apertura de 20 tablets a la vez son ~12 MB: el cuello de botella es el **Wi-Fi**, no la Raspberry.
+- La app (JavaScript, CSS y página) pesa 2,6 MB (recontado el 12/11/2026) y el nodo la entrega **comprimida (≈0,6 MB)**; en la nube la comprime GitHub Pages. La primera apertura de 20 tablets a la vez son ~13 MB: el cuello de botella es el **Wi-Fi**, no la Raspberry. Lo único medido en una escuela real son **15 a 20 tablets a la vez** (piloto); con más no hay medición real.
+- Desde v1.0.260 la CSP no permite scripts en línea; los botones pasan por `js/safe-handlers.js`. **No se volvió a medir** el presupuesto de peticiones (sección 2) después de ese cambio ni de v1.0.261 a v1.0.266: las cifras de la sección 2 son las de la v1.0.227.
 - El nodo **no hace el latido ni la presencia en tiempo real**, así que su carga por estudiante es menor que la de la nube; cada petición pasa por la capa compatible con Supabase sobre SQLite (una sola escritura a la vez).
 - Cada petición de la lista del apartado 2 también la atiende el nodo: **reducir peticiones ayuda al nodo igual que a la nube**.
 - Se recomienda **medir en cada escuela** con `school-node/herramientas/prueba-de-carga.mjs` (10 minutos).
@@ -135,7 +136,7 @@ evaluación) ni a las pantallas que se recargan tras guardar (escuelas, docentes
 2. **Paginar el feed del Inicio con una función del servidor** (`get_feed`): es lo que más datos mueve por estudiante y lo que más crece. Dejar la miniatura 3D para cuando la tarjeta esté a la vista.
 3. **Resumir el tablero del administrador en SQL** (totales ya calculados) en vez de traer tablas enteras.
 4. **Quitar la repetición de Perfil** (`group_members`, `projects`, `student_badges` ×2) con una sola lectura compartida por el nivel y las insignias.
-5. **Revisar los 99 `select('*')`**, empezando por `lessons.js` y `bonus-system.js`.
+5. **Revisar los 74 `select('*')`**, empezando por `lessons.js` y `bonus-system.js`.
 6. Si el uso crece y se sigue en el plan gratuito, **avisar antes de las 200 conexiones**: la presencia en línea podría hacerse bajo demanda (solo en el Centro de Juego) en vez de abrir el canal en cada sesión. Esa decisión es de producto.
 7. Minificar `js/*.js` (ya está en `PENDIENTES.md`: PageSpeed móvil 64).
 

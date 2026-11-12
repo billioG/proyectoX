@@ -19,7 +19,7 @@ evidencia más fuerte para MINEDUC, UNICEF y fundaciones.
 | Director y al menos un docente con interés | Sin compromiso local el piloto no se sostiene |
 | Energía eléctrica al menos parte del día (o plan solar) | El nodo y las tablets necesitan carga |
 | Docente que viaja a una zona con señal al menos una vez por semana | Para sincronizar el nodo (o por USB) |
-| 15 a 40 estudiantes en los grados del piloto | Un nodo atiende cómodo a 15–20 tablets a la vez |
+| 15 a 40 estudiantes en los grados del piloto | Un nodo atiende cómodo a 15–20 tablets a la vez (lo único medido en una escuela real; más de 20 no se ha probado, ver `docs/NODO_LIMITES.md`) |
 | Acceso razonable para visitas de acompañamiento | Soporte en persona el primer mes |
 
 Incluir, si se puede, una escuela con electricidad inestable para probar el
@@ -50,7 +50,7 @@ sincronizar, y el tiempo de acompañamiento.
 | Mes | Actividad |
 |---|---|
 | 0 | Selección de escuelas, convenio con el director, consentimientos de familias ([PRIVACIDAD_Y_CONSENTIMIENTO.md](PRIVACIDAD_Y_CONSENTIMIENTO.md)) |
-| 1 | Instalar el nodo (`school-node/README.md`), cargar cursos, crear cuentas con PIN; capacitación 1; prueba de entrada |
+| 1 | Instalar el nodo (`school-node/README.md`), cargar cursos, dar a cada clase su contraseña de clase; capacitación 1; prueba de entrada. Preparar el router del kit (`docs/NODO_KIT_ROUTER.md`) si se usa el kit |
 | 1–2 | Visita semanal o llamada; resolver problemas; registrar incidentes |
 | 3 | Capacitación 2 (uso avanzado: juegos, tema de la semana, avisos a padres por SMS) |
 | 3–5 | Uso normal; sincronización semanal; revisar el tablero de impacto |
@@ -88,14 +88,17 @@ sincronizar, y el tiempo de acompañamiento.
 |---|---|
 | Cortes de energía | Kit solar o batería; el nodo guarda todo en la tarjeta y retoma solo |
 | Tarjeta microSD dañada | Tarjeta de repuesto con la imagen lista; sincronizar seguido para no perder progreso |
-| El docente no llega a zona con señal | Sincronización por memoria USB (pendiente de construir, ver `PENDIENTES.md`) |
-| Tablets compartidas entre alumnos | Ingreso con PIN personal ya implementado |
+| El docente no llega a zona con señal | Sincronización por memoria USB (ya existe, `school-node/usb-sync.js`; **falta probarla con una Raspberry real**, ver `PENDIENTES.md`) |
+| Tablets compartidas entre alumnos | Cada estudiante entra con su usuario y la contraseña de su clase (los docentes, con su contraseña de siempre) |
+| Tablets Android 11 o anterior no abren `quetzal.local` | Kit de router preparado (`docs/NODO_KIT_ROUTER.md`) o usar la IP del cartel; el servidor de nombres del kit no se ha probado todavía con tablets reales |
+| Un nodo no se actualiza por tener cambios locales | Desde v1.0.266 «Actualizar servidores» los guarda aparte y sigue |
 | Rotación del docente | Capacitar a dos personas por escuela |
 | Robo o daño del equipo | Guardar el nodo con llave; acta de entrega al director |
 
 ## Pendiente antes de empezar
 
-- [ ] Completar el nodo escolar (ver sección "Nodo escolar" de `PENDIENTES.md`): HTTPS, instalador de un comando, sincronización por USB.
-- [ ] Preparar una imagen de tarjeta microSD lista para copiar.
+- [ ] Completar el nodo escolar (ver sección "Nodo escolar" de `PENDIENTES.md`). Ya existen el instalador de un comando, la sincronización por USB y HTTPS opcional; la sincronización por USB y el HTTPS **no se han probado en una Raspberry real** (hay que probarlos).
+- [ ] Probar el kit de router (`docs/NODO_KIT_ROUTER.md`, sección 3) con un router y tablets reales, incluida una con Android 11 o anterior.
+- [ ] Probar la imagen de tarjeta microSD (`docs/NODO_IMAGEN_MICROSD.md`, sección 4) en una Raspberry real; los scripts solo se han probado con simulación.
 - [ ] Presupuesto final con precios locales.
 - [ ] Elegir escuelas y firmar convenios.

@@ -5,6 +5,21 @@ puntos marcados como **estimación** son criterio, no medición.
 
 > Para volver a medir la cobertura cuando cambie la app: `node scripts/node-cobertura.mjs`.
 
+> **Nota de actualización (12/11/2026, v1.0.266).** Este informe es la **foto del 1/11/2026 (v1.0.197)** y se conserva como registro de
+> lo que costó y de cómo se construyó; **varias filas de las secciones 1, 3 y 4 ya no son ciertas.** Desde entonces el nodo agregó,
+> sin internet: subir proyecto y reaccionar (v1.0.208, la «regresión» de la sección 3 está resuelta), comentarios y notas de las
+> lecciones, asistencia (QR o lista rápida), equipos, exámenes con hoja de respuestas, permisos de asistencia, mascota (elegir,
+> huevos, accesorios), retos Contrarreloj y Ahorcado, foto de perfil, buzón, progreso del docente y creación de cursos y recursos
+> (el docente entra con su misma contraseña, sin PIN aparte). **Siguen necesitando internet:** el asistente con IA, los retos de
+> comprensión, ortografía y depuración, la tienda y el pase de temporada, el chat de la mascota, las notificaciones y adjuntar
+> imágenes a un comentario. La referencia vigente es `school-node/README.md`.
+>
+> **Cobertura recalculada hoy** con `node scripts/node-cobertura.mjs`: de 82 tablas que usa la app, el nodo sirve con datos reales
+> 31, otras 11 responden vacío y 40 dan error 404 (en la foto: 81 tablas, 15, 17 y 49); de 75 funciones (RPC) de la nube que llama la
+> app, 28 están emuladas (en la foto: 69 y 8). Los demás números de este informe (líneas, pruebas, hallazgos) **no se recalcularon**.
+> Para el kit de router, el HTTPS opcional, la imagen de microSD y la actualización de servidores ver `docs/NODO_KIT_ROUTER.md`,
+> `docs/NODO_LIMITES.md`, `docs/NODO_IMAGEN_MICROSD.md` y `school-node/README.md`.
+
 ## 1. Resumen
 
 - El nodo ahora responde con el mismo «idioma» que Supabase (`/rest/v1`, `/auth/v1`, `/functions/v1/student-login`) sobre una
