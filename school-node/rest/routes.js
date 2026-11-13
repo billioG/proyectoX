@@ -126,7 +126,7 @@ export function createRestRoutes({ store, auth, rpcs = {}, onChange = () => {}, 
         // Docentes: correo + el PIN que fijaron en línea (supabase-js signInWithPassword).
         if (grant === 'password') {
           const body = (await readJson(req)) || {};
-          return send(res, 200, auth.teacherLogin({ email: body.email, password: body.password, ip: clientIp(req) }));
+          return send(res, 200, await auth.teacherLogin({ email: body.email, password: body.password, ip: clientIp(req) }));
         }
         return send(res, 400, { code: 400, error_code: 'unsupported_grant_type', msg: 'Tipo de ingreso no soportado', message: 'Tipo de ingreso no soportado', error: 'unsupported_grant_type', error_description: 'Tipo de ingreso no soportado' });
       }
@@ -152,7 +152,7 @@ export function createRestRoutes({ store, auth, rpcs = {}, onChange = () => {}, 
     if (req.method !== 'POST') return send(res, 405, { error: 'Método no permitido' });
     try {
       const body = (await readJson(req)) || {};
-      return send(res, 200, auth.studentLogin({ username: body.username, password: body.password, ip: clientIp(req) }));
+      return send(res, 200, await auth.studentLogin({ username: body.username, password: body.password, ip: clientIp(req) }));
     } catch (e) {
       if (e instanceof AuthError) return send(res, e.status, { error: e.message });
       throw e;

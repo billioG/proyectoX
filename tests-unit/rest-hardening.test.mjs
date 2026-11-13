@@ -112,38 +112,38 @@ test('like/ilike con muchos comodines no bloquea el servidor y sigue dando la re
 });
 
 // ---- I1 / I2: login ----
-test('un usuario que no existe tarda lo mismo que uno que sí existe con la contraseña mala (no se puede enumerar usuarios por el tiempo)', () => {
+test('un usuario que no existe tarda lo mismo que uno que sí existe con la contraseña mala (no se puede enumerar usuarios por el tiempo)', async () => {
   const { layer } = boot();
-  const time = (u, i) => { const t = process.hrtime.bigint(); try { layer.auth.studentLogin({ username: u, password: 'mala', ip: `10.0.0.${i}` }); } catch { /* 401 */ } return Number(process.hrtime.bigint() - t) / 1e6; };
-  const median = (u, base) => [time(u, base), time(u, base + 1), time(u, base + 2)].sort((a, b) => a - b)[1];
-  const known = median('ana1', 10);
-  const unknown = median('nadie', 20);
+  const time = async (u, i) => { const t = process.hrtime.bigint(); try { await layer.auth.studentLogin({ username: u, password: 'mala', ip: `10.0.0.${i}` }); } catch { /* 401 */ } return Number(process.hrtime.bigint() - t) / 1e6; };
+  const median = async (u, base) => [await time(u, base), await time(u, base + 1), await time(u, base + 2)].sort((a, b) => a - b)[1];
+  const known = await median('ana1', 10);
+  const unknown = await median('nadie', 20);
   assert.ok(unknown > known * 0.5, `usuario inexistente ${unknown.toFixed(1)} ms vs existente ${known.toFixed(1)} ms`);
 });
 
-test('la memoria del login está acotada: intentos, enlaces sin usar y tokens de renovación viejos', () => {
+test('la memoria del login está acotada: intentos, enlaces sin usar y tokens de renovación viejos', async () => {
   const { layer, clock } = boot();
   // Hash de mentira y tope chico: se prueba la estructura, no la velocidad de PBKDF2.
   layer.store.setClassVerifiers([{ class_key: 'ESC1|Primero|A', requires_password: true, salt: 'aa', hash: 'h:clase123' }]);
   const auth = createAuth({ store: layer.store, now: () => clock.now, hash: (pw) => `h:${pw}`, maxTracked: 50 });
-  for (let i = 0; i < 400; i++) { try { auth.studentLogin({ username: `u${i}`, password: 'x', ip: `ip${i}` }); } catch { /* 401 */ } }
+  for (let i = 0; i < 400; i++) { try { await auth.studentLogin({ username: `u${i}`, password: 'x', ip: `ip${i}` }); } catch { /* 401 */ } }
   assert.ok(auth.stats().attempts <= 50, `intentos: ${auth.stats().attempts}`);
-  for (let i = 0; i < 300; i++) { clock.now += 1; auth.studentLogin({ username: 'ana1', password: 'clase123', ip: `v${i}` }); }
+  for (let i = 0; i < 300; i++) { clock.now += 1; await auth.studentLogin({ username: 'ana1', password: 'clase123', ip: `v${i}` }); }
   assert.ok(auth.stats().loginTokens <= 50, `enlaces: ${auth.stats().loginTokens}`);
 
-  const { token_hash } = auth.studentLogin({ username: 'ana1', password: 'clase123', ip: 'zz' });
+  const { token_hash } = await auth.studentLogin({ username: 'ana1', password: 'clase123', ip: 'zz' });
   auth.verify({ token_hash, type: 'magiclink' });
   assert.ok(layer.store.refreshCount() >= 1);
   clock.now += 31 * 24 * 3600_000;
-  const t2 = auth.studentLogin({ username: 'ana1', password: 'clase123', ip: 'yy' }).token_hash;
+  const t2 = (await auth.studentLogin({ username: 'ana1', password: 'clase123', ip: 'yy' })).token_hash;
   auth.verify({ token_hash: t2, type: 'magiclink' });
   assert.equal(layer.store.refreshCount(), 1, 'los de hace más de 30 días se borran');
 });
 
-test('un usuario larguísimo no llena la memoria: el límite usa una versión acotada del nombre', () => {
+test('un usuario larguísimo no llena la memoria: el límite usa una versión acotada del nombre', async () => {
   const { layer } = boot();
   const long = 'u'.repeat(5000);
-  try { layer.auth.studentLogin({ username: long, password: 'x', ip: 'a' }); } catch { /* 401 */ }
+  try { await layer.auth.studentLogin({ username: long, password: 'x', ip: 'a' }); } catch { /* 401 */ }
   assert.ok(layer.auth.stats().maxKeyLength <= 100);
 });
 
