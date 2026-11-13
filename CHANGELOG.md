@@ -4,6 +4,10 @@ Cambios publicados en Quetzal LMS, del más reciente al más antiguo. Cada líne
 
 Al publicar una versión nueva, agrega una línea arriba de todo (ver CONTRIBUTING.md).
 
+## 2026-11-13
+
+- **Nodo: el login ya no frena el nodo (v1.0.269).** Entrar (estudiante o docente) hacía el cálculo de la contraseña de forma síncrona y bloqueaba todo el nodo ~100 ms por intento; con un aula entera entrando, o con alguien probando contraseñas, el nodo se congelaba. Ahora el cálculo es asíncrono y hay un tope de 3 cálculos simultáneos por IP y 32 en todo el nodo (si se pasa: 429, con aviso de «nodo ocupado» cuando es el tope global). El tope de intentos fallidos por IP y por usuario no cambió.
+
 ## 2026-11-12
 
 - **Nodo: arreglos de la auditoría técnica (v1.0.268).** (1) **Un `Range` imposible tumbaba el nodo**: una sola petición como `Range: bytes=200-300` sobre un archivo de 100 bytes lanzaba un error tras enviar las cabeceras y el proceso se caía (systemd lo reiniciaba, pero cualquiera en la red podía repetirlo). Ahora los rangos se validan (`school-node/http-range.js`): 416 si no se pueden cumplir, se ignoran los mal formados, y los flujos de lectura se cierran si el cliente corta; además un error con las cabeceras ya enviadas solo corta esa conexión. (2) **La descarga de archivos de la nube se hace en flujo** (`sync.js`): antes 6 archivos completos en RAM a la vez (~900 MB con videos de 150 MB), lo que podía matar el proceso en una Raspberry de 1 a 2 GB. (3) **`serveScormEntry`** solo entrega HTML de hasta 2 MB (antes leía a memoria cualquier archivo) y rechaza un `Host` con comillas o etiquetas antes de meterlo en `<base href>`. (4) **`node-sync`**: una lección con un «%» suelto en la URL (p. ej. `guia_100%_lista.pdf`) ya no aborta la sincronización de toda la escuela (`safeDecode`). **Hay que volver a desplegar `node-sync` en Supabase (archivos `index.ts` y `content.ts`).** Pruebas nuevas en `tests-unit/node-hardening-auditoria.test.mjs`.
