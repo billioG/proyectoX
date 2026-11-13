@@ -95,6 +95,31 @@ async function loadAttendanceMonth(container) {
     }
 }
 
+// Una fila por estudiante (antes una por cada día de cada estudiante y la lista se hacía larguísima): días que asistió y días que faltó, en orden.
+// La fecha es texto AAAA-MM-DD (columna date): se parte sin pasar por Date, que la tomaba como UTC y mostraba el día anterior.
+function groupAttendanceByStudent(records) {
+    const byStudent = new Map();
+    for (const r of records || []) {
+        const key = r.student_id ?? r.students?.full_name ?? 'sin-estudiante';
+        if (!byStudent.has(key)) byStudent.set(key, { key, name: r.students?.full_name || 'Estudiante Eliminado', present: [], absent: [] });
+        byStudent.get(key)[r.status === 'present' ? 'present' : 'absent'].push(String(r.date).slice(0, 10));
+    }
+    return [...byStudent.values()]
+        .map((st) => ({ ...st, present: [...new Set(st.present)].sort(), absent: [...new Set(st.absent)].sort() }))
+        .sort((a, b) => a.name.localeCompare(b.name, 'es'));
+}
+
+// «Asistió 3 · 7, 8, 12»: el total y los días del mes (el mes ya está en el selector); al pasar el cursor, la fecha completa.
+function attendanceDayChips(days, kind) {
+    if (!days.length) return '<span class="text-slate-300 dark:text-slate-600">—</span>';
+    const tone = kind === 'present' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600';
+    const chips = days.map((d) => {
+        const [y, m, day] = d.split('-');
+        return `<span title="${day}/${m}/${y}" class="inline-block px-1.5 py-0.5 rounded-md ${tone} text-xs font-bold">${Number(day)}</span>`;
+    }).join(' ');
+    return `<div class="flex flex-wrap items-center gap-1"><span class="font-black ${kind === 'present' ? 'text-emerald-600' : 'text-rose-600'} mr-1">${days.length}</span>${chips}</div>`;
+}
+
 window.renderAnalyticsView = function renderAnalyticsView(container) {
     // Filtrar datos por mes seleccionado
     const selectedYear = currentFilterDate.getFullYear();
@@ -237,24 +262,25 @@ window.renderAnalyticsView = function renderAnalyticsView(container) {
                                 <table class="w-full text-left border-collapse">
                                     <thead>
                                         <tr>
-                                            <th class="p-3 text-[0.65rem] font-bold uppercase text-slate-400 tracking-wider border-b border-slate-200 dark:border-slate-700">Fecha</th>
                                             <th class="p-3 text-[0.65rem] font-bold uppercase text-slate-400 tracking-wider border-b border-slate-200 dark:border-slate-700">Estudiante</th>
-                                            <th class="p-3 text-[0.65rem] font-bold uppercase text-slate-400 tracking-wider border-b border-slate-200 dark:border-slate-700 text-right">Estado</th>
+                                            <th class="p-3 text-[0.65rem] font-bold uppercase text-slate-400 tracking-wider border-b border-slate-200 dark:border-slate-700">Asistencias</th>
+                                            <th class="p-3 text-[0.65rem] font-bold uppercase text-slate-400 tracking-wider border-b border-slate-200 dark:border-slate-700">Ausencias</th>
+                                            <th class="p-3 text-[0.65rem] font-bold uppercase text-slate-400 tracking-wider border-b border-slate-200 dark:border-slate-700 text-right">Efectividad</th>
                                         </tr>
                                     </thead>
                                     <tbody class="text-sm">
-                                        ${group.records.sort((a, b) => new Date(b.date) - new Date(a.date)).map(record => `
+                                        ${groupAttendanceByStudent(group.records).map(st => {
+                                            const tot = st.present.length + st.absent.length;
+                                            const pct = tot ? Math.round((st.present.length / tot) * 100) : 0;
+                                            const pctClass = pct >= 85 ? 'text-emerald-500' : (pct >= 60 ? 'text-amber-500' : 'text-rose-500');
+                                            return `
                                             <tr class="hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors">
-                                                <td class="p-3 font-mono text-slate-500 text-xs border-b border-slate-100 dark:border-slate-800">${new Date(record.date).toLocaleDateString()}</td>
-                                                <td class="p-3 font-bold text-slate-700 dark:text-slate-300 border-b border-slate-100 dark:border-slate-800">${window.sanitizeInput(record.students?.full_name || 'Estudiante Eliminado')}</td>
-                                                <td class="p-3 text-right border-b border-slate-100 dark:border-slate-800">
-                                                    ${record.status === 'present'
-                    ? '<span class="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-emerald-50 text-emerald-600 text-xs font-bold uppercase"><i class="fas fa-check"></i> Presente</span>'
-                    : '<span class="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-rose-50 text-rose-600 text-xs font-bold uppercase"><i class="fas fa-times"></i> Ausente</span>'
-                }
-                                                </td>
-                                            </tr>
-                                        `).join('')}
+                                                <td class="p-3 border-b border-slate-100 dark:border-slate-800 align-top font-bold text-slate-700 dark:text-slate-300">${window.sanitizeInput(st.name)}</td>
+                                                <td class="p-3 border-b border-slate-100 dark:border-slate-800 align-top">${attendanceDayChips(st.present, 'present')}</td>
+                                                <td class="p-3 border-b border-slate-100 dark:border-slate-800 align-top">${attendanceDayChips(st.absent, 'absent')}</td>
+                                                <td class="p-3 border-b border-slate-100 dark:border-slate-800 align-top text-right font-black ${pctClass}">${pct}%</td>
+                                            </tr>`;
+                                        }).join('')}
                                     </tbody>
                                 </table>
                             </div>
