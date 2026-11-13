@@ -167,6 +167,8 @@ window.renderTeacherManagementPanel = async function renderTeacherManagementPane
 }
 
 window.renderActiveChallengeBanner = async function renderActiveChallengeBanner() {
+  // Nodo escolar (sin internet): el reto del mes se responde con una reflexión que revisa una IA y su premio lo da la nube; sin salida a internet no se puede completar.
+  if (window.QUETZAL_NODE) return '';
   const _supabase = window._supabase;
   const currentUser = window.currentUser;
   const userRole = window.userRole;

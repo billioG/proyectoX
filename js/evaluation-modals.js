@@ -96,7 +96,7 @@ window.openEvaluationModal = async function openEvaluationModal(projectId) {
                       <h3 class="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Rúbrica de Evaluación Oficial</h3>
                   </div>
 
-                  <div id="ai-eval-panel" class="mb-6 p-5 rounded-2xl border ${aiEval ? 'border-indigo-200 dark:border-indigo-900 bg-indigo-50/50 dark:bg-indigo-950/20' : 'border-dashed border-slate-200 dark:border-slate-700'}">
+                  <div id="ai-eval-panel" ${window.IS_NODE_REST ? 'hidden style="display:none"' : ''} class="mb-6 p-5 rounded-2xl border ${aiEval ? 'border-indigo-200 dark:border-indigo-900 bg-indigo-50/50 dark:bg-indigo-950/20' : 'border-dashed border-slate-200 dark:border-slate-700'}">
                     ${aiEval ? `
                       <div class="flex justify-between items-start gap-4">
                         <div>
@@ -113,7 +113,7 @@ window.openEvaluationModal = async function openEvaluationModal(projectId) {
                     `}
                   </div>
 
-                  <div id="ai-code-eval-panel" class="mb-6 p-5 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
+                  <div id="ai-code-eval-panel" ${window.IS_NODE_REST ? 'hidden style="display:none"' : ''} class="mb-6 p-5 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
                     <div class="flex items-center justify-between gap-4">
                       <p class="text-xs text-slate-400"><i class="fas fa-code mr-1"></i> Si el equipo compartió capturas o un archivo .mblock de su código en bloques, la IA puede darte una nota y feedback según tu rúbrica.</p>
                       <button onclick="window.openAiCodeEvalModal('${projectId}')" class="shrink-0 btn-secondary-tw h-9 px-4 text-[0.65rem] uppercase font-bold"><i class="fas fa-laptop-code"></i> Evaluar Código IA</button>
