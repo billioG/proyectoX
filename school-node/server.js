@@ -15,6 +15,7 @@ import { runSync, loadConfig } from './sync.js';
 import { runUsbSync } from './usb-sync.js';
 import { startMdns } from './mdns.js';
 import { startDns, probeResponse } from './dns.js';
+import { parseRange, pipeFile } from './http-range.js';
 import { localizeIndexHtml, localizeBootScript } from './offline-assets.js';
 import { createProjectStore, ProjectError } from './projects.js';
 import { PROJECT_LIMITS } from './project-rules.js';
@@ -191,12 +192,12 @@ function serveFile(req, res, baseDir, rel) {
   }
   const size = fs.statSync(file).size;
   const type = MIME[path.extname(file).toLowerCase()] || 'application/octet-stream';
-  const range = req.headers.range && /bytes=(\d*)-(\d*)/.exec(req.headers.range);
+  const range = parseRange(req.headers.range, size);
+  if (range && !range.ok) { res.writeHead(416, { 'Content-Range': `bytes */${size}` }); return res.end(); }
   if (range) {
-    const start = range[1] ? parseInt(range[1], 10) : 0;
-    const end = range[2] ? Math.min(parseInt(range[2], 10), size - 1) : size - 1;
+    const { start, end } = range;
     res.writeHead(206, { 'Content-Type': type, 'Content-Range': `bytes ${start}-${end}/${size}`, 'Accept-Ranges': 'bytes', 'Content-Length': end - start + 1 });
-    return fs.createReadStream(file, { start, end }).pipe(res);
+    return pipeFile(res, fs.createReadStream(file, { start, end }));
   }
   if (COMPRESSIBLE.has(path.extname(file).toLowerCase()) && size <= GZIP_MAX_BYTES && acceptsGzip(req)) {
     const gz = gzippedFile(file, fs.statSync(file));
@@ -204,14 +205,20 @@ function serveFile(req, res, baseDir, rel) {
     return res.end(gz);
   }
   res.writeHead(200, { 'Content-Type': type, 'Content-Length': size, 'Accept-Ranges': 'bytes', Vary: 'Accept-Encoding' });
-  fs.createReadStream(file).pipe(res);
+  pipeFile(res, fs.createReadStream(file));
 }
 
 // Punto de entrada de un paquete SCORM/HTML5: como la función serve-scorm-entry de la nube, entrega el HTML con un <base href> hacia la carpeta del paquete
 // (la app lo mete en un iframe con srcdoc, y sin el <base> sus css/js relativos se buscarían en la raíz del servidor).
+const SCORM_ENTRY_MAX_BYTES = 2 * 1024 * 1024; // un HTML de entrada pesa KB; esto evita leer a memoria un video si alguien apunta ?path= a un .mp4
+// Host válido: nombre o IPv4 con puerto opcional, o IPv6 entre corchetes. Se interpola en <base href>, así que no puede traer comillas ni etiquetas.
+const SAFE_HOST = /^(?:[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?|\[[0-9a-f:]+\])(?::\d{1,5})?$/i;
 function serveScormEntry(res, rel, host, proto = 'http') {
   const file = path.resolve(CONTENT_DIR, rel);
   if (!file.startsWith(CONTENT_DIR + path.sep) || !fs.existsSync(file) || !fs.statSync(file).isFile()) { res.writeHead(404); return res.end('No encontrado'); }
+  if (!/\.html?$/i.test(file)) { res.writeHead(404); return res.end('No encontrado'); }
+  if (fs.statSync(file).size > SCORM_ENTRY_MAX_BYTES) { res.writeHead(413); return res.end('Archivo demasiado grande'); }
+  if (!SAFE_HOST.test(String(host || ''))) { res.writeHead(400); return res.end('Host no válido'); }
   const folder = rel.slice(0, rel.lastIndexOf('/') + 1).split('/').map((x) => encodeURIComponent(x)).join('/');
   const baseTag = `<base href="${proto}://${host}/storage/v1/object/public/course-content/${folder}">`;
   let html = fs.readFileSync(file, 'utf8');
@@ -951,6 +958,7 @@ const requestHandler = async (req, res) => {
     serveFile(req, res, APP_DIR, rel);
   } catch (e) {
     console.error(e);
+    if (res.headersSent) { try { res.destroy(); } catch { /* ya cerrada */ } return; } // con las cabeceras ya enviadas no se puede responder otro error
     sendJson(res, 500, { error: 'Error interno del nodo' });
   }
 };
