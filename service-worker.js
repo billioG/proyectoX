@@ -2,7 +2,7 @@
 // SERVICE WORKER - PROJECTX PWA
 // ================================================
 
-const CACHE_NAME = 'projectx-v1.0.274';
+const CACHE_NAME = 'projectx-v1.0.275';
 // Caché de archivos de lecciones (video/PDF/imagen/paquetes SCORM-H5P) --
 // separada de CACHE_NAME a propósito: CACHE_NAME se recrea y se BORRA
 // entera en cada deploy (bump de versión) para forzar JS/CSS frescos, pero
@@ -43,7 +43,7 @@ const LAZY_MODULES = [
   'js/coordinator.js', 'js/data/challenges.js', 'js/debug-duel.js', 'js/duels.js',
   'js/exams.js', 'js/omr-core.js', 'js/evaluation-modals.js', 'js/evaluation-notifications.js', 'js/evaluation.js',
   'js/feed-ui.js', 'js/gamification.js', 'js/groups.js', 'js/hangman-duel.js',
-  'js/kpi-engine.js', 'js/lessons.js', 'js/pdf-processor.js', 'js/spelling-duel.js', 'js/practice.js', 'js/practice-bank.js', 'js/progress.js', 'js/game-arena.js', 'js/season-pass.js', 'js/leagues.js', 'js/weekly-topic.js', 'js/quiz-import.js', 'js/node-projects.js', 'js/node-profile.js', 'js/node-feed.js',
+  'js/kpi-engine.js', 'js/lessons.js', 'js/lessons-iframe-logic.js', 'js/pdf-processor.js', 'js/spelling-duel.js', 'js/practice.js', 'js/practice-bank.js', 'js/progress.js', 'js/game-arena.js', 'js/season-pass.js', 'js/leagues.js', 'js/weekly-topic.js', 'js/quiz-import.js', 'js/node-projects.js', 'js/node-profile.js', 'js/node-feed.js',
   'js/profile-modals.js', 'js/profile.js', 'js/programs.js', 'js/project-modals.js',
   'js/projects.js', 'js/ranking.js', 'js/reports.js', 'js/schools.js',
   'js/students.js', 'js/teachers.js', 'js/team-performance-widget.js',
@@ -62,7 +62,7 @@ const EAGER_MODULES = [
   'js/test-accounts-filter.js', 'js/onboarding.js', 'js/birthday-logic.js',
   'js/teacher-rocks.js', 'js/admin-rocks.js', 'js/rocks-notifications.js',
   'js/model-viewer.js', 'js/reactions.js', 'js/project-modals.js', 'js/ai-service.js', 'js/mascot-widget.js',
-  'js/random-events.js', 'js/announcements.js', 'js/surveys.js',
+  'js/random-events.js', 'js/announcements.js', 'js/announcements-logic.js', 'js/surveys.js',
   'js/activity-tracker.js', 'js/admin-dashboard.js', 'js/teachers.js',
   'js/student-presence.js', 'js/students.js', 'js/schools.js', 'js/ranking.js', 'js/bonus-system.js',
   'js/admin-success.js', 'js/evaluation.js', 'js/admin-evaluations.js',

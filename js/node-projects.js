@@ -12,7 +12,6 @@ const TOKEN_KEY = 'PX_NODE_TOKEN';
 // Mismas reglas que la nube y que school-node/project-rules.js (el nodo las vuelve a validar).
 const RULES = { titleMin: 5, titleMax: 120, descMin: 40, descMax: 2000, maxBytes: 150 * 1024 * 1024 };
 const FILE_EXT = /\.(mp4|mov|m4v|webm|3gp|avi|mkv|stl|obj|glb)$/i;
-const MODEL_EXT = /\.(stl|obj|glb)$/i;
 
 const esc = (v) => (window.sanitizeInput ? window.sanitizeInput(String(v ?? '')) : String(v ?? ''));
 const byId = (id) => document.getElementById(id);
@@ -173,21 +172,7 @@ async function uploadProject() {
   }
 }
 
-// La vista previa de modelos 3D necesita three.js (internet): en el nodo solo se muestra el nombre.
-const previewWithCloud = window.previewUploadVideo;
-window.previewUploadVideo = function previewUploadVideo(input) {
-  const name = input?.files?.[0]?.name || '';
-  if (!window.isNodeSession || !MODEL_EXT.test(name)) return previewWithCloud?.call(this, input);
-  const container = byId('video-preview-container');
-  const player = byId('video-preview-player');
-  const slot = byId('model-preview-slot');
-  player?.classList.add('hidden');
-  player?.removeAttribute('src');
-  if (slot) {
-    slot.innerHTML = `<p class="p-5 text-sm font-bold text-slate-600 dark:text-slate-300"><i class="fas fa-cube text-primary"></i> Modelo 3D: ${esc(name)}. La vista previa aparece cuando se publique en la nube.</p>`;
-    slot.classList.remove('hidden');
-  }
-  container?.classList.remove('hidden');
-};
+// La vista previa de modelos 3D (STL/OBJ/GLB) la da js/model-viewer.js, que en el nodo carga three.js de vendor/cdn/three-0.128.0/ (sin internet):
+// aquí no se sobrescribe window.previewUploadVideo, se usa la de project-modals.js.
 
 window.nodeProjects = { initUploadView, uploadProject, renderMine };

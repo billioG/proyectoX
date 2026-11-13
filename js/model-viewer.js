@@ -1,10 +1,15 @@
 /**
  * VISOR 3D (STL / OBJ / GLB) para proyectos de estudiantes.
- * three.js se baja del CDN solo la primera vez que aparece un modelo.
+ * three.js se baja del CDN solo la primera vez que aparece un modelo. En el nodo
+ * escolar (sin internet, window.QUETZAL_NODE) sale de la copia local vendor/cdn/three-0.128.0/.
  * Los visores se montan solos: basta con insertar el HTML de
  * window.model3DViewerHtml(url) en cualquier parte.
  */
-const THREE_BASE = 'https://cdn.jsdelivr.net/npm/three@0.128.0';
+const THREE_CDN = 'https://cdn.jsdelivr.net/npm/three@0.128.0';
+// Ruta relativa a la raíz de la app, como el resto de vendor/cdn/. Mismos 5 archivos, misma estructura.
+const THREE_LOCAL = 'vendor/cdn/three-0.128.0';
+// /node-config.js define window.QUETZAL_NODE antes de cualquier módulo. Se consulta al cargar, no al importar.
+const threeBase = () => (window.QUETZAL_NODE ? THREE_LOCAL : THREE_CDN);
 // Integridad (SRI) de los archivos de three.js r128; se actualiza con scripts/sri-hashes.mjs.
 const THREE_SRI = {
   'https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js': 'sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu',
@@ -22,6 +27,7 @@ function loadScript(src) {
     scriptPromises[src] = new Promise((resolve, reject) => {
       const s = document.createElement('script');
       s.src = src;
+      // El SRI solo aplica a la CDN: las copias locales del nodo no están en THREE_SRI y se cargan sin integrity/crossorigin.
       if (THREE_SRI[src]) { s.integrity = THREE_SRI[src]; s.crossOrigin = 'anonymous'; }
       s.onload = resolve;
       s.onerror = () => { delete scriptPromises[src]; reject(new Error('No se pudo cargar ' + src)); };
@@ -32,6 +38,7 @@ function loadScript(src) {
 }
 
 async function loadThree(ext) {
+  const THREE_BASE = threeBase();
   await loadScript(`${THREE_BASE}/build/three.min.js`);
   await Promise.all([
     loadScript(`${THREE_BASE}/examples/js/controls/OrbitControls.js`),

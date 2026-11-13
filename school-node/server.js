@@ -953,6 +953,8 @@ const requestHandler = async (req, res) => {
 
     const rel = decodeURIComponent(url.pathname.replace(/^\/+/, '')) || 'index.html';
     if (!APP_ALLOWED.some(rx => rx.test(rel))) { res.writeHead(404); return res.end('No encontrado'); }
+    // Un iframe nunca debe cargar la app: un enlace relativo («index.html», «/») dentro de un recurso HTML/SCORM abría Quetzal dentro del visor.
+    if (rel === 'index.html' && String(req.headers['sec-fetch-dest'] || '').toLowerCase() === 'iframe') { res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' }); return res.end('Quetzal no se abre dentro de un recurso'); }
     if (rel === 'index.html') return serveIndex(req, res);
     if (rel === 'js/boot.js') return serveBoot(req, res);
     serveFile(req, res, APP_DIR, rel);
