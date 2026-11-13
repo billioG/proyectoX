@@ -160,6 +160,8 @@ window.processAndRenderDashboard = function processAndRenderDashboard(container,
     window.renderDashboardUI(container, stats, teachers || [], schools || []);
     if (typeof window.loadTeamPerformanceDashboard === 'function') window.loadTeamPerformanceDashboard();
     if (typeof window.updateAdminRocksPendingBadge === 'function') window.updateAdminRocksPendingBadge();
+    // Las solicitudes de exención no dependen del snapshot en caché: se piden frescas al servidor (js/admin-waivers.js).
+    if (typeof window.refreshAdminWaivers === 'function') window.refreshAdminWaivers().catch(e => console.warn('refreshAdminWaivers:', e));
 }
 
 window.toggleFlipCard = function toggleFlipCard(id) {
@@ -328,7 +330,7 @@ window.renderDashboardUI = function renderDashboardUI(container, stats, teachers
                     </h3>
                     <span class="bg-rose-500/10 text-rose-500 text-[0.65rem] font-black px-3 py-1.5 rounded-full">INTERVENCIÓN REQUERIDA</span>
                 </div>
-                ${renderWaiverQuickAccess(stats.pendingWaivers)}
+                <div id="admin-waivers-quick">${renderWaiverQuickAccess(stats.pendingWaivers)}</div>
 
                 <div class="mt-10 pt-8 border-t border-slate-100 dark:border-slate-800">
                     <div class="flex items-center justify-between mb-6">
@@ -570,7 +572,9 @@ window.showSchoolSatisfactionModal = function () {
     `;
     document.body.appendChild(modal);
 };
+window.renderWaiverQuickAccess = renderWaiverQuickAccess; // lo usa refreshAdminWaivers (js/admin-waivers.js)
 function renderWaiverQuickAccess(waivers) {
+    waivers = waivers || [];
     if (waivers.length === 0) return `
         <div class="bg-emerald-50 dark:bg-emerald-950/20 p-8 rounded-3xl text-center border border-emerald-100 dark:border-emerald-900/30">
             <i class="fas fa-calendar-check text-4xl text-emerald-500 mb-4 opacity-50"></i>
@@ -585,11 +589,11 @@ function renderWaiverQuickAccess(waivers) {
                 <div class="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-primary/30 transition-all">
                     <div class="flex items-center gap-4">
                         <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold">
-                            ${(w.teachers?.full_name || 'D')[0]}
+                            ${window.sanitizeInput((w.teachers?.full_name || 'D')[0])}
                         </div>
                         <div>
                             <div class="text-sm font-black text-slate-800 dark:text-white">${window.sanitizeInput(w.teachers?.full_name || 'Docente')}</div>
-                            <div class="text-[0.65rem] text-slate-500 dark:text-slate-500 font-bold"><i class="far fa-calendar-alt mr-1"></i> ${new Date(w.date).toLocaleDateString()}</div>
+                            <div class="text-[0.65rem] text-slate-500 dark:text-slate-500 font-bold"><i class="far fa-calendar-alt mr-1"></i> ${window.sanitizeInput(window.formatWaiverDate ? window.formatWaiverDate(w.date) : String(w.date || ''))}</div>
                         </div>
                     </div>
                     <div class="flex gap-2">

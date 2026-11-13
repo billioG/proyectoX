@@ -86,6 +86,8 @@ Desde la v1.0.266 el botón y `install.sh --update` lo hacen solos. En un nodo c
 
 **Ingresos del nodo idempotentes (v1.0.270):** en Supabase → SQL Editor corre `migrations/session-logs-idempotency.sql` **antes** de volver a desplegar `node-sync` (el upsert nuevo exige el índice; sin él falla y el nodo deja los ingresos pendientes, sin perder nada). Luego pega `supabase/functions/node-sync/index.ts` (con `node scripts/exportar-funciones.mjs <carpeta>`).
 
+**Exenciones sin duplicados (v1.0.271):** en Supabase → SQL Editor corre `migrations/waivers-unique-por-grupo.sql` antes de publicar la app. Después prueba enviar dos veces la misma exención (la segunda debe avisar) y abrir «Ver historial» en el panel del administrador.
+
 ## 3a. Candado de retos repetidos (v1.0.257)
 
 Correr `duel-one-open-pair.sql` en el SQL Editor **después** de publicar la v1.0.257 (o antes: la app vieja solo vería el error en inglés del candado). Cancela los retos pendientes repetidos entre la misma pareja (conserva el más antiguo; no borra nada) y crea un índice único por juego. Si algún juego tiene retos **activos** repetidos, avisa con un NOTICE y no crea ese índice; se revisan a mano y se vuelve a correr. Al final debe mostrar 5 filas (`*_one_open_pair`). Después, `verificar-migraciones.sql` debe dar `true` en las filas 760 a 764.
