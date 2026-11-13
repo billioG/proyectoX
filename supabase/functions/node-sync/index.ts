@@ -34,7 +34,7 @@ import { buildClassVerifiers, buildTeacherLogins, pullTables } from './tables.ts
 import { validatePracticeEvent } from './validators.ts';
 import { classifyRead, isUuid, validateAnnouncementEvent, validateReadEvent } from './announcements.ts';
 import { sanitizeCompletions, type CompletionRow } from './validators.ts';
-import { planContentOps, validateContentUploadRequest, validateObjectPath } from './content.ts';
+import { planContentOps, validateContentUploadRequest, validateObjectPath, safeDecode } from './content.ts';
 import { isSocialTable, planSocialOps } from './social.ts';
 import { isAttendanceTable, planAttendanceOps } from './attendance.ts';
 import { isGroupTable, planGroupOps } from './groups.ts';
@@ -394,7 +394,10 @@ Deno.serve(async (req) => {
       for (const lesson of course.lessons || []) {
         if (lesson.content_path) files.push(...await listStorageRecursive(admin, lesson.content_path));
         else if (typeof lesson.content_url === 'string' && lesson.content_url.startsWith(storagePrefix)) {
-          files.push({ path: decodeURIComponent(lesson.content_url.slice(storagePrefix.length)), size: 0, etag: '' });
+          // Una URL mal codificada se omite (esa lección no se espeja) en vez de abortar el pull de toda la escuela.
+          const rel = safeDecode(lesson.content_url.slice(storagePrefix.length));
+          if (rel) files.push({ path: rel, size: 0, etag: '' });
+          else console.warn('node-sync: URL de lección mal codificada, se omite', lesson.id);
         }
       }
     }

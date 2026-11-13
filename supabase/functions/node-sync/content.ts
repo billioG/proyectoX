@@ -18,6 +18,11 @@ type Fail = { ok: false; error: string };
 type Assignment = { teacher_id: string; school_code: string; grade: string; section: string };
 
 /** `lessons/<uuid>/archivo` (con subcarpetas), sin trucos de ruta y con extensión conocida; o null. Igual que el nodo. */
+/** decodeURIComponent que no lanza: una URL con un «%» suelto (p. ej. «guia_100%_lista.pdf») devuelve null en vez de tumbar toda la sincronización de la escuela. */
+export function safeDecode(s: string): string | null {
+  try { return decodeURIComponent(s); } catch { return null; }
+}
+
 export function validateObjectPath(rel: unknown): string | null {
   if (typeof rel !== 'string' || !rel || rel.length > 400 || BAD_CHARS.test(rel)) return null;
   const seg = rel.split('/');

@@ -5,6 +5,8 @@
 // Sin internet en la escuela: ver usb-sync.js (misma lógica, por memoria USB).
 import fs from 'node:fs';
 import path from 'node:path';
+import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
 import { openDb, setMeta, getMeta } from './db.js';
 import { syncProjects } from './projects-sync.js';
@@ -276,7 +278,7 @@ export function applyPull(db, data, pushed = {}) {
 }
 
 // Descarga los archivos que faltan o cambiaron (6 en paralelo).
-async function downloadFiles(db, config, log) {
+export async function downloadFiles(db, config, log) {
   const base = getMeta(db, 'storage_base');
   const pending = db.prepare('SELECT path FROM files WHERE downloaded = 0').all();
   if (!pending.length || !base) return;
@@ -299,7 +301,11 @@ async function downloadFiles(db, config, log) {
         if (!res.ok) throw new Error(String(res.status));
         fs.mkdirSync(path.dirname(dest), { recursive: true });
         const tmp = dest + '.part';
-        fs.writeFileSync(tmp, Buffer.from(await res.arrayBuffer()));
+        // En flujo, a disco: con 6 trabajadores y videos de 150 MB, cargarlos enteros en RAM (~900 MB) mataba el proceso en una Raspberry de 1 a 2 GB.
+        try {
+          if (res.body) await pipeline(Readable.fromWeb(res.body), fs.createWriteStream(tmp));
+          else fs.writeFileSync(tmp, Buffer.from(await res.arrayBuffer()));
+        } catch (e) { try { fs.rmSync(tmp, { force: true }); } catch { /* sin archivo parcial */ } throw e; }
         fs.renameSync(tmp, dest);
         markDone.run(rel);
         ok++;
