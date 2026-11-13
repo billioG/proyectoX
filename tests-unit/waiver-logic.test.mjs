@@ -141,3 +141,38 @@ test('admin-waivers.js: modal fijo con fondo oscuro, sin las clases inexistentes
   assert.match(reports, /closeWaiverReports\(\); \/\/ nunca dos ventanas/);
   assert.match(reports, /Escape/);
 });
+
+test('isGroupSuspendedToday: solo suspende una exención de HOY, no rechazada, de esa clase o de todo el establecimiento', async () => {
+  const { isGroupSuspendedToday } = await import('../js/waiver-logic.js');
+  const clase = { school_code: 'ESC1', grade: 'Primero', section: 'A' };
+  const HOY = '2026-11-14';
+  const w = (o) => ({ school_code: 'ESC1', grade: 'Primero', section: 'A', status: 'approved', date: HOY, ...o });
+  assert.equal(isGroupSuspendedToday([w()], clase, HOY), true);
+  assert.equal(isGroupSuspendedToday([w({ status: 'pending' })], clase, HOY), true, 'pendiente también bloquea (como el candado de la base)');
+  assert.equal(isGroupSuspendedToday([w({ status: 'rejected' })], clase, HOY), false, 'rechazada no bloquea');
+  assert.equal(isGroupSuspendedToday([w({ date: '2026-11-13' })], clase, HOY), false, 'la suspensión de AYER no bloquea hoy');
+  assert.equal(isGroupSuspendedToday([w({ date: '2026-11-14T00:00:00+00:00' })], clase, HOY), true);
+  assert.equal(isGroupSuspendedToday([w({ date: undefined })], clase, HOY), true, 'sin fecha (consulta ya filtrada por día)');
+  assert.equal(isGroupSuspendedToday([w({ grade: null, section: null })], clase, HOY), true, 'todo el establecimiento');
+  assert.equal(isGroupSuspendedToday([w({ grade: '', section: '' })], clase, HOY), true);
+  assert.equal(isGroupSuspendedToday([w({ school_code: 'ESC2', grade: null })], clase, HOY), false, 'otro establecimiento');
+  assert.equal(isGroupSuspendedToday([w({ section: 'B' })], clase, HOY), false, 'otra sección');
+  assert.equal(isGroupSuspendedToday([w({ grade: 'Segundo' })], clase, HOY), false, 'otro grado');
+  assert.equal(isGroupSuspendedToday([], clase, HOY), false);
+  assert.equal(isGroupSuspendedToday(undefined, clase, HOY), false);
+});
+
+test('attendance.js: la foto guardada lleva la fecha en la clave y la suspensión usa isGroupSuspendedToday', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'js', 'attendance.js'), 'utf8');
+  assert.match(src, /attendance_init_\$\{currentUser\.id\}_\$\{today\}/);
+  assert.match(src, /isGroupSuspendedToday\(todayWaivers, a\)/);
+});
+
+test('node-sync-chip.js: la barra ya no es fija en pantalla y se monta dentro de «Servidor de la escuela»', () => {
+  const chip = fs.readFileSync(path.join(ROOT, 'js', 'node-sync-chip.js'), 'utf8');
+  assert.doesNotMatch(chip, /position:\s*fixed/);
+  assert.doesNotMatch(chip, /document\.body\.appendChild\(chip\)/);
+  assert.match(chip, /window\.mountNodeSyncPanel\s*=/);
+  const servers = fs.readFileSync(path.join(ROOT, 'js', 'school-servers.js'), 'utf8');
+  assert.match(servers, /QUETZAL_NODE\?\.rest === true && window\.mountNodeSyncPanel/);
+});

@@ -177,6 +177,7 @@ test('el docente entra con su correo y PIN, evalúa un proyecto y avisa a su cla
     await window.sendAnnouncement();
   });
   await expect(page.getByText('Aviso enviado').first()).toBeVisible();
+  await page.evaluate(() => window.nav('school-servers'));
   await expect(page.locator('#node-sync-chip')).toContainText(/por subir/);
 
   // La estudiante de esa clase lo ve; un docente no puede entrar con un PIN equivocado.

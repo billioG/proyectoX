@@ -2,7 +2,7 @@
  * ATTENDANCE - Gestión de Asistencia (Premium Edition)
  */
 import { cameraSupport, attendanceMode, cameraErrorKind, cameraIsUnavailable, markCameraReady, buildAttendanceRow, mergePresent } from './camera-support.js';
-import { localDateISO, findDuplicateWaiver, isDuplicateWaiverError, duplicateWaiverMessage } from './waiver-logic.js';
+import { localDateISO, findDuplicateWaiver, isDuplicateWaiverError, duplicateWaiverMessage, isGroupSuspendedToday } from './waiver-logic.js';
 
 // Asistencia rápida (sin cámara): lo marcado en ESTE dispositivo, por si aún está en la cola y la nube no lo devuelve. id -> 'present'|'absent'
 let quickMarks = new Map();
@@ -55,13 +55,14 @@ window.loadAttendanceInterface = async function loadAttendanceInterface() {
     const currentUser = window.currentUser;
     const fetchWithCache = window.fetchWithCache;
 
-    const cacheKey = `attendance_init_${currentUser.id}`;
+    // La clave lleva la fecha: la foto guardada de ayer (con una clase suspendida) no se puede mostrar hoy.
+    const today = localDateISO(); // fecha local del docente (la misma con la que se guarda la exención en submitWaiver)
+    const cacheKey = `attendance_init_${currentUser.id}_${today}`;
 
     await fetchWithCache(cacheKey, async () => {
-        const today = localDateISO(); // fecha local del docente (la misma con la que se guarda la exención en submitWaiver)
         const [assignments, todayWaivers, waiverCount] = await Promise.all([
             _supabase.from('teacher_assignments').select('school_code, grade, section, schools(name)').eq('teacher_id', currentUser.id),
-            _supabase.from('attendance_waivers').select('school_code, grade, section, status').eq('teacher_id', currentUser.id).eq('date', today),
+            _supabase.from('attendance_waivers').select('school_code, grade, section, status, date').eq('teacher_id', currentUser.id).eq('date', today),
             _supabase.from('attendance_waivers').select('*', { count: 'exact', head: true }).eq('teacher_id', currentUser.id)
         ]);
 
@@ -137,9 +138,7 @@ window.renderAttendanceUI = function renderAttendanceUI(container, snapshot) {
                     <select id="attendance-assignment" class="input-field-tw border-slate-200 dark:border-slate-800 focus:border-emerald-500 focus:ring-emerald-500/20" onchange="window.loadStudentsForAttendance()">
                         <option value="" class="dark:bg-slate-900">Seleccionar Equipo...</option>
                         ${safeAssignments.map((a, index) => {
-        const schoolWaiver = todayWaivers?.find(w => w.school_code === a.school_code && w.grade === null);
-        const groupWaiver = todayWaivers?.find(w => w.school_code === a.school_code && w.grade === a.grade && w.section === a.section);
-        const isSuspended = schoolWaiver || groupWaiver;
+        const isSuspended = isGroupSuspendedToday(todayWaivers, a);
         return `<option value="${index}" class="dark:bg-slate-900" data-school="${a.school_code}" data-grade="${a.grade || ''}" data-section="${a.section || ''}" ${isSuspended ? 'disabled' : ''}>
                                 ${sanitizeInput(a.schools?.name || 'Establecimiento')} - ${sanitizeInput(a.grade || '')} ${sanitizeInput(a.section || '')} ${isSuspended ? '(SUSPENDIDO)' : ''}
                            </option>`;

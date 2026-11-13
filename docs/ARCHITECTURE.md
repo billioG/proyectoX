@@ -70,7 +70,7 @@ manda el navegador.
 | `sync-manager.js` | Caché local y cola de cambios sin conexión |
 | `offline-kit.js` | Varias cuentas por tablet, PIN, almacenamiento persistente |
 | `node-mode.js` | Modo nodo escolar anterior (PIN y panel del nodo), disponible en `/?modo=pin` |
-| `node-sync-chip.js` | Aviso «Sincronizado hace X / N cambios por subir» y botón «Sincronizar ahora» (solo sobre el nodo) |
+| `node-sync-chip.js` | Estado de sincronización y botón «Sincronizar ahora» dentro de «Servidor de la escuela» (solo sobre el nodo) |
 | `school-node/content-upload.js`, `multipart.js`, `content-sync.js` | Subida de archivos de cursos al nodo (Storage emulado) y a la nube; `supabase/functions/node-sync/content.ts` valida los cursos y recursos que sube un nodo |
 | `supabase/functions/node-sync/social.ts`, `school-node/rest/profanity.js` | Comentarios, «me gusta» y notas de recursos hechos en el nodo: validación en la nube y filtro de groserías (el mismo de la nube) |
 | `supabase/functions/node-sync/attendance.ts`, `groups.ts`, `school-node/rest/progress.js` | Asistencia y equipos hechos en el nodo (validación en la nube) y progreso de práctica calculado en el nodo |

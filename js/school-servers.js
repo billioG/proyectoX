@@ -228,6 +228,12 @@ window.requestSchoolUpdate = async function requestSchoolUpdate(code, btn) {
 window.loadSchoolServers = async function loadSchoolServers() {
   const container = document.getElementById('school-servers-container');
   if (!container) return;
+  // Sobre el servidor de la escuela (sin internet) no hay lista en línea de servidores: se ve el estado de ESTE servidor y su botón «Sincronizar ahora».
+  if (window.QUETZAL_NODE?.rest === true && window.mountNodeSyncPanel) {
+    clearInterval(refreshTimer);
+    window.mountNodeSyncPanel(container);
+    return;
+  }
   container.innerHTML = '<div class="text-center text-slate-400 text-xs py-10"><i class="fas fa-spinner fa-spin"></i></div>';
   await refresh(container);
   clearInterval(refreshTimer);
