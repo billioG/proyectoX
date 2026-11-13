@@ -47,6 +47,13 @@ async function callGenerator(fn, body) {
 let lastSource = 'ai';
 async function aiOrBank(game, ai, bank) {
   lastSource = 'ai';
+  // Nodo escolar: no hay IA; se usa el banco directo, sin avisar de una IA que no existe.
+  if (window.IS_NODE_REST) {
+    const out = bank();
+    if (!out) throw new Error('No hay ejercicios guardados para este juego');
+    lastSource = 'bank';
+    return out;
+  }
   if (navigator.onLine !== false) {
     try { return await ai(); } catch (err) { console.warn(`Práctica (${game}): la IA no respondió, se usa el banco`, err); }
   }

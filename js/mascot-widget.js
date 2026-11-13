@@ -570,7 +570,7 @@ const MascotWidget = {
         // Si tenemos AIService disponible, intentamos obtener un mensaje
         // "inteligente" -- salvo que este sea el saludo de "te extrañé" por
         // ausencia, que no debe competir con un mensaje random de la IA.
-        if (!isMoodGreeting && typeof window.AIService !== 'undefined' && window.currentUser) {
+        if (!isMoodGreeting && !window.IS_NODE_REST && typeof window.AIService !== 'undefined' && window.currentUser) {
             try {
                 // Solo usamos AI proactiva un 30% de las veces para no saturar la cuota
                 if (Math.random() > 0.7) {
@@ -603,6 +603,7 @@ const MascotWidget = {
     },
 
     async openAIChat() {
+        if (window.IS_NODE_REST) return; // nodo escolar: sin internet no hay asistente con IA
         if (typeof AIService === 'undefined') return showToast('IA no disponible', 'warning');
 
         const modalId = 'mascot-ai-modal';

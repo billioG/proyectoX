@@ -640,3 +640,8 @@ window.GameArena = {
     });
   },
 };
+
+// Nodo escolar (sin internet): Comprensión Lectora, Encuentra el Error y Ortografía crean su contenido con IA; no se ofrecen (Ahorcado y Contrarreloj sí funcionan).
+if (window.IS_NODE_REST) {
+  for (const k of ['quiz', 'debug', 'spelling']) { delete window.GameArena.GAMES[k]; delete window.GameArena.SENDERS[k]; }
+}

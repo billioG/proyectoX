@@ -863,11 +863,11 @@ window.renderGamificationHubContent = function renderGamificationHubContent(moda
                       angosta desperdiciando el resto de la pantalla. -->
                 ${window.userRole === 'estudiante' && window.GameArena ? window.GameArena.quickStripHtml() : ''}
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6">
-                    <section>
+                    ${window.IS_NODE_REST ? '' : `<section>
                          <div id="duels-section">
                             <div class="text-center text-slate-500 text-xs py-6"><i class="fas fa-spinner fa-spin"></i></div>
                          </div>
-                    </section>
+                    </section>`}
 
                     <section>
                          <div id="hangman-section">
@@ -881,7 +881,7 @@ window.renderGamificationHubContent = function renderGamificationHubContent(moda
                          </div>
                     </section>
 
-                    <section>
+                    ${window.IS_NODE_REST ? '' : `<section>
                          <div id="debug-section">
                             <div class="text-center text-slate-500 text-xs py-6"><i class="fas fa-spinner fa-spin"></i></div>
                          </div>
@@ -891,7 +891,7 @@ window.renderGamificationHubContent = function renderGamificationHubContent(moda
                          <div id="spelling-section">
                             <div class="text-center text-slate-500 text-xs py-6"><i class="fas fa-spinner fa-spin"></i></div>
                          </div>
-                    </section>
+                    </section>`}
                 </div>
 
                  <!-- TORNEOS ENTRE ESTABLECIMIENTOS -->
@@ -908,11 +908,12 @@ window.renderGamificationHubContent = function renderGamificationHubContent(moda
   // El historial cara a cara se carga antes para que cada tarjeta muestre
   // su "3-1" desde el primer render.
   const loadGameSections = () => {
-    if (typeof window.loadDuelsSection === 'function') window.loadDuelsSection();
+    // En el nodo (sin internet) no hay Comprensión Lectora, Encuentra el Error ni Ortografía: crean su contenido con IA.
+    if (!window.IS_NODE_REST && typeof window.loadDuelsSection === 'function') window.loadDuelsSection();
     if (typeof window.loadHangmanSection === 'function') window.loadHangmanSection();
     if (typeof window.loadTimedMathSection === 'function') window.loadTimedMathSection();
-    if (typeof window.loadDebugSection === 'function') window.loadDebugSection();
-    if (typeof window.loadSpellingSection === 'function') window.loadSpellingSection();
+    if (!window.IS_NODE_REST && typeof window.loadDebugSection === 'function') window.loadDebugSection();
+    if (!window.IS_NODE_REST && typeof window.loadSpellingSection === 'function') window.loadSpellingSection();
   };
   // También los temas de la clase, para que los selectores de "crear reto"
   // y el reto rápido ya los tengan listos.
