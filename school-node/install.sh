@@ -86,7 +86,9 @@ if [ "$CHECK_ONLY" -eq 1 ]; then say "Todo en orden: esta computadora sirve para
 
 # ---------- 1. Paquetes del sistema ----------
 say "Instalando paquetes del sistema"
-sudo apt-get update -y
+# Un espejo de Debian a medio sincronizar ("Mirror sync in progress?") hace fallar apt-get update de forma pasajera. No es motivo para abortar
+# (set -e): con las listas anteriores se instala o se confirma lo que falte, y el código del nodo se actualiza igual.
+sudo apt-get update -y || warn "apt-get update falló (¿espejo de Debian sincronizándose?). Se sigue con las listas de paquetes anteriores."
 PACKAGES="git curl ca-certificates build-essential python3"
 [ "$CHROMEBOOK" -eq 1 ] || PACKAGES="$PACKAGES avahi-daemon"
 sudo apt-get install -y $PACKAGES
