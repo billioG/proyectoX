@@ -3,6 +3,7 @@
 // nube, y la nube no puede fabricar uno para el nodo). La contraseña de la clase se compara contra un verificador con
 // sal que baja la sincronización; la contraseña en claro nunca llega al nodo.
 import crypto from 'node:crypto';
+import { promisify } from 'node:util';
 import bcrypt from 'bcryptjs';
 
 const PBKDF2_ITERATIONS = 150000;
@@ -12,12 +13,17 @@ const LOGIN_TOKEN_MS = 5 * 60_000;
 const WINDOW_MS = 5 * 60_000;
 const MAX_ATTEMPTS = 10; // por IP y por usuario, en la ventana (mismo tope que student-login en la nube)
 const MAX_TRACKED = 5000; // intentos y enlaces en memoria: tope duro
+const MAX_INFLIGHT_PER_IP = 3; // hashes (PBKDF2/bcrypt) simultáneos por IP
+const MAX_INFLIGHT_GLOBAL = 32; // hashes simultáneos en todo el nodo (un aula entera entrando a la vez; el pool de hilos de libuv los encola)
 const DUMMY_SALT = '00'.repeat(16);
 const GENERIC_ERROR = 'Usuario o contraseña incorrectos';
+const TOO_MANY = 'Demasiados intentos -- espera unos minutos y vuelve a intentar';
+const BUSY = 'El nodo está ocupado -- vuelve a intentar en unos segundos';
 // Hash de mentira (mismo costo que los de la nube) para que un correo que no existe tarde lo mismo que uno que sí.
 let dummyBcrypt = null;
-const DUMMY = () => (dummyBcrypt ||= bcrypt.hashSync('sin-docente', 10));
-const bcryptCompare = (given, hash) => { try { return bcrypt.compareSync(given, hash); } catch { return false; } };
+const DUMMY = () => (dummyBcrypt ||= bcrypt.hash('sin-docente', 10));
+const bcryptCompare = async (given, hash) => { try { return await bcrypt.compare(given, hash); } catch { return false; } };
+const pbkdf2 = promisify(crypto.pbkdf2);
 
 export class AuthError extends Error {
   constructor(status, message) { super(message); this.status = status; }
@@ -25,6 +31,9 @@ export class AuthError extends Error {
 
 export const hashClassPassword = (password, saltHex) =>
   crypto.pbkdf2Sync(String(password), Buffer.from(saltHex, 'hex'), PBKDF2_ITERATIONS, 32, 'sha256').toString('hex');
+// Misma cuenta, pero sin bloquear el event loop (el login del nodo usa esta).
+export const hashClassPasswordAsync = async (password, saltHex) =>
+  (await pbkdf2(String(password), Buffer.from(saltHex, 'hex'), PBKDF2_ITERATIONS, 32, 'sha256')).toString('hex');
 
 const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
 const sha256 = (s) => crypto.createHash('sha256').update(s).digest('hex');
@@ -33,8 +42,12 @@ export const emailHash = (email) => sha256(String(email || '').trim().toLowerCas
 const classKeyOf = (s) => `${s.school_code}|${s.grade}|${s.section}`;
 const active = (s) => !!s && s.status !== 'egresado' && s.status !== 'baja';
 
-// `hash` y `maxTracked` se pueden cambiar solo para probar (PBKDF2 real tarda ~100 ms por intento).
-export function createAuth({ store, now = Date.now, hash: hashFn = hashClassPassword, maxTracked = MAX_TRACKED, compare = bcryptCompare }) {
+// `hash`, `compare`, `maxTracked` y `limits` se pueden cambiar solo para probar (PBKDF2 real tarda ~100 ms por intento).
+// `hash` y `compare` pueden devolver el valor o una promesa.
+export function createAuth({
+  store, now = Date.now, hash: hashFn = hashClassPasswordAsync, maxTracked = MAX_TRACKED, compare = bcryptCompare,
+  limits: { maxInflightPerIp = MAX_INFLIGHT_PER_IP, maxInflightGlobal = MAX_INFLIGHT_GLOBAL } = {},
+}) {
   let secret = store.getMeta('jwt_secret');
   if (!secret) { secret = crypto.randomBytes(32).toString('hex'); store.setMeta('jwt_secret', secret); }
 
@@ -79,13 +92,30 @@ export function createAuth({ store, now = Date.now, hash: hashFn = hashClassPass
     attempts.set(key, { n: 1, start: now() });
   };
 
+  // ---- hashes en vuelo: tope por IP y global. Se ocupa el cupo ANTES de hashear y se libera siempre (finally). ----
+  // El mapa solo guarda IP con hashes en curso (se borra al llegar a 0) y nunca pasa de maxInflightGlobal entradas.
+  const inflight = new Map(); // ipKey -> n
+  let inflightTotal = 0;
+  async function withHashSlot(ipKey, work) {
+    const mine = inflight.get(ipKey) || 0;
+    if (mine >= maxInflightPerIp) throw new AuthError(429, TOO_MANY);
+    if (inflightTotal >= maxInflightGlobal) throw new AuthError(429, BUSY);
+    inflight.set(ipKey, mine + 1); inflightTotal++;
+    try { return await work(); }
+    finally {
+      inflightTotal--;
+      const left = (inflight.get(ipKey) || 1) - 1;
+      if (left <= 0) inflight.delete(ipKey); else inflight.set(ipKey, left);
+    }
+  }
+
   const loginTokens = new Map(); // huella -> { uid, exp }
 
-  function studentLogin({ username, password, ip }) {
+  async function studentLogin({ username, password, ip }) {
     const user = String(username || '').trim().toLowerCase().slice(0, 64);
     const ipKey = `ip:${ip || 'unknown'}`, userKey = `user:${user}`;
     if (hits(ipKey) >= MAX_ATTEMPTS || hits(userKey) >= MAX_ATTEMPTS) {
-      throw new AuthError(429, 'Demasiados intentos -- espera unos minutos y vuelve a intentar');
+      throw new AuthError(429, TOO_MANY);
     }
     const fail = () => { miss(ipKey); miss(userKey); throw new AuthError(401, GENERIC_ERROR); };
 
@@ -95,7 +125,7 @@ export function createAuth({ store, now = Date.now, hash: hashFn = hashClassPass
     // el tiempo de respuesta no dice quién existe. Una clase sin contraseña es pública (resolve_login_mode_by_username).
     if (!v || v.requires_password) {
       const given = String(password || '').slice(0, 200);
-      const hash = hashFn(given, v ? v.salt : DUMMY_SALT);
+      const hash = await withHashSlot(ipKey, () => hashFn(given, v ? v.salt : DUMMY_SALT));
       if (!v || !given || !equal(hash, v.hash)) return fail();
     }
     const token = crypto.randomBytes(32).toString('hex');
@@ -112,18 +142,20 @@ export function createAuth({ store, now = Date.now, hash: hashFn = hashClassPass
   // docentes de esa escuela (nunca la contraseña), así que entran sin internet con lo mismo que usan en línea. Un correo que no
   // existe, una contraseña mala y un hash dañado hacen el mismo trabajo y dan el mismo error. (Sigue valiendo el PIN anterior si
   // la nube aún lo manda y no hay huella bcrypt.)
-  function teacherLogin({ email, password, ip }) {
+  async function teacherLogin({ email, password, ip }) {
     const eh = emailHash(email);
     const ipKey = `ip:${ip || 'unknown'}`, userKey = `mail:${eh.slice(0, 32)}`;
     if (hits(ipKey) >= MAX_ATTEMPTS || hits(userKey) >= MAX_ATTEMPTS) {
-      throw new AuthError(429, 'Demasiados intentos -- espera unos minutos y vuelve a intentar');
+      throw new AuthError(429, TOO_MANY);
     }
     const login = String(email || '').trim() ? store.teacherLoginByEmailHash(eh) : null;
     const given = String(password || '').slice(0, 200);
-    let ok = false;
-    if (login?.bcrypt) ok = compare(given, login.bcrypt) === true;
-    else if (login?.pin_hash) ok = equal(hashFn(given, login.pin_salt), login.pin_hash);
-    else compare(given, DUMMY());
+    const ok = await withHashSlot(ipKey, async () => {
+      if (login?.bcrypt) return (await compare(given, login.bcrypt)) === true;
+      if (login?.pin_hash) return equal(await hashFn(given, login.pin_salt), login.pin_hash);
+      await compare(given, await DUMMY());
+      return false;
+    });
     if (!login || !given || !ok || !teacherRow(login.teacher_id)) {
       miss(ipKey); miss(userKey);
       throw new AuthError(400, 'Invalid login credentials');
@@ -181,7 +213,7 @@ export function createAuth({ store, now = Date.now, hash: hashFn = hashClassPass
     return v ? v.requires_password : true;
   }
 
-  const stats = () => ({ attempts: attempts.size, loginTokens: loginTokens.size, maxKeyLength: Math.max(0, ...[...attempts.keys()].map((k) => k.length)) });
+  const stats = () => ({ inflight: inflightTotal, inflightIps: inflight.size, attempts: attempts.size, loginTokens: loginTokens.size, maxKeyLength: Math.max(0, ...[...attempts.keys()].map((k) => k.length)) });
 
   return { stats, studentLogin, teacherLogin, verify, refresh, logout, userFromAccessToken, loginModeByUsername, classLoginMode };
 }
