@@ -2,6 +2,7 @@
  * ATTENDANCE - Gestión de Asistencia (Premium Edition)
  */
 import { cameraSupport, attendanceMode, cameraErrorKind, cameraIsUnavailable, markCameraReady, buildAttendanceRow, mergePresent } from './camera-support.js';
+import { localDateISO, findDuplicateWaiver, isDuplicateWaiverError, duplicateWaiverMessage } from './waiver-logic.js';
 
 // Asistencia rápida (sin cámara): lo marcado en ESTE dispositivo, por si aún está en la cola y la nube no lo devuelve. id -> 'present'|'absent'
 let quickMarks = new Map();
@@ -57,7 +58,7 @@ window.loadAttendanceInterface = async function loadAttendanceInterface() {
     const cacheKey = `attendance_init_${currentUser.id}`;
 
     await fetchWithCache(cacheKey, async () => {
-        const today = new Date().toISOString().split('T')[0];
+        const today = localDateISO(); // fecha local del docente (la misma con la que se guarda la exención en submitWaiver)
         const [assignments, todayWaivers, waiverCount] = await Promise.all([
             _supabase.from('teacher_assignments').select('school_code, grade, section, schools(name)').eq('teacher_id', currentUser.id),
             _supabase.from('attendance_waivers').select('school_code, grade, section, status').eq('teacher_id', currentUser.id).eq('date', today),
@@ -477,7 +478,9 @@ window.openWaiverModal = async function openWaiverModal() {
     const safeAssignments = assignments || [];
     const schools = [...new Set(safeAssignments.map(a => JSON.stringify({ code: a.school_code, name: a.schools.name })))].map(s => JSON.parse(s));
 
+    document.getElementById('waiver-modal')?.remove(); // nunca dos ventanas abiertas
     const modal = document.createElement('div');
+    modal.id = 'waiver-modal';
     modal.className = 'fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-sm animate-fadeIn';
     modal.innerHTML = `
       <div class="glass-card w-full max-w-lg p-10 animate-slideUp">
@@ -526,7 +529,10 @@ window.toggleWaiverType = function toggleWaiverType() {
     document.getElementById('waiver-school-div').style.display = type === 'school' ? 'block' : 'none';
 }
 
+let waiverSubmitting = false; // doble clic: mientras hay un envío en curso no se acepta otro
+
 window.submitWaiver = async function submitWaiver() {
+    if (waiverSubmitting) return;
     const type = document.getElementById('waiver-type').value;
     const reason = document.getElementById('waiver-reason').value.trim();
     if (!reason) return showToast('<i class="fas fa-circle-xmark"></i> Indica el motivo', 'error');
@@ -534,7 +540,7 @@ window.submitWaiver = async function submitWaiver() {
     let payload = {
         teacher_id: currentUser.id,
         reason: reason,
-        date: new Date().toISOString().split('T')[0],
+        date: localDateISO(),
         status: 'pending'
     };
 
@@ -546,14 +552,36 @@ window.submitWaiver = async function submitWaiver() {
         payload.grade = null; payload.section = null;
     }
 
+    waiverSubmitting = true;
+    const btn = document.getElementById('btn-submit-waiver');
+    const oldBtn = btn ? btn.innerHTML : '';
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ENVIANDO...'; }
     try {
+        // Misma exención (docente + día + establecimiento + grado + sección) solo una vez mientras no esté rechazada.
+        // La base de datos también lo impide (índice único, migrations/waivers-unique-por-grupo.sql); esta consulta solo da el aviso antes.
+        // Si no hay conexión para consultar, se sigue: la restricción de la base es la que manda.
+        try {
+            const { data: same } = await _supabase.from('attendance_waivers')
+                .select('teacher_id, date, school_code, grade, section, status')
+                .eq('teacher_id', payload.teacher_id).eq('date', payload.date);
+            const dup = findDuplicateWaiver(same, payload);
+            if (dup) { showToast('<i class="fas fa-circle-xmark"></i> ' + duplicateWaiverMessage(dup), 'error'); return; }
+        } catch (e) { /* sin conexión: se intenta el envío */ }
+
         const { error } = await _supabase.from('attendance_waivers').insert(payload);
         if (error) throw error;
         showToast('<i class="fas fa-circle-check"></i> Solicitud enviada', 'success');
         const modal = document.getElementById('waiver-modal') || document.querySelector('.fixed.inset-0.z-\\[100\\]');
         if (modal) modal.remove();
         loadAttendanceInterface();
-    } catch (e) { showToast('<i class="fas fa-circle-xmark"></i> Error en el proceso', 'error'); }
+    } catch (e) {
+        if (isDuplicateWaiverError(e)) showToast('<i class="fas fa-circle-xmark"></i> ' + duplicateWaiverMessage(), 'error');
+        else showToast('<i class="fas fa-circle-xmark"></i> Error en el proceso', 'error');
+    } finally {
+        waiverSubmitting = false;
+        const b = document.getElementById('btn-submit-waiver'); // si la ventana se cerró, ya no existe
+        if (b) { b.disabled = false; b.innerHTML = oldBtn; }
+    }
 }
 
 // REAL EXPORT CSV

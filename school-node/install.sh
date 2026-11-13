@@ -136,6 +136,20 @@ sudo systemctl enable --now quetzal-backup.timer
 # ---------- 2. Código ----------
 if [ -d "$APP_DIR/.git" ]; then
   say "Actualizando el código en $APP_DIR"
+  # Un corte de luz puede dejar objetos de git vacíos (0 bytes): "object file ... is empty", "bad object HEAD". Se borran y se
+  # vuelven a bajar; si aun así el repositorio no queda sano, se reemplaza solo la carpeta .git por una copia nueva (los archivos
+  # del programa, config.json y data/ no se tocan).
+  if find "$APP_DIR/.git/objects" -type f -size 0 2>/dev/null | grep -q . || ! git -C "$APP_DIR" rev-parse -q --verify HEAD >/dev/null 2>&1; then
+    warn "El repositorio del programa estaba dañado (archivos vacíos tras un corte de luz): reparando."
+    find "$APP_DIR/.git/objects" -type f -size 0 -delete 2>/dev/null || true
+    if ! { git -C "$APP_DIR" fetch --quiet origin && git -C "$APP_DIR" rev-parse -q --verify HEAD >/dev/null 2>&1; }; then
+      FIX_TMP="$(mktemp -d)"
+      git clone --quiet "$REPO_URL" "$FIX_TMP/q" || { warn "No se pudo bajar una copia limpia (¿sin internet?). Reintenta con conexión."; exit 1; }
+      rm -rf "$APP_DIR/.git" && mv "$FIX_TMP/q/.git" "$APP_DIR/.git"
+      rm -rf "$FIX_TMP"
+      git -C "$APP_DIR" reset --quiet --hard HEAD
+    fi
+  fi
   # Cambios locales en archivos del programa (p. ej. package-lock.json) harían fallar el pull: se guardan aparte con git stash (config.json y data/ no están en git).
   if [ -n "$(git -C "$APP_DIR" status --porcelain --untracked-files=no)" ]; then
     warn "Había cambios locales en el programa: se guardaron aparte (git stash) para poder actualizar."
