@@ -293,7 +293,6 @@ self.__PX_HANDLER_ALLOW = {
     'renderGlobalKpiManager',
     'renderSeasonHero',
     'renderValidationInbox',
-    'renderWardrobe',
     'resetPushNotifications',
     'resetSchoolPasswords',
     'respondDebugDuel',
@@ -437,7 +436,9 @@ self.__PX_HANDLER_ALLOW = {
     'verifyTaskCompletion',
     'viewProjectDetails',
     'viewTeacherAssignments',
-    'viewTeacherMonthlyReport'
+    'viewTeacherMonthlyReport',
+    'wardrobeAskBuy',
+    'wardrobeSetSlot'
   ],
   reads: [
     'GameArena',
@@ -447,7 +448,6 @@ self.__PX_HANDLER_ALLOW = {
     '_activeCourseIndex',
     '_lastEvalReportOpts',
     '_syncManager',
-    '_wardrobe',
     'addGuardian',
     'addProgram',
     'addQuizOption',
@@ -686,7 +686,6 @@ self.__PX_HANDLER_ALLOW = {
     'removeTeamMember',
     'renderDuelReport',
     'renderSeasonHero',
-    'renderWardrobe',
     'resetPushNotifications',
     'resetSchoolPasswords',
     'respondDebugDuel',
@@ -814,6 +813,8 @@ self.__PX_HANDLER_ALLOW = {
     'verifyOfflinePassword',
     'viewProjectDetails',
     'viewTeacherAssignments',
-    'viewTeacherMonthlyReport'
+    'viewTeacherMonthlyReport',
+    'wardrobeAskBuy',
+    'wardrobeSetSlot'
   ]
 };

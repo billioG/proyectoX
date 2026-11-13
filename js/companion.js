@@ -2048,7 +2048,13 @@ window.renderWardrobe = function renderWardrobe() {
   const names = COMPANION_SPECIES[species].names;
   const s = window.sanitizeInput || ((v) => v);
 
-  const itemsHtml = w.items.filter(i => i.slot === w.slot).map(item => {
+  // «Ninguno»: dejar la mascota sin accesorio en esta pestaña (equip_cosmetic con p_item = null lo quita).
+  const noneOn = !equipped[w.slot];
+  const { [w.slot]: _quitado, ...sinEste } = equipped;
+  const noneHtml = `<div class="wd-item ${noneOn ? 'on' : ''}" data-wd-none><div class="wd-art">${window.renderCompanionSvg(Math.max(stage, 1), '', species, sinEste)}</div><div class="wd-name">Ninguno</div>${
+    noneOn ? '<button class="wd-btn off" disabled><i class="fas fa-check"></i> Puesto</button>' : `<button class="wd-btn equip" onclick="window.equipCosmetic('${w.slot}', null)">Poner</button>`}</div>`;
+
+  const itemsHtml = noneHtml + w.items.filter(i => i.slot === w.slot).map(item => {
     const isOn = equipped[item.slot] === item.id;
     const unlocked = stage >= item.min_stage;
     const have = item.pass_only || item.price > 0 ? w.owned.has(item.id) : unlocked;
@@ -2059,7 +2065,7 @@ window.renderWardrobe = function renderWardrobe() {
     else if (item.pass_only) btn = `<button class="wd-btn locked" disabled title="Se gana en el Pase de Temporada"><i class="fas fa-ticket"></i> Pase</button>`;
     else if (!unlocked) btn = `<button class="wd-btn locked" disabled title="Se desbloquea en: ${s(names[item.min_stage])}"><i class="fas fa-lock"></i> ${s(names[item.min_stage])}</button>`;
     else if (w.confirming === item.id) btn = `<button class="wd-btn confirm" onclick="window.buyCosmetic('${item.id}')">¿Comprar?</button>`;
-    else btn = `<button class="wd-btn buy" onclick="window._wardrobe.confirming='${item.id}'; window.renderWardrobe()"><i class="fas fa-gem"></i> ${item.price}</button>`;
+    else btn = `<button class="wd-btn buy" onclick="window.wardrobeAskBuy('${item.id}')"><i class="fas fa-gem"></i> ${item.price}</button>`;
     return `<div class="wd-item ${isOn ? 'on' : ''}"><div class="wd-art">${preview}</div><div class="wd-name">${s(item.name)}</div>${btn}</div>`;
   }).join('') || '<p style="color:#94a3b8;font-size:.8rem;grid-column:1/-1">No hay nada acá todavía.</p>';
 
@@ -2070,9 +2076,25 @@ window.renderWardrobe = function renderWardrobe() {
     </div>
     <div class="wd-preview">${window.renderCompanionSvg(stage, 'companion-idle', species)}</div>
     <div style="font-weight:900;font-size:1rem">${s(names[stage])}</div>
-    <div class="wd-tabs">${WARDROBE_SLOTS.map(sl => `<button class="wd-tab ${sl.id === w.slot ? 'active' : ''}" onclick="window._wardrobe.slot='${sl.id}'; window._wardrobe.confirming=null; window.renderWardrobe()"><i class="fas ${sl.icon}"></i> ${sl.label}</button>`).join('')}</div>
+    <div class="wd-tabs">${WARDROBE_SLOTS.map(sl => `<button class="wd-tab ${sl.id === w.slot ? 'active' : ''}" onclick="window.wardrobeSetSlot('${sl.id}')"><i class="fas ${sl.icon}"></i> ${sl.label}</button>`).join('')}</div>
     <div class="wd-grid">${itemsHtml}</div>
     <button class="ga-btn" style="margin-top:1rem" onclick="document.getElementById('wardrobe-overlay').remove()">Listo</button>`;
+};
+
+// Cambiar de pestaña y pedir confirmación de compra: funciones, no asignaciones en el onclick (js/safe-handlers.js no deja asignar a «slot» ni «confirming»).
+window.wardrobeSetSlot = function wardrobeSetSlot(slot) {
+  const w = window._wardrobe;
+  if (!w) return;
+  w.slot = slot;
+  w.confirming = null;
+  window.renderWardrobe();
+};
+
+window.wardrobeAskBuy = function wardrobeAskBuy(itemId) {
+  const w = window._wardrobe;
+  if (!w) return;
+  w.confirming = itemId;
+  window.renderWardrobe();
 };
 
 window.equipCosmetic = async function equipCosmetic(slot, itemId) {
