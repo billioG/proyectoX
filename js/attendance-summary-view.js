@@ -3,6 +3,8 @@
 // ================================================
 
 let globalAttendanceData = [];
+let globalRoster = []; // estudiantes activos de las clases del mes
+let lastGroups = {}; // 'establecimiento||docente' -> estadística por estudiante (para el reporte)
 let schoolsMap = {}; // Maps school_code to school_name
 let schoolsAddressMap = {}; // Maps school_code to school_address
 let currentFilterDate = new Date(); // To track selected month
@@ -12,6 +14,7 @@ let currentContainerId = 'admin-attendance-report-container';
 let currentOpts = {};
 
 const pad2 = (n) => String(n).padStart(2, '0');
+const localToday = () => { const d = new Date(); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; };
 // Primer día del mes mostrado y del siguiente (texto AAAA-MM-DD): la columna `date` es una fecha, no una hora.
 function monthBounds(d) {
     const y = d.getFullYear(), m = d.getMonth();
@@ -55,7 +58,7 @@ async function loadAttendanceMonth(container) {
                 let q = _supabase
                     .from('attendance')
                     .select(`
-                        id, date, status, student_id, teacher_id,
+                        id, date, status, student_id, teacher_id, school_code, grade, section,
                         students!fk_attendance_student(full_name, school_code),
                         teachers!fk_attendance_teacher(full_name)
                     `)
@@ -72,9 +75,14 @@ async function loadAttendanceMonth(container) {
                 window.fetchWithCache('attendance_view_schools', () => _supabase.from('schools').select('code, name, address'), null, { ttlMs: 10 * 60_000 }),
             ]);
 
-            return { attendance: attendance || [], schools: schoolsResult || [] };
+            // Estudiantes activos de las clases que aparecen: sirven para saber quién NO vino (no tiene registro).
+            const codes = [...new Set((attendance || []).map((r) => r.school_code || r.students?.school_code).filter(Boolean))];
+            const roster = codes.length ? await window.fetchAllRows(() => _supabase.from('students').select('id, full_name, school_code, grade, section').in('school_code', codes).eq('status', 'active').order('id')) : [];
+
+            return { attendance: attendance || [], schools: schoolsResult || [], roster: roster || [] };
         }, (snapshot) => {
             globalAttendanceData = snapshot.attendance;
+            globalRoster = snapshot.roster || [];
 
             // Crear mapa de códigos a nombres de escuela
             schoolsMap = (snapshot.schools || []).reduce((acc, school) => {
@@ -95,29 +103,57 @@ async function loadAttendanceMonth(container) {
     }
 }
 
-// Una fila por estudiante (antes una por cada día de cada estudiante y la lista se hacía larguísima): días que asistió y días que faltó, en orden.
-// La fecha es texto AAAA-MM-DD (columna date): se parte sin pasar por Date, que la tomaba como UTC y mostraba el día anterior.
-function groupAttendanceByStudent(records) {
-    const byStudent = new Map();
-    for (const r of records || []) {
-        const key = r.student_id ?? r.students?.full_name ?? 'sin-estudiante';
-        if (!byStudent.has(key)) byStudent.set(key, { key, name: r.students?.full_name || 'Estudiante Eliminado', present: [], absent: [] });
-        byStudent.get(key)[r.status === 'present' ? 'present' : 'absent'].push(String(r.date).slice(0, 10));
-    }
-    return [...byStudent.values()]
-        .map((st) => ({ ...st, present: [...new Set(st.present)].sort(), absent: [...new Set(st.absent)].sort() }))
-        .sort((a, b) => a.name.localeCompare(b.name, 'es'));
+// ¿Quién faltó? El docente solo marca a quien VINO (con el QR o en la lista): quien no tiene registro ese día cuenta como inasistencia, sin que nadie
+// la marque. Un día cuenta como clase dada cuando alguien de esa clase (establecimiento + grado + sección) tiene «presente»; así los fines de semana, feriados
+// y días suspendidos no cuentan. Además, una inasistencia marcada a mano (presente -> ausente) también cuenta.
+// Las fechas son texto AAAA-MM-DD (columna date): no pasan por Date, que las tomaba como UTC y mostraba el día anterior.
+const dayOf = (d) => String(d).slice(0, 10);
+const classKey = (school, grade, section) => [school, grade, section].map((v) => String(v ?? '').trim().toLowerCase()).join('|');
+
+/** Clase de un registro (el registro viejo sin grado/sección usa la ficha del estudiante). */
+function classOfRecord(r, rosterById) {
+    const st = rosterById.get(r.student_id);
+    return classKey(r.school_code ?? r.students?.school_code ?? st?.school_code, r.grade ?? st?.grade, r.section ?? st?.section);
 }
 
-// «Asistió 3 · 7, 8, 12»: el total y los días del mes (el mes ya está en el selector); al pasar el cursor, la fecha completa.
-function attendanceDayChips(days, kind) {
-    if (!days.length) return '<span class="text-slate-300 dark:text-slate-600">—</span>';
-    const tone = kind === 'present' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600';
-    const chips = days.map((d) => {
-        const [y, m, day] = d.split('-');
-        return `<span title="${day}/${m}/${y}" class="inline-block px-1.5 py-0.5 rounded-md ${tone} text-xs font-bold">${Number(day)}</span>`;
-    }).join(' ');
-    return `<div class="flex flex-wrap items-center gap-1"><span class="font-black ${kind === 'present' ? 'text-emerald-600' : 'text-rose-600'} mr-1">${days.length}</span>${chips}</div>`;
+/**
+ * Estadística por estudiante de un grupo (establecimiento + docente).
+ * @param groupRecords registros del grupo · @param allRecords TODOS los registros del mes (un día es «de clase» si cualquier docente de esa clase marcó presentes)
+ * @param roster estudiantes activos {id, full_name, school_code, grade, section} · @param today AAAA-MM-DD: los días que faltan no cuentan
+ * @returns [{ key, name, present: n, absent: n, presentDays: [], absentDays: [] }] por nombre
+ */
+function buildAttendanceStats(groupRecords, allRecords, roster, today = '9999-12-31') {
+    const rosterById = new Map((roster || []).map((s) => [s.id, s]));
+    const held = new Map(); // clase -> días con algún presente
+    const status = new Map(); // estudiante|día -> 'present' | 'absent'
+    for (const r of allRecords || []) {
+        const d = dayOf(r.date);
+        if (r.status === 'present') {
+            const k = classOfRecord(r, rosterById);
+            if (!held.has(k)) held.set(k, new Set());
+            held.get(k).add(d);
+        }
+        const sk = r.student_id + '|' + d;
+        if (r.status === 'present' || !status.has(sk)) status.set(sk, r.status === 'present' ? 'present' : 'absent');
+    }
+    const classes = new Set((groupRecords || []).map((r) => classOfRecord(r, rosterById)));
+    const people = new Map(); // estudiantes de esas clases (por ficha) y quienes tienen registro en el grupo (aunque ya no estén en la ficha)
+    for (const st of roster || []) if (classes.has(classKey(st.school_code, st.grade, st.section))) people.set(st.id, { name: st.full_name, cls: classKey(st.school_code, st.grade, st.section) });
+    for (const r of groupRecords || []) if (!people.has(r.student_id)) people.set(r.student_id, { name: r.students?.full_name || 'Estudiante Eliminado', cls: classOfRecord(r, rosterById) });
+    const out = [];
+    for (const [id, p] of people) {
+        const presentDays = new Set();
+        const absentDays = new Set();
+        for (const d of held.get(p.cls) || []) if (d <= today) (status.get(id + '|' + d) === 'present' ? presentDays : absentDays).add(d);
+        for (const r of groupRecords || []) {
+            if (r.student_id !== id) continue;
+            const d = dayOf(r.date);
+            if (d > today) continue;
+            if (r.status === 'present') { presentDays.add(d); absentDays.delete(d); } else if (!presentDays.has(d)) absentDays.add(d);
+        }
+        out.push({ key: id, name: p.name, present: presentDays.size, absent: absentDays.size, presentDays: [...presentDays].sort(), absentDays: [...absentDays].sort() });
+    }
+    return out.sort((x, y) => x.name.localeCompare(y.name, 'es'));
 }
 
 window.renderAnalyticsView = function renderAnalyticsView(container) {
@@ -126,10 +162,8 @@ window.renderAnalyticsView = function renderAnalyticsView(container) {
     const selectedMonth = currentFilterDate.getMonth();
 
     // Filtramos los datos globales para usar solo los del mes seleccionado
-    const filteredData = globalAttendanceData.filter(record => {
-        const d = new Date(record.date);
-        return d.getFullYear() === selectedYear && d.getMonth() === selectedMonth;
-    });
+    const monthPrefix = `${selectedYear}-${pad2(selectedMonth + 1)}`;
+    const filteredData = globalAttendanceData.filter(record => dayOf(record.date).startsWith(monthPrefix));
 
     // Agrupar datos filtrados
     const groupedData = {};
@@ -152,16 +186,19 @@ window.renderAnalyticsView = function renderAnalyticsView(container) {
             };
         }
 
-        if (record.status === 'present') {
-            groupedData[groupKey].present++;
-        } else {
-            groupedData[groupKey].absent++;
-        }
         groupedData[groupKey].records.push(record);
     });
 
     // Convertir a array y ordenar por nombre de escuela
     const groups = Object.values(groupedData).sort((a, b) => a.schoolName.localeCompare(b.schoolName));
+    const today = localToday();
+    lastGroups = {};
+    for (const g of groups) {
+        g.students = buildAttendanceStats(g.records, filteredData, globalRoster, today);
+        g.present = g.students.reduce((n, st) => n + st.present, 0);
+        g.absent = g.students.reduce((n, st) => n + st.absent, 0);
+        lastGroups[`${g.schoolName}||${g.teacherName}`] = g.students;
+    }
 
     const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
@@ -264,20 +301,20 @@ window.renderAnalyticsView = function renderAnalyticsView(container) {
                                         <tr>
                                             <th class="p-3 text-[0.65rem] font-bold uppercase text-slate-400 tracking-wider border-b border-slate-200 dark:border-slate-700">Estudiante</th>
                                             <th class="p-3 text-[0.65rem] font-bold uppercase text-slate-400 tracking-wider border-b border-slate-200 dark:border-slate-700">Asistencias</th>
-                                            <th class="p-3 text-[0.65rem] font-bold uppercase text-slate-400 tracking-wider border-b border-slate-200 dark:border-slate-700">Ausencias</th>
+                                            <th class="p-3 text-[0.65rem] font-bold uppercase text-slate-400 tracking-wider border-b border-slate-200 dark:border-slate-700">Inasistencias</th>
                                             <th class="p-3 text-[0.65rem] font-bold uppercase text-slate-400 tracking-wider border-b border-slate-200 dark:border-slate-700 text-right">Efectividad</th>
                                         </tr>
                                     </thead>
                                     <tbody class="text-sm">
-                                        ${groupAttendanceByStudent(group.records).map(st => {
-                                            const tot = st.present.length + st.absent.length;
-                                            const pct = tot ? Math.round((st.present.length / tot) * 100) : 0;
+                                        ${group.students.map(st => {
+                                            const tot = st.present + st.absent;
+                                            const pct = tot ? Math.round((st.present / tot) * 100) : 0;
                                             const pctClass = pct >= 85 ? 'text-emerald-500' : (pct >= 60 ? 'text-amber-500' : 'text-rose-500');
                                             return `
                                             <tr class="hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors">
                                                 <td class="p-3 border-b border-slate-100 dark:border-slate-800 align-top font-bold text-slate-700 dark:text-slate-300">${window.sanitizeInput(st.name)}</td>
-                                                <td class="p-3 border-b border-slate-100 dark:border-slate-800 align-top">${attendanceDayChips(st.present, 'present')}</td>
-                                                <td class="p-3 border-b border-slate-100 dark:border-slate-800 align-top">${attendanceDayChips(st.absent, 'absent')}</td>
+                                                <td class="p-3 border-b border-slate-100 dark:border-slate-800 align-top"><span class="font-black text-emerald-600">${st.present}</span></td>
+                                                <td class="p-3 border-b border-slate-100 dark:border-slate-800 align-top"><span class="font-black ${st.absent ? 'text-rose-600' : 'text-slate-300 dark:text-slate-600'}">${st.absent}</span></td>
                                                 <td class="p-3 border-b border-slate-100 dark:border-slate-800 align-top text-right font-black ${pctClass}">${pct}%</td>
                                             </tr>`;
                                         }).join('')}
@@ -322,29 +359,24 @@ window.toggleGroupDetails = function (id) {
 };
 
 window.exportGroupReport = function (schoolName, teacherName) {
-    // Buscar los datos en memoria
-    const groupData = globalAttendanceData.filter(r => {
-        const sCode = r.students?.school_code || 'N/A';
-        const sName = schoolsMap[sCode.toLowerCase()] || `Código: ${sCode}`;
-        const tName = r.teachers?.full_name || 'Desconocido';
-        return sName === schoolName && tName === teacherName;
-    });
-
-    if (!groupData.length) {
+    // Las fechas no caben en pantalla si son muchas: van en el reporte (una línea por estudiante y día, con las inasistencias automáticas).
+    const students = lastGroups[`${schoolName}||${teacherName}`] || [];
+    const lines = [];
+    for (const st of students) {
+        for (const d of st.presentDays) lines.push({ d, name: st.name, status: 'Presente' });
+        for (const d of st.absentDays) lines.push({ d, name: st.name, status: 'Inasistencia' });
+    }
+    if (!lines.length) {
         alert('No hay datos para exportar.');
         return;
     }
+    lines.sort((x, y) => x.d.localeCompare(y.d) || x.name.localeCompare(y.name, 'es'));
+    const q = (v) => '"' + String(v).replace(/"/g, '""') + '"';
+    const fmt = (d) => { const [y, m, day] = d.split('-'); return `${day}/${m}/${y}`; };
 
-    // Generar CSV simple
     let csvContent = "data:text/csv;charset=utf-8,";
     csvContent += "Fecha,Establecimiento,Docente,Estudiante,Estado\n";
-
-    groupData.forEach(r => {
-        const date = new Date(r.date).toLocaleDateString();
-        const student = r.students?.full_name || 'N/A';
-        const status = r.status === 'present' ? 'Presente' : 'Ausente';
-        csvContent += `${date},"${schoolName}","${teacherName}","${student}",${status}\n`;
-    });
+    lines.forEach(l => { csvContent += `${fmt(l.d)},${q(schoolName)},${q(teacherName)},${q(l.name)},${l.status}\n`; });
 
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
