@@ -2,7 +2,9 @@
  * AVISO DE SINCRONIZACIÓN -- solo cuando la app corre sobre un nodo escolar con la capa local lista
  * (window.QUETZAL_NODE.rest, ver js/config.js). Muestra cuánto falta por subir a la nube y cuándo fue la última
  * sincronización, y deja pedir una a mano con «Sincronizar ahora». En la nube (GitHub Pages) no existe.
- * Solo se ve DESPUÉS de iniciar sesión y SOLO para docentes, coordinadores y administradores: un estudiante no sincroniza ni cambia la Wi-Fi del servidor.
+ * Vive DENTRO de la pantalla «Servidor de la escuela» (window.mountNodeSyncPanel, la llama js/school-servers.js): antes era una barra fija en una
+ * esquina que tapaba botones y listas en el celular.
+ * Solo para docentes, coordinadores y administradores: un estudiante no sincroniza ni cambia la Wi-Fi del servidor.
  */
 const STAFF_ROLES = ['docente', 'coordinador', 'admin'];
 export const canSeeSyncChip = (user = window.currentUser, role = window.userRole) => !!user && STAFF_ROLES.includes(role);
@@ -26,7 +28,11 @@ function describe(s) {
     const why = s.sync_cause === 'reconnect' ? 'Se conectó a internet. ' : '';
     return { tone: 'busy', text: `${why}Sincronizando${s.sync_stage ? `: ${s.sync_stage}` : ''}…` };
   }
-  if (s.sync_error) return { tone: 'warn', text: 'Sin internet por ahora: todo está guardado y se sube solo' };
+  if (s.sync_error) {
+    // Sin internet es lo normal en una escuela rural: se dice claro. Otro fallo (la nube rechazó algo...) no se disfraza de «sin internet».
+    if (s.internet?.online !== true) return { tone: 'warn', text: 'Sin internet por ahora: todo está guardado y se sube solo' };
+    return { tone: 'warn', text: `No se pudo sincronizar: ${s.sync_error}. Todo está guardado y se reintenta.` };
+  }
   const rejected = s.pending?.uploads_rejected?.length || 0;
   if (rejected > 0) return { tone: 'warn', text: `La nube rechazó ${rejected} ${rejected === 1 ? 'archivo' : 'archivos'} de tus cursos: ${s.pending.uploads_rejected[0].error}` };
   const files = s.pending?.uploads || 0;
@@ -44,11 +50,11 @@ function start() {
   const style = document.createElement('style');
   style.textContent = `
     #node-sync-chip[hidden] { display: none !important; }
-    #node-sync-chip { position: fixed; left: .75rem; bottom: calc(env(safe-area-inset-bottom, 0px) + .75rem); z-index: 90; display: flex; align-items: center; gap: .5rem;
-      padding: .35rem .5rem .35rem .75rem; border-radius: 9999px; font-size: .7rem; font-weight: 700; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+    #node-sync-chip { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem; padding: .6rem .9rem; border-radius: 1rem; font-size: .8rem; font-weight: 700; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+    #node-sync-chip [data-text] { flex: 1 1 14rem; }
     #node-sync-chip[data-tone="warn"] { background: #fffbeb; color: #b45309; border-color: #fde68a; }
     #node-sync-chip[data-tone="busy"] { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
-    #node-sync-chip button { border: 0; border-radius: 9999px; padding: .25rem .6rem; font-size: .65rem; font-weight: 800; background: rgba(0,0,0,.08); color: inherit; cursor: pointer; }
+    #node-sync-chip button { border: 0; border-radius: 9999px; padding: .4rem .9rem; font-size: .7rem; font-weight: 800; background: rgba(0,0,0,.08); color: inherit; cursor: pointer; }
     #node-sync-chip button:disabled { opacity: .5; cursor: default; }
     .dark #node-sync-chip { background: #064e3b; color: #a7f3d0; border-color: #065f46; }
     .dark #node-sync-chip[data-tone="warn"] { background: #78350f; color: #fde68a; border-color: #92400e; }
@@ -58,9 +64,8 @@ function start() {
   const chip = document.createElement('div');
   chip.id = 'node-sync-chip';
   chip.setAttribute('role', 'status');
-  chip.hidden = true; // se muestra al iniciar sesión como docente o administrador
-  chip.innerHTML = '<span data-text></span><button type="button" data-sync>Sincronizar ahora</button><a href="/wifi" title="Conectar el servidor a una Wi-Fi (docentes)" style="color:inherit;font-size:.65rem;font-weight:800;text-decoration:underline">Wi-Fi</a>';
-  document.body.appendChild(chip);
+  // La barra NO se agrega a la página: solo existe dentro de «Servidor de la escuela», cuando esa pantalla la monta (mountNodeSyncPanel).
+  chip.innerHTML = '<span data-text>Revisando el servidor…</span><button type="button" data-sync>Sincronizar ahora</button><a href="/wifi" title="Conectar el servidor a una Wi-Fi (docentes)" style="color:inherit;font-size:.7rem;font-weight:800;text-decoration:underline">Wi-Fi</a>';
   const text = chip.querySelector('[data-text]');
   const button = chip.querySelector('[data-sync]');
   let lastStatus = null;
@@ -128,21 +133,29 @@ function start() {
     }
   });
 
-  // Visible solo con sesión de docente/coordinador/administrador (se revisa cada segundo: barato, sin tocar la red).
-  // Sin sesión o con un estudiante no hay barra ni consultas al estado del nodo.
-  let shown = false;
-  setInterval(() => {
-    const should = canSeeSyncChip();
-    if (should === shown) return;
-    shown = should;
-    chip.hidden = !should;
-    if (should) refresh(); // acaba de iniciar sesión: estado al instante
-  }, 1000);
+  // «Servidor de la escuela» (nodo): dibuja la tarjeta con el estado, «Sincronizar ahora» y la Wi-Fi. Solo para docentes y administradores.
+  window.mountNodeSyncPanel = (container) => {
+    if (!container) return false;
+    if (!canSeeSyncChip()) {
+      container.innerHTML = '<div class="glass-card p-6 text-sm text-slate-500">Esta pantalla es para docentes y administradores.</div>';
+      return false;
+    }
+    container.innerHTML = `
+      <div class="glass-card p-5">
+        <h3 class="text-sm font-black text-slate-800 dark:text-white uppercase tracking-tight mb-3"><i class="fas fa-server text-primary mr-2"></i>Este servidor</h3>
+        <div data-slot></div>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-3">Cuando el servidor tiene internet se sincroniza solo. Lo que hagas sin internet (asistencia, notas, proyectos) queda guardado y sube en ese momento; en la plataforma en línea aparece cuando termina.</p>
+      </div>`;
+    container.querySelector('[data-slot]').appendChild(chip);
+    refresh();
+    return true;
+  };
 
-  // Revisión periódica: cada 10 s, y cada 2 s mientras sincroniza (solo si la barra se ve).
-  const loop = async () => { if (shown) await refresh(); setTimeout(loop, busy ? POLL_BUSY_MS : POLL_MS); };
+  // Revisión periódica: cada 10 s, y cada 2 s mientras sincroniza. Solo si la tarjeta está a la vista (con otra pantalla abierta no se consulta al nodo).
+  const visible = () => chip.isConnected && chip.offsetParent !== null;
+  const loop = async () => { if (visible()) await refresh(); setTimeout(loop, busy ? POLL_BUSY_MS : POLL_MS); };
   loop();
-  window.addEventListener('focus', () => { if (shown) refresh(); });
+  window.addEventListener('focus', () => { if (visible()) refresh(); });
 }
 
 if (window.QUETZAL_NODE?.rest === true && !/[?&]modo=pin\b/.test(location.search)) {

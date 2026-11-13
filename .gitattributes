@@ -3,3 +3,6 @@
 *.sh text eol=lf
 scripts/ci/*.txt text eol=lf
 scripts/ci/*.sql text eol=lf
+
+# Librerias de terceros servidas tal cual (el hash SRI de js/model-viewer.js depende de los bytes exactos): sin conversion de fin de linea en Windows.
+vendor/cdn/** -text

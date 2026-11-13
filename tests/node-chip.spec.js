@@ -43,6 +43,12 @@ test('la barra muestra el avance cuando el servidor sincroniza solo al detectar 
   await page.fill('#login-username', 'marta@escuela.com');
   await page.fill('#login-password', '654321');
   await page.click('#btn-login');
+  // La barra ya no flota sobre la pantalla: vive dentro de «Servidor de la escuela».
+  await page.waitForFunction(() => window.currentUser?.id === 't1' && window.userRole === 'docente');
+  await expect(chip).toBeHidden();
+  await page.evaluate(() => window.nav('school-servers'));
+  await expect(page.locator('#view-school-servers #node-sync-chip')).toBeVisible();
+  expect(await chip.evaluate((el) => getComputedStyle(el).position)).not.toBe('fixed');
   await expect(chip).toContainText('Sincronizado hace');
   await expect(chip).toHaveAttribute('title', /Internet: sí\.[\s\S]*Dirección del servidor: http:\/\/192\.168\.1\.50:8080 {2}·.*quetzal\.local/);
 

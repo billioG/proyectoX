@@ -26,6 +26,22 @@ export function findDuplicateWaiver(existing, payload) {
   return (existing || []).find((w) => w && w.status !== 'rejected' && waiverGroupKey({ ...w, teacher_id: w.teacher_id ?? payload.teacher_id }) === key) || null;
 }
 
+/**
+ * ¿La clase `a` (school_code, grade, section) está suspendida HOY? Cuenta una exención de ese día (`today`, YYYY-MM-DD) que no esté rechazada y que sea
+ * de todo el establecimiento (grado vacío) o de esa clase exacta. Una exención de otro día NO suspende (la lista de ayer no puede bloquear hoy), y una
+ * rechazada tampoco. Si la exención no trae `date` (consulta ya filtrada por día) se da por válida.
+ */
+export function isGroupSuspendedToday(waivers, a, today = localDateISO()) {
+  const empty = (v) => v == null || v === '';
+  return (waivers || []).some((w) => {
+    if (!w || w.status === 'rejected') return false;
+    if (w.date != null && String(w.date).slice(0, 10) !== today) return false;
+    if (w.school_code !== a?.school_code) return false;
+    if (empty(w.grade)) return true; // todo el establecimiento
+    return w.grade === a?.grade && (empty(w.section) ? empty(a?.section) : w.section === a?.section);
+  });
+}
+
 /** ¿El error de Supabase/Postgres es el índice único de exenciones (23505)? */
 export function isDuplicateWaiverError(err) {
   if (!err) return false;
