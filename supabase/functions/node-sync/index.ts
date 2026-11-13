@@ -323,7 +323,11 @@ Deno.serve(async (req) => {
     const sessions = (push.sessions || []).filter((s: any) => studentIds.has(s.student_id) && s.entered_at)
       .map((s: any) => ({ node_id: node.id, student_id: s.student_id, device: String(s.device || '').slice(0, 120), entered_at: s.entered_at }));
     if (sessions.length) {
-      const { error } = await admin.from('node_session_logs').insert(sessions);
+      // Idempotente (migrations/session-logs-idempotency.sql): si la respuesta se pierde y el nodo reintenta, el índice único
+      // (node_id, student_id, entered_at) descarta lo ya guardado en vez de duplicar el ingreso. Se cuenta lo enviado: el nodo
+      // solo limpia "dirty" por lo que la nube confirma, y un duplicado ya guardado también está confirmado.
+      const { error } = await admin.from('node_session_logs')
+        .upsert(sessions, { onConflict: 'node_id,student_id,entered_at', ignoreDuplicates: true });
       if (!error) appliedSessions = sessions.length;
     }
 

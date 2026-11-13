@@ -51,5 +51,6 @@ push-sub-role-staff
 duel-one-open-pair
 rate-limits
 security-audit-log
+session-logs-idempotency
 # Siempre al final: envuelve auth.uid() también en las políticas que crearon las migraciones anteriores (p. ej. feedback-inbox).
 rls-auth-uid-initplan

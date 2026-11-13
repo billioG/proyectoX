@@ -84,6 +84,8 @@ Desde la v1.0.266 el botón y `install.sh --update` lo hacen solos. En un nodo c
 
 **Volver a desplegar `node-sync` (v1.0.268):** la función cambió (`index.ts` y `content.ts`: una URL con «%» suelto ya no aborta el pull). En Supabase → Edge Functions → `node-sync`, pega los 15 archivos de `supabase/functions/node-sync/` (con `node scripts/exportar-funciones.mjs <carpeta> node-sync`) y deja **Verify JWT en OFF**.
 
+**Ingresos del nodo idempotentes (v1.0.270):** en Supabase → SQL Editor corre `migrations/session-logs-idempotency.sql` **antes** de volver a desplegar `node-sync` (el upsert nuevo exige el índice; sin él falla y el nodo deja los ingresos pendientes, sin perder nada). Luego pega `supabase/functions/node-sync/index.ts` (con `node scripts/exportar-funciones.mjs <carpeta>`).
+
 ## 3a. Candado de retos repetidos (v1.0.257)
 
 Correr `duel-one-open-pair.sql` en el SQL Editor **después** de publicar la v1.0.257 (o antes: la app vieja solo vería el error en inglés del candado). Cancela los retos pendientes repetidos entre la misma pareja (conserva el más antiguo; no borra nada) y crea un índice único por juego. Si algún juego tiene retos **activos** repetidos, avisa con un NOTICE y no crea ese índice; se revisan a mano y se vuelve a correr. Al final debe mostrar 5 filas (`*_one_open_pair`). Después, `verificar-migraciones.sql` debe dar `true` en las filas 760 a 764.
