@@ -4,6 +4,8 @@
 // Pruebas: tests-unit/node-sync-attendance.test.mjs. TypeScript sin sintaxis no borrable (Node 22 lo importa).
 
 const STATUSES = ['present', 'absent', 'late', 'excused'];
+/** Motivo de la inasistencia (migrations/attendance-absence-reason.sql). Sin motivo = sin aviso. */
+export const ABSENCE_REASONS = ['sin_aviso', 'enfermedad', 'permiso', 'otro'];
 const DAY_MS = 24 * 3600_000;
 
 type Assignment = { teacher_id: string; school_code: string; grade: string; section: string };
@@ -41,9 +43,10 @@ export function planAttendanceOps(ops: AttendanceOp[], ctx: AttendanceCtx): { ac
     if (!STATUSES.includes(row.status)) { no('Estado de asistencia inválido.'); continue; }
     const t = typeof row.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(row.date) ? Date.parse(`${row.date}T00:00:00Z`) : NaN;
     if (Number.isNaN(t) || t > ctx.now + DAY_MS || t < ctx.now - 45 * DAY_MS) { no('Fecha de asistencia inválida o muy antigua.'); continue; }
+    if (row.absence_reason != null && !(row.status === 'absent' && ABSENCE_REASONS.includes(row.absence_reason))) { no('Motivo de inasistencia inválido.'); continue; }
     if (typeof row.time !== 'string' || !/^\d{2}:\d{2}(:\d{2})?$/.test(row.time)) { no('Hora inválida.'); continue; }
     results.push({ seq, ok: true });
-    actions.push({ seq, row: { student_id: row.student_id, teacher_id: teacher, school_code: ctx.schoolCode, grade: student.grade, section: student.section, date: row.date, time: row.time, status: row.status } });
+    actions.push({ seq, row: { student_id: row.student_id, teacher_id: teacher, school_code: ctx.schoolCode, grade: student.grade, section: student.section, date: row.date, time: row.time, status: row.status, ...(row.status === 'absent' && row.absence_reason ? { absence_reason: row.absence_reason } : {}) } });
   }
   return { actions, results };
 }

@@ -58,5 +58,5 @@ test('estudiante que ya no está en la ficha sigue saliendo con su nombre; sin d
 test('la vista muestra solo cantidades y el reporte lleva las fechas', () => {
   assert.ok(!src.includes('attendanceDayChips'));
   assert.match(src, /Inasistencias<\/th>/);
-  assert.match(src, /for \(const d of st\.absentDays\) lines\.push\(\{ d, name: st\.name, status: 'Inasistencia' \}\)/);
+  assert.match(src, /for \(const d of st\.absentDays\) lines\.push\(\{ d, name: st\.name, status: 'Inasistencia'/);
 });
