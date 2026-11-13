@@ -377,6 +377,8 @@ window.startOnboardingTour = function startOnboardingTour() {
   if (window.userRole === 'docente' && !window.userData?.is_1bot_team) {
     steps = steps.filter(s => s.element !== '#nav-doc-bonus' && s.element !== '#main-content-area-bonus');
   }
+  // En el nodo escolar el reto del mes no se muestra (necesita IA e internet): el tutorial no debe resaltar un espacio vacío.
+  if (window.QUETZAL_NODE) steps = steps.filter(s => s.element !== '#challenge-indicator-slot');
   // Los pasos que resaltan opciones de «Configuración» necesitan el grupo desplegado.
   document.querySelectorAll('#nav-docente .nav-group').forEach(g => window.setNavGroupOpen?.(g, true));
   runGuidedTour(steps);
