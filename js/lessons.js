@@ -5,6 +5,23 @@
 
 import { iframeBaseFolder, injectBaseHref, classifyLink } from './lessons-iframe-logic.js';
 
+// PDF: los celulares y tablets (Android sobre todo) no dibujan un PDF dentro de un iframe y muestran la carita triste de Chrome. Siempre se da el botón
+// «Abrir PDF» (pestaña nueva, el visor propio del aparato); la vista previa dentro de la página solo se intenta en computadora.
+const isTouchDevice = () => /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '') || (navigator.maxTouchPoints || 0) > 1;
+function pdfViewerHtml(url) {
+  const u = window.safeUrl(url);
+  const preview = isTouchDevice() ? '' : `<iframe class="w-full h-[60vh] rounded-xl border border-slate-200 dark:border-slate-700" src="${u}"></iframe>`;
+  return `${preview}
+    <div class="w-full rounded-xl border border-slate-200 dark:border-slate-700 p-6 mt-3 flex flex-col items-center gap-3 text-center">
+      <i class="fas fa-file-pdf text-4xl text-rose-500"></i>
+      <p class="text-sm text-slate-500 dark:text-slate-400">${preview ? '¿No se ve el documento? Ábrelo en una pestaña nueva.' : 'Abre el documento en una pestaña nueva para leerlo.'}</p>
+      <div class="flex flex-wrap justify-center gap-3">
+        <a href="${u}" target="_blank" rel="noopener" class="btn-primary-tw h-11 px-6 text-xs uppercase font-bold inline-flex items-center gap-2"><i class="fas fa-up-right-from-square"></i> Abrir PDF</a>
+        <a href="${u}" download class="btn-secondary-tw h-11 px-6 text-xs uppercase font-bold inline-flex items-center gap-2"><i class="fas fa-download"></i> Descargar</a>
+      </div>
+    </div>`;
+}
+
 const LESSON_TYPE_ICON = { video: 'fa-video', pdf: 'fa-file-pdf', image: 'fa-image', scorm: 'fa-cube', h5p: 'fa-puzzle-piece', html5: 'fa-window-maximize', tinkercad: 'fa-microchip' };
 const LESSON_TYPE_LABEL = { video: 'Video', pdf: 'PDF', image: 'Imagen', scorm: 'Actividad interactiva (SCORM)', h5p: 'Actividad interactiva (H5P)', html5: 'Aplicación web (HTML5)', quiz: 'Cuestionario (Quiz)', tinkercad: 'Diseño en Tinkercad' };
 const LESSON_TYPES_WITH_GRADE = new Set(['scorm', 'h5p', 'quiz']);
@@ -821,7 +838,7 @@ window.previewCourseResource = function previewCourseResource(lessonId) {
       ? `<iframe class="w-full aspect-video rounded-xl" src="https://www.youtube.com/embed/${ytMatch[1]}" frameborder="0" allowfullscreen></iframe>`
       : `<video class="w-full rounded-xl" src="${window.safeUrl(lesson.content_url)}" controls></video>`;
   } else if (lesson.content_type === 'pdf') {
-    mediaHtml = `<iframe class="w-full h-[60vh] rounded-xl border border-slate-200 dark:border-slate-700" src="${window.safeUrl(lesson.content_url)}"></iframe>`;
+    mediaHtml = pdfViewerHtml(lesson.content_url);
   } else if (lesson.content_type === 'image') {
     mediaHtml = `<img src="${window.safeUrl(lesson.content_url)}" class="w-full rounded-xl">`;
   } else if (lesson.content_type === 'tinkercad') {
@@ -2469,7 +2486,7 @@ window.selectCourseResource = function selectCourseResource(index) {
       ? `<iframe class="w-full aspect-video rounded-xl" src="https://www.youtube.com/embed/${ytMatch[1]}" frameborder="0" allowfullscreen></iframe>`
       : `<video class="w-full rounded-xl" src="${window.safeUrl(lesson.content_url)}" controls></video>`;
   } else if (lesson.content_type === 'pdf') {
-    mediaHtml = `<iframe class="w-full h-[60vh] rounded-xl border border-slate-200 dark:border-slate-700" src="${window.safeUrl(lesson.content_url)}"></iframe>`;
+    mediaHtml = pdfViewerHtml(lesson.content_url);
   } else if (lesson.content_type === 'image') {
     mediaHtml = `<img src="${window.safeUrl(lesson.content_url)}" class="w-full rounded-xl">`;
   } else if (lesson.content_type === 'tinkercad') {
