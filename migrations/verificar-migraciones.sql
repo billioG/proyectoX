@@ -90,7 +90,8 @@ with comprobaciones(orden, migracion, tipo, objeto, extra) as (values
   (780, 'security-audit-log',                'tabla',            'security_audit_log', null),
   (781, 'security-audit-log',                'funcion',          'log_security_event', null),
   (782, 'security-audit-log',                'funcion',          'get_security_audit_log', null),
-  (783, 'security-audit-log',                'funcion_contiene', 'admin_reset_user_password', 'log_security_event')
+  (783, 'security-audit-log',                'funcion_contiene', 'admin_reset_user_password', 'log_security_event'),
+  (790, 'session-logs-idempotency',          'indice',           'node_session_logs_dedup_uidx', null)
 )
 select
   c.orden,

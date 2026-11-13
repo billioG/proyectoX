@@ -178,6 +178,7 @@ de producción.
 | 132 | 2026-11-10 | `duel-one-open-pair.sql` | Candado: un solo reto abierto (pending/active) por pareja de compañeros y por juego (índice único parcial en las 5 tablas de retos). Antes cancela los «pending» repetidos que ya existan (conserva el más antiguo; no borra nada) |
 | 133 | 2026-11-10 | `rate-limits.sql` | Límite de frecuencia por usuario para las funciones `notify-*`: tabla `rate_limits` (sin políticas) y `rate_limit_take(usuario, clave, tope, segundos)` atómica (solo `service_role`). Correrla **antes** de redesplegar `notify-duel`, `notify-announcement`, `notify-rock-pending`, `notify-reaction` y `notify-guardians` |
 | 134 | 2026-11-10 | `security-audit-log.sql` | Bitácora de seguridad: `security_audit_log` (solo agregar, solo la lee un administrador), `log_security_event` (solo `service_role`), triggers de auditoría (docentes, alumnos eliminados, colegios, servidores escolares, enlaces del portal de padres, contraseñas de clase), `get_security_audit_log` para administradores y registro en `admin_reset_user_password` / `reset_password_via_admin`. Correrla **antes** de redesplegar las 6 Edge Functions que registran |
+| 135 | 2026-11-12 | `session-logs-idempotency.sql` | Ingresos del nodo escolar sin duplicados al reintentar: borra los duplicados que ya existan (queda el más antiguo por nodo, alumno y hora) y crea el índice único `node_session_logs_dedup_uidx` (`node_id, student_id, entered_at`; `nulls not distinct` en PostgreSQL 15+). Correrla **antes** de redesplegar `node-sync` (el upsert nuevo exige el índice) |
 
 ### Migraciones sin número en la tabla de arriba
 
@@ -265,6 +266,7 @@ corre, de arriba hacia abajo, solo las filas con `aplicada = false`. El orden si
 | 6. Nodo escolar | `xp-events.sql`, `node-reactions.sql`, `node-evaluations.sql`, `teacher-node-pin.sql`, `teacher-node-password.sql` | `economy-server-side.sql`, fase 4 (`project-reactions*`), `evaluations-restrict-to-assigned-teacher.sql` | Cada una, **antes** de publicar `node-sync` con el módulo correspondiente |
 | | `node-companion.sql`, `node-timed-math-duel.sql`, `node-hangman-duel.sql`, `node-profile-photo.sql`, `node-feedback.sql` | `companion-collection.sql`, `companion-cosmetics.sql`, `student-timed-math-duels.sql`, `student-hangman-duels.sql`, `hangman-word-bank.sql`, `duel-per-player-content.sql`, `audit-fixes-duels-chest.sql`, `economy-server-side.sql` | Solo `service_role` las ejecuta |
 | | `node-remote-sync.sql`, `feedback-inbox.sql` | `school-nodes.sql` | Después publicar `node-sync` completo (14 archivos) |
+| | `session-logs-idempotency.sql` | `school-nodes.sql` | **Antes** de redesplegar `node-sync` (el upsert de ingresos necesita el índice único) |
 
 **Por qué las funciones se publican después del SQL:** la función `node-sync` o la app llaman a funciones de la base por
 nombre. Si la migración todavía no corrió, esa llamada falla; si corre primero, la versión vieja de la función ni la usa.
