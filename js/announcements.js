@@ -4,6 +4,8 @@
  * vía notify-announcement al enviarse.
  */
 
+import { announcementIdsToMark, announcementReadRows, readIdsAfterMark } from './announcements-logic.js';
+
 // Punto rojo de la campana. Lo piden el inicio de sesión, refreshAllBadges() y un temporizador de la carga de la página (2 o 3 veces
 // en los primeros segundos), y cada vez eran ~10 consultas una tras otra. Ahora: (1) las consultas independientes van EN PARALELO,
 // (2) una llamada mientras otra corre comparte su resultado y (3) un pedido sin `force` dentro de los 15 s de la última no consulta de nuevo.
@@ -183,7 +185,7 @@ window.openAnnouncementsInbox = async function openAnnouncementsInbox() {
 
   const { data: reads } = await _supabase.from('announcement_reads')
     .select('announcement_id').eq('user_id', currentUser.id);
-  const readIds = new Set((reads || []).map(r => r.announcement_id));
+  let readIds = new Set((reads || []).map(r => r.announcement_id));
 
   const surveyCards = (pendingSurveys || []).map(s => `
     <div class="p-4 rounded-xl border-2 border-fuchsia-400/40 bg-fuchsia-500/5">
@@ -209,11 +211,11 @@ window.openAnnouncementsInbox = async function openAnnouncementsInbox() {
   const announcementCards = (announcements || []).map(a => {
     const canDelete = canDeleteAny || a.sender_id === currentUser.id;
     return `
-    <div class="p-4 rounded-xl border ${readIds.has(a.id) ? 'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-800' : 'bg-primary/5 border-primary/20'}">
+    <div data-announcement-id="${sanitizeInput(String(a.id))}" class="p-4 rounded-xl border ${readIds.has(a.id) ? 'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-800' : 'bg-primary/5 border-primary/20'}">
       <div class="flex items-center justify-between gap-2 mb-1">
         <h4 class="text-sm font-bold text-slate-800 dark:text-white">${sanitizeInput(a.title)}</h4>
         <div class="flex items-center gap-2 shrink-0">
-          ${!readIds.has(a.id) ? '<span class="w-2 h-2 rounded-full bg-primary"></span>' : ''}
+          ${!readIds.has(a.id) ? '<span data-announcement-dot class="w-2 h-2 rounded-full bg-primary"></span>' : ''}
           ${canDelete ? `<button class="text-slate-400 hover:text-primary transition-colors" onclick="window.openAnnouncementReadersModal('${a.id}')" title="Ver quién lo leyó"><i class="fas fa-eye text-xs"></i></button>` : ''}
           ${canDelete ? `<button class="text-slate-400 hover:text-rose-500 transition-colors" onclick="window.deleteAnnouncement('${a.id}')" title="Eliminar aviso"><i class="fas fa-trash-alt text-xs"></i></button>` : ''}
         </div>
@@ -232,12 +234,32 @@ window.openAnnouncementsInbox = async function openAnnouncementsInbox() {
     || '<p class="text-slate-400 text-sm text-center py-10">Todavía no tienes avisos.</p>';
 
   // Marcar todos como leídos al abrir la bandeja.
-  const unreadIds = announcements.filter(a => !readIds.has(a.id)).map(a => a.id);
+  // Solo se da por leído (en memoria y en pantalla) lo que el servidor confirmó; si el guardado falla se avisa y NO se recalcula el contador.
+  const unreadIds = announcementIdsToMark(announcements, readIds);
   if (unreadIds.length) {
-    await _supabase.from('announcement_reads').upsert(
-      unreadIds.map(id => ({ announcement_id: id, user_id: currentUser.id })),
-      { onConflict: 'announcement_id,user_id' }
-    );
+    let markError = null;
+    try {
+      const res = await _supabase.from('announcement_reads').upsert(
+        announcementReadRows(unreadIds, currentUser.id),
+        { onConflict: 'announcement_id,user_id' }
+      );
+      markError = res?.error || null;
+    } catch (e) {
+      markError = e || new Error('upsert fallido');
+    }
+    if (markError) {
+      console.warn('No se pudo marcar los avisos como leídos:', markError.code || '', markError.message || markError, markError.details || '');
+      window.showToast?.('<i class="fas fa-triangle-exclamation"></i> No se pudo guardar que leíste los avisos. Seguirán apareciendo como nuevos.', 'warning');
+      return;
+    }
+    readIds = readIdsAfterMark(readIds, unreadIds, null);
+    const markedKeys = new Set(unreadIds.map(String));
+    listEl.querySelectorAll('[data-announcement-id]').forEach(card => {
+      if (!markedKeys.has(card.getAttribute('data-announcement-id'))) return;
+      card.querySelector('[data-announcement-dot]')?.remove();
+      card.classList.remove('bg-primary/5', 'border-primary/20');
+      card.classList.add('bg-slate-50', 'dark:bg-slate-800/30', 'border-slate-100', 'dark:border-slate-800');
+    });
     window.loadAnnouncementsUnreadCount({ force: true });
   }
 }

@@ -3,6 +3,8 @@
  * nota), estilo Platzi: bloqueo secuencial y barra de progreso.
  */
 
+import { iframeBaseFolder, injectBaseHref, classifyLink } from './lessons-iframe-logic.js';
+
 const LESSON_TYPE_ICON = { video: 'fa-video', pdf: 'fa-file-pdf', image: 'fa-image', scorm: 'fa-cube', h5p: 'fa-puzzle-piece', html5: 'fa-window-maximize', tinkercad: 'fa-microchip' };
 const LESSON_TYPE_LABEL = { video: 'Video', pdf: 'PDF', image: 'Imagen', scorm: 'Actividad interactiva (SCORM)', h5p: 'Actividad interactiva (H5P)', html5: 'Aplicación web (HTML5)', quiz: 'Cuestionario (Quiz)', tinkercad: 'Diseño en Tinkercad' };
 const LESSON_TYPES_WITH_GRADE = new Set(['scorm', 'h5p', 'quiz']);
@@ -2961,14 +2963,47 @@ Object.defineProperty(window,'sessionStorage',{value:mk(window.sessionStorage),c
   return head ? html.replace(head[0], head[0] + patch) : patch + html;
 }
 
+// Un srcdoc no tiene URL propia: sus enlaces relativos («index.html», «./», «/», «») se resuelven contra la app y abrirían Quetzal DENTRO del visor.
+// Dos defensas: (1) <base href> hacia la carpeta del recurso (antes solo lo ponía el servidor para los zip SCORM) y (2) un clic delegado en el
+// documento del iframe (mismo origen) que frena los enlaces a la plataforma o con target _top/_parent y manda los externos a otra pestaña.
+function guardIframeLinks(iframe) {
+  if (iframe.dataset.pxLinkGuard) return;
+  iframe.dataset.pxLinkGuard = '1';
+  const bound = new WeakSet();
+  const bind = () => {
+    let doc = null;
+    try { doc = iframe.contentDocument; } catch (e) { /* otro origen: no se puede vigilar */ }
+    if (!doc || bound.has(doc)) return;
+    bound.add(doc);
+    const linkOf = (ev) => ev.target?.closest?.('a[href], area[href]');
+    const kindOf = (a) => classifyLink({ href: a.getAttribute('href'), target: a.getAttribute('target'), baseUrl: doc.baseURI, appOrigin: window.location.origin });
+    doc.addEventListener('click', (ev) => {
+      const a = linkOf(ev);
+      if (!a) return;
+      const kind = kindOf(a);
+      if (kind === 'platform') ev.preventDefault();
+      else if (kind === 'external') { a.setAttribute('target', '_blank'); a.setAttribute('rel', 'noopener noreferrer'); }
+    }, true);
+    // Con el <base>, «#ancla» navegaría a la carpeta del recurso: se cambia el hash del propio documento (sirve también a los paquetes con rutas #/pagina).
+    doc.addEventListener('click', (ev) => {
+      const a = linkOf(ev);
+      if (!a || ev.defaultPrevented || kindOf(a) !== 'hash') return;
+      ev.preventDefault();
+      try { doc.defaultView.location.hash = a.getAttribute('href').trim().slice(1); } catch (e) { /* sin desplazamiento */ }
+    });
+  };
+  iframe.addEventListener('load', bind);
+}
+
 window.loadIframeViaFetch = async function loadIframeViaFetch(iframeId, url, scope) {
   const iframe = document.getElementById(iframeId);
   if (!iframe || !url) return;
   try {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const html = await res.text();
+    const html = injectBaseHref(await res.text(), iframeBaseFolder(url, document.baseURI));
     const userId = window.currentUser?.id;
+    guardIframeLinks(iframe);
     iframe.srcdoc = scope && userId ? withIsolatedStorage(html, `${userId}:${scope}`) : html;
   } catch (e) {
     console.error('Error cargando contenido embebido:', e);
