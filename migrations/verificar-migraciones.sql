@@ -92,7 +92,8 @@ with comprobaciones(orden, migracion, tipo, objeto, extra) as (values
   (782, 'security-audit-log',                'funcion',          'get_security_audit_log', null),
   (783, 'security-audit-log',                'funcion_contiene', 'admin_reset_user_password', 'log_security_event'),
   (790, 'session-logs-idempotency',          'indice',           'node_session_logs_dedup_uidx', null),
-  (791, 'waivers-unique-por-grupo',          'indice',           'attendance_waivers_unique_group_day', null)
+  (791, 'waivers-unique-por-grupo',          'indice',           'attendance_waivers_unique_group_day', null),
+  (792, 'attendance-absence-reason',         'columna',          'attendance.absence_reason', null)
 )
 select
   c.orden,

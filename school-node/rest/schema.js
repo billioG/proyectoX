@@ -305,8 +305,8 @@ export const SCHEMA = {
   // se marca sin internet es «estudiante:fecha» y al sincronizar vuelve con el número de la nube. Sin borrar (solo administradores, en la nube).
   attendance: table({
     pk: 'id',
-    columns: ['id', 'student_id', 'teacher_id', 'school_code', 'grade', 'section', 'date', 'time', 'status', 'created_at'],
-    writable: ['student_id', 'teacher_id', 'school_code', 'grade', 'section', 'date', 'time', 'status'],
+    columns: ['id', 'student_id', 'teacher_id', 'school_code', 'grade', 'section', 'date', 'time', 'status', 'absence_reason', 'created_at'],
+    writable: ['student_id', 'teacher_id', 'school_code', 'grade', 'section', 'date', 'time', 'status', 'absence_reason'],
     unique: [['student_id', 'date']],
     defaults: {
       id: (row) => `${row.student_id}:${row.date}`,

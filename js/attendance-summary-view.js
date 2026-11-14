@@ -54,11 +54,11 @@ async function loadAttendanceMonth(container) {
         await fetchWithCache(`${cacheKey}_${key}`, async () => {
             // Coordinador: solo la asistencia tomada por sus docentes asignados
             // (RLS también lo exige -- ver migrations/school-project-visibility.sql).
-            const buildAttendance = () => {
+            const buildAttendance = (withReason = true) => {
                 let q = _supabase
                     .from('attendance')
                     .select(`
-                        id, date, status, student_id, teacher_id, school_code, grade, section,
+                        id, date, status, student_id, teacher_id, school_code, grade, section${withReason ? ', absence_reason' : ''},
                         students!fk_attendance_student(full_name, school_code),
                         teachers!fk_attendance_teacher(full_name)
                     `)
@@ -70,7 +70,8 @@ async function loadAttendanceMonth(container) {
             };
 
             const [attendance, schoolsResult] = await Promise.all([
-                window.fetchAllRows(buildAttendance),
+                // Sin la migración attendance-absence-reason la columna no existe: se pide sin ella y todo sigue como antes (sin motivos).
+                window.fetchAllRows(() => buildAttendance(true)).catch(() => window.fetchAllRows(() => buildAttendance(false))),
                 // Los establecimientos casi no cambian: vigentes 10 minutos.
                 window.fetchWithCache('attendance_view_schools', () => _supabase.from('schools').select('code, name, address'), null, { ttlMs: 10 * 60_000 }),
             ]);
@@ -108,6 +109,9 @@ async function loadAttendanceMonth(container) {
 // y días suspendidos no cuentan. Además, una inasistencia marcada a mano (presente -> ausente) también cuenta.
 // Las fechas son texto AAAA-MM-DD (columna date): no pasan por Date, que las tomaba como UTC y mostraba el día anterior.
 const dayOf = (d) => String(d).slice(0, 10);
+// Motivos de inasistencia (mismos valores que attendance.absence_reason). Sin motivo guardado = sin aviso.
+const ABSENCE_REASON_LABELS = { sin_aviso: 'Sin aviso', enfermedad: 'Enfermedad', permiso: 'Permiso', otro: 'Otro' };
+const absenceReasonLabel = (r) => ABSENCE_REASON_LABELS[r] || ABSENCE_REASON_LABELS.sin_aviso;
 const classKey = (school, grade, section) => [school, grade, section].map((v) => String(v ?? '').trim().toLowerCase()).join('|');
 
 /** Clase de un registro (el registro viejo sin grado/sección usa la ficha del estudiante). */
@@ -120,7 +124,7 @@ function classOfRecord(r, rosterById) {
  * Estadística por estudiante de un grupo (establecimiento + docente).
  * @param groupRecords registros del grupo · @param allRecords TODOS los registros del mes (un día es «de clase» si cualquier docente de esa clase marcó presentes)
  * @param roster estudiantes activos {id, full_name, school_code, grade, section} · @param today AAAA-MM-DD: los días que faltan no cuentan
- * @returns [{ key, name, present: n, absent: n, presentDays: [], absentDays: [] }] por nombre
+ * @returns [{ key, name, present: n, absent: n, presentDays: [], absentDays: [], absentReasons: { día: motivo } }] por nombre
  */
 function buildAttendanceStats(groupRecords, allRecords, roster, today = '9999-12-31') {
     const rosterById = new Map((roster || []).map((s) => [s.id, s]));
@@ -144,14 +148,15 @@ function buildAttendanceStats(groupRecords, allRecords, roster, today = '9999-12
     for (const [id, p] of people) {
         const presentDays = new Set();
         const absentDays = new Set();
+        const reasons = {}; // día -> motivo de la inasistencia (sin motivo guardado = sin aviso)
         for (const d of held.get(p.cls) || []) if (d <= today) (status.get(id + '|' + d) === 'present' ? presentDays : absentDays).add(d);
         for (const r of groupRecords || []) {
             if (r.student_id !== id) continue;
             const d = dayOf(r.date);
             if (d > today) continue;
-            if (r.status === 'present') { presentDays.add(d); absentDays.delete(d); } else if (!presentDays.has(d)) absentDays.add(d);
+            if (r.status === 'present') { presentDays.add(d); absentDays.delete(d); } else if (!presentDays.has(d)) { absentDays.add(d); if (r.absence_reason) reasons[d] = r.absence_reason; }
         }
-        out.push({ key: id, name: p.name, present: presentDays.size, absent: absentDays.size, presentDays: [...presentDays].sort(), absentDays: [...absentDays].sort() });
+        out.push({ key: id, name: p.name, present: presentDays.size, absent: absentDays.size, presentDays: [...presentDays].sort(), absentDays: [...absentDays].sort(), absentReasons: reasons });
     }
     return out.sort((x, y) => x.name.localeCompare(y.name, 'es'));
 }
@@ -364,7 +369,7 @@ window.exportGroupReport = function (schoolName, teacherName) {
     const lines = [];
     for (const st of students) {
         for (const d of st.presentDays) lines.push({ d, name: st.name, status: 'Presente' });
-        for (const d of st.absentDays) lines.push({ d, name: st.name, status: 'Inasistencia' });
+        for (const d of st.absentDays) lines.push({ d, name: st.name, status: 'Inasistencia', reason: absenceReasonLabel(st.absentReasons?.[d]) });
     }
     if (!lines.length) {
         alert('No hay datos para exportar.');
@@ -375,8 +380,8 @@ window.exportGroupReport = function (schoolName, teacherName) {
     const fmt = (d) => { const [y, m, day] = d.split('-'); return `${day}/${m}/${y}`; };
 
     let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "Fecha,Establecimiento,Docente,Estudiante,Estado\n";
-    lines.forEach(l => { csvContent += `${fmt(l.d)},${q(schoolName)},${q(teacherName)},${q(l.name)},${l.status}\n`; });
+    csvContent += "Fecha,Establecimiento,Docente,Estudiante,Estado,Motivo\n";
+    lines.forEach(l => { csvContent += `${fmt(l.d)},${q(schoolName)},${q(teacherName)},${q(l.name)},${l.status},${l.reason || ''}\n`; });
 
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");

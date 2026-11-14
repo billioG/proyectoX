@@ -154,6 +154,8 @@ export function createPolicy({ store, projects = null }) {
     const t = Date.parse(`${a.date}T00:00:00Z`);
     if (Number.isNaN(t) || t > Date.now() + dayMs || t < Date.now() - 45 * dayMs) return false;
     if (typeof a.time !== 'string' || !/^\d{2}:\d{2}(:\d{2})?$/.test(a.time)) return false;
+    // Motivo de la inasistencia: solo en filas «absent» y con uno de los valores de la nube.
+    if (a.absence_reason != null && !(a.status === 'absent' && ['sin_aviso', 'enfermedad', 'permiso', 'otro'].includes(a.absence_reason))) return false;
     const st = store.all('students').find((s) => s.id === a.student_id);
     if (!st || a.school_code !== st.school_code || a.grade !== st.grade || a.section !== st.section) return false;
     return myClass(ctx, st);

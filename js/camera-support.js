@@ -128,9 +128,20 @@ export async function nodeHttpsReachable(env = globalThis, fetchFn = globalThis.
 }
 
 /** Fila que se encola igual que la del QR (`mark_attendance`). `opt` es el <option> del equipo elegido. */
-export function buildAttendanceRow({ studentId, teacherId, school, grade, section, status = 'present', date = new Date().toISOString().split('T')[0] }) {
-  return { student_id: studentId, teacher_id: teacherId, school_code: school, grade: grade || '', section: section || '', date, status };
+export function buildAttendanceRow({ studentId, teacherId, school, grade, section, status = 'present', date = new Date().toISOString().split('T')[0], absenceReason = null }) {
+  const row = { student_id: studentId, teacher_id: teacherId, school_code: school, grade: grade || '', section: section || '', date, status };
+  // El motivo solo viaja en una inasistencia y si es uno conocido: una fila «presente» no lo lleva (y la nube sin la migración no se entera).
+  if (status === 'absent' && ABSENCE_REASONS.some((r) => r.id === absenceReason)) row.absence_reason = absenceReason;
+  return row;
 }
+
+/** Motivos de inasistencia (mismos valores que attendance.absence_reason en la nube). El primero es el de siempre: sin aviso. */
+export const ABSENCE_REASONS = [
+  { id: 'sin_aviso', label: 'Sin aviso' },
+  { id: 'enfermedad', label: 'Enfermedad' },
+  { id: 'permiso', label: 'Permiso' },
+  { id: 'otro', label: 'Otro' },
+];
 
 /** Une lo que dijo la nube con lo marcado en este dispositivo (que aún puede estar en la cola sin subir). → Set de presentes. */
 export function mergePresent(serverPresentIds, localMarks = new Map()) {

@@ -167,7 +167,7 @@ test('N+1 corregidos: resultados de duelos en una consulta, insignias en lote, a
   assert.match(badges, /await Promise\.all\(studentsToReward\.map/);
   const att = read('js/attendance-summary-view.js');
   assert.match(att, /\.gte\('date', first\)\.lt\('date', next\)/);
-  assert.match(att, /window\.fetchAllRows\(buildAttendance\)/);
+  assert.match(att, /window\.fetchAllRows\(\(\) => buildAttendance\(true\)\)/); // paginado; con respaldo sin el motivo si la columna aún no existe
   assert.match(att, /\.order\('id'\)/, 'orden estable para paginar');
   const tpw = read('js/team-performance-widget.js');
   assert.match(tpw, /\.gte\('created_at', qStart\.toISOString\(\)\)/);

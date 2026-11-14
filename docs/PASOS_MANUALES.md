@@ -108,6 +108,12 @@ Correr `duel-one-open-pair.sql` en el SQL Editor **después** de publicar la v1.
 3. Ver la bitácora: en la app, menú del administrador → **Bitácora de seguridad** (desde la v1.0.259) o, en el SQL Editor: `select created_at, actor_role, action, target_type, target_id, school_code, details, source from public.security_audit_log order by id desc limit 100;`
 4. La bitácora **no se puede modificar ni borrar** (ni siquiera con `service_role`); vaciarla exigiría quitar a propósito los triggers `trg_security_audit_*`.
 
+## 3a-quater. Motivo de la inasistencia (v1.0.282)
+
+1. Correr `migrations/attendance-absence-reason.sql` en el SQL Editor (al final muestra `columna = true` y `politica = true`). **Antes** de usar la app v1.0.282: sin la columna, elegir un motivo da error.
+2. **Después** redesplegar `node-sync` (toda la carpeta, **Verify JWT OFF**): ahora acepta y guarda `absence_reason` de la asistencia hecha en un nodo. Hasta redesplegarla, el nodo seguirá subiendo la asistencia pero sin el motivo.
+3. Actualizar los nodos (la versión se ve en «Servidor de la escuela»).
+
 ## 3b. Lección: crea las Edge Functions con la CLI, no desde el editor del panel
 
 El editor del panel le pone un nombre aleatorio a una función nueva (`guardian-portal` quedó como `bright-responder` y `padres.html` recibía 404). Para una función **nueva**, usa `npx supabase functions deploy <nombre> --use-api --project-ref <ref>` (con `--no-verify-jwt` en las de JWT OFF). Para una que ya existe, el panel sirve para pegar código. Comprobación rápida de que todas responden por su nombre: llamar a `/functions/v1/<nombre>` y ver que no dé 404.

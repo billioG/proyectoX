@@ -96,3 +96,15 @@ test('cada docente ve solo su lista; el nombre del alumno sale en el reporte; na
   assert.deepEqual(await del.json(), []);
   assert.equal(h.layer.store.all('attendance').some((a) => a.student_id === 's2'), true);
 });
+
+test('motivo de la inasistencia: se guarda en la fila «absent» y viaja en la bandeja; en una presente o con un motivo raro se rechaza', async () => {
+  const h = await boot();
+  const t1 = await h.teacher('marta@escuela.com');
+  const r = await upsert(h, t1, mark({ status: 'absent', absence_reason: 'enfermedad' }));
+  assert.equal(r.status, 201);
+  assert.equal((await r.json())[0].absence_reason, 'enfermedad');
+  assert.equal((await upsert(h, t1, mark({ student_id: 's1', status: 'present', absence_reason: 'enfermedad' }))).status, 403);
+  assert.equal((await upsert(h, t1, mark({ student_id: 's1', status: 'absent', absence_reason: 'volando' }))).status, 403);
+  const push = buildPush(h.db, { cloudUrl: 'https://x.supabase.co' });
+  assert.equal(push.content.find((o) => o.tbl === 'attendance').row.absence_reason, 'enfermedad');
+});

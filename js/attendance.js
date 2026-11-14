@@ -1,7 +1,7 @@
 /**
  * ATTENDANCE - Gestión de Asistencia (Premium Edition)
  */
-import { cameraSupport, attendanceMode, cameraErrorKind, cameraIsUnavailable, markCameraReady, buildAttendanceRow, mergePresent } from './camera-support.js';
+import { cameraSupport, attendanceMode, cameraErrorKind, cameraIsUnavailable, markCameraReady, buildAttendanceRow, mergePresent, ABSENCE_REASONS } from './camera-support.js';
 import { localDateISO, findDuplicateWaiver, isDuplicateWaiverError, duplicateWaiverMessage, isGroupSuspendedToday } from './waiver-logic.js';
 
 // Asistencia rápida (sin cámara): lo marcado en ESTE dispositivo, por si aún está en la cola y la nube no lo devuelve. id -> 'present'|'absent'
@@ -11,12 +11,20 @@ let lastStudents = [];
 let lastServerPresent = new Set();
 // Borrador de la lista rápida: lo que el docente marca NO se registra hasta que toca «Guardar lista» (así puede revisarla). id -> 'present'|'absent'
 let draft = new Map();
+// Motivo de la inasistencia: lo elegido sin guardar (id -> motivo) y lo que ya está guardado hoy en la nube (id -> motivo). Sin motivo = «sin aviso».
+let reasonDraft = new Map();
+let lastServerReasons = {};
 let draftKey = '';
 let prevAssignment = '';
 const classKeyOf = (opt) => (opt && opt.value ? `${opt.dataset.school}|${opt.dataset.grade}|${opt.dataset.section}|${new Date().toISOString().split('T')[0]}` : '');
 const basePresent = () => mergePresent(lastServerPresent, quickMarks);
 const draftChanges = () => [...draft].filter(([id, st]) => basePresent().has(id) !== (st === 'present'));
-window.addEventListener('beforeunload', (e) => { if (currentAttMode() === 'quick' && draftChanges().length) { e.preventDefault(); e.returnValue = ''; } });
+const savedReason = (id) => lastServerReasons[id] || 'sin_aviso';
+const reasonOf = (id) => reasonDraft.get(id) ?? savedReason(id);
+// Motivos por guardar: solo de quien NO va a quedar presente y cuyo motivo cambió.
+const reasonChanges = () => [...reasonDraft].filter(([id, r]) => !basePresent().has(id) && draft.get(id) !== 'present' && r !== savedReason(id));
+const unsavedCount = () => draftChanges().length + reasonChanges().length;
+window.addEventListener('beforeunload', (e) => { if (currentAttMode() === 'quick' && unsavedCount()) { e.preventDefault(); e.returnValue = ''; } });
 
 window.loadAttendance = async function loadAttendance() {
     const container = document.getElementById('attendance-container');
@@ -340,9 +348,10 @@ window.loadStudentsForAttendance = async function loadStudentsForAttendance() {
     if (!opt.value) return section.classList.add('hidden');
 
     // Cambio de clase con una lista rápida sin guardar: se pregunta antes de perderla.
-    if (draftChanges().length && classKeyOf(opt) !== draftKey) {
+    if (unsavedCount() && classKeyOf(opt) !== draftKey) {
         if (!window.confirm('Tienes cambios sin guardar en la lista de asistencia. ¿Descartarlos y cambiar de clase?')) { select.value = prevAssignment; return; }
         draft = new Map();
+        reasonDraft = new Map();
     }
     prevAssignment = select.value;
 
@@ -363,13 +372,19 @@ window.loadStudentsForAttendance = async function loadStudentsForAttendance() {
             const today = new Date().toISOString().split('T')[0];
             const [students, att] = await Promise.all([
                 _supabase.from('students').select('id, full_name, username').eq('school_code', school).eq('grade', grade).eq('section', sec).order('full_name'),
-                _supabase.from('attendance').select('student_id, status').eq('date', today)
+                _supabase.from('attendance').select('student_id, status, absence_reason').eq('date', today)
             ]);
+            // Sin la migración attendance-absence-reason la columna no existe: se pide sin ella y todo sigue como antes.
+            const attRows = att.error ? (await _supabase.from('attendance').select('student_id, status').eq('date', today)).data : att.data;
+            const reasons = {};
+            for (const a of attRows || []) if (a.status === 'absent' && a.absence_reason) reasons[a.student_id] = a.absence_reason;
             return {
                 students: students.data || [],
-                presentIds: new Set((att.data || []).filter(a => !a.status || a.status === 'present').map(a => a.student_id))
+                presentIds: new Set((attRows || []).filter(a => !a.status || a.status === 'present').map(a => a.student_id)),
+                reasons
             };
         }, (data) => {
+            lastServerReasons = data.reasons || {};
             renderStudentsAttendanceList(container, data.students, data.presentIds);
         });
     } catch (e) { console.error(e); }
@@ -381,14 +396,14 @@ window.renderStudentsAttendanceList = function renderStudentsAttendanceList(cont
     const opt = select?.options[select.selectedIndex];
     const key = opt ? `${opt.dataset.school}|${opt.dataset.grade}|${opt.dataset.section}|${new Date().toISOString().split('T')[0]}` : '';
     if (key !== quickMarksKey) { quickMarks = new Map(); quickMarksKey = key; }
-    if (key !== draftKey) { draft = new Map(); draftKey = key; }
+    if (key !== draftKey) { draft = new Map(); reasonDraft = new Map(); draftKey = key; }
     lastStudents = students;
     lastServerPresent = serverPresentIds;
     const quick = currentAttMode() === 'quick';
     // En la lista rápida se ve el borrador encima de lo ya registrado.
     const presentIds = new Set(basePresent());
     if (quick) for (const [id, st] of draft) { if (st === 'present') presentIds.add(id); else presentIds.delete(id); }
-    const pending = quick ? draftChanges().length : 0;
+    const pending = quick ? unsavedCount() : 0;
 
     container.innerHTML = `
         <div class="flex flex-wrap justify-between items-center gap-2 mb-4 border-b border-slate-100 dark:border-slate-800 pb-3">
@@ -407,13 +422,20 @@ window.renderStudentsAttendanceList = function renderStudentsAttendanceList(cont
                             <p class="text-[0.7rem] font-black text-slate-800 dark:text-white truncate leading-none mb-1">${sanitizeInput(s.full_name)}</p>
                             <p class="text-[0.5rem] font-bold text-slate-400 uppercase tracking-widest">@${window.sanitizeInput(s.username)}</p>
                         </div>`;
-        if (!quick) return `<div class="flex items-center gap-3 p-3 rounded-2xl bg-white dark:bg-slate-900 border ${isP ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-slate-100 dark:border-slate-800'} transition-all">${row}</div>`;
+        // ¿Por qué no llegó? Por defecto «Sin aviso»; el docente lo cambia si lo sabe.
+        const reasonHtml = isP ? '' : `
+                    <label class="flex items-center justify-end gap-2 px-3 pt-1.5 text-[0.55rem] font-black uppercase tracking-widest text-slate-400">Motivo
+                        <select data-student-id="${window.sanitizeInput(String(s.id))}" onchange="window.setAbsenceReason(this.dataset.studentId, this.value)" class="h-8 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 text-[0.65rem] font-bold normal-case tracking-normal px-2">
+                            ${ABSENCE_REASONS.map(r => `<option value="${r.id}" ${reasonOf(s.id) === r.id ? 'selected' : ''}>${r.label}</option>`).join('')}
+                        </select>
+                    </label>`;
+        if (!quick) return `<div><div class="flex items-center gap-3 p-3 rounded-2xl bg-white dark:bg-slate-900 border ${isP ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-slate-100 dark:border-slate-800'} transition-all">${row}</div>${reasonHtml}</div>`;
         // Un toque por estudiante: presente / no presente.
-        return `<button type="button" data-quick-student="${window.sanitizeInput(String(s.id))}" aria-pressed="${isP}" onclick="window.toggleQuickAttendance(this.dataset.quickStudent)"
+        return `<div><button type="button" data-quick-student="${window.sanitizeInput(String(s.id))}" aria-pressed="${isP}" onclick="window.toggleQuickAttendance(this.dataset.quickStudent)"
                         class="w-full flex items-center gap-3 p-3 rounded-2xl bg-white dark:bg-slate-900 border ${isP ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-slate-100 dark:border-slate-800'} transition-all active:scale-[0.99]">
                         ${row}
                         <span class="shrink-0 text-[0.55rem] font-black uppercase tracking-widest px-3 py-1.5 rounded-full ${isP ? 'bg-emerald-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}">${isP ? 'Presente' : 'Marcar'}</span>
-                    </button>`;
+                    </button>${reasonHtml}</div>`;
     }).join('')}
         </div>
         ${quick ? `<div class="sticky bottom-0 mt-4 pt-3 flex flex-wrap items-center justify-between gap-2 bg-slate-50 dark:bg-slate-900">
@@ -424,13 +446,14 @@ window.renderStudentsAttendanceList = function renderStudentsAttendanceList(cont
 }
 
 /** Guarda un estado de asistencia con la MISMA cola del QR (se sube sola cuando hay internet). Quitar un presente = estado «absent» (la nube no borra asistencia). */
-async function saveQuickStatus(studentId, status) {
+async function saveQuickStatus(studentId, status, absenceReason = null) {
     const select = document.getElementById('attendance-assignment');
     const opt = select?.options[select.selectedIndex];
     if (!opt || !opt.value) { showToast('<i class="fas fa-circle-xmark"></i> Primero elige tu clase en «Equipo en Aula».', 'error'); return false; }
     try {
-        await _syncManager.enqueue('mark_attendance', buildAttendanceRow({ studentId, teacherId: currentUser.id, school: opt.dataset.school, grade: opt.dataset.grade, section: opt.dataset.section, status }));
+        await _syncManager.enqueue('mark_attendance', buildAttendanceRow({ studentId, teacherId: currentUser.id, school: opt.dataset.school, grade: opt.dataset.grade, section: opt.dataset.section, status, absenceReason }));
         quickMarks.set(studentId, status);
+        if (status === 'absent' && absenceReason) lastServerReasons[studentId] = absenceReason;
         return true;
     } catch (e) {
         console.error('Error en asistencia rápida:', e);
@@ -441,6 +464,15 @@ async function saveQuickStatus(studentId, status) {
 }
 
 const repaintQuick = () => { const c = document.getElementById('attendance-students-list'); if (c) renderStudentsAttendanceList(c, lastStudents, lastServerPresent); };
+
+/** Motivo de la inasistencia. En la lista rápida queda en el borrador hasta «Guardar lista»; con el QR no hay botón de guardar y se registra al elegirlo. */
+window.setAbsenceReason = async function setAbsenceReason(studentId, reason) {
+    if (!ABSENCE_REASONS.some(r => r.id === reason)) return;
+    reasonDraft.set(studentId, reason);
+    if (currentAttMode() === 'quick') return repaintQuick();
+    if (await saveQuickStatus(studentId, 'absent', reason)) reasonDraft.delete(studentId);
+    repaintQuick();
+}
 
 /** Un toque cambia el borrador (no registra nada todavía). */
 window.toggleQuickAttendance = function toggleQuickAttendance(studentId) {
@@ -460,11 +492,13 @@ window.markAllQuickAttendance = function markAllQuickAttendance() {
 /** «Guardar lista»: recién aquí se registra, con la misma cola del QR (se sube sola cuando hay internet). */
 window.saveQuickAttendance = async function saveQuickAttendance() {
     const changes = draftChanges();
-    if (!changes.length) return;
+    if (!changes.length && !reasonChanges().length) return;
     const btn = document.getElementById('btn-save-attendance');
     if (btn) btn.disabled = true;
     let done = 0;
-    for (const [id, st] of changes) { if (await saveQuickStatus(id, st)) { draft.delete(id); done++; } else break; }
+    for (const [id, st] of changes) { if (await saveQuickStatus(id, st, st === 'absent' ? reasonOf(id) : null)) { draft.delete(id); reasonDraft.delete(id); done++; } else break; }
+    // Motivos de quien sigue sin venir (sin tocar si la persona quedó presente).
+    for (const [id, reason] of reasonChanges()) { if (await saveQuickStatus(id, 'absent', reason)) { reasonDraft.delete(id); done++; } else break; }
     repaintQuick();
     if (done) showToast(navigator.onLine
         ? `<i class="fas fa-circle-check"></i> Lista guardada (${done} ${done === 1 ? 'cambio' : 'cambios'})`
