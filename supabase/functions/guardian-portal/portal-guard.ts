@@ -25,3 +25,9 @@ export function rateState(row: RateRow | null | undefined, now: Date = new Date(
 export function rateKey(ip: string): string {
   return `gp:${String(ip || 'unknown').slice(0, 64)}`;
 }
+
+/** Huella SHA-256 (hex) del token del enlace: es lo que se guarda en student_guardians.portal_token_hash (migrations/guardian-portal-token-hash.sql). */
+export async function tokenHash(token: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token));
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}

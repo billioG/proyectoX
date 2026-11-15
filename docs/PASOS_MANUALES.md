@@ -120,6 +120,20 @@ Correr `duel-one-open-pair.sql` en el SQL Editor **después** de publicar la v1.
 2. Probar enseguida: entrar como estudiante, como docente y como administrador, y abrir el enlace de un padre (portal). Todo debe seguir igual; lo único que cambia es lo que `anon` podía intentar escribir sin sesión.
 3. Para deshacerlo: `grant insert, update, delete on all tables in schema public to anon;`.
 
+## 3a-sexies. Enlace de padres guardado como huella (v1.0.284)
+
+**Paso 1 (no rompe nada):**
+1. Correr `migrations/guardian-portal-token-hash.sql` en el SQL Editor. Al final: `columna = 1`, `funcion_ok = true` y `sin_huella = 0`.
+2. **Después** redesplegar `guardian-portal` (**Verify JWT OFF**): `npx supabase functions deploy guardian-portal --use-api --no-verify-jwt --yes --project-ref vyptkxudkmlpyfosppzh`. Ahora busca por huella y deja el token en claro solo de respaldo.
+3. Probar: abrir un enlace de padre que ya se había enviado (debe seguir entrando), y generar uno nuevo con «Enlace nuevo» (se ve una sola vez; copiarlo o mandarlo por SMS en ese momento).
+
+**Paso 2 (opcional, cuando el equipo esté listo):** borrar los tokens en claro que quedaron de antes. Los enlaces ya enviados siguen sirviendo (entran por huella), pero el docente ya no podrá **reenviar** el enlace viejo sin generar uno nuevo (que invalida el anterior):
+```sql
+update public.student_guardians set portal_token = null where portal_token is not null;
+alter table public.student_guardians alter column portal_token drop default;
+```
+Antes de eso, comprobar que `select count(*) from public.student_guardians where portal_token is not null and portal_token_hash is null;` da 0.
+
 ## 3b. Lección: crea las Edge Functions con la CLI, no desde el editor del panel
 
 El editor del panel le pone un nombre aleatorio a una función nueva (`guardian-portal` quedó como `bright-responder` y `padres.html` recibía 404). Para una función **nueva**, usa `npx supabase functions deploy <nombre> --use-api --project-ref <ref>` (con `--no-verify-jwt` en las de JWT OFF). Para una que ya existe, el panel sirve para pegar código. Comprobación rápida de que todas responden por su nombre: llamar a `/functions/v1/<nombre>` y ver que no dé 404.

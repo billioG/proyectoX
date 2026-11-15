@@ -1086,6 +1086,11 @@ function normalizeGtPhone(raw) {
   return undefined;
 }
 
+// Enlaces recién generados en esta sesión (id del padre -> token). El token ya NO se guarda en claro (migrations/guardian-portal-token-hash.sql): solo
+// se ve al generarlo. Está solo en memoria; al recargar la página hay que generar otro.
+window._guardianFreshTokens = window._guardianFreshTokens || {};
+window.guardianTokenOf = (g) => window._guardianFreshTokens[g.id] || g.portal_token || null;
+
 window.guardianPortalUrl = function guardianPortalUrl(token) {
   const base = location.href.split('#')[0].split('?')[0];
   return new URL('padres.html', base).href + '?t=' + token;
@@ -1148,8 +1153,9 @@ window.openGuardiansModal = async function openGuardiansModal(studentId, student
 
       <div class="space-y-3 mb-5">
         ${(guardians || []).map(g => {
-          const link = window.guardianPortalUrl(g.portal_token);
-          const wa = g.phone ? `https://wa.me/${g.phone.replace('+', '')}?text=${encodeURIComponent(`Hola ${g.name}, para recibir los avisos de ${first} de la escuela entra a este enlace y toca "Activar avisos": ${link}`)}` : '';
+          const tok = window.guardianTokenOf(g);
+          const link = tok ? window.guardianPortalUrl(tok) : '';
+          const wa = g.phone && link ? `https://wa.me/${g.phone.replace('+', '')}?text=${encodeURIComponent(`Hola ${g.name}, para recibir los avisos de ${first} de la escuela entra a este enlace y toca "Activar avisos": ${link}`)}` : '';
           return `
           <div class="rounded-2xl border border-slate-100 dark:border-slate-800 p-3">
             <div class="flex justify-between gap-2">
@@ -1169,9 +1175,10 @@ window.openGuardiansModal = async function openGuardiansModal(studentId, student
               </div>
             </div>
             <div class="flex flex-wrap gap-1.5 mt-2">
-              ${g.phone ? `<button class="h-8 px-3 rounded-lg bg-emerald-50 text-emerald-700 text-[0.6rem] font-black uppercase" onclick="window.sendGuardianPortalSms('${g.id}', this)"><i class="fas fa-comment-sms"></i> Enviar enlace por SMS</button>` : ''}
+              ${!link ? '<p class="w-full text-[0.6rem] font-bold text-slate-400"><i class="fas fa-lock"></i> El enlace se guarda de forma segura y ya no se puede volver a ver. Toca «Enlace nuevo» para generar uno y enviarlo.</p>' : ''}
+              ${g.phone && link ? `<button class="h-8 px-3 rounded-lg bg-emerald-50 text-emerald-700 text-[0.6rem] font-black uppercase" onclick="window.sendGuardianPortalSms('${g.id}', this)"><i class="fas fa-comment-sms"></i> Enviar enlace por SMS</button>` : ''}
               ${wa ? `<a class="h-8 px-3 rounded-lg bg-green-50 text-green-700 text-[0.6rem] font-black uppercase inline-flex items-center gap-1" href="${wa}" target="_blank" rel="noopener"><i class="fab fa-whatsapp"></i> Por WhatsApp</a>` : ''}
-              <button class="h-8 px-3 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[0.6rem] font-black uppercase" onclick="navigator.clipboard.writeText('${link}').then(() => window.showToast('<i class=&quot;fas fa-copy&quot;></i> Enlace copiado', 'success'))"><i class="fas fa-link"></i> Copiar enlace</button>
+              ${link ? `<button class="h-8 px-3 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[0.6rem] font-black uppercase" onclick="navigator.clipboard.writeText('${link}').then(() => window.showToast('<i class=&quot;fas fa-copy&quot;></i> Enlace copiado', 'success'))"><i class="fas fa-link"></i> Copiar enlace</button>` : ''}
               <button class="h-8 px-3 rounded-lg bg-indigo-50 text-indigo-600 text-[0.6rem] font-black uppercase" onclick="window.promptGuardianMessage('${g.id}', '${window.sanitizeAttr(g.name)}')"><i class="fas fa-paper-plane"></i> Mensaje</button>
               <button class="h-8 px-3 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[0.6rem] font-black uppercase" title="El enlace anterior deja de servir" onclick="window.regenerateGuardianLink('${g.id}', this)"><i class="fas fa-link-slash"></i> Enlace nuevo</button>
               <button class="h-8 px-3 rounded-lg text-rose-500 text-[0.6rem] font-black uppercase" onclick="window.deleteGuardian('${g.id}')"><i class="fas fa-trash"></i></button>
@@ -1233,11 +1240,16 @@ window.addGuardian = async function addGuardian(btn) {
   if (name.length < 2) return window.showToast('<i class="fas fa-circle-xmark"></i> Escribe el nombre', 'error');
   if (phone === undefined) return window.showToast('<i class="fas fa-circle-xmark"></i> Teléfono inválido: 8 dígitos (ej. 5555 1234)', 'error');
   btn.disabled = true;
-  const { error } = await window._supabase.from('student_guardians').insert({
+  const { data: created, error } = await window._supabase.from('student_guardians').insert({
     student_id: window._guardiansCtx.studentId, name, relation, phone, created_by: window.currentUser.id,
-  });
+  }).select('id').maybeSingle();
   btn.disabled = false;
   if (error) return window.showToast('<i class="fas fa-circle-xmark"></i> ' + error.message, 'error');
+  // Enlace propio guardado solo como huella: la función devuelve el token una vez. Si falla (migración pendiente), queda el enlace de siempre.
+  if (created?.id) {
+    const { data: tok, error: rerr } = await window._supabase.rpc('regenerate_guardian_portal_token', { p_guardian: created.id });
+    if (!rerr && typeof tok === 'string') window._guardianFreshTokens[created.id] = tok;
+  }
   reopenGuardians();
 };
 
@@ -1267,12 +1279,13 @@ window.regenerateGuardianLink = async function regenerateGuardianLink(id, btn) {
     return;
   }
   if (btn) btn.disabled = true;
-  const { error } = await window._supabase.rpc('regenerate_guardian_portal_token', { p_guardian: id });
+  const { data: newToken, error } = await window._supabase.rpc('regenerate_guardian_portal_token', { p_guardian: id });
+  if (!error && typeof newToken === 'string') window._guardianFreshTokens[id] = newToken;
   if (error) {
     if (btn) btn.disabled = false;
     return window.showToast('<i class="fas fa-circle-xmark"></i> ' + (/regenerate_guardian_portal_token|schema cache|does not exist|42883|PGRST20/i.test(`${error.message} ${error.code}`) ? 'Falta ejecutar la migración «guardian-portal-token» en Supabase.' : error.message), 'error');
   }
-  window.showToast('<i class="fas fa-circle-check"></i> Enlace nuevo listo. El anterior ya no sirve: reenvíaselo al padre.', 'success');
+  window.showToast('<i class="fas fa-circle-check"></i> Enlace nuevo listo: cópialo o envíalo ahora, después ya no se puede ver. El anterior ya no sirve.', 'success');
   reopenGuardians();
 };
 
@@ -1297,7 +1310,9 @@ window.sendGuardianPortalSms = async function sendGuardianPortalSms(id, btn) {
   const first = String(window._guardiansCtx.studentName || '').trim().split(/\s+/)[0];
   btn.disabled = true;
   try {
-    await enqueueAndSend(id, `Avisos de ${first}: entre a ${window.guardianPortalUrl(g.portal_token)} y toque Activar avisos.`, 'sms');
+    const tok = window.guardianTokenOf(g);
+    if (!tok) throw new Error('Genera un enlace nuevo para poder enviarlo');
+    await enqueueAndSend(id, `Avisos de ${first}: entre a ${window.guardianPortalUrl(tok)} y toque Activar avisos.`, 'sms');
     window.showToast('<i class="fas fa-circle-check"></i> SMS enviado', 'success');
   } catch (e) {
     window.showToast('<i class="fas fa-circle-xmark"></i> ' + (e.message || e), 'error');

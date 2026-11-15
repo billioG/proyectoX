@@ -9,7 +9,7 @@
 // Verify JWT: OFF (el padre no inicia sesión).
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.118.0';
-import { isTokenExpired, rateKey, rateState } from './portal-guard.ts';
+import { isTokenExpired, rateKey, rateState, tokenHash } from './portal-guard.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -49,9 +49,11 @@ Deno.serve(async (req) => {
 
     if (typeof token !== 'string' || !/^[0-9a-f]{32}$/.test(token)) { await recordFailure(); return json({ error: 'Enlace inválido' }, 400); }
 
-    const { data: g } = await admin.from('student_guardians')
-      .select('id, name, student_id, consent_status, consent_version, students(full_name, school_code, schools(name))')
-      .eq('portal_token', token).maybeSingle();
+    // El token se guarda como huella (migrations/guardian-portal-token-hash.sql). Se busca por huella; el token en claro es solo respaldo para
+    // cuando la migración aún no se corrió o la fila todavía no tiene huella.
+    const cols = 'id, name, student_id, consent_status, consent_version, students(full_name, school_code, schools(name))';
+    let { data: g, error: hashErr } = await admin.from('student_guardians').select(cols).eq('portal_token_hash', await tokenHash(token)).maybeSingle();
+    if (!g || hashErr) ({ data: g } = await admin.from('student_guardians').select(cols).eq('portal_token', token).maybeSingle());
     if (!g) { await recordFailure(); return json({ error: 'Este enlace ya no es válido. Pídele uno nuevo al docente.' }, 404); }
 
     // Vencimiento del enlace (migrations/guardian-portal-token.sql). Se lee aparte y sin romper si la columna aún no existe.
