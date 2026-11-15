@@ -54,5 +54,6 @@ security-audit-log
 session-logs-idempotency
 waivers-unique-por-grupo
 attendance-absence-reason
+anon-sin-escritura
 # Siempre al final: envuelve auth.uid() también en las políticas que crearon las migraciones anteriores (p. ej. feedback-inbox).
 rls-auth-uid-initplan

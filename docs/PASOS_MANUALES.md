@@ -114,6 +114,12 @@ Correr `duel-one-open-pair.sql` en el SQL Editor **después** de publicar la v1.
 2. **Después** redesplegar `node-sync` (toda la carpeta, **Verify JWT OFF**): ahora acepta y guarda `absence_reason` de la asistencia hecha en un nodo. Hasta redesplegarla, el nodo seguirá subiendo la asistencia pero sin el motivo.
 3. Actualizar los nodos (la versión se ve en «Servidor de la escuela»).
 
+## 3a-quinquies. El rol anon sin escritura (15/11/2026)
+
+1. Correr `migrations/anon-sin-escritura.sql` en el SQL Editor. Al final muestra `anon_escritura = 0` y `authenticated_truncate = 0`.
+2. Probar enseguida: entrar como estudiante, como docente y como administrador, y abrir el enlace de un padre (portal). Todo debe seguir igual; lo único que cambia es lo que `anon` podía intentar escribir sin sesión.
+3. Para deshacerlo: `grant insert, update, delete on all tables in schema public to anon;`.
+
 ## 3b. Lección: crea las Edge Functions con la CLI, no desde el editor del panel
 
 El editor del panel le pone un nombre aleatorio a una función nueva (`guardian-portal` quedó como `bright-responder` y `padres.html` recibía 404). Para una función **nueva**, usa `npx supabase functions deploy <nombre> --use-api --project-ref <ref>` (con `--no-verify-jwt` en las de JWT OFF). Para una que ya existe, el panel sirve para pegar código. Comprobación rápida de que todas responden por su nombre: llamar a `/functions/v1/<nombre>` y ver que no dé 404.
