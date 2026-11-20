@@ -13,7 +13,7 @@
 // superior izquierda -- y una vez que eso pasaba una vez, el estado interno
 // de driver.js quedaba desincronizado para el resto del tour. Por eso ahora
 // se espera a que el elemento tenga tamaño real o hijos renderizados.
-function waitForSelector(selector, timeout = 5000) {
+function waitForSelector(selector, timeout = 2500) {
   return new Promise((resolve) => {
     if (!selector) return resolve(null);
     const start = Date.now();
@@ -21,7 +21,7 @@ function waitForSelector(selector, timeout = 5000) {
       const el = document.querySelector(selector);
       const ready = el && (el.offsetWidth > 0 || el.offsetHeight > 0 || el.children.length > 0);
       if (ready || Date.now() - start > timeout) return resolve(el);
-      setTimeout(check, 120);
+      setTimeout(check, 60);
     };
     check();
   });
@@ -279,7 +279,54 @@ async function syncMobileSidebarForSelector(selector) {
 // sí llegó a correr) -- de ahí que todo cayera a la esquina superior
 // izquierda. Se resuelve pasando la instancia por closure en vez de por
 // argumento.
+// Mientras el tour prepara el paso siguiente (cambiar de vista, abrir el menú
+// en móvil, esperar que cargue el contenido) los botones se bloquean: antes
+// seguían activos, no daban ninguna señal y cada toque impaciente lanzaba
+// OTRA cadena de navegación que terminaba saltándose pasos.
+function setTourBusy(busy) {
+  document.querySelectorAll?.('.driver-popover-next-btn, .driver-popover-prev-btn').forEach((b) => {
+    b.disabled = !!busy;
+    b.style.opacity = busy ? '0.5' : '';
+    b.style.pointerEvents = busy ? 'none' : '';
+  });
+}
+
 function buildDriverSteps(rawSteps, getDriverObj) {
+  // La vista de un paso es la del último `before` que corrió hasta él: así, al
+  // ir ATRÁS también se vuelve a la vista que ese paso necesita (antes «Atrás»
+  // no navegaba: el resaltado caía sobre un elemento oculto y el globo se iba
+  // a la esquina superior izquierda).
+  const viewIndexOf = (i) => {
+    for (let j = i; j >= 0; j--) if (typeof rawSteps[j].before === 'function') return j;
+    return -1;
+  };
+  const state = { busy: false, viewIdx: viewIndexOf(0) }; // runGuidedTour ya corrió el `before` del paso 0
+
+  async function go(delta) {
+    if (state.busy) return;
+    const drv = getDriverObj();
+    const to = drv.getActiveIndex() + delta;
+    const target = rawSteps[to];
+    if (!target) return;
+    state.busy = true;
+    setTourBusy(true);
+    try {
+      const v = viewIndexOf(to);
+      if (v >= 0 && v !== state.viewIdx) {
+        state.viewIdx = v;
+        try { rawSteps[v].before(); } catch (e) { console.error('Error en paso de onboarding:', e); }
+      }
+      await syncMobileSidebarForSelector(target.element);
+      await waitForSelector(target.element, 2500);
+    } finally {
+      state.busy = false;
+    }
+    if (!drv.isActive()) return; // cerraron el tour (X) mientras se preparaba el paso
+    if (delta > 0) drv.moveNext(); else drv.movePrevious();
+    // El contenido de la vista suele terminar de pintarse después de abrirla: se vuelve a medir para que el resaltado no quede corrido.
+    setTimeout(() => { try { if (drv.isActive()) drv.refresh(); } catch { /* el tour ya se cerró */ } }, 500);
+  }
+
   return rawSteps.map((s, i) => {
     const next = rawSteps[i + 1];
     return {
@@ -298,14 +345,8 @@ function buildDriverSteps(rawSteps, getDriverObj) {
         // de un nav() previo (ir a Cursos, Ranking, etc.) se quedaba con el
         // popover flotando sin resaltar nada, porque la vista real nunca
         // cambiaba.
-        onNextClick: next ? async () => {
-          if (typeof next.before === 'function') {
-            try { next.before(); } catch (e) { console.error('Error en paso de onboarding:', e); }
-          }
-          await syncMobileSidebarForSelector(next.element);
-          await waitForSelector(next.element, 5000);
-          getDriverObj().moveNext();
-        } : undefined,
+        onNextClick: next ? () => go(1) : undefined,
+        onPrevClick: i > 0 ? () => go(-1) : undefined,
       },
     };
   });
@@ -315,6 +356,7 @@ async function runGuidedTour(rawSteps) {
   await window.loadLib('driver');
   if (typeof window.driver === 'undefined') {
     console.warn('driver.js todavía no cargó -- no se pudo mostrar el tour');
+    window.showToast?.('<i class="fas fa-triangle-exclamation"></i> No se pudo cargar el tutorial. Revisa tu conexión e inténtalo de nuevo.', 'error');
     return;
   }
 
@@ -336,27 +378,35 @@ async function runGuidedTour(rawSteps) {
   }
 
   let driverObj;
-  driverObj = window.driver.js.driver({
-    showProgress: true,
-    allowClose: true,
-    // driver.js deja pasar clicks al elemento resaltado por default. En los
-    // pasos que resaltan un ítem de menú real (#nav-est-lessons, etc.) el
-    // usuario tiende a clickear el propio menú en vez de "Siguiente" -- eso
-    // navega la app de verdad pero el tour no se entera y avanza, así que
-    // se queda resaltando el ítem del menú sin nunca mostrar la info del
-    // siguiente paso. Se bloquea la interacción con el elemento resaltado
-    // para forzar el flujo por "Siguiente".
-    disableActiveInteraction: true,
-    overlayColor: 'rgb(2, 6, 23)',
-    nextBtnText: 'Siguiente →',
-    prevBtnText: '← Atrás',
-    doneBtnText: '¡Listo! <i class="fas fa-rocket"></i>',
-    progressText: '{{current}} de {{total}}',
-    onDestroyed: () => { window._onboardingTourActive = false; completeOnboarding(); },
-    steps: buildDriverSteps(rawSteps, () => driverObj),
-  });
+  try {
+    driverObj = window.driver.js.driver({
+      showProgress: true,
+      allowClose: true,
+      // La animación del recorte entre pasos pesa en teléfonos y equipos modestos y se sentía como «trabado».
+      animate: window.innerWidth > 768 && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
+      // driver.js deja pasar clicks al elemento resaltado por default. En los
+      // pasos que resaltan un ítem de menú real (#nav-est-lessons, etc.) el
+      // usuario tiende a clickear el propio menú en vez de "Siguiente" -- eso
+      // navega la app de verdad pero el tour no se entera y avanza, así que
+      // se queda resaltando el ítem del menú sin nunca mostrar la info del
+      // siguiente paso. Se bloquea la interacción con el elemento resaltado
+      // para forzar el flujo por "Siguiente".
+      disableActiveInteraction: true,
+      overlayColor: 'rgb(2, 6, 23)',
+      nextBtnText: 'Siguiente →',
+      prevBtnText: '← Atrás',
+      doneBtnText: '¡Listo! <i class="fas fa-rocket"></i>',
+      progressText: '{{current}} de {{total}}',
+      onDestroyed: () => { window._onboardingTourActive = false; completeOnboarding(); },
+      steps: buildDriverSteps(rawSteps, () => driverObj),
+    });
 
-  driverObj.drive();
+    driverObj.drive();
+  } catch (e) {
+    // Si el tour falla al arrancar, se libera el candado: si no, «Ver tutorial de nuevo» ya no hacía nada hasta recargar.
+    console.error('No se pudo iniciar el tutorial:', e);
+    window._onboardingTourActive = false;
+  }
 }
 
 function shouldShowOnboarding() {

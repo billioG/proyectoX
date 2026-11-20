@@ -134,6 +134,16 @@ alter table public.student_guardians alter column portal_token drop default;
 ```
 Antes de eso, comprobar que `select count(*) from public.student_guardians where portal_token is not null and portal_token_hash is null;` da 0.
 
+## 3a-septies. Proyectos aislados por escuela (v1.0.285)
+
+Antes, apagar `schools.public_projects` solo ocultaba los proyectos de esa escuela a las demás; ahora también **esa escuela deja de ver los proyectos de las otras** (alumnos, docentes y coordinadores). El admin sigue viéndolo todo.
+
+1. Correr `migrations/proyectos-escuela-aislada.sql` en el SQL Editor (requiere haber corrido antes `fix-cross-school-public-projects.sql`). Al final: `funcion_ok = true`.
+2. Probar con un alumno o docente de una escuela con el interruptor **apagado**: en el Hall de la Fama / proyectos ya no debe ver proyectos de otras escuelas, solo los de la suya. Con uno de una escuela con el interruptor **prendido**, sigue viendo los suyos y los de las escuelas públicas.
+3. Entrar como admin: debe seguir viendo todos los proyectos.
+
+Para deshacer: volver a correr `migrations/fix-cross-school-public-projects.sql` (restaura la regla anterior de `project_author_visible`).
+
 ## 3b. Lección: crea las Edge Functions con la CLI, no desde el editor del panel
 
 El editor del panel le pone un nombre aleatorio a una función nueva (`guardian-portal` quedó como `bright-responder` y `padres.html` recibía 404). Para una función **nueva**, usa `npx supabase functions deploy <nombre> --use-api --project-ref <ref>` (con `--no-verify-jwt` en las de JWT OFF). Para una que ya existe, el panel sirve para pegar código. Comprobación rápida de que todas responden por su nombre: llamar a `/functions/v1/<nombre>` y ver que no dé 404.

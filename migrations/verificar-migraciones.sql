@@ -94,7 +94,8 @@ with comprobaciones(orden, migracion, tipo, objeto, extra) as (values
   (790, 'session-logs-idempotency',          'indice',           'node_session_logs_dedup_uidx', null),
   (791, 'waivers-unique-por-grupo',          'indice',           'attendance_waivers_unique_group_day', null),
   (792, 'attendance-absence-reason',         'columna',          'attendance.absence_reason', null),
-  (793, 'guardian-portal-token-hash',        'columna',          'student_guardians.portal_token_hash', null)
+  (793, 'guardian-portal-token-hash',        'columna',          'student_guardians.portal_token_hash', null),
+  (794, 'proyectos-escuela-aislada',         'funcion',          'viewer_school_codes', null)
 )
 select
   c.orden,
