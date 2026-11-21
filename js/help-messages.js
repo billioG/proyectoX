@@ -81,7 +81,7 @@ export function friendlyError(err, ctx = 'generic', { online = true } = {}) {
   // --- sin conexión: en asistencia y proyectos NO se pierde lo hecho, y se dice ---
   const isOffline = !online || /failed to fetch|networkerror|network request failed|load failed|err_internet|err_network|fetch failed|timed out|econn|enotfound/.test(t) || (err instanceof TypeError && /fetch/.test(t));
   if (isOffline) {
-    if (ctx === 'attendance' || ctx === 'upload') return out('offline', 'No hay conexión con el servidor. Lo que hiciste quedó guardado en este dispositivo y se subirá solo cuando vuelva el internet (mira el indicador de abajo: SIN CONEXIÓN → PENDIENTE → CONECTADO).');
+    if (ctx === 'attendance' || ctx === 'upload') return out('offline', 'No hay conexión con el servidor. Lo que hiciste quedó guardado en este dispositivo y se subirá solo cuando vuelva el internet (mira el indicador de arriba: SIN CONEXIÓN → PENDIENTE → CONECTADO).');
     return out('offline', 'No hay conexión con el servidor. Revisa tu internet o el Wi-Fi de la escuela y vuelve a intentar.');
   }
 
@@ -200,11 +200,11 @@ export const HELP_TOPICS = {
     problems: [
       ['No me deja publicar', 'El mensaje dice qué falta: título, descripción, archivo o tamaño. Corrígelo y vuelve a tocar el botón.'],
       ['El video pesa demasiado', 'Graba menos tiempo o baja la calidad de la cámara. Un video corto de 1 a 2 minutos suele caber.'],
-      ['No lo veo en Inicio', 'Mira el indicador de abajo: PENDIENTE significa que todavía se está subiendo. Espera a CONECTADO.'],
+      ['No lo veo en Inicio', 'Mira el indicador de arriba: PENDIENTE significa que todavía se está subiendo. Espera a CONECTADO.'],
     ],
   },
   sincronizacion: {
-    title: 'Qué significa el indicador de abajo',
+    title: 'Qué significa el indicador de arriba',
     icon: 'fa-cloud-arrow-up',
     steps: [
       'CONECTADO: todo lo que hiciste ya está en la nube.',
