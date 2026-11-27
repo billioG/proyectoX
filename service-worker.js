@@ -2,7 +2,7 @@
 // SERVICE WORKER - PROJECTX PWA
 // ================================================
 
-const CACHE_NAME = 'projectx-v1.0.285';
+const CACHE_NAME = 'projectx-v1.0.287';
 // Caché de archivos de lecciones (video/PDF/imagen/paquetes SCORM-H5P) --
 // separada de CACHE_NAME a propósito: CACHE_NAME se recrea y se BORRA
 // entera en cada deploy (bump de versión) para forzar JS/CSS frescos, pero
@@ -10,6 +10,9 @@ const CACHE_NAME = 'projectx-v1.0.285';
 // compartiera el mismo nombre. Esta NO se toca en "activate" salvo que
 // cambie la estrategia de cacheo en sí (no en cada feature nueva).
 const MEDIA_CACHE_NAME = 'projectx-media-v1';
+// Ruta del visor de paquetes HTML/SCORM (leccion-visor/...): ver js/lesson-frame.js.
+// Si no se pudiera cargar, el service worker sigue funcionando sin esa ruta (la app vuelve al visor anterior).
+try { importScripts(`js/lesson-frame.js?v=${CACHE_NAME.replace('projectx-v', '')}`); } catch (e) { console.warn('⚠️ Sin visor de lecciones:', e); }
 // Rutas RELATIVAS (sin "/" inicial) -- con "/" apuntaban siempre a la raíz
 // del dominio, lo cual rompe el sitio cuando se sirve desde un subpath
 // (ej. billiog.github.io/proyectoX/) porque pedía billiog.github.io/js/...
@@ -67,7 +70,7 @@ const EAGER_MODULES = [
   'js/student-presence.js', 'js/students.js', 'js/schools.js', 'js/ranking.js', 'js/bonus-system.js',
   'js/admin-success.js', 'js/evaluation.js', 'js/admin-evaluations.js',
   'js/attendance.js', 'js/camera-support.js', 'js/waiver-logic.js', 'js/groups.js', 'js/gamification.js', 'js/profile.js',
-  'js/feed-ui.js', 'js/utils.js', 'js/safe-html.js', 'js/query-cache.js', 'js/help-messages.js', 'js/qrcode.min.js',
+  'js/feed-ui.js', 'js/lesson-frame.js', 'js/utils.js', 'js/safe-html.js', 'js/query-cache.js', 'js/help-messages.js', 'js/qrcode.min.js',
 ];
 
 const urlsToCache = [
@@ -214,12 +217,57 @@ function isSignedStorageGet(url) {
   return url.includes('supabase.co') && /\/storage\/v1\/object\/(sign|authenticated)\//.test(url);
 }
 
+// Visor de paquetes HTML/SCORM: <app>/leccion-visor/<proyecto>.supabase.co/storage/v1/object/public/... -> el archivo de
+// Storage con su tipo correcto (Supabase entrega el HTML como text/plain) y, si es HTML, con la CSP propia del paquete
+// (un iframe srcdoc heredaba la de la app y le bloqueaba los scripts). Red primero; sin red, la copia de la caché de medios
+// (la misma que llena «Descargar para offline»).
+async function serveLessonFrame(request) {
+  const LF = self.LessonFrame;
+  if (LF.isPing(request.url, self.registration.scope)) {
+    return new Response(null, { status: 204, headers: { 'X-PX-Lesson-Frame': '1', 'Cache-Control': 'no-store' } });
+  }
+  const upstream = LF.upstreamFor(request.url, self.registration.scope);
+  if (!upstream) return new Response('No encontrado', { status: 404, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+  const path = new URL(upstream).pathname;
+  const range = request.headers.get('Range');
+  let res;
+  try {
+    res = await fetch(upstream, { headers: range ? { Range: range } : {}, credentials: 'omit', mode: 'cors' });
+    if (res.status === 200 && !range) {
+      const copy = res.clone();
+      caches.open(MEDIA_CACHE_NAME).then(cache => cache.put(upstream, copy)).catch(() => {});
+    }
+  } catch (e) {
+    res = await caches.match(upstream);
+    if (!res) return new Response('Sin conexión y sin copia guardada de este recurso.', { status: 504, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+  }
+  if (LF.isHtmlPath(path) && res.ok) {
+    const scopeKey = new URL(request.url).searchParams.get(LF.SCOPE_PARAM);
+    const html = LF.withIsolatedStorage(await res.text(), scopeKey);
+    return new Response(html, {
+      status: 200,
+      headers: { 'Content-Type': LF.contentTypeFor(path), 'Content-Security-Policy': LF.FRAME_CSP, 'Cache-Control': 'no-cache', 'X-Content-Type-Options': 'nosniff' },
+    });
+  }
+  const headers = new Headers({ 'Content-Type': LF.contentTypeFor(path), 'X-Content-Type-Options': 'nosniff' });
+  for (const h of ['Content-Length', 'Content-Range', 'Accept-Ranges', 'ETag', 'Last-Modified']) {
+    const v = res.headers.get(h);
+    if (v) headers.set(h, v);
+  }
+  return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
+}
+
 // Estrategia de caché: Network First, fallback a Cache
 self.addEventListener('fetch', event => {
   const { request } = event;
 
   // Ignorar requests que no sean GET
   if (request.method !== 'GET') {
+    return;
+  }
+
+  if (self.LessonFrame && request.url.startsWith(self.registration.scope + self.LessonFrame.PREFIX)) {
+    event.respondWith(serveLessonFrame(request));
     return;
   }
 
@@ -295,6 +343,10 @@ self.addEventListener('fetch', event => {
 self.addEventListener('message', event => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
+  }
+  // La app pregunta si este service worker ya conoce la ruta del visor de lecciones (uno viejo no responde).
+  if (event.data && event.data.type === 'PX_LESSON_FRAME_PING' && event.ports && event.ports[0]) {
+    event.ports[0].postMessage({ lessonFrame: !!self.LessonFrame });
   }
 });
 

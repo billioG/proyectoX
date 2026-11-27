@@ -64,6 +64,19 @@ test('la lección SCORM apunta al nodo y el HTML de entrada sale con su <base hr
   assert.equal((await fetch(`${node.base}/functions/v1/serve-scorm-entry?path=lessons/${L1}/res/no-existe.html`)).status, 404);
   assert.equal((await fetch(`${node.base}/functions/v1/serve-scorm-entry?path=../../config.json`)).status, 404);
   assert.equal((await fetch(`${node.base}/functions/v1/serve-scorm-entry`)).status, 404);
+
+  // Desde la v1.0.287 la app abre el iframe DIRECTO en el archivo (un srcdoc heredaba la CSP y bloqueaba los scripts del paquete):
+  // con ?pxscope el nodo agrega el almacenamiento aislado antes de los scripts; sin él, el archivo sale tal cual.
+  const direct = `${node.base}/storage/v1/object/public/course-content/lessons/${L1}/res/index.html`;
+  const scoped = await fetch(`${direct}?lang=es&pxscope=${encodeURIComponent('s1:' + L1)}`);
+  assert.equal(scoped.status, 200);
+  assert.match(scoped.headers.get('content-type'), /text\/html/);
+  assert.equal(scoped.headers.get('content-security-policy'), null, 'el paquete no recibe la CSP de la app');
+  const sh = await scoped.text();
+  assert.ok(sh.includes(`px:s1:${L1}:`) && sh.indexOf('px:s1:') < sh.indexOf('js/app.js'), 'el aislamiento va antes que los scripts del paquete');
+  assert.equal(await (await fetch(direct)).text(), '<!doctype html><html><head><title>Aula</title><script src="js/app.js"></script></head><body>Hola</body></html>');
+  assert.equal((await fetch(`${direct}?pxscope=${encodeURIComponent('<x>')}`)).status, 200, 'un pxscope raro se ignora (archivo tal cual)');
+  assert.equal((await fetch(`${node.base}/storage/v1/object/public/course-content/lessons/${L1}/res/no-existe.html?pxscope=a`)).status, 404);
 });
 
 test('subir a un depósito que el nodo no tiene (adjuntos de comentarios) responde un aviso claro, no «Not Found»; los depósitos de siempre no cambian', { skip, timeout: 60000 }, async () => {

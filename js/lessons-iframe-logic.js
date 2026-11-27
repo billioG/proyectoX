@@ -1,7 +1,8 @@
 /**
  * LÓGICA PURA DEL VISOR DE RECURSOS HTML/SCORM (sin DOM: se prueba con Node, tests-unit/lessons-iframe-logic.test.mjs).
- * La usa js/lessons.js (loadIframeViaFetch). El recurso se mete en el iframe con srcdoc, que no tiene URL propia: sus enlaces
- * relativos («index.html», «./», «/», «») se resolverían contra la URL de la app y abrirían Quetzal dentro del visor.
+ * La usa js/lessons.js (loadIframeViaFetch). Desde la v1.0.287 el iframe navega normalmente a la ruta del visor (js/lesson-frame.js);
+ * injectBaseHref/iframeBaseFolder quedan para el respaldo con srcdoc (sin service worker), donde el documento no tiene URL propia y sus
+ * enlaces relativos («index.html», «./», «/», «») se resolverían contra la URL de la app y abrirían Quetzal dentro del visor.
  */
 
 /** Carpeta (con «/» final) de la URL que se pidió con fetch(); `pageUrl` resuelve las direcciones relativas («/content/...»). */
