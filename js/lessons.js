@@ -4,6 +4,7 @@
  */
 
 import { iframeBaseFolder, injectBaseHref, classifyLink } from './lessons-iframe-logic.js';
+import './lesson-frame.js'; // define globalThis.LessonFrame (ruta del visor; ver ese archivo)
 
 // PDF: los celulares y tablets (Android sobre todo) no dibujan un PDF dentro de un iframe y muestran la carita triste de Chrome. Siempre se da el botón
 // «Abrir PDF» (pestaña nueva, el visor propio del aparato); la vista previa dentro de la página solo se intenta en computadora.
@@ -2969,15 +2970,7 @@ function updateLiveScoreLabel(score, status) {
 // antes de cualquier script del paquete un localStorage/sessionStorage con
 // prefijo por usuario+lección: cada alumno ve solo lo suyo, sin tocar el ZIP.
 function withIsolatedStorage(html, scopeKey) {
-  const patch = `<script>(function(){var P=${JSON.stringify('px:' + scopeKey + ':')};
-function mk(real){function mine(){return Object.keys(real).filter(function(k){return k.indexOf(P)===0;});}
-return{getItem:function(k){return real.getItem(P+k);},setItem:function(k,v){real.setItem(P+k,v);},
-removeItem:function(k){real.removeItem(P+k);},clear:function(){mine().forEach(function(k){real.removeItem(k);});},
-key:function(i){var ks=mine();return ks[i]===undefined?null:ks[i].slice(P.length);},get length(){return mine().length;}};}
-try{Object.defineProperty(window,'localStorage',{value:mk(window.localStorage),configurable:true});
-Object.defineProperty(window,'sessionStorage',{value:mk(window.sessionStorage),configurable:true});}catch(e){}})();<\/script>`;
-  const head = html.match(/<head[^>]*>/i);
-  return head ? html.replace(head[0], head[0] + patch) : patch + html;
+  return globalThis.LessonFrame.withIsolatedStorage(html, scopeKey);
 }
 
 // Un srcdoc no tiene URL propia: sus enlaces relativos («index.html», «./», «/», «») se resuelven contra la app y abrirían Quetzal DENTRO del visor.
@@ -3012,16 +3005,68 @@ function guardIframeLinks(iframe) {
   iframe.addEventListener('load', bind);
 }
 
+// ¿El service worker activo ya conoce la ruta del visor? (uno de una versión anterior la mandaría al servidor y daría 404).
+let lessonFrameReady = null;
+function lessonFrameScope() {
+  if (lessonFrameReady) return lessonFrameReady;
+  lessonFrameReady = (async () => {
+    if (!('serviceWorker' in navigator) || !window.isSecureContext) return null;
+    const reg = await Promise.race([navigator.serviceWorker.ready, new Promise(r => setTimeout(() => r(null), 4000))]);
+    if (!reg?.active) return null;
+    // Por mensaje y no por fetch: así funciona aunque esta pestaña todavía no esté controlada por el service worker.
+    const ok = await new Promise(resolve => {
+      const ch = new MessageChannel();
+      const t = setTimeout(() => resolve(false), 1500);
+      ch.port1.onmessage = (e) => { clearTimeout(t); resolve(!!e.data?.lessonFrame); };
+      try { reg.active.postMessage({ type: 'PX_LESSON_FRAME_PING' }, [ch.port2]); } catch { clearTimeout(t); resolve(false); }
+    });
+    return ok ? reg.scope : null;
+  })().then(scope => { if (!scope) lessonFrameReady = null; return scope; });
+  return lessonFrameReady;
+}
+
+/**
+ * Dirección que el iframe puede abrir DIRECTO (sin srcdoc), o null:
+ *  - servidor de la escuela: el contenido es del mismo origen y el nodo entrega el HTML con su tipo correcto (y aísla el almacenamiento con ?pxscope);
+ *  - nube: la ruta leccion-visor/ del service worker (ver js/lesson-frame.js).
+ */
+async function lessonFrameSrc(url, scopeKey) {
+  let abs;
+  try { abs = new URL(globalThis.LessonFrame.entryToStorageUrl(new URL(url, document.baseURI).href)); } catch { return null; }
+  if (abs.origin === window.location.origin) {
+    if (scopeKey) abs.searchParams.set(globalThis.LessonFrame.SCOPE_PARAM, scopeKey);
+    return abs.href;
+  }
+  if (!globalThis.LessonFrame.isProxyableStorageUrl(abs.href)) return null;
+  const scope = await lessonFrameScope();
+  return scope ? globalThis.LessonFrame.frameUrlFor(abs.href, scope, scopeKey) : null;
+}
+
 window.loadIframeViaFetch = async function loadIframeViaFetch(iframeId, url, scope) {
   const iframe = document.getElementById(iframeId);
   if (!iframe || !url) return;
+  const userId = window.currentUser?.id;
+  const scopeKey = scope && userId ? `${userId}:${scope}` : null;
+  // Camino normal: el iframe navega a una dirección propia. Un iframe srcdoc hereda la CSP de la app (sin scripts en línea
+  // ni <base> externo desde la v1.0.260) y el paquete no arrancaba.
+  const direct = await lessonFrameSrc(url, scopeKey).catch(() => null);
+  if (direct) {
+    guardIframeLinks(iframe);
+    iframe.removeAttribute('srcdoc');
+    iframe.src = direct;
+    return;
+  }
+  // Respaldo (navegador sin service worker o uno viejo todavía activo): el método anterior. Los paquetes que necesitan scripts
+  // en línea no arrancan así; se avisa debajo del visor para que recargue.
+  if (!document.getElementById(`${iframeId}-hint`)) {
+    iframe.insertAdjacentHTML('afterend', `<p id="${iframeId}-hint" class="text-xs text-slate-500 dark:text-slate-400 mt-2"><i class="fas fa-circle-info mr-1"></i>Si el recurso no responde, recarga la página para terminar de actualizar Quetzal.</p>`);
+  }
   try {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const html = injectBaseHref(await res.text(), iframeBaseFolder(url, document.baseURI));
-    const userId = window.currentUser?.id;
     guardIframeLinks(iframe);
-    iframe.srcdoc = scope && userId ? withIsolatedStorage(html, `${userId}:${scope}`) : html;
+    iframe.srcdoc = scopeKey ? withIsolatedStorage(html, scopeKey) : html;
   } catch (e) {
     console.error('Error cargando contenido embebido:', e);
     iframe.srcdoc = '<p style="font-family:sans-serif;color:#e11d48;padding:24px;text-align:center;">No se pudo cargar el contenido.</p>';

@@ -4,6 +4,10 @@ Cambios publicados en Quetzal LMS, del más reciente al más antiguo. Cada líne
 
 Al publicar una versión nueva, agrega una línea arriba de todo (ver CONTRIBUTING.md).
 
+## 2026-11-27
+
+- **v1.0.287 · Arreglo: las lecciones SCORM y HTML5 vuelven a funcionar.** Desde la v1.0.260 (CSP sin `'unsafe-inline'`) el visor metía el paquete en el iframe con `srcdoc`, que hereda la política de la app: el navegador bloqueaba los scripts en línea del paquete («Executing inline script violates…») y su `<base href>` hacia Storage («base-uri 'self'»), y la lección no arrancaba. Ahora el iframe navega a una ruta propia, `leccion-visor/<proyecto>.supabase.co/storage/v1/object/public/…`, que atiende el service worker (`js/lesson-frame.js`): pide el archivo a Storage, lo entrega con su tipo correcto (Supabase da el HTML como text/plain) y con una CSP propia para el paquete, sin `<base>` porque las rutas relativas caen en la misma carpeta. El documento sigue en el mismo origen (la API SCORM de la ventana padre sigue al alcance) y el almacenamiento aislado por alumno y lección se mantiene (lo inyecta el service worker; en el servidor de la escuela, el nodo con `?pxscope`). Sin red usa la copia de «Descargar para offline». Si el service worker todavía es de una versión anterior, se usa el visor viejo y se pide recargar. Pruebas: `tests-unit/lesson-frame.test.mjs`, `tests-unit/node-scorm-entry.test.mjs` y `tests/lesson-frame.spec.js` (con la CSP activa: las demás pruebas de navegador la saltan y por eso no lo vieron).
+
 ## 2026-11-13
 
 - **v1.0.285 · Proyectos aislados por escuela y tutorial sin trabarse.** Si el interruptor del Hall de la Fama de un establecimiento está apagado, sus alumnos, docentes y coordinadores solo ven proyectos de sus propias escuelas (antes solo se ocultaban los suyos a las demás); el administrador sigue viendo todo. En el tutorial, «Atrás» vuelve a la vista del paso (antes el resaltado caía en un elemento oculto y el globo en la esquina), se avanza un paso a la vez con los botones bloqueados mientras se prepara, y no anima en móvil. **Hay que correr `migrations/proyectos-escuela-aislada.sql`** (ver PASOS_MANUALES 3a-septies).

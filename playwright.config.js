@@ -3,6 +3,9 @@
 // credenciales). Correr con: npm test
 const { defineConfig, devices } = require('@playwright/test');
 
+// Para que context.route también intercepte lo que pide el service worker (tests/lesson-frame.spec.js simula Storage de Supabase así).
+process.env.PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS ||= '1';
+
 module.exports = defineConfig({
   testDir: 'tests',
   timeout: 60_000, // las pruebas con servidor escolar compiten por CPU cuando corren en paralelo: 30 s se quedaba corto al azar
