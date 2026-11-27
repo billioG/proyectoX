@@ -5,6 +5,10 @@ updates:
     directory: /
     schedule: { interval: weekly }
     open-pull-requests-limit: 5
+    ignore:
+      # Tailwind 4 cambió la herramienta de línea de comandos y la configuración (tailwind.config.js): no se sube sola de versión mayor.
+      - dependency-name: tailwindcss
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: npm
     directory: /school-node
     schedule: { interval: weekly }
