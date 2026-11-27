@@ -17,6 +17,7 @@ import { startMdns } from './mdns.js';
 import { startDns, probeResponse } from './dns.js';
 import { parseRange, pipeFile } from './http-range.js';
 import { localizeIndexHtml, localizeBootScript } from './offline-assets.js';
+import '../js/lesson-frame.js'; // globalThis.LessonFrame: aislar el almacenamiento de los paquetes HTML/SCORM (ver servePackageHtml)
 import { createProjectStore, ProjectError } from './projects.js';
 import { PROJECT_LIMITS } from './project-rules.js';
 import { buildStudentFeed } from './feed.js';
@@ -224,6 +225,19 @@ function serveScormEntry(res, rel, host, proto = 'http') {
   let html = fs.readFileSync(file, 'utf8');
   html = /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, (m) => m + baseTag) : baseTag + html;
   const body = Buffer.from(html, 'utf8');
+  res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Content-Length': body.length, 'Cache-Control': 'no-cache' });
+  res.end(body);
+}
+
+// HTML de un paquete abierto DIRECTO en el iframe de la app (js/lessons.js, ?pxscope=<usuario>:<lección>): igual que el archivo, más un
+// localStorage/sessionStorage con prefijo por usuario y lección antes de sus scripts (el documento comparte origen con la app y si no,
+// el avance del paquete lo verían todos los que usan la tablet). Sin pxscope se sirve el archivo tal cual con serveFile.
+const PX_SCOPE = /^[\w:.-]{1,200}$/;
+function servePackageHtml(res, rel, scopeKey) {
+  const file = path.resolve(CONTENT_DIR, rel);
+  if (!file.startsWith(CONTENT_DIR + path.sep) || !fs.existsSync(file) || !fs.statSync(file).isFile()) { res.writeHead(404); return res.end('No encontrado'); }
+  if (fs.statSync(file).size > SCORM_ENTRY_MAX_BYTES) { res.writeHead(413); return res.end('Archivo demasiado grande'); }
+  const body = Buffer.from(globalThis.LessonFrame.withIsolatedStorage(fs.readFileSync(file, 'utf8'), scopeKey), 'utf8');
   res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Content-Length': body.length, 'Cache-Control': 'no-cache' });
   res.end(body);
 }
@@ -923,6 +937,8 @@ const requestHandler = async (req, res) => {
       try { rel = storageFile ? decodeURIComponent(storageFile[1]) : url.searchParams.get('path'); } catch { rel = null; }
       if (!rel) { res.writeHead(404); return res.end('No encontrado'); }
       if (!storageFile) return serveScormEntry(res, rel, req.headers.host, req.socket.encrypted ? 'https' : 'http');
+      const scopeKey = url.searchParams.get('pxscope');
+      if (scopeKey && PX_SCOPE.test(scopeKey) && /\.html?$/i.test(rel)) return servePackageHtml(res, rel, scopeKey);
       return serveFile(req, res, CONTENT_DIR, rel);
     }
     // Certificado PÚBLICO de la CA de la escuela (data/ca/quetzal-ca.crt), para que los dispositivos confíen en el HTTPS del nodo y la cámara pueda pasar lista.
